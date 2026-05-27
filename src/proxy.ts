@@ -8,25 +8,8 @@ import type { NextRequest } from "next/server";
 const PUBLIC_ROUTES = ["/login", "/landing"];
 
 /**
- * SESSION_COOKIE – Firebase Auth sets this cookie when you call
- * `setPersistence(browserSessionPersistence)` or use the Admin SDK to
- * create a session cookie.  For the current client-side-only setup we
- * rely on the `__session` cookie that the Firebase JS SDK writes
- * automatically in some configurations, or the presence of a Firebase
- * ID token stored under the key `firebase:authUser:…`.
- *
- * Because middleware runs on the Edge (no Firebase SDK available), we
- * check for a lightweight presence signal: the Firebase SDK always
- * writes a key that starts with "firebase:authUser" to localStorage,
- * but that is NOT accessible from middleware.
- *
- * ➜ RECOMMENDED APPROACH for Next.js + Firebase:
- *   Use a signed HttpOnly session cookie (set via an API route after
- *   verifying the ID token with the Firebase Admin SDK).
- *   The cookie name below must match what your API route sets.
- *
- * For the MVP we use a simple boolean cookie called `ta_session`
- * that the AuthContext sets/clears on login/logout via document.cookie.
+ * SESSION_COOKIE – lightweight presence signal set by AuthContext on login/logout.
+ * AuthContext sets/clears this cookie via document.cookie.
  */
 const SESSION_COOKIE = "ta_session";
 
@@ -34,15 +17,26 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
 
-  // 1. Manejo de Dominio Personalizado: travelcab.ar
+  // ─── 1. DOMAIN-SPECIFIC PUBLIC REWRITES ────────────────────────────────────
+
+  // travelcab.ar → muestra landing de TravelCab directamente
   if (hostname.includes("travelcab.ar")) {
-    // Si entran a la raíz de travelcab.ar, mostramos la landing page directamente
-    if (pathname === "/") {
+    if (pathname === "/" || pathname === "/home") {
       return NextResponse.rewrite(new URL("/landing/travelcab", request.url));
     }
   }
 
-  // Allow public routes without auth check
+  // travelapp.ar → landing pages públicas por path
+  if (hostname.includes("travelapp.ar")) {
+    if (pathname === "/experience") {
+      return NextResponse.rewrite(new URL("/landing/experience", request.url));
+    }
+    if (pathname === "/rewards") {
+      return NextResponse.rewrite(new URL("/landing/rewards", request.url));
+    }
+  }
+
+  // ─── 2. ALLOW PUBLIC ROUTES WITHOUT AUTH CHECK ─────────────────────────────
   const isPublic = PUBLIC_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
@@ -50,7 +44,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow Next.js internals and static files
+  // ─── 3. ALLOW NEXT.JS INTERNALS AND STATIC FILES ───────────────────────────
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -61,13 +55,19 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check session cookie
+  // ─── 4. CHECK SESSION COOKIE ────────────────────────────────────────────────
   const session = request.cookies.get(SESSION_COOKIE);
   if (!session || !session.value) {
     const loginUrl = new URL("/login", request.url);
     // Preserve the originally requested URL so we can redirect back after login
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // ─── 5. AUTHENTICATED DOMAIN REWRITES ──────────────────────────────────────
+  // travelapp.ar/admin → dashboard principal (requiere sesión activa)
+  if (hostname.includes("travelapp.ar") && pathname === "/admin") {
+    return NextResponse.rewrite(new URL("/", request.url));
   }
 
   return NextResponse.next();
