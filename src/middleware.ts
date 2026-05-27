@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
  * PUBLIC_ROUTES – paths that never require authentication.
  * Everything else in the ecosystem is considered protected.
  */
-const PUBLIC_ROUTES = ["/login"];
+const PUBLIC_ROUTES = ["/login", "/landing"];
 
 /**
  * SESSION_COOKIE – Firebase Auth sets this cookie when you call
@@ -32,6 +32,15 @@ const SESSION_COOKIE = "ta_session";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = request.headers.get("host") || "";
+
+  // 1. Manejo de Dominio Personalizado: travelcab.ar
+  if (hostname.includes("travelcab.ar")) {
+    // Si entran a la raíz de travelcab.ar, mostramos la landing page directamente
+    if (pathname === "/") {
+      return NextResponse.rewrite(new URL("/landing/travelcab", request.url));
+    }
+  }
 
   // Allow public routes without auth check
   const isPublic = PUBLIC_ROUTES.some(

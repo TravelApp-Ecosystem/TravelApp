@@ -44,9 +44,16 @@ interface AuthContextValue {
  * Extend this logic once you add custom claims or Firestore role docs.
  * Currently we default every authenticated user to 'admin' for the MVP.
  */
-function deriveRole(_user: User): UserRole {
-  // TODO: read custom claim from idTokenResult or Firestore /users/{uid}
-  return "admin";
+function deriveRole(user: User): UserRole {
+  // Lista de correos con permisos de Administrador Global
+  const adminEmails = ["fernando@travelapp.ar", "ferincola@gmail.com"];
+  
+  if (user.email && adminEmails.includes(user.email.toLowerCase())) {
+    return "admin";
+  }
+  
+  // Por defecto, cualquier otro usuario ingresa como operator
+  return "operator";
 }
 
 function toAuthUser(firebaseUser: User): AuthUser {

@@ -154,7 +154,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@travelapp.ar"
+                    placeholder="ejemplo@empresa.com"
                     className="block w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[#0a2a5b] focus:bg-white focus:ring-2 focus:ring-[#0a2a5b]/10"
                   />
                 </div>
@@ -217,15 +217,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Test credentials hint */}
-            <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
-              <p className="text-xs font-medium text-slate-400">
-                Credenciales de prueba
-              </p>
-              <p className="mt-0.5 text-xs font-bold text-slate-600">
-                admin@travelapp.ar &nbsp;/&nbsp; admin123
-              </p>
-            </div>
           </div>
 
           <p className="mt-6 text-center text-xs text-slate-400">
