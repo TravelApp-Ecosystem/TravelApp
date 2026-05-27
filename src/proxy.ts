@@ -30,7 +30,7 @@ const PUBLIC_ROUTES = ["/login", "/landing"];
  */
 const SESSION_COOKIE = "ta_session";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
 
