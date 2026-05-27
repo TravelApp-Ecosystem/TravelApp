@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Settings, MapPin, DollarSign, Plus, FileText, CheckCircle2, Trash2, Edit, AlertCircle, Sparkles, Car, Star, Shield, Crown, RefreshCw } from 'lucide-react';
+import { Settings, MapPin, DollarSign, Plus, FileText, CheckCircle2, Trash2, Edit, AlertCircle, Sparkles, Car, Star, Shield, Crown, RefreshCw, Save } from 'lucide-react';
 import { Branch, ARCTariff, MUTariff, VehicleCategory } from '@/types/logistics';
 import { MUTariffForm } from '@/components/travelcab/settings/MUTariffForm';
 import { ARCTariffForm } from '@/components/travelcab/settings/ARCTariffForm';
