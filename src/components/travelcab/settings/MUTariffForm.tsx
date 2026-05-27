@@ -238,7 +238,7 @@ export const MUTariffForm: React.FC<MUTariffFormProps> = ({ editData, onSubmitSu
       <div className="rounded-lg border border-slate-200 bg-white/50 p-5 shadow-sm">
         <h3 className="mb-4 text-sm font-bold text-tech-blue flex items-center gap-1.5">
           Impuestos, Comisiones y Membresías
-          <HelpCircle className="h-3.5 w-3.5 text-slate-400" title="Valores fiscales por localidad y márgenes de la empresa" />
+          <span title="Valores fiscales por localidad y márgenes de la empresa"><HelpCircle className="h-3.5 w-3.5 text-slate-400" /></span>
         </h3>
         
         <div className="grid gap-4 sm:grid-cols-3">

@@ -462,7 +462,7 @@ export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({ onCoordsCh
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-tech-blue focus:border-vial-orange focus:outline-none focus:ring-2 focus:ring-vial-orange/15"
                 >
                   <option value="">Seleccione una ruta troncal...</option>
-                  {currentTariff?.routes?.map((r: any) => (
+                  {(currentTariff as ARCTariff)?.routes?.map((r: any) => (
                     <option key={r.id} value={r.id}>{r.mainOrigin} ➔ {r.mainDestination} (${r.pricePerSeat.toLocaleString('es-AR')}/asiento)</option>
                   ))}
                 </select>
