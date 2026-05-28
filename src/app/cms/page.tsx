@@ -14,14 +14,16 @@ const DEFAULT_CMS_DATA = {
     badge: "✓ EL ESTÁNDAR MÁS ALTO EN MOVILIDAD URBANA",
     title: "La Ciudad a tu Ritmo",
     subtitle: "Viajes urbanos premium con el soporte local más confiable. Disfruta de seguridad monitoreada 24/7, choferes profesionales certificados y la tarifa más justa del mercado.",
-    backgroundImage: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1920&q=80"
+    backgroundImage: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1920&q=80",
+    opacity: 55
   },
   conductorHero: {
     badge: "✓ ÚNETE A LA RED DE MOVILIDAD MÁS GRANDE DE TUCUMÁN",
     title: "Conduce y Gana Bajo tus Propios Términos",
     subtitle: "Sé tu propio jefe y maximiza tus ingresos reales con el modelo híbrido único. Retén el 100% de tus viajes con una membresía fija o paga una baja comisión por viaje.",
     backgroundImage: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1920&q=80",
-    ctaText: "Registrarme como Conductor"
+    ctaText: "Registrarme como Conductor",
+    opacity: 55
   },
   servicios: [
     {
@@ -474,6 +476,26 @@ export default function CMSPage() {
                   value={data.pasajeroHero?.backgroundImage || ''} 
                 />
               </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                  <span>Opacidad de la Capa Oscura (Transparencia)</span>
+                  <span className="text-tech-blue font-black">{data.pasajeroHero?.opacity !== undefined ? data.pasajeroHero.opacity : 55}%</span>
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="10"
+                    max="90"
+                    value={data.pasajeroHero?.opacity !== undefined ? data.pasajeroHero.opacity : 55}
+                    onChange={(e) => updateField('pasajeroHero', 'opacity', Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-tech-blue"
+                  />
+                  <span className="text-xs text-slate-400 font-bold min-w-[70px]">
+                    {Number(data.pasajeroHero?.opacity || 55) <= 35 ? 'Muy Claro' : Number(data.pasajeroHero?.opacity || 55) >= 70 ? 'Muy Oscuro' : 'Equilibrado'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Un porcentaje menor hace que la imagen de fondo sea más visible, pero ten cuidado de que los textos en blanco sigan siendo legibles.</p>
+              </div>
             </div>
 
             <div className="border-b border-slate-100 pb-4 pt-4">
@@ -528,6 +550,26 @@ export default function CMSPage() {
                   field="backgroundImage" 
                   value={data.conductorHero?.backgroundImage || ''} 
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                  <span>Opacidad de la Capa Oscura (Transparencia)</span>
+                  <span className="text-tech-blue font-black">{data.conductorHero?.opacity !== undefined ? data.conductorHero.opacity : 55}%</span>
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="10"
+                    max="90"
+                    value={data.conductorHero?.opacity !== undefined ? data.conductorHero.opacity : 55}
+                    onChange={(e) => updateField('conductorHero', 'opacity', Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-tech-blue"
+                  />
+                  <span className="text-xs text-slate-400 font-bold min-w-[70px]">
+                    {Number(data.conductorHero?.opacity || 55) <= 35 ? 'Muy Claro' : Number(data.conductorHero?.opacity || 55) >= 70 ? 'Muy Oscuro' : 'Equilibrado'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Un porcentaje menor hace que la imagen de fondo sea más visible, pero ten cuidado de que los textos en blanco sigan siendo legibles.</p>
               </div>
             </div>
           </div>

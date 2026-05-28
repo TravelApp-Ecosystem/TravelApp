@@ -225,14 +225,16 @@ const DEFAULT_CMS_DATA = {
     badge: LANDING_DATA_FALLBACK.hero.badge,
     title: LANDING_DATA_FALLBACK.hero.title,
     subtitle: LANDING_DATA_FALLBACK.hero.subtitle,
-    backgroundImage: LANDING_DATA_FALLBACK.hero.backgroundImage
+    backgroundImage: LANDING_DATA_FALLBACK.hero.backgroundImage,
+    opacity: 55
   },
   conductorHero: {
     badge: "✓ ÚNETE A LA RED DE MOVILIDAD MÁS GRANDE DE TUCUMÁN",
     title: "Conduce y Gana Bajo tus Propios Términos",
     subtitle: "Sé tu propio jefe y maximiza tus ingresos reales con el modelo híbrido único. Retén el 100% de tus viajes con una membresía fija o paga una baja comisión por viaje.",
     backgroundImage: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1920&q=80",
-    ctaText: "Registrarme como Conductor"
+    ctaText: "Registrarme como Conductor",
+    opacity: 55
   },
   servicios: [
     {
@@ -975,11 +977,20 @@ export default function TravelCabLanding() {
       <section 
         className="relative overflow-hidden bg-cover bg-center py-20 lg:py-28 px-4 md:px-8 text-white transition-all duration-300"
         style={{ 
-          backgroundImage: `linear-gradient(rgba(10, 42, 91, 0.85), rgba(15, 23, 42, 0.95)), url('${
-            viewMode === 'passenger' 
-              ? (cmsData.pasajeroHero?.backgroundImage || DEFAULT_CMS_DATA.pasajeroHero.backgroundImage)
-              : (cmsData.conductorHero?.backgroundImage || DEFAULT_CMS_DATA.conductorHero.backgroundImage)
-          }')` 
+          backgroundImage: (() => {
+            const currentHero = viewMode === 'passenger' ? cmsData.pasajeroHero : cmsData.conductorHero;
+            const fallbackHero = viewMode === 'passenger' ? DEFAULT_CMS_DATA.pasajeroHero : DEFAULT_CMS_DATA.conductorHero;
+            
+            const opacityVal = currentHero?.opacity !== undefined 
+              ? Number(currentHero.opacity) 
+              : 55; // default to 55% transparency
+              
+            const op1 = (opacityVal / 100).toFixed(2);
+            const op2 = (Math.min(95, opacityVal + 15) / 100).toFixed(2);
+
+            const bgUrl = currentHero?.backgroundImage || fallbackHero.backgroundImage;
+            return `linear-gradient(rgba(10, 42, 91, ${op1}), rgba(15, 23, 42, ${op2})), url('${bgUrl}')`;
+          })()
         }}
       >
         <div className="absolute top-0 right-0 -z-5 h-[400px] w-[400px] rounded-full bg-vial-orange/15 blur-3xl pointer-events-none" />

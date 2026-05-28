@@ -14,12 +14,24 @@ const SHELL_FREE_ROUTES = ["/login"];
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [isTravelCabDomain, setIsTravelCabDomain] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host.includes("travelcab.ar")) {
+        setIsTravelCabDomain(true);
+      }
+    }
+  }, []);
+
   const hideShell =
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
     pathname === "/landing/travelcab" ||
     pathname.startsWith("/landing/travelcab/") ||
-    pathname.startsWith("/landing/");
+    pathname.startsWith("/landing/") ||
+    (isTravelCabDomain && pathname === "/");
 
   if (hideShell) {
     // Login (and other standalone pages) render without any chrome
