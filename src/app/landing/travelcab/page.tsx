@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, addDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { MUTariff, VehicleCategory } from '@/types/logistics';
+import { ARGENTINA_PROVINCES } from '@/types/partners';
 import { 
   ShieldCheck, 
   UserCheck, 
@@ -30,7 +31,16 @@ import {
   QrCode,
   Shield,
   Briefcase,
-  ExternalLink
+  ExternalLink,
+  User,
+  DollarSign,
+  Car,
+  FileText,
+  Camera,
+  Upload,
+  AlertTriangle,
+  Sparkles,
+  Info
 } from 'lucide-react';
 import { GoogleAddressAutocomplete } from '@/components/travelcab/GoogleAddressAutocomplete';
 
@@ -48,18 +58,15 @@ const GoogleInteractiveMap = dynamic(
   }
 );
 
-// ==========================================
-// CMS READY DATA STRUCTURE (LANDING_DATA)
-// Modificar este objeto para actualizar la Landing Page
-// ==========================================
-const LANDING_DATA = {
+// Fallback estático
+const LANDING_DATA_FALLBACK = {
   navigation: {
     logoText: "TravelCab",
     logoImage: "/assets/travelcab_original.svg",
     tagline: "Movilidad Premium",
     ctaText: "Pedir Ahora",
     ctaUrl: "https://wa.me/5493814188106?text=Hola!%20Quiero%20pedir%20un%20TravelCab%20ahora.",
-    driverRegisterUrl: "/hr/new-partner"
+    driverRegisterUrl: "#"
   },
   hero: {
     badge: "✓ EL ESTÁNDAR MÁS ALTO EN MOVILIDAD URBANA",
@@ -94,25 +101,7 @@ const LANDING_DATA = {
     whatsappConfig: {
       phone: "5493814188106",
       messageTemplate: "¡Hola TravelCab! 🚕 Quiero solicitar un viaje desde la web:\n\n👤 *Pasajero:* {name}\n📞 *Teléfono:* {phone}\n🛣️ *Modalidad:* {modality}\n📍 *Origen:* {pickup}\n🏁 *Destino:* {dropoff}\n🚗 *Categoría:* {vehicle}\n💳 *Pago:* {payment}\n💵 *Tarifa Estimada:* {price}\n\n_Por favor, confírmenme la asignación del móvil y chofer._"
-    },
-    vehicles: [
-      {
-        id: "standard",
-        name: "TravelCab Standard",
-        description: "Sedán moderno, climatizado, ideal para tus traslados diarios de forma rápida.",
-        baseRate: 580,
-        multiplier: 1.0,
-        eta: "3 - 5 min"
-      },
-      {
-        id: "premium",
-        name: "TravelCab Premium",
-        description: "Auto de gama alta, máximo confort, chofer corporativo bilingüe y espacio extra.",
-        baseRate: 850,
-        multiplier: 1.45,
-        eta: "2 - 4 min"
-      }
-    ]
+    }
   },
   passengers: {
     badge: "VIAJA SEGURO",
@@ -159,15 +148,7 @@ const LANDING_DATA = {
         title: "Soporte de la IA 'Travis'",
         description: "Soporte telefónico local y asistencia automatizada inteligente en WhatsApp a través de nuestra IA 'Travis' las 24 horas del día."
       }
-    ],
-    ctaRegister: {
-      text: "Comenzar Registro",
-      url: "/hr/new-partner"
-    },
-    ctaInfo: {
-      text: "Solicitar más información",
-      url: "https://wa.me/5493814188106?text=Hola%20IA%20Travis!%20Quiero%20solicitar%20más%20información%20sobre%20el%20Modelo%20Híbrido%20de%20TravelCab."
-    }
+    ]
   },
   faq: {
     title: "Preguntas Frecuentes",
@@ -238,8 +219,79 @@ const LANDING_DATA = {
   }
 };
 
-// Mapeador estático de iconos para evitar renderizado dinámico inseguro
-const IconMap = {
+const DEFAULT_CMS_DATA = {
+  ...LANDING_DATA_FALLBACK,
+  pasajeroHero: {
+    badge: LANDING_DATA_FALLBACK.hero.badge,
+    title: LANDING_DATA_FALLBACK.hero.title,
+    subtitle: LANDING_DATA_FALLBACK.hero.subtitle,
+    backgroundImage: LANDING_DATA_FALLBACK.hero.backgroundImage
+  },
+  conductorHero: {
+    badge: "✓ ÚNETE A LA RED DE MOVILIDAD MÁS GRANDE DE TUCUMÁN",
+    title: "Conduce y Gana Bajo tus Propios Términos",
+    subtitle: "Sé tu propio jefe y maximiza tus ingresos reales con el modelo híbrido único. Retén el 100% de tus viajes con una membresía fija o paga una baja comisión por viaje.",
+    backgroundImage: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1920&q=80",
+    ctaText: "Registrarme como Conductor"
+  },
+  servicios: [
+    {
+      id: "standard",
+      name: "TravelCab Standard",
+      description: "Sedán moderno, climatizado, ideal para tus traslados diarios de forma rápida.",
+      subTag: "Servicio Urbano",
+      ctaText: "Cotizar Standard",
+      eta: "3 - 5 min",
+      imageUrl: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80"
+    },
+    {
+      id: "premium",
+      name: "TravelCab Premium",
+      description: "Auto de gama alta, máximo confort, chofer corporativo bilingüe y espacio extra.",
+      subTag: "Servicio Corporativo",
+      ctaText: "Cotizar Premium",
+      eta: "2 - 4 min",
+      imageUrl: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=600&q=80"
+    }
+  ],
+  tiposTrabajo: {
+    title: "Elige tu Esquema de Trabajo",
+    subtitle: "Un modelo adaptado a cada ritmo de vida, garantizando transparencia total.",
+    comisionTitulo: "Esquema por Comisión",
+    comisionTexto: "Paga únicamente un 15% de comisión por viaje realizado. Ideal para conductores eventuales que buscan ingresos complementarios.",
+    membresiaTitulo: "Membresía Fija",
+    membresiaTexto: "Retén el 100% del valor de tus viajes pagando una suscripción mensual plana. Excelente para choferes de dedicación completa."
+  },
+  resumenRewards: {
+    title: "Tus Viajes Tienen Premio",
+    subtitle: "Acumula puntos automáticamente en cada trayecto que realizas. Canjéalos por viajes gratis, prioridades y beneficios en todo el ecosistema de TravelApp.",
+    pointsText: "300 pts de Bienvenida",
+    badgeText: "PROGRAMA REWARDS",
+    imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80"
+  },
+  redesSociales: {
+    facebook: "https://facebook.com/travelcab",
+    instagram: "https://instagram.com/travelcab.ar",
+    messenger: "https://m.me/travelcab",
+    whatsapp: "https://wa.me/5493814188106"
+  },
+  sellosLegales: {
+    arcaQrUrl: "https://www.afip.gob.ar/images/f960/DATAWEB.jpg",
+    baseDatosSelloUrl: "https://www.argentina.gob.ar/sites/default/files/aaip-logo-sello.png"
+  },
+  faq: {
+    title: "Preguntas Frecuentes",
+    subtitle: "Todo lo que necesitas saber sobre el servicio de movilidad premium",
+    items: LANDING_DATA_FALLBACK.faq.items
+  },
+  legales: {
+    quienesSomos: "### Quiénes Somos en TravelCab\n\nSomos una empresa de movilidad y transporte premium nacida con la misión de conectar a personas con choferes altamente calificados de forma segura, puntual y transparente.\n\nContamos con un soporte local dedicado las 24 horas y soporte inteligente de IA a través de Travis en WhatsApp. Creemos en esquemas justos para nuestros conductores asociados a través de nuestro modelo híbrido de comisión o membresía fija y en premiar la fidelidad de nuestros usuarios con el sistema Rewards.",
+    terminosCondiciones: "### Términos y Condiciones Generales de Uso de TravelCab\n\nBienvenido a TravelCab. Al acceder y utilizar nuestros servicios de transporte y movilidad, usted acepta de manera incondicional estar sujeto a los siguientes términos y condiciones de uso:\n\n1. **Naturaleza del Servicio:** TravelCab es una plataforma de tecnología de movilidad premium que conecta a pasajeros con choferes profesionales locales.\n2. **Uso de la Plataforma:** El usuario se compromete a hacer uso de los traslados y el despachador web únicamente con fines lícitos. Queda terminantemente prohibido cualquier tipo de conducta que atente contra la seguridad del chofer o la flota.\n3. **Tarifas y Estimaciones:** Las tarifas visualizadas en el Despachador Inteligente son estimaciones y pueden ser modificadas por tráfico congestionado, horarios especiales o condiciones climáticas adversas.\n4. **Monitoreo Satelital:** Con fines de seguridad, todos los trayectos son grabados y geolocalizados en tiempo real por nuestra central operativa de seguridad 24/7.",
+    politicasPrivacidad: "### Políticas de Privacidad y Protección de Datos Personales\n\nEn TravelCab estamos plenamente comprometidos con el resguardo, confidencialidad y protección de los datos de nuestros pasajeros y conductores. Al registrarse en la plataforma, usted acepta el tratamiento de su información conforme a lo siguiente:\n\n1. **Recolección de Información:** Al registrarse como pasajero o conductor, almacenamos sus datos personales identificativos (Nombre, Apellido, Email, Teléfono, Ubicación y en el caso de conductores, licencias y habilitaciones oficiales).\n2. **Uso del Perfil y Gamificación:** Los datos provistos por los pasajeros se utilizan para habilitar su cuenta y el programa de fidelización Rewards, otorgando el incentivo inicial de 300 puntos más 150 puntos extra al completar su fotografía de perfil.\n3. **Uso de las Imágenes:** La foto de perfil cargada se almacena únicamente con fines de verificación de identidad del pasajero para asegurar traslados tranquilos para toda la flota.\n4. **No divulgación:** TravelCab garantiza que en ningún caso comercializará o transferirá sus datos de carácter personal a terceras empresas sin su expreso consentimiento escrito previo."
+  }
+};
+
+const IconMap: Record<string, any> = {
   ShieldCheck: ShieldCheck,
   UserCheck: UserCheck,
   Gift: Gift,
@@ -294,7 +346,7 @@ export default function TravelCabLanding() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
-  // Estados del Despachador Web
+  // Estados del Despachador Web (Travis original e intacto)
   const [dispatcherStep, setDispatcherStep] = useState<1 | 2 | 3>(1);
   const [modality, setModality] = useState<'MU' | 'ARC'>('MU');
   const [passengerName, setPassengerName] = useState('');
@@ -322,14 +374,55 @@ export default function TravelCabLanding() {
   const [selectedVehicle, setSelectedVehicle] = useState<any | null>(null);
   const [calculatedPrice, setCalculatedPrice] = useState('');
 
-  // Firestore dynamic state
+  // Firestore dynamic state (Intacto)
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [activeTariffs, setActiveTariffs] = useState<MUTariff[]>([]);
   const [isLoadingTariffs, setIsLoadingTariffs] = useState(true);
 
-  // Escuchar categorías y tarifas activas en tiempo real
-  React.useEffect(() => {
-    // 1. Categorías
+  // --- ESTADOS DE CMS Y REGISTRO ---
+  const [cmsData, setCmsData] = useState<any>(DEFAULT_CMS_DATA);
+  const [viewMode, setViewMode] = useState<'passenger' | 'driver'>('passenger');
+
+  // Modales
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' | 'about' }>({ isOpen: false, type: 'terms' });
+  const [registerModal, setRegisterModal] = useState<{ isOpen: boolean; role: 'passenger' | 'driver' }>({ isOpen: false, role: 'passenger' });
+
+  // Flujo Registro Pasajero (Gamificado con Fotos/Cámara)
+  const [pRegStep, setPRegStep] = useState<1 | 2 | 3>(1);
+  const [pRegData, setPRegData] = useState({ firstName: '', lastName: '', email: '', phone: '', photoUrl: '' });
+  const [pRegId, setPRegId] = useState('');
+  const [pPoints, setPPoints] = useState(0);
+
+  // Flujo Registro Conductor (Idéntico a HR con validación estricta y uploader)
+  const [dRegStep, setDRegStep] = useState(0);
+  const [dRegSubmitted, setDRegSubmitted] = useState(false);
+  const [dRegData, setDRegData] = useState({
+    firstName: '', lastName: '', dob: '', email: '', phone: '',
+    street: '', streetNumber: '', floor: '', apartment: '',
+    city: '', province: '', postalCode: '',
+    taxType: 'CUIL' as 'CUIL' | 'CUIT', taxIdNumber: '', registrationType: '', arcaConstanciaUrl: '',
+    cbuCvu: '', alias: '', accountHolder: '',
+    make: '', model: '', year: '', color: '', licensePlate: '',
+    hasSutrappa: false, sutrappaLicense: '', sutrappaHolder: '',
+    cedulaFrente: '', cedulaDorso: '', fotoVehiculo: '', rtoDoc: '', seguroComercial: '',
+    driverLicense: '', criminalRecord: '', conductCert: '', healthCert: '',
+  });
+
+  // Escuchar CMS, categorías y tarifas activas en tiempo real
+  useEffect(() => {
+    // 1. Escucha reactiva en tiempo real al CMS de Firestore
+    const unsubCms = onSnapshot(doc(db, 'cms', 'landing_travelcab'), (snap) => {
+      if (snap.exists()) {
+        setCmsData({
+          ...DEFAULT_CMS_DATA,
+          ...snap.data()
+        });
+      }
+    }, (err) => {
+      console.log('Error listening to CMS data:', err.message);
+    });
+
+    // 2. Categorías
     const unsubCats = onSnapshot(collection(db, 'categories'), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as VehicleCategory);
       setCategories(list);
@@ -337,7 +430,7 @@ export default function TravelCabLanding() {
       console.log('Error loading categories on landing page:', error.message);
     });
 
-    // 2. Tarifarios MU Activos
+    // 3. Tarifarios MU Activos
     const qMu = query(collection(db, 'tariffs'), where('type', '==', 'mu'), where('isActive', '==', true));
     const unsubMu = onSnapshot(qMu, (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as MUTariff);
@@ -349,13 +442,14 @@ export default function TravelCabLanding() {
     });
 
     return () => {
+      unsubCms();
       unsubCats();
       unsubMu();
     };
   }, []);
 
-  // Lista de vehículos dinámica basada en tarifarios de Firestore
-  const vehiclesList = React.useMemo(() => {
+  // Lista de vehículos dinámica basada en tarifarios de Firestore (Intacta)
+  const vehiclesList = useMemo(() => {
     const list = activeTariffs.length > 0 ? activeTariffs : DEFAULT_MU_TARIFFS_FALLBACK;
     
     return list.map((tariff) => {
@@ -370,7 +464,6 @@ export default function TravelCabLanding() {
         description = categoryObj.description;
         eta = categoryObj.eta;
       } else {
-        // Fallback names for default categories
         if (tariff.category === 'vip') {
           name = 'TravelCab VIP';
           description = 'Vehículo de alta gama con chofer profesional y máximo confort corporativo.';
@@ -398,8 +491,8 @@ export default function TravelCabLanding() {
     });
   }, [activeTariffs, categories]);
 
-  // Calcular ruta al tener Origen y Destino mediante Google Maps Directions API
-  React.useEffect(() => {
+  // Calcular ruta mediante Google Maps Directions API (Intacta)
+  useEffect(() => {
     if (!pickupCoords || !dropoffCoords) {
       setDistanceKm(0);
       setDurationMin(0);
@@ -437,7 +530,6 @@ export default function TravelCabLanding() {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
   };
 
-  // Función para calcular la tarifa real usando la distancia de Google Maps o simulada
   const getCalculatedPriceForVehicle = (vehicle: any) => {
     let distance = distanceKm;
     let duration = durationMin;
@@ -454,10 +546,8 @@ export default function TravelCabLanding() {
     const travelMinutePrice = tariff.travelMinutePrice || (vehicle.id === 'premium' ? 160 : 120);
     const minimumFare = tariff.minimumFare || (vehicle.id === 'premium' ? 3800 : 2800);
     
-    // Subtotal base
     const basePrice = baseFare + (distance * pricePerKm) + (duration * travelMinutePrice);
     
-    // Impuestos desglosados (IVA, IIBB, Municipales)
     const iva = tariff.iva !== undefined ? tariff.iva : 21;
     const iibb = tariff.iibb !== undefined ? tariff.iibb : 3.5;
     const taxMunicipal = tariff.taxMunicipal !== undefined ? tariff.taxMunicipal : 1.5;
@@ -465,15 +555,12 @@ export default function TravelCabLanding() {
     
     let taxedPrice = basePrice * (1 + totalTaxesPct / 100);
     
-    // Recargo por pago electrónico si no es Efectivo
     if (paymentMethod === 'Tarjeta' || paymentMethod === 'Billetera Virtual') {
       const cardFeePct = tariff.electronicPaymentFee !== undefined ? tariff.electronicPaymentFee : 5;
       taxedPrice = taxedPrice * (1 + cardFeePct / 100);
     }
     
-    // Descuento del 35% si es Auto Compartido (ARC)
     const modalityFactor = modality === 'ARC' ? 0.65 : 1.0;
-    
     const finalPrice = Math.max(minimumFare, Math.round(taxedPrice * modalityFactor));
     return finalPrice;
   };
@@ -488,8 +575,6 @@ export default function TravelCabLanding() {
 
   const handleCalculateRate = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validación
     const errors: typeof formErrors = {};
     if (!passengerName.trim()) errors.name = true;
     if (!passengerPhone.trim()) errors.phone = true;
@@ -511,10 +596,10 @@ export default function TravelCabLanding() {
     const formattedPrice = formatCurrency(priceAmount);
     setCalculatedPrice(formattedPrice);
 
-    // Armar enlace de WhatsApp dinámico
     const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
+    const template = cmsData.dispatcher?.whatsappConfig?.messageTemplate || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.messageTemplate;
     
-    let message = LANDING_DATA.dispatcher.whatsappConfig.messageTemplate
+    let message = template
       .replace('{name}', passengerName)
       .replace('{phone}', passengerPhone)
       .replace('{modality}', modalityText)
@@ -525,12 +610,10 @@ export default function TravelCabLanding() {
       .replace('{price}', formattedPrice);
 
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${LANDING_DATA.dispatcher.whatsappConfig.phone}?text=${encodedMessage}`;
+    const phoneNum = cmsData.dispatcher?.whatsappConfig?.phone || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.phone;
+    const whatsappUrl = `https://wa.me/${phoneNum}?text=${encodedMessage}`;
 
-    // Abrir WhatsApp en pestaña nueva
     window.open(whatsappUrl, '_blank');
-    
-    // Pasar a Paso 3 (Confirmación)
     setDispatcherStep(3);
   };
 
@@ -546,46 +629,285 @@ export default function TravelCabLanding() {
     setFormErrors({});
   };
 
+  // --- REGISTRO PASAJERO ---
+  const handlePassengerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pRegData.firstName || !pRegData.lastName || !pRegData.email || !pRegData.phone) {
+      alert("Por favor completa todos los campos requeridos.");
+      return;
+    }
+
+    try {
+      const passengersRef = collection(db, 'passengers');
+      const docRef = await addDoc(passengersRef, {
+        firstName: pRegData.firstName,
+        lastName: pRegData.lastName,
+        email: pRegData.email,
+        phone: pRegData.phone,
+        photoUrl: '',
+        points: 300,
+        createdAt: Date.now(),
+        status: 'Activo'
+      });
+      setPRegId(docRef.id);
+      setPPoints(300);
+      setPRegStep(2);
+    } catch (err: any) {
+      alert("Error al registrar: " + err.message);
+    }
+  };
+
+  const handleUploadPhotoData = (base64: string) => {
+    setPRegData((prev) => ({ ...prev, photoUrl: base64 }));
+  };
+
+  const handleCompletePassengerPhoto = async () => {
+    if (!pRegId) return;
+    if (!pRegData.photoUrl) {
+      alert("Por favor carga tu foto de perfil para ganar los 150 puntos extra.");
+      return;
+    }
+    try {
+      const docRef = doc(db, 'passengers', pRegId);
+      await setDoc(docRef, {
+        photoUrl: pRegData.photoUrl,
+        points: 450
+      }, { merge: true });
+
+      setPPoints(450);
+      setPRegStep(3);
+    } catch (err: any) {
+      alert("Error al actualizar foto: " + err.message);
+    }
+  };
+
+  // --- REGISTRO CONDUCTOR CON VALIDACIÓN ESTRICTA ---
+  const isDriverStepValid = () => {
+    if (dRegStep === 0) {
+      return (
+        dRegData.firstName.trim() !== '' &&
+        dRegData.lastName.trim() !== '' &&
+        dRegData.dob.trim() !== '' &&
+        isAdult(dRegData.dob) &&
+        dRegData.email.trim() !== '' &&
+        dRegData.phone.trim() !== '' &&
+        dRegData.street.trim() !== '' &&
+        dRegData.streetNumber.trim() !== '' &&
+        dRegData.postalCode.trim() !== '' &&
+        dRegData.city.trim() !== '' &&
+        dRegData.province.trim() !== ''
+      );
+    }
+    if (dRegStep === 1) {
+      const basicTaxValid = dRegData.taxIdNumber.replace(/\D/g, '').length === 11;
+      const cuitConditionalValid = dRegData.taxType === 'CUIL' || (dRegData.registrationType !== '' && dRegData.arcaConstanciaUrl !== '');
+      return (
+        basicTaxValid &&
+        cuitConditionalValid &&
+        dRegData.cbuCvu.length === 22 &&
+        dRegData.alias.trim() !== '' &&
+        dRegData.accountHolder.trim() !== ''
+      );
+    }
+    if (dRegStep === 2) {
+      const basicVehicleValid = 
+        dRegData.make.trim() !== '' &&
+        dRegData.model.trim() !== '' &&
+        dRegData.year.trim() !== '' &&
+        dRegData.color.trim() !== '' &&
+        dRegData.licensePlate.trim() !== '' &&
+        dRegData.cedulaFrente !== '' &&
+        dRegData.cedulaDorso !== '' &&
+        dRegData.fotoVehiculo !== '' &&
+        dRegData.rtoDoc !== '' &&
+        dRegData.seguroComercial !== '';
+      
+      const sutrappaValid = !dRegData.hasSutrappa || (dRegData.sutrappaLicense.trim() !== '' && dRegData.sutrappaHolder.trim() !== '');
+      return basicVehicleValid && sutrappaValid;
+    }
+    if (dRegStep === 3) {
+      return (
+        dRegData.driverLicense !== '' &&
+        dRegData.criminalRecord !== '' &&
+        dRegData.conductCert !== '' &&
+        dRegData.healthCert !== ''
+      );
+    }
+    return false;
+  };
+
+  const handleDriverNext = () => {
+    if (!isDriverStepValid()) {
+      alert("Por favor completa todos los campos requeridos y adjunta todos los documentos correspondientes al paso actual.");
+      return;
+    }
+    if (dRegStep < 3) {
+      setDRegStep(dRegStep + 1);
+    } else {
+      saveDriverToFirestore();
+    }
+  };
+
+  const saveDriverToFirestore = async () => {
+    try {
+      const partnersRef = collection(db, 'partners');
+      await addDoc(partnersRef, {
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        firstName: dRegData.firstName,
+        lastName: dRegData.lastName,
+        dob: dRegData.dob,
+        email: dRegData.email,
+        phone: dRegData.phone,
+        photoUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${dRegData.firstName}`,
+        address: {
+          street: dRegData.street,
+          number: dRegData.streetNumber,
+          floor: dRegData.floor,
+          apartment: dRegData.apartment,
+          city: dRegData.city,
+          province: dRegData.province,
+          postalCode: dRegData.postalCode
+        },
+        taxInfo: {
+          taxIdType: dRegData.taxType,
+          taxIdNumber: dRegData.taxIdNumber,
+          registrationType: dRegData.registrationType || undefined,
+          arcaConstanciaUrl: dRegData.arcaConstanciaUrl || undefined
+        },
+        bankInfo: {
+          cbuCvu: dRegData.cbuCvu,
+          alias: dRegData.alias,
+          accountHolder: dRegData.accountHolder
+        },
+        vehicle: {
+          id: `VH-${Date.now()}`,
+          make: dRegData.make,
+          model: dRegData.model,
+          year: parseInt(dRegData.year) || 2020,
+          color: dRegData.color,
+          licensePlate: dRegData.licensePlate,
+          sutrappa: {
+            isActive: dRegData.hasSutrappa,
+            licenseNumber: dRegData.hasSutrappa ? dRegData.sutrappaLicense : undefined,
+            holder: dRegData.hasSutrappa ? dRegData.sutrappaHolder : undefined
+          }
+        },
+        cedulaFrenteUrl: dRegData.cedulaFrente,
+        cedulaDorsoUrl: dRegData.cedulaDorso,
+        fotoVehiculoUrl: dRegData.fotoVehiculo,
+        rtoDocUrl: dRegData.rtoDoc,
+        seguroComercialUrl: dRegData.seguroComercial,
+        driverLicenseUrl: dRegData.driverLicense,
+        criminalRecordUrl: dRegData.criminalRecord,
+        conductCertificateUrl: dRegData.conductCert,
+        healthCertificateUrl: dRegData.healthCert,
+        status: 'En Revisión',
+        wallet: {
+          cashBalance: 0,
+          pointsBalance: 0,
+          transactions: []
+        }
+      });
+      setDRegSubmitted(true);
+    } catch (err: any) {
+      alert("Error al registrar socio conductor: " + err.message);
+    }
+  };
+
+  const handleFileConversion = (file: File, field: keyof typeof dRegData) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setDRegData((prev) => ({ ...prev, [field]: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const isAdult = (dob: string): boolean => {
+    if (!dob) return false;
+    const today = new Date();
+    const birth = new Date(dob);
+    const age = today.getFullYear() - birth.getFullYear() - (
+      today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0
+    );
+    return age >= 18;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-tech-blue font-sans selection:bg-vial-orange/20 selection:text-tech-blue overflow-x-hidden animate-fadeIn">
       
-      {/* ---------------- NAVIGATION HEADER (MINIMALISTA) ---------------- */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-md transition-all duration-300">
+      {/* ---------------- NAVIGATION HEADER ---------------- */}
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-md transition-all duration-300">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 md:px-8">
-          {/* Logo Oficial SVG */}
           <a href="/landing/travelcab" className="flex items-center">
             <img
-              src={LANDING_DATA.navigation.logoImage}
+              src={cmsData.navigation?.logoImage || DEFAULT_CMS_DATA.navigation.logoImage}
               alt="TravelCab"
               className="h-16 md:h-22 w-auto object-contain transition-all duration-300"
             />
           </a>
 
-          {/* Desktop: Botón Login Dropdown */}
-          <div className="hidden md:flex items-center">
+          <nav className="hidden md:flex items-center gap-6 bg-slate-100/80 px-4 py-1.5 rounded-full border border-slate-200/40">
+            <button
+              onClick={() => setViewMode('passenger')}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
+                viewMode === 'passenger' 
+                  ? 'bg-tech-blue text-white shadow-sm' 
+                  : 'text-slate-600 hover:text-tech-blue'
+              }`}
+            >
+              Usuarios
+            </button>
+            <button
+              onClick={() => setViewMode('driver')}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
+                viewMode === 'driver' 
+                  ? 'bg-tech-blue text-white shadow-sm' 
+                  : 'text-slate-600 hover:text-tech-blue'
+              }`}
+            >
+              Conductores
+            </button>
+            <a
+              href="#rewards-summary"
+              className="px-4 py-1.5 rounded-full text-xs font-bold text-slate-600 hover:text-tech-blue transition-all"
+            >
+              Rewards
+            </a>
+          </nav>
+
+          <div className="hidden md:flex items-center gap-3">
+            <a
+              href="/login"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-tech-blue text-sm font-bold transition-colors cursor-pointer bg-white"
+            >
+              Ingresar
+            </a>
             <div className="relative group">
-              <button className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-tech-blue text-tech-blue bg-transparent px-5 py-2.5 text-sm font-bold hover:bg-tech-blue hover:text-white transition-all duration-200 cursor-pointer">
-                Ingresar / Registrarse
+              <button
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl text-white bg-vial-orange px-5 py-2.5 text-sm font-bold hover:brightness-110 shadow-md transition-all cursor-pointer"
+                style={{ backgroundColor: '#ff6b00' }}
+              >
+                Registrarse
                 <ChevronRight className="h-4 w-4 rotate-90" />
               </button>
               <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white border border-slate-200/60 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 overflow-hidden transform origin-top-right scale-95 group-hover:scale-100">
-                <a
-                  href="/travelcab/login?role=passenger"
-                  className="block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-vial-orange border-b border-slate-100 transition-colors"
+                <button
+                  onClick={() => { setPRegStep(1); setPRegData({ firstName: '', lastName: '', email: '', phone: '', photoUrl: '' }); setRegisterModal({ isOpen: true, role: 'passenger' }); }}
+                  className="w-full text-left block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-vial-orange border-b border-slate-100 transition-colors"
                 >
                   Soy Pasajero
-                </a>
-                <a
-                  href={LANDING_DATA.navigation.driverRegisterUrl}
-                  className="block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-vial-orange transition-colors"
+                </button>
+                <button
+                  onClick={() => { setDRegStep(0); setDRegSubmitted(false); setRegisterModal({ isOpen: true, role: 'driver' }); }}
+                  className="w-full text-left block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-vial-orange transition-colors"
                 >
                   Soy Conductor
-                </a>
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Mobile: hamburguesa */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 md:hidden hover:bg-slate-100 transition-colors"
@@ -594,76 +916,131 @@ export default function TravelCabLanding() {
           </button>
         </div>
 
-        {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div className="border-t border-slate-100 bg-white p-4 md:hidden flex flex-col gap-2 shadow-lg animate-fadeIn">
-            <div className="flex flex-col gap-1 pt-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase px-4 tracking-wider">Acceso a Plataforma</span>
-              <a
-                href="/travelcab/login?role=passenger"
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-vial-orange transition-colors"
+          <div className="border-t border-slate-100 bg-white p-4 md:hidden flex flex-col gap-3 shadow-lg animate-fadeIn">
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+              <button
+                onClick={() => { setViewMode('passenger'); setMobileMenuOpen(false); }}
+                className={`flex-1 py-2 text-xs font-bold rounded-md text-center transition-all ${
+                  viewMode === 'passenger' ? 'bg-tech-blue text-white shadow-sm' : 'text-slate-600'
+                }`}
               >
-                Soy Pasajero (Ingresar)
-              </a>
-              <a
-                href={LANDING_DATA.navigation.driverRegisterUrl}
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-vial-orange transition-colors"
+                Pasajeros
+              </button>
+              <button
+                onClick={() => { setViewMode('driver'); setMobileMenuOpen(false); }}
+                className={`flex-1 py-2 text-xs font-bold rounded-md text-center transition-all ${
+                  viewMode === 'driver' ? 'bg-tech-blue text-white shadow-sm' : 'text-slate-600'
+                }`}
               >
-                Soy Conductor (Registrarme)
+                Conductores
+              </button>
+            </div>
+
+            <a
+              href="#rewards-summary"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block rounded-lg px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all text-center"
+            >
+              Programa Rewards
+            </a>
+
+            <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-100">
+              <a
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center block rounded-xl border border-slate-200 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 bg-white"
+              >
+                Ingresar
               </a>
+              <button
+                onClick={() => { setPRegStep(1); setRegisterModal({ isOpen: true, role: 'passenger' }); setMobileMenuOpen(false); }}
+                className="w-full text-center block rounded-xl py-2.5 text-sm font-bold text-white shadow-md bg-vial-orange"
+                style={{ backgroundColor: '#ff6b00' }}
+              >
+                Registro Pasajero
+              </button>
+              <button
+                onClick={() => { setDRegStep(0); setDRegSubmitted(false); setRegisterModal({ isOpen: true, role: 'driver' }); setMobileMenuOpen(false); }}
+                className="w-full text-center block rounded-xl py-2.5 text-sm font-bold text-slate-700 border border-slate-200 bg-slate-50 mt-1"
+              >
+                Registro Conductor
+              </button>
             </div>
           </div>
         )}
       </header>
 
-      {/* ---------------- HERO SECTION (ESTILO BOOKING.COM CON DESPACHADOR) ---------------- */}
+      {/* ---------------- HERO SECTION ---------------- */}
       <section 
         className="relative overflow-hidden bg-cover bg-center py-20 lg:py-28 px-4 md:px-8 text-white transition-all duration-300"
         style={{ 
-          backgroundImage: `linear-gradient(rgba(10, 42, 91, 0.85), rgba(15, 23, 42, 0.95)), url('${LANDING_DATA.hero.backgroundImage}')` 
+          backgroundImage: `linear-gradient(rgba(10, 42, 91, 0.85), rgba(15, 23, 42, 0.95)), url('${
+            viewMode === 'passenger' 
+              ? (cmsData.pasajeroHero?.backgroundImage || DEFAULT_CMS_DATA.pasajeroHero.backgroundImage)
+              : (cmsData.conductorHero?.backgroundImage || DEFAULT_CMS_DATA.conductorHero.backgroundImage)
+          }')` 
         }}
       >
-        {/* Ambient Lights Overlay */}
         <div className="absolute top-0 right-0 -z-5 h-[400px] w-[400px] rounded-full bg-vial-orange/15 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -z-5 h-[300px] w-[300px] rounded-full bg-tech-blue/20 blur-3xl pointer-events-none" />
 
         <div className="mx-auto max-w-7xl relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
             
-            {/* Left Content Column */}
             <div className="lg:col-span-6 xl:col-span-7 space-y-6 text-center lg:text-left">
               <span className="inline-flex items-center rounded-full bg-vial-orange/20 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-vial-orange ring-1 ring-vial-orange/30 animate-pulse">
-                {LANDING_DATA.hero.badge}
+                {viewMode === 'passenger' 
+                  ? (cmsData.pasajeroHero?.badge || DEFAULT_CMS_DATA.pasajeroHero.badge)
+                  : (cmsData.conductorHero?.badge || DEFAULT_CMS_DATA.conductorHero.badge)
+                }
               </span>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-                {LANDING_DATA.hero.title}
+                {viewMode === 'passenger' 
+                  ? (cmsData.pasajeroHero?.title || DEFAULT_CMS_DATA.pasajeroHero.title)
+                  : (cmsData.conductorHero?.title || DEFAULT_CMS_DATA.conductorHero.title)
+                }
               </h1>
               
               <p className="mx-auto lg:mx-0 max-w-xl text-lg text-slate-200 leading-relaxed font-medium">
-                {LANDING_DATA.hero.subtitle}
+                {viewMode === 'passenger' 
+                  ? (cmsData.pasajeroHero?.subtitle || DEFAULT_CMS_DATA.pasajeroHero.subtitle)
+                  : (cmsData.conductorHero?.subtitle || DEFAULT_CMS_DATA.conductorHero.subtitle)
+                }
               </p>
 
-              {/* Secondary Action Link / Info */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
-                <a 
-                  href={LANDING_DATA.navigation.driverRegisterUrl}
-                  className="group w-full sm:w-auto inline-flex flex-col items-center justify-center rounded-2xl border-2 border-white/40 bg-white/5 backdrop-blur-sm px-8 py-3 text-center text-white hover:bg-white hover:text-tech-blue hover:border-white hover:-translate-y-1 active:translate-y-0 transition-all duration-300"
+                {viewMode === 'passenger' ? (
+                  <a 
+                    href="#web-dispatcher-card"
+                    className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-vial-orange px-8 py-4 text-center font-extrabold text-white hover:brightness-110 shadow-lg shadow-vial-orange/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
+                    style={{ backgroundColor: '#ff6b00' }}
+                  >
+                    Pedir Viaje Ahora
+                  </a>
+                ) : (
+                  <button 
+                    onClick={() => { setDRegStep(0); setDRegSubmitted(false); setRegisterModal({ isOpen: true, role: 'driver' }); }}
+                    className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-vial-orange px-8 py-4 text-center font-extrabold text-white hover:brightness-110 shadow-lg shadow-vial-orange/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+                    style={{ backgroundColor: '#ff6b00' }}
+                  >
+                    {cmsData.conductorHero?.ctaText || DEFAULT_CMS_DATA.conductorHero.ctaText}
+                  </button>
+                )}
+                
+                <button 
+                  onClick={() => setViewMode(viewMode === 'passenger' ? 'driver' : 'passenger')}
+                  className="group w-full sm:w-auto inline-flex flex-col items-center justify-center rounded-2xl border border-white/20 bg-white/5 backdrop-blur-sm px-6 py-3 text-center text-white hover:bg-white hover:text-tech-blue hover:-translate-y-0.5 transition-all duration-300"
                 >
-                  <span className="font-extrabold text-base">
-                    Quiero registrarme como Conductor
+                  <span className="font-bold text-sm">
+                    {viewMode === 'passenger' ? 'Ver Portal para Conductores' : 'Ver Portal para Pasajeros'}
                   </span>
-                  <span className="text-[11px] text-slate-300 group-hover:text-slate-500 font-medium tracking-wide mt-0.5">
-                    Membresía mensual fija o comisiones bajas
-                  </span>
-                </a>
+                </button>
               </div>
 
-              {/* Stats Highlights */}
               <div className="grid grid-cols-3 gap-4 pt-8 border-t border-white/10 max-w-md mx-auto lg:mx-0">
-                {LANDING_DATA.hero.stats.map((stat, idx) => (
+                {(cmsData.hero?.stats || DEFAULT_CMS_DATA.hero.stats).map((stat: any, idx: number) => (
                   <div key={idx} className="text-center lg:text-left">
                     <p className="text-2xl sm:text-3xl font-extrabold text-vial-orange tracking-tight">{stat.value}</p>
                     <p className="text-xs sm:text-sm font-semibold text-slate-300 mt-1 leading-snug">{stat.label}</p>
@@ -672,10 +1049,7 @@ export default function TravelCabLanding() {
               </div>
             </div>
 
-            {/* Right Visual Column (Floating Premium WebDispatcher with Dynamic Map) */}
             <div className="lg:col-span-6 xl:col-span-5 flex flex-col justify-center items-center w-full gap-4 relative z-20">
-              
-              {/* Dynamic Interactive Google Map Card */}
               <div className="w-full max-w-[480px] h-[220px] bg-slate-950 border border-slate-700/40 rounded-3xl overflow-hidden shadow-2xl relative">
                 <GoogleInteractiveMap 
                   activeTrip={null}
@@ -688,700 +1062,600 @@ export default function TravelCabLanding() {
                 id="web-dispatcher-card" 
                 className="w-full max-w-[480px] bg-white/95 backdrop-blur-md border border-slate-200/50 rounded-3xl p-6 md:p-8 shadow-2xl text-tech-blue transition-all duration-500 hover:shadow-vial-orange/10"
               >
-                {/* Badge Superior */}
                 <div className="flex justify-between items-center mb-6 border-b border-slate-200/60 pb-4">
                   <div>
                     <span className="text-[10px] font-extrabold text-vial-orange uppercase tracking-widest bg-vial-orange/10 px-2.5 py-1 rounded-full">
-                      {LANDING_DATA.dispatcher.badge}
+                      {cmsData.dispatcher?.badge || DEFAULT_CMS_DATA.dispatcher.badge}
                     </span>
-                    <h3 className="text-xl font-black tracking-tight text-tech-blue mt-1.5">{LANDING_DATA.dispatcher.title}</h3>
+                    <h3 className="text-xl font-black tracking-tight text-tech-blue mt-1.5">{cmsData.dispatcher?.title || DEFAULT_CMS_DATA.dispatcher.title}</h3>
                   </div>
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-tech-blue text-white">
                     <Navigation className="h-5 w-5 rotate-45 text-vial-orange fill-vial-orange" />
                   </div>
                 </div>
 
-                {/* ---------------- PASO 1: FORMULARIO ---------------- */}
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2 mb-6 border border-slate-200/40">
+                  <button
+                    type="button"
+                    onClick={() => { setModality('MU'); handleResetDispatcher(); }}
+                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                      modality === 'MU' 
+                        ? 'bg-tech-blue text-white shadow-lg shadow-tech-blue/20' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    🚕 Movilidad Urbana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setModality('ARC'); handleResetDispatcher(); }}
+                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                      modality === 'ARC' 
+                        ? 'bg-tech-blue text-white shadow-lg shadow-tech-blue/20' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    🤝 Auto Compartido (ARC)
+                  </button>
+                </div>
+
                 {dispatcherStep === 1 && (
-                  <form onSubmit={handleCalculateRate} className="space-y-4 animate-fadeIn">
-                    {/* Toggle Switch Elegant (MU vs ARC) */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Modalidad de Viaje</label>
-                      <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/40">
-                        <button
-                          type="button"
-                          onClick={() => setModality('MU')}
-                          className={`py-2 px-3 rounded-xl text-xs font-extrabold tracking-tight transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
-                            modality === 'MU' 
-                              ? 'bg-tech-blue text-white shadow-sm' 
-                              : 'text-slate-500 hover:text-tech-blue'
-                          }`}
-                        >
-                          <Zap className={`h-3.5 w-3.5 ${modality === 'MU' ? 'text-vial-orange fill-vial-orange' : ''}`} />
-                          M. Urbana (Individual)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setModality('ARC')}
-                          className={`py-2 px-3 rounded-xl text-xs font-extrabold tracking-tight transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
-                            modality === 'ARC' 
-                              ? 'bg-tech-blue text-white shadow-sm' 
-                              : 'text-slate-500 hover:text-tech-blue'
-                          }`}
-                        >
-                          <UserCheck className={`h-3.5 w-3.5 ${modality === 'ARC' ? 'text-vial-orange fill-vial-orange' : ''}`} />
-                          Auto Compartido (ARC)
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Inputs de Datos Personales */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide flex justify-between">
-                          <span>{LANDING_DATA.dispatcher.passengerNameLabel}</span>
-                          <span className="text-[10px] text-red-500 font-extrabold">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={LANDING_DATA.dispatcher.passengerNamePlaceholder}
-                          value={passengerName}
-                          onChange={(e) => setPassengerName(e.target.value)}
-                          className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold border bg-white focus:outline-none transition-all duration-200 ${
-                            formErrors.name 
-                              ? 'border-red-500 focus:ring-2 focus:ring-red-200' 
-                              : 'border-slate-200 focus:border-vial-orange focus:ring-2 focus:ring-vial-orange/15'
-                          }`}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide flex justify-between">
-                          <span>{LANDING_DATA.dispatcher.passengerPhoneLabel}</span>
-                          <span className="text-[10px] text-red-500 font-extrabold">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          placeholder={LANDING_DATA.dispatcher.passengerPhonePlaceholder}
-                          value={passengerPhone}
-                          onChange={(e) => setPassengerPhone(e.target.value)}
-                          className={`w-full px-3 py-2.5 rounded-xl text-sm font-semibold border bg-white focus:outline-none transition-all duration-200 ${
-                            formErrors.phone 
-                              ? 'border-red-500 focus:ring-2 focus:ring-red-200' 
-                              : 'border-slate-200 focus:border-vial-orange focus:ring-2 focus:ring-vial-orange/15'
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Ubicaciones (Origen y Destino) */}
-                    <div className="space-y-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/40">
-                      <div className="space-y-1 relative">
-                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide flex justify-between">
-                          <span>{LANDING_DATA.dispatcher.pickupLabel}</span>
-                          <span className="text-[10px] text-red-500 font-extrabold">*</span>
-                        </label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3.5 top-[13px] h-4 w-4 text-vial-orange z-10" />
-                          <GoogleAddressAutocomplete
-                            value={pickupLocation}
-                            onChange={setPickupLocation}
-                            onSelect={(address, coords) => {
-                              setPickupLocation(address);
-                              setPickupCoords(coords);
-                            }}
-                            placeholder={LANDING_DATA.dispatcher.pickupPlaceholder}
-                            className="pl-10"
-                            error={formErrors.pickup}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 relative">
-                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide flex justify-between">
-                          <span>{LANDING_DATA.dispatcher.dropoffLabel}</span>
-                          <span className="text-[10px] text-red-500 font-extrabold">*</span>
-                        </label>
-                        <div className="relative">
-                          <Navigation className="absolute left-3.5 top-[13px] h-4 w-4 text-tech-blue rotate-45 z-10" />
-                          <GoogleAddressAutocomplete
-                            value={dropoffLocation}
-                            onChange={setDropoffLocation}
-                            onSelect={(address, coords) => {
-                              setDropoffLocation(address);
-                              setDropoffCoords(coords);
-                            }}
-                            placeholder={LANDING_DATA.dispatcher.dropoffPlaceholder}
-                            className="pl-10"
-                            error={formErrors.dropoff}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Método de Pago Select */}
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
-                        {LANDING_DATA.dispatcher.paymentMethodLabel}
+                  <form onSubmit={handleCalculateRate} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                        <span>{cmsData.dispatcher?.passengerNameLabel || DEFAULT_CMS_DATA.dispatcher.passengerNameLabel}</span>
                       </label>
-                      <div className="relative">
-                        <select
-                          value={paymentMethod}
-                          onChange={(e) => setPaymentMethod(e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 bg-white focus:border-vial-orange focus:ring-2 focus:ring-vial-orange/15 focus:outline-none appearance-none"
-                        >
-                          {LANDING_DATA.dispatcher.paymentMethods.map((method) => (
-                            <option key={method.id} value={method.id}>
-                              {method.label}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                          <ChevronRight className="h-4 w-4 rotate-90" />
-                        </div>
+                      <input
+                        type="text"
+                        value={passengerName}
+                        onChange={(e) => setPassengerName(e.target.value)}
+                        placeholder={cmsData.dispatcher?.passengerNamePlaceholder || DEFAULT_CMS_DATA.dispatcher.passengerNamePlaceholder}
+                        className={`w-full rounded-2xl border bg-slate-50/50 px-4 py-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tech-blue/10 ${
+                          formErrors.name ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                        <span>{cmsData.dispatcher?.passengerPhoneLabel || DEFAULT_CMS_DATA.dispatcher.passengerPhoneLabel}</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={passengerPhone}
+                        onChange={(e) => setPassengerPhone(e.target.value)}
+                        placeholder={cmsData.dispatcher?.passengerPhonePlaceholder || DEFAULT_CMS_DATA.dispatcher.passengerPhonePlaceholder}
+                        className={`w-full rounded-2xl border bg-slate-50/50 px-4 py-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tech-blue/10 ${
+                          formErrors.phone ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5 flex justify-between">
+                        <span>{cmsData.dispatcher?.pickupLabel || DEFAULT_CMS_DATA.dispatcher.pickupLabel}</span>
+                        {pickupCoords && <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-0.5">✓ Geocodificado</span>}
+                      </label>
+                      <GoogleAddressAutocomplete 
+                        value={pickupLocation}
+                        onChange={(val) => { setPickupLocation(val); setPickupCoords(null); }}
+                        onSelect={(address, coords) => { setPickupLocation(address); setPickupCoords(coords); }}
+                        placeholder={cmsData.dispatcher?.pickupPlaceholder || DEFAULT_CMS_DATA.dispatcher.pickupPlaceholder}
+                        className={formErrors.pickup ? 'border-red-300 bg-red-50/30' : ''}
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5 flex justify-between">
+                        <span>{cmsData.dispatcher?.dropoffLabel || DEFAULT_CMS_DATA.dispatcher.dropoffLabel}</span>
+                        {dropoffCoords && <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-0.5">✓ Geocodificado</span>}
+                      </label>
+                      <GoogleAddressAutocomplete 
+                        value={dropoffLocation}
+                        onChange={(val) => { setDropoffLocation(val); setDropoffCoords(null); }}
+                        onSelect={(address, coords) => { setDropoffLocation(address); setDropoffCoords(coords); }}
+                        placeholder={cmsData.dispatcher?.dropoffPlaceholder || DEFAULT_CMS_DATA.dispatcher.dropoffPlaceholder}
+                        className={formErrors.dropoff ? 'border-red-300 bg-red-50/30' : ''}
+                      />
+                    </div>
+
+                    <div className="pt-2">
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">
+                        {cmsData.dispatcher?.paymentMethodLabel || DEFAULT_CMS_DATA.dispatcher.paymentMethodLabel}
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(cmsData.dispatcher?.paymentMethods || DEFAULT_CMS_DATA.dispatcher.paymentMethods).map((method: any) => {
+                          const IconComponent = IconMap[method.icon] || Coins;
+                          return (
+                            <button
+                              key={method.id}
+                              type="button"
+                              onClick={() => setPaymentMethod(method.id)}
+                              className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                                paymentMethod === method.id 
+                                  ? 'border-tech-blue bg-tech-blue/5 text-tech-blue shadow-sm font-bold' 
+                                  : 'border-slate-200 hover:border-slate-300 text-slate-500'
+                              }`}
+                            >
+                              <IconComponent className="h-4.5 w-4.5 mb-1.5" />
+                              <span className="text-[9px] uppercase font-black tracking-wide leading-none">{method.label.split(' ')[0]}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {/* Botón de Envío */}
                     <button
                       type="submit"
-                      className="w-full mt-2 inline-flex items-center justify-center rounded-2xl bg-vial-orange py-4 text-center text-sm font-extrabold text-white shadow-lg shadow-vial-orange/20 hover:bg-[#ff7b1a] hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                      className="w-full mt-6 rounded-2xl bg-tech-blue py-4 font-black uppercase tracking-wider text-white shadow-xl hover:brightness-110 active:scale-98 transition-all flex items-center justify-center gap-2"
+                      style={{ backgroundColor: '#0a2a5b' }}
                     >
-                      Calcular Tarifa
-                      <ArrowRight className="ml-2 h-4 w-4" />
+                      Calcular Tarifa Estimada
+                      <ArrowRight className="h-4 w-4" />
                     </button>
                   </form>
                 )}
 
-                {/* ---------------- PASO 2: SELECCIÓN DE VEHÍCULO / TARIFA ---------------- */}
                 {dispatcherStep === 2 && (
                   <div className="space-y-5 animate-fadeIn">
-                    {/* Resumen del Trayecto */}
-                    <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-2">
-                      <div className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase tracking-wide border-b border-slate-200/50 pb-2">
-                        <span>Resumen del Trayecto</span>
-                        <span className="text-vial-orange">
-                          {modality === 'MU' ? 'Movilidad Urbana' : 'Auto Rural Compartido'}
-                        </span>
+                    <div className="flex justify-between items-center bg-slate-100 p-3 rounded-xl">
+                      <div className="text-left">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Distancia del Trayecto</span>
+                        <p className="text-sm font-extrabold text-slate-800">{distanceKm > 0 ? `${distanceKm} km` : 'Simulado'}</p>
                       </div>
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex items-start gap-2.5">
-                          <MapPin className="h-4 w-4 text-vial-orange shrink-0 mt-0.5" />
-                          <p className="text-xs font-semibold text-slate-700 leading-tight">
-                            <span className="font-extrabold text-slate-400">Origen:</span> {pickupLocation}
-                          </p>
-                        </div>
-                        <div className="flex items-start gap-2.5">
-                          <Navigation className="h-4 w-4 text-tech-blue rotate-45 shrink-0 mt-0.5" />
-                          <p className="text-xs font-semibold text-slate-700 leading-tight">
-                            <span className="font-extrabold text-slate-400">Destino:</span> {dropoffLocation}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="pt-2 border-t border-slate-200/50 flex justify-between items-center text-[11px] font-bold text-slate-500">
-                        <span>Pasajero: {passengerName}</span>
-                        <span>Pago: {paymentMethod}</span>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Duración de Viaje</span>
+                        <p className="text-sm font-extrabold text-slate-800">{durationMin > 0 ? `${durationMin} min` : 'Simulado'}</p>
                       </div>
                     </div>
 
-                    <h4 className="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Vehículos Disponibles</h4>
-
-                    {/* Lista de Tarjetas de Categorías de Vehículo */}
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Selecciona tu Categoría de Traslado</h4>
                     <div className="space-y-3">
-                      {vehiclesList.map((vehicle) => {
+                      {vehiclesList.map((vehicle: any) => {
                         const price = getCalculatedPriceForVehicle(vehicle);
-                        const formattedPrice = formatCurrency(price);
-                        
                         return (
-                          <div 
+                          <button
                             key={vehicle.id}
-                            className="group relative border border-slate-200 rounded-2xl p-4 bg-white hover:border-vial-orange hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+                            onClick={() => handleSelectVehicle(vehicle)}
+                            className="w-full text-left p-4 rounded-2xl border border-slate-200/80 bg-white hover:border-vial-orange hover:shadow-lg transition-all flex items-center justify-between group"
                           >
-                            <div className="flex justify-between items-start gap-3">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <h5 className="font-extrabold text-sm text-tech-blue group-hover:text-vial-orange transition-colors">
-                                    {vehicle.name}
-                                  </h5>
-                                  <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
-                                    ETA: {vehicle.eta}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] font-semibold text-slate-500 leading-relaxed max-w-[240px]">
-                                  {vehicle.description}
-                                </p>
+                            <div className="space-y-1 pr-3 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-slate-800 text-sm">{vehicle.name}</span>
+                                <span className="text-[9px] font-black uppercase text-emerald-600 bg-emerald-100/50 px-2 py-0.5 rounded-full tracking-wider">{vehicle.eta}</span>
                               </div>
-                              <div className="text-right">
-                                <span className="text-[10px] font-extrabold text-slate-400 block uppercase">TARIFA EST.</span>
-                                <span className="text-base sm:text-lg font-black text-vial-orange">{formattedPrice}</span>
-                              </div>
+                              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{vehicle.description}</p>
                             </div>
-
-                            <button
-                              onClick={() => handleSelectVehicle(vehicle)}
-                              className="mt-3.5 w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-tech-blue py-2.5 text-xs font-bold text-white shadow hover:bg-vial-orange transition-all duration-200 cursor-pointer"
-                            >
-                              Pedir este viaje
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-lg font-black text-tech-blue group-hover:text-vial-orange transition-colors">{formatCurrency(price)}</p>
+                              <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">{paymentMethod}</span>
+                            </div>
+                          </button>
                         );
                       })}
                     </div>
 
-                    {/* Disclaimer Legal Obligatorio */}
-                    <p className="text-[10px] font-medium text-slate-400 leading-relaxed text-center px-2">
-                      {LANDING_DATA.dispatcher.legalText}
-                    </p>
-
-                    {/* Botón Volver */}
                     <button
                       onClick={() => setDispatcherStep(1)}
-                      className="w-full inline-flex items-center justify-center gap-1 text-xs font-bold text-slate-500 hover:text-tech-blue py-2 transition-colors cursor-pointer"
+                      className="w-full mt-4 rounded-xl border border-slate-200/80 py-3 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors uppercase tracking-wider"
                     >
-                      <ChevronLeft className="h-4 w-4" />
-                      Volver y Editar Datos
+                      Atrás (Modificar datos)
                     </button>
                   </div>
                 )}
 
-                {/* ---------------- PASO 3: CONFIRMACIÓN Y ENVÍO ---------------- */}
                 {dispatcherStep === 3 && (
-                  <div className="text-center py-6 space-y-6 animate-fadeIn">
-                    {/* Check de Éxito Animado */}
-                    <div className="flex justify-center">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-500 border border-emerald-200 shadow-inner">
-                        <Check className="h-8 w-8 stroke-[3]" />
-                      </div>
+                  <div className="text-center py-6 space-y-4 animate-fadeIn">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                      <Check className="h-8 w-8 text-emerald-600" />
                     </div>
-
-                    <div className="space-y-2">
-                      <h4 className="text-xl font-black text-tech-blue tracking-tight">¡Viaje Solicitado con Éxito!</h4>
-                      <p className="text-xs font-semibold text-slate-500 leading-relaxed max-w-sm mx-auto">
-                        Te hemos enviado un WhatsApp con los datos del conductor y el vehículo. Si la pestaña no se abrió automáticamente, presiona el botón inferior.
+                    <div>
+                      <h4 className="text-lg font-extrabold text-slate-800">¡Pedido Enviado!</h4>
+                      <p className="text-xs text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
+                        Te hemos enviado un WhatsApp con los datos de tu viaje. Si la pestaña no se abrió automáticamente, presiona el botón inferior para chatear con Travis.
                       </p>
                     </div>
 
-                    {/* Resumen del Pedido Final */}
                     {selectedVehicle && (
-                      <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left max-w-sm mx-auto space-y-2">
-                        <div className="flex justify-between text-xs font-extrabold text-slate-500 pb-2 border-b border-slate-200/50">
-                          <span>Viaje Confirmado</span>
-                          <span className="text-vial-orange">{calculatedPrice}</span>
-                        </div>
-                        <ul className="text-[11px] font-semibold text-slate-600 space-y-1 pt-1">
-                          <li><span className="font-bold text-slate-400">Pasajero:</span> {passengerName}</li>
-                          <li><span className="font-bold text-slate-400">Origen:</span> {pickupLocation}</li>
-                          <li><span className="font-bold text-slate-400">Destino:</span> {dropoffLocation}</li>
-                          <li><span className="font-bold text-slate-400">Categoría:</span> {selectedVehicle.name}</li>
-                          <li><span className="font-bold text-slate-400">Método de Pago:</span> {paymentMethod}</li>
-                        </ul>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 max-w-sm mx-auto text-left space-y-1 text-xs">
+                        <p className="text-slate-400 font-semibold">Resumen de Traslado:</p>
+                        <p className="font-bold text-slate-700"><span className="text-slate-400">Origen:</span> {pickupLocation}</p>
+                        <p className="font-bold text-slate-700"><span className="text-slate-400">Destino:</span> {dropoffLocation}</p>
+                        <p className="font-bold text-slate-700"><span className="text-slate-400">Categoría:</span> {selectedVehicle.name}</p>
+                        <p className="font-bold text-tech-blue"><span className="text-slate-400">Tarifa Estimada:</span> {calculatedPrice}</p>
                       </div>
                     )}
 
-                    {/* Enlace Manual de WhatsApp */}
-                    <div className="space-y-3 max-w-sm mx-auto pt-2">
-                      <button
-                        onClick={() => {
-                          if (selectedVehicle) {
-                            handleSelectVehicle(selectedVehicle);
-                          }
-                        }}
-                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 py-3.5 text-sm font-extrabold text-white shadow-md hover:bg-emerald-500 hover:shadow-lg transition-all duration-200 cursor-pointer"
-                      >
-                        <Phone className="h-4 w-4 fill-white" />
-                        Reabrir WhatsApp
-                      </button>
-
+                    <div className="pt-4 flex gap-3 max-w-sm mx-auto">
                       <button
                         onClick={handleResetDispatcher}
-                        className="w-full inline-flex items-center justify-center rounded-2xl border-2 border-slate-200 bg-transparent py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-tech-blue transition-all duration-200 cursor-pointer"
+                        className="flex-1 rounded-xl border border-slate-200/80 py-3 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors uppercase tracking-wider"
                       >
-                        Pedir otro viaje
+                        Nuevo Viaje
                       </button>
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
 
-          </div>
-        </div>
-      </section>
-
-      {/* ---------------- PASSENGER BENEFITS ---------------- */}
-      <section id="passengers" className="py-20 bg-white px-4 md:px-8 border-t border-slate-100">
-        <div className="mx-auto max-w-7xl">
-          
-          {/* Header */}
-          <div className="text-center max-w-3xl mx-auto space-y-4">
-            <span className="inline-block rounded-full bg-vial-orange/10 px-4 py-1 text-xs font-bold uppercase tracking-wider text-vial-orange">
-              {LANDING_DATA.passengers.badge}
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-tech-blue">
-              {LANDING_DATA.passengers.title}
-            </h2>
-            <p className="text-slate-600 font-medium text-lg">
-              {LANDING_DATA.passengers.subtitle}
-            </p>
-          </div>
-
-          {/* 3-Card Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-            {LANDING_DATA.passengers.benefits.map((benefit) => {
-              // Obtener componente de icono
-              const IconComponent = IconMap[benefit.icon as keyof typeof IconMap] || ShieldCheck;
-              return (
-                <div 
-                  key={benefit.id} 
-                  className="group relative rounded-3xl border border-slate-100 bg-slate-50/50 p-8 shadow-sm hover:bg-white hover:shadow-xl hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between"
-                >
-                  <div className="space-y-5">
-                    {/* Icon Wrap */}
-                    <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-vial-orange/10 text-vial-orange ring-1 ring-vial-orange/20 shadow-sm group-hover:scale-110 group-hover:bg-vial-orange group-hover:text-white transition-all duration-300">
-                      <IconComponent className="h-7 w-7" strokeWidth={2} />
-                    </div>
-                    
-                    <h3 className="text-xl font-bold tracking-tight text-tech-blue">{benefit.title}</h3>
-                    <p className="text-slate-600 font-medium text-sm leading-relaxed">{benefit.description}</p>
-                  </div>
-                  
-                  {/* Subtle link arrow */}
-                  <div className="mt-8 flex items-center gap-1.5 text-xs font-bold text-vial-orange opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    Saber más <ChevronRight className="h-3.5 w-3.5" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-        </div>
-      </section>
-
-      {/* ---------------- DRIVERS SECTION (MODELO HÍBRIDO) ---------------- */}
-      <section id="drivers" className="py-20 px-4 md:px-8 bg-slate-50">
-        <div className="mx-auto max-w-7xl">
-          
-          {/* Main Card Container */}
-          <div className="relative rounded-[40px] bg-gradient-to-br from-tech-blue via-tech-blue to-slate-900 text-white shadow-2xl overflow-hidden p-8 sm:p-12 lg:p-16">
-            {/* Light Effects */}
-            <div className="absolute -top-40 -right-40 h-[600px] w-[600px] rounded-full bg-vial-orange/10 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-slate-700/20 blur-3xl pointer-events-none" />
-
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-              
-              {/* Left Column (Content & Benefits) */}
-              <div className="lg:col-span-7 space-y-6">
-                <span className="inline-block rounded-full bg-vial-orange px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-950 shadow-md">
-                  {LANDING_DATA.drivers.badge}
-                </span>
-                
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
-                  {LANDING_DATA.drivers.title}
-                </h2>
-                
-                <p className="text-slate-300 font-medium text-base sm:text-lg max-w-2xl leading-relaxed">
-                  {LANDING_DATA.drivers.subtitle}
+                <p className="mt-4 text-[9px] text-slate-400 leading-normal text-center">
+                  {cmsData.dispatcher?.legalText || DEFAULT_CMS_DATA.dispatcher.legalText}
                 </p>
-
-                {/* Benefits List */}
-                <div className="space-y-6 pt-4">
-                  {LANDING_DATA.drivers.benefits.map((benefit, idx) => {
-                    const DriverIcon = IconMap[benefit.icon as keyof typeof IconMap] || Award;
-                    return (
-                      <div key={idx} className="flex gap-4 items-start group">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-vial-orange border border-white/10 group-hover:bg-vial-orange group-hover:text-slate-950 transition-all duration-300 shadow-md">
-                          <DriverIcon className="h-6 w-6" strokeWidth={2} />
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-white group-hover:text-vial-orange transition-colors">{benefit.title}</h4>
-                          <p className="text-slate-300 font-medium text-sm leading-relaxed mt-1">{benefit.description}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* CTA Action Buttons Dual */}
-                <div className="flex flex-col sm:flex-row gap-4 pt-6">
-                  <a 
-                    href={LANDING_DATA.drivers.ctaRegister.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group inline-flex items-center justify-center rounded-2xl bg-vial-orange px-8 py-4 text-center font-extrabold text-slate-950 shadow-lg shadow-vial-orange/30 hover:bg-[#ff7b1a] hover:shadow-xl hover:shadow-vial-orange/40 hover:-translate-y-1 active:translate-y-0 transition-all duration-300 text-lg cursor-pointer"
-                  >
-                    {LANDING_DATA.drivers.ctaRegister.text}
-                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform text-slate-950" />
-                  </a>
-
-                  <a 
-                    href={LANDING_DATA.drivers.ctaInfo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group inline-flex items-center justify-center rounded-2xl border-2 border-white/30 bg-white/5 backdrop-blur-sm px-8 py-4 text-center font-extrabold text-white hover:bg-white hover:text-tech-blue hover:-translate-y-1 active:translate-y-0 transition-all duration-300 text-lg cursor-pointer"
-                  >
-                    {LANDING_DATA.drivers.ctaInfo.text}
-                    <Phone className="ml-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                  </a>
-                </div>
-
               </div>
-
-              {/* Right Column (Visual Financial Stats Panel) */}
-              <div className="lg:col-span-5 flex justify-center">
-                <div className="w-full max-w-md bg-white/10 border border-white/10 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
-                  <div className="flex justify-between items-center border-b border-white/15 pb-4">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Esquemas Comparados (Semanal)</span>
-                    <TrendingUp className="h-5 w-5 text-vial-orange animate-bounce" />
-                  </div>
-
-                  {/* Calculator visualizer */}
-                  <div className="space-y-4">
-                    {/* Esquema 1: Membresía */}
-                    <div className="bg-slate-950/40 rounded-2xl p-4 border border-emerald-500/20 relative">
-                      <span className="absolute top-2.5 right-3 text-[8px] font-black uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Recomendado</span>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Esquema Membresía Fija</p>
-                      <div className="flex justify-between items-baseline mt-1">
-                        <h3 className="text-2xl font-extrabold text-white">$220,000 ARS</h3>
-                        <span className="text-[10px] font-semibold text-emerald-400">Te quedas con el 100%</span>
-                      </div>
-                      <p className="text-[10px] font-medium text-slate-400 mt-1">Solo abonas tu cuota mensual de membresía plana.</p>
-                    </div>
-
-                    {/* Esquema 2: Comisión */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-slate-950/20 rounded-xl p-3 border border-white/5">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Esquema Comisión (15%)</p>
-                        <p className="text-sm font-extrabold text-red-400 mt-0.5">-$33,000 ARS</p>
-                        <p className="text-[9px] text-slate-500">Abonado por cada viaje</p>
-                      </div>
-                      <div className="bg-slate-950/20 rounded-xl p-3 border border-white/5">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Tus Ganancias (85%)</p>
-                        <p className="text-sm font-extrabold text-emerald-400 mt-0.5">+$187,000 ARS</p>
-                        <p className="text-[9px] text-slate-500">Neto estimado</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress / Acceptance rate simulator */}
-                  <div className="space-y-3 pt-2">
-                    <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-300">Tasa de Aceptación Requerida</span>
-                      <span className="text-emerald-400">92% (Óptima)</span>
-                    </div>
-                    <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: '92%' }} />
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 bg-slate-950/20 p-2.5 rounded-lg border border-white/5 mt-4">
-                      <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                      <span>Soporte telefónico local e IA 'Travis' incluidos 24/7</span>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
             </div>
 
           </div>
         </div>
       </section>
 
-      {/* ---------------- FAQ SECTION (PREGUNTAS FRECUENTES) ---------------- */}
-      <section id="faq" className="py-20 bg-white px-4 md:px-8 border-b border-slate-100">
-        <div className="mx-auto max-w-4xl">
-          
-          {/* Header */}
-          <div className="text-center space-y-4 mb-16">
-            <span className="inline-block rounded-full bg-tech-blue/10 px-4 py-1 text-xs font-bold uppercase tracking-wider text-tech-blue">
-              AYUDA
+      {/* ---------------- SECCIÓN: SERVICIOS Y CATEGORÍAS ---------------- */}
+      <section className="py-20 px-6 md:px-8 bg-white" id="services-block">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <span className="text-xs font-extrabold uppercase tracking-widest text-vial-orange bg-vial-orange/10 px-3.5 py-1.5 rounded-full">
+              CATEGORÍAS DE TRANSPORTE
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-tech-blue">
-              {LANDING_DATA.faq.title}
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-tech-blue">
+              Movilidad a la Medida de tus Necesidades
             </h2>
-            <p className="text-slate-600 font-medium text-lg max-w-2xl mx-auto">
-              {LANDING_DATA.faq.subtitle}
+            <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
+              Conoce nuestra gama de traslados urbanos premium. Cada una de nuestras categorías cuenta con vehículos de alta gama, aire acondicionado y la seguridad del soporte satelital.
             </p>
           </div>
 
-          {/* Accordion List (Itera hasta 10 elementos) */}
-          <div className="space-y-4">
-            {LANDING_DATA.faq.items.map((item, idx) => {
-              const isOpen = openFaqIndex === idx;
-              return (
-                <div 
-                  key={idx} 
-                  className={`rounded-2xl border transition-all duration-300 ${
-                    isOpen ? 'border-vial-orange bg-slate-50/50 shadow-md scale-[1.01]' : 'border-slate-200/80 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <button 
-                    onClick={() => toggleFaq(idx)}
-                    className="flex w-full items-center justify-between p-5 text-left focus:outline-none cursor-pointer"
-                  >
-                    <span className="text-base sm:text-lg font-bold text-tech-blue tracking-tight pr-4">
-                      {item.question}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {cmsData.servicios?.map((svc: any) => (
+              <div 
+                key={svc.id}
+                className="group rounded-3xl border border-slate-200/60 bg-slate-50/20 p-6 hover:bg-white hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+              >
+                <div className="space-y-4">
+                  <div className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-slate-200 border border-slate-200">
+                    <img 
+                      src={svc.imageUrl || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80'} 
+                      alt={svc.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+                    />
+                    <span className="absolute top-3 right-3 text-[10px] font-black uppercase text-white bg-tech-blue/90 backdrop-blur-sm px-2.5 py-1 rounded-full tracking-wider">
+                      ETA: {svc.eta}
                     </span>
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-tech-blue transition-transform duration-300 ${
-                      isOpen ? 'rotate-185 bg-vial-orange text-white' : ''
-                    }`}>
-                      <ChevronRight className={`h-4 w-4 transform transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-                    </span>
-                  </button>
-                  
-                  {/* Collapsible Answer */}
-                  <div className={`overflow-hidden transition-all duration-500 ${
-                    isOpen ? 'max-h-[300px] border-t border-slate-200/50' : 'max-h-0'
-                  }`}>
-                    <p className="p-5 text-slate-600 font-medium text-sm sm:text-base leading-relaxed">
-                      {item.answer}
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-extrabold text-tech-blue group-hover:text-vial-orange transition-colors">
+                      {svc.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      {svc.description}
                     </p>
                   </div>
                 </div>
-              );
-            })}
+                
+                <div className="pt-6 border-t border-slate-100 flex items-center justify-between mt-6">
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">{svc.subTag || 'Servicio Corporativo'}</span>
+                  <a
+                    href="#web-dispatcher-card"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-tech-blue text-white px-5 py-2.5 text-xs font-black uppercase tracking-wide hover:bg-vial-orange hover:text-slate-950 hover:-translate-y-0.5 transition-all duration-300"
+                    style={{ backgroundColor: '#0a2a5b' }}
+                  >
+                    {svc.ctaText || 'Cotizar'}
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
-
         </div>
       </section>
 
-      {/* ---------------- FOOTER MINIMALISTA CORPORATIVO ---------------- */}
-      <footer className="bg-slate-950 text-slate-400 py-16 px-4 md:px-8 relative overflow-hidden">
-        {/* Ambient light decorations */}
-        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-vial-orange/5 blur-3xl pointer-events-none" />
-        <div className="absolute top-0 left-0 h-60 w-60 rounded-full bg-tech-blue/10 blur-3xl pointer-events-none" />
+      {/* ---------------- SECCIÓN: BENEFICIOS DE PASAJERO ---------------- */}
+      {viewMode === 'passenger' && (
+        <section className="py-20 px-6 md:px-8 bg-slate-50/50 border-y border-slate-200/40">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+              
+              <div className="lg:col-span-5 space-y-6 text-center lg:text-left">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-vial-orange bg-vial-orange/10 px-3 py-1 rounded-full">
+                  {cmsData.passengers?.badge || DEFAULT_CMS_DATA.passengers.badge}
+                </span>
+                <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-tech-blue leading-tight">
+                  {cmsData.passengers?.title || DEFAULT_CMS_DATA.passengers.title}
+                </h2>
+                <p className="text-slate-500 text-sm leading-relaxed">
+                  {cmsData.passengers?.subtitle || DEFAULT_CMS_DATA.passengers.subtitle}
+                </p>
+                <div className="pt-2">
+                  <button
+                    onClick={() => { setPRegStep(1); setPRegData({ firstName: '', lastName: '', email: '', phone: '', photoUrl: '' }); setRegisterModal({ isOpen: true, role: 'passenger' }); }}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-tech-blue text-white px-6 py-3.5 text-sm font-bold shadow-md hover:brightness-110 active:scale-95 transition-all"
+                    style={{ backgroundColor: '#0a2a5b' }}
+                  >
+                    Registrarme y Ganar 300 pts
+                    <Sparkles className="h-4 w-4 text-vial-orange" />
+                  </button>
+                </div>
+              </div>
 
-        <div className="mx-auto max-w-4xl relative z-10 flex flex-col items-center gap-10 text-center">
+              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {(cmsData.passengers?.benefits || DEFAULT_CMS_DATA.passengers.benefits).map((benefit: any) => {
+                  const IconComp = IconMap[benefit.icon] || ShieldCheck;
+                  return (
+                    <div key={benefit.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow space-y-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-vial-orange/10 text-vial-orange">
+                        <IconComp className="h-6 w-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-extrabold text-slate-800 text-sm">{benefit.title}</h3>
+                        <p className="text-xs text-slate-500 leading-relaxed">{benefit.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------------- SECCIÓN: MODELO HÍBRIDO EXPLICATIVO (CONDUCTOR) ---------------- */}
+      {viewMode === 'driver' && (
+        <section className="py-20 px-6 md:px-8 bg-slate-50/50 border-y border-slate-200/40" id="hybrid-block">
+          <div className="mx-auto max-w-7xl">
+            <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-vial-orange bg-vial-orange/10 px-3.5 py-1.5 rounded-full">
+                SISTEMA PREMIUM HÍBRIDO
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-tech-blue">
+                {cmsData.tiposTrabajo?.title || DEFAULT_CMS_DATA.tiposTrabajo.title}
+              </h2>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                {cmsData.tiposTrabajo?.subtitle || DEFAULT_CMS_DATA.tiposTrabajo.subtitle}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between">
+                <div className="absolute top-0 right-0 h-24 w-24 bg-vial-orange/5 rounded-bl-full pointer-events-none" />
+                <div className="space-y-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-vial-orange/10 text-vial-orange">
+                    <Zap className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-extrabold text-slate-800">
+                    {cmsData.tiposTrabajo?.comisionTitulo || DEFAULT_CMS_DATA.tiposTrabajo.comisionTitulo}
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {cmsData.tiposTrabajo?.comisionTexto || DEFAULT_CMS_DATA.tiposTrabajo.comisionTexto}
+                  </p>
+                </div>
+                <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Comisión por viaje</span>
+                  <span className="text-base font-black text-tech-blue">15% Fijo</span>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between">
+                <div className="absolute top-0 right-0 h-24 w-24 bg-tech-blue/5 rounded-bl-full pointer-events-none" />
+                <div className="space-y-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-tech-blue/10 text-tech-blue">
+                    <Award className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-extrabold text-slate-800">
+                    {cmsData.tiposTrabajo?.membresiaTitulo || DEFAULT_CMS_DATA.tiposTrabajo.membresiaTitulo}
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {cmsData.tiposTrabajo?.membresiaTexto || DEFAULT_CMS_DATA.tiposTrabajo.membresiaTexto}
+                  </p>
+                </div>
+                <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Ingresos retenidos</span>
+                  <span className="text-base font-black text-tech-blue">100% tuyos</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------------- SECCIÓN: PROGRAMA REWARDS ---------------- */}
+      <section className="py-20 px-6 md:px-8 bg-white border-b border-slate-200/40" id="rewards-summary">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            
+            <div className="relative rounded-3xl overflow-hidden aspect-video lg:aspect-square bg-slate-100 shadow-xl border border-slate-200">
+              <img 
+                src={cmsData.resumenRewards?.imageUrl || DEFAULT_CMS_DATA.resumenRewards.imageUrl}
+                alt="Rewards Program"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 to-transparent flex flex-col justify-end p-8 text-white">
+                <span className="text-[10px] font-black uppercase text-vial-orange tracking-widest block mb-1">
+                  {cmsData.resumenRewards?.badgeText || DEFAULT_CMS_DATA.resumenRewards.badgeText}
+                </span>
+                <h4 className="text-xl font-extrabold">Fidelización Inteligente</h4>
+                <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">Cada traslado en nuestra red te acerca a viajes sin costo y atenciones VIP.</p>
+              </div>
+            </div>
+
+            <div className="space-y-6 text-center lg:text-left">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-100/50 px-3.5 py-1.5 rounded-full">
+                {cmsData.resumenRewards?.pointsText || DEFAULT_CMS_DATA.resumenRewards.pointsText}
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-tech-blue leading-tight">
+                {cmsData.resumenRewards?.title || DEFAULT_CMS_DATA.resumenRewards.title}
+              </h2>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                {cmsData.resumenRewards?.subtitle || DEFAULT_CMS_DATA.resumenRewards.subtitle}
+              </p>
+              
+              <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+                <button
+                  onClick={() => { setPRegStep(1); setPRegData({ firstName: '', lastName: '', email: '', phone: '', photoUrl: '' }); setRegisterModal({ isOpen: true, role: 'passenger' }); }}
+                  className="rounded-2xl bg-tech-blue text-white px-6 py-4 text-xs font-black uppercase tracking-wider shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                  style={{ backgroundColor: '#0a2a5b' }}
+                >
+                  Unirme al Programa Rewards
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- SECCIÓN: FAQ (Preguntas Frecuentes - DINÁMICAS DESDE CMS) ---------------- */}
+      <section className="py-20 px-6 md:px-8 bg-slate-50" id="faq-section">
+        <div className="mx-auto max-w-4xl">
+          <div className="text-center mb-16 space-y-4">
+            <span className="text-xs font-extrabold uppercase tracking-widest text-vial-orange bg-vial-orange/10 px-3.5 py-1.5 rounded-full">
+              SOPORTE LOCAL Y RESPUESTAS
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-tech-blue">
+              {cmsData.faq?.title || DEFAULT_CMS_DATA.faq.title}
+            </h2>
+            <p className="text-slate-500 text-sm leading-relaxed">
+              {cmsData.faq?.subtitle || DEFAULT_CMS_DATA.faq.subtitle}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {(cmsData.faq?.items || DEFAULT_CMS_DATA.faq.items || []).map((item: any, idx: number) => {
+              const isOpen = openFaqIndex === idx;
+              return (
+                <div 
+                  key={idx}
+                  className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden transition-all duration-300"
+                >
+                  <button
+                    onClick={() => toggleFaq(idx)}
+                    className="w-full flex items-center justify-between px-6 py-4.5 text-left text-sm font-bold text-tech-blue hover:text-vial-orange transition-colors"
+                  >
+                    <span>{item.question}</span>
+                    <ChevronRight className={`h-4.5 w-4.5 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-90 text-vial-orange' : ''}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-6 pb-5 pt-1 text-xs text-slate-500 leading-relaxed border-t border-slate-100 bg-slate-50/30 animate-slideDown whitespace-pre-line">
+                      {item.answer}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {(cmsData.faq?.items?.length === 0) && (
+              <p className="text-slate-400 text-center py-6 text-xs">No hay preguntas cargadas en el CMS actualmente.</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- FOOTER PREMIUM COMPACTADO (PY-8) ---------------- */}
+      <footer className="relative bg-slate-950 py-8 px-6 md:px-8 text-white border-t border-slate-900 overflow-hidden">
+        <div className="absolute bottom-0 right-0 h-40 w-40 rounded-full bg-vial-orange/5 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 left-0 h-30 w-30 rounded-full bg-tech-blue/10 blur-3xl pointer-events-none" />
+
+        <div className="mx-auto max-w-4xl relative z-10 flex flex-col items-center gap-6 text-center">
           
-          {/* Logo grande y centrado */}
           <img
             src="/assets/travelcab_blanco.svg"
             alt="TravelCab"
-            className="h-24 w-auto opacity-90 mx-auto"
+            className="h-14 w-auto opacity-90 mx-auto"
           />
 
-          {/* Teléfono */}
-          <div className="flex items-center justify-center gap-2.5 text-sm font-semibold text-slate-300">
-            <Phone className="h-4 w-4 text-vial-orange flex-shrink-0" />
-            <span>{LANDING_DATA.contact.phone}</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-extrabold uppercase tracking-wider text-slate-300">
+            <button 
+              onClick={() => setLegalModal({ isOpen: true, type: 'about' })}
+              className="hover:text-vial-orange transition-colors"
+            >
+              Quiénes Somos
+            </button>
+            <button 
+              onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}
+              className="hover:text-vial-orange transition-colors"
+            >
+              Términos y Condiciones
+            </button>
+            <button 
+              onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })}
+              className="hover:text-vial-orange transition-colors"
+            >
+              Políticas de Privacidad
+            </button>
+            <a 
+              href="/rrhh"
+              className="hover:text-vial-orange transition-colors flex items-center gap-1"
+            >
+              Trabaja con Nosotros
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </div>
 
-          {/* Redes Sociales */}
+          <div className="flex items-center justify-center gap-2.5 text-xs text-slate-400">
+            <Phone className="h-3.5 w-3.5 text-vial-orange" />
+            <span>{cmsData.contact?.phone || DEFAULT_CMS_DATA.contact.phone}</span>
+          </div>
+
           <div className="flex items-center justify-center gap-3">
-            {/* Facebook */}
             <a
-              href={LANDING_DATA.socials.facebook}
+              href={cmsData.redesSociales?.facebook || DEFAULT_CMS_DATA.redesSociales.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2.5 rounded-xl bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
-              aria-label="Facebook TravelCab"
+              className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
             >
-              <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/>
               </svg>
             </a>
-            {/* Instagram */}
             <a
-              href={LANDING_DATA.socials.instagram}
+              href={cmsData.redesSociales?.instagram || DEFAULT_CMS_DATA.redesSociales.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2.5 rounded-xl bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
-              aria-label="Instagram TravelCab"
+              className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
             >
-              <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
               </svg>
             </a>
-            {/* Facebook Messenger */}
             <a
-              href={LANDING_DATA.socials.messenger}
+              href={cmsData.redesSociales?.messenger || DEFAULT_CMS_DATA.redesSociales.messenger}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2.5 rounded-xl bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
-              aria-label="Chat por Messenger"
+              className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
             >
-              <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.652V24l4.088-2.242c1.092.3 2.246.464 3.443.464C18.627 22.222 24 17.247 24 11.111 24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/>
               </svg>
             </a>
-            {/* WhatsApp Travis */}
-            <a
-              href={LANDING_DATA.contact.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 rounded-xl bg-white/5 text-slate-400 hover:bg-emerald-500 hover:text-white transition-all duration-200"
-              aria-label="WhatsApp Travis"
-            >
-              <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-            </a>
           </div>
 
-          {/* Trabaja con Nosotros (Botón Fantasma Naranja Vial) */}
-          <div className="pt-2">
-            <a 
-              href="/rrhh"
-              className="inline-flex items-center gap-2 rounded-xl border border-vial-orange/40 text-vial-orange bg-transparent px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-vial-orange hover:text-slate-950 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 shadow-md cursor-pointer"
-            >
-              <Briefcase className="h-4 w-4" />
-              Trabaja con Nosotros
-            </a>
-          </div>
-
-          {/* Sellos de Confianza y Certificaciones (Discretos y sutiles) */}
-          <div className="flex flex-wrap items-center justify-center gap-6 pt-4">
-            {/* Sello QR ARCA */}
-            <div className="flex items-center gap-2.5 rounded-xl border border-slate-900 bg-slate-950 px-4 py-2 hover:border-slate-800 transition-colors">
-              <QrCode className="h-5 w-5 text-slate-500 hover:text-vial-orange transition-colors" />
-              <div className="text-left">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sello QR ARCA</span>
-                <span className="text-[8px] text-slate-600 block">Constancia Oficial</span>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {cmsData.sellosLegales?.arcaQrUrl && (
+              <a href="https://www.afip.gob.ar" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-900 bg-slate-950 px-3 py-1.5 hover:border-slate-800 transition-colors">
+                <img src={cmsData.sellosLegales.arcaQrUrl} alt="ARCA" className="h-6 w-auto object-contain" />
+                <span className="text-[8px] font-bold text-slate-400 uppercase">ARCA QR</span>
+              </a>
+            )}
+            {cmsData.sellosLegales?.baseDatosSelloUrl && (
+              <div className="flex items-center gap-2 rounded-lg border border-slate-900 bg-slate-950 px-3 py-1.5 hover:border-slate-800 transition-colors">
+                <img src={cmsData.sellosLegales.baseDatosSelloUrl} alt="DB" className="h-4.5 w-auto object-contain" />
+                <span className="text-[8px] font-bold text-slate-400 uppercase">Base de Datos</span>
               </div>
-            </div>
-            {/* Registro Base de Datos */}
-            <div className="flex items-center gap-2.5 rounded-xl border border-slate-900 bg-slate-950 px-4 py-2 hover:border-slate-800 transition-colors">
-              <Shield className="h-5 w-5 text-slate-500 hover:text-emerald-500 transition-colors" />
-              <div className="text-left">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Base de Datos</span>
-                <span className="text-[8px] text-slate-600 block">Reg. N° 5882/B</span>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Línea separadora */}
-          <div className="w-full border-t border-slate-900" />
-
-          {/* Copyright y links legales */}
-          <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 text-xs font-semibold text-slate-500">
-            <p className="text-center">{LANDING_DATA.footer.copyright}</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center">
-              {LANDING_DATA.footer.legalLinks.map((link, idx) => (
-                <span key={idx} className="flex items-center gap-4">
-                  {idx > 0 && <span className="text-slate-800 hidden sm:inline">•</span>}
-                  <a href={link.url} className="hover:text-slate-300 transition-colors">
-                    {link.text}
-                  </a>
-                </span>
-              ))}
-            </div>
+          <div className="w-full border-t border-slate-900 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-500 font-semibold">
+            <p>{cmsData.footer?.copyright || DEFAULT_CMS_DATA.footer.copyright}</p>
+            <p>Una marca registrada de TravelApp s.a.s.</p>
           </div>
 
         </div>
       </footer>
 
       {/* -------- BOTÓN FLOTANTE TRAVIS (OMNICANAL) -------- */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 group">
-        {/* Tooltip / Mini menú al hover */}
+      <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3 group">
         <div className="flex flex-col items-end gap-2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto">
-          {/* Etiqueta de presentación */}
           <div className="bg-slate-900/95 backdrop-blur-sm text-white text-xs font-bold px-3.5 py-2 rounded-2xl shadow-xl border border-slate-700/50 flex items-center gap-2 whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             Travis está en línea
           </div>
-          {/* WhatsApp */}
           <a
-            href={`${LANDING_DATA.contact.whatsapp}?text=Hola%20Travis!%20Quiero%20saber%20m%C3%A1s%20sobre%20TravelCab.`}
+            href={`${cmsData.contact?.whatsapp || DEFAULT_CMS_DATA.contact.whatsapp}?text=Hola%20Travis!%20Quiero%20saber%20m%C3%A1s%20sobre%20TravelCab.`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg transition-all duration-200 hover:-translate-y-0.5"
@@ -1389,9 +1663,8 @@ export default function TravelCabLanding() {
             <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
             WhatsApp
           </a>
-          {/* Messenger */}
           <a
-            href={LANDING_DATA.socials.messenger}
+            href={cmsData.redesSociales?.messenger || DEFAULT_CMS_DATA.redesSociales.messenger}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2.5 bg-[#0084FF] hover:bg-[#0073e6] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg transition-all duration-200 hover:-translate-y-0.5"
@@ -1399,20 +1672,12 @@ export default function TravelCabLanding() {
             <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.652V24l4.088-2.242c1.092.3 2.246.464 3.443.464C18.627 22.222 24 17.247 24 11.111 24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/></svg>
             Messenger
           </a>
-          {/* Instagram DM */}
-          <a
-            href={`https://ig.me/m/travelapp.ar`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2.5 bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg transition-all duration-200 hover:-translate-y-0.5"
-          >
-            <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-            Instagram
-          </a>
         </div>
 
-        {/* Botón principal Travis */}
-        <button
+        <a
+          href={`${cmsData.contact?.whatsapp || DEFAULT_CMS_DATA.contact.whatsapp}?text=Hola%20Travis!%20Quiero%20pedir%20un%20TravelCab.`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex items-center gap-3 bg-tech-blue hover:bg-vial-orange text-white font-extrabold text-sm px-5 py-3.5 rounded-2xl shadow-2xl shadow-tech-blue/30 hover:shadow-vial-orange/30 transition-all duration-300 hover:-translate-y-1 cursor-pointer border border-white/10"
           aria-label="Hablar con Travis"
         >
@@ -1422,8 +1687,871 @@ export default function TravelCabLanding() {
           </span>
           Hablá con Travis
           <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        </button>
+        </a>
       </div>
+
+      {/* ========================================================
+          MODALES DE LEGALES / QUIÉNES SOMOS
+      ======================================================== */}
+      {legalModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-2xl animate-scaleIn max-h-[85vh] flex flex-col justify-between">
+            <button
+              onClick={() => setLegalModal({ isOpen: false, type: 'terms' })}
+              className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full border border-slate-100 hover:bg-slate-50 text-slate-500 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+              <h3 className="text-xl font-black text-tech-blue border-b border-slate-100 pb-3 flex items-center gap-2">
+                {legalModal.type === 'about' ? <Info className="h-6 w-6 text-vial-orange" /> : <Shield className="h-6 w-6 text-vial-orange" />}
+                {legalModal.type === 'about' && 'Quiénes Somos — TravelCab'}
+                {legalModal.type === 'terms' && 'Términos y Condiciones Generales'}
+                {legalModal.type === 'privacy' && 'Políticas de Privacidad'}
+              </h3>
+              <div className="text-xs text-slate-600 leading-relaxed space-y-4 whitespace-pre-line font-medium">
+                {legalModal.type === 'about' && (cmsData.legales?.quienesSomos || DEFAULT_CMS_DATA.legales.quienesSomos)}
+                {legalModal.type === 'terms' && (cmsData.legales?.terminosCondiciones || DEFAULT_CMS_DATA.legales.terminosCondiciones)}
+                {legalModal.type === 'privacy' && (cmsData.legales?.politicasPrivacidad || DEFAULT_CMS_DATA.legales.politicasPrivacidad)}
+              </div>
+            </div>
+            <div className="pt-4 border-t border-slate-100 mt-4 flex justify-end">
+              <button
+                onClick={() => setLegalModal({ isOpen: false, type: 'terms' })}
+                className="rounded-xl bg-tech-blue px-6 py-2.5 text-xs font-bold text-white hover:brightness-110 transition-all"
+                style={{ backgroundColor: '#0a2a5b' }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL: REGISTRO DE PASAJERO (CON DOCUMENTOS Y CÁMARA)
+      ======================================================== */}
+      {registerModal.isOpen && registerModal.role === 'passenger' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-2xl animate-scaleIn">
+            <button
+              onClick={() => setRegisterModal({ isOpen: false, role: 'passenger' })}
+              className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full border border-slate-100 hover:bg-slate-50 text-slate-500 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            {pRegStep === 1 && (
+              <form onSubmit={handlePassengerSubmit} className="space-y-4">
+                <div className="text-center space-y-2 mb-6">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-vial-orange/10 text-vial-orange">
+                    <Gift className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-black text-tech-blue">Registro de Pasajero</h3>
+                  <p className="text-xs text-slate-500 leading-normal">
+                    Registrate hoy y recibí **300 puntos Rewards** de bienvenida automáticamente en tu cuenta.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1.5">Nombre</label>
+                    <input
+                      type="text"
+                      required
+                      value={pRegData.firstName}
+                      onChange={(e) => setPRegData({ ...pRegData, firstName: e.target.value })}
+                      placeholder="Ej: Laura"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white outline-none focus:ring-4 focus:ring-tech-blue/10"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1.5">Apellido</label>
+                    <input
+                      type="text"
+                      required
+                      value={pRegData.lastName}
+                      onChange={(e) => setPRegData({ ...pRegData, lastName: e.target.value })}
+                      placeholder="Ej: Gómez"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white outline-none focus:ring-4 focus:ring-tech-blue/10"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1.5">Correo Electrónico</label>
+                  <input
+                    type="email"
+                    required
+                    value={pRegData.email}
+                    onChange={(e) => setPRegData({ ...pRegData, email: e.target.value })}
+                    placeholder="laura@email.com"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white outline-none focus:ring-4 focus:ring-tech-blue/10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1.5">Teléfono Móvil (WhatsApp)</label>
+                  <input
+                    type="text"
+                    required
+                    value={pRegData.phone}
+                    onChange={(e) => setPRegData({ ...pRegData, phone: e.target.value })}
+                    placeholder="+54 9 381 000-0000"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white outline-none focus:ring-4 focus:ring-tech-blue/10"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full mt-6 rounded-2xl bg-tech-blue py-3.5 font-black uppercase tracking-wider text-white hover:brightness-110 shadow-lg"
+                  style={{ backgroundColor: '#0a2a5b' }}
+                >
+                  Registrarme y Ganar Puntos
+                </button>
+              </form>
+            )}
+
+            {pRegStep === 2 && (
+              <div className="text-center py-4 space-y-6 animate-fadeIn">
+                <div className="space-y-2">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 animate-bounce">
+                    <Sparkles className="h-7 w-7 text-vial-orange fill-vial-orange" />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-800">¡Ganaste {pPoints} puntos!</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    Tu cuenta ha sido creada con éxito. Si cargas tu **foto de perfil** ahora mismo te regalamos **150 puntos extra** de inmediato.
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-2xl p-6 gap-4">
+                  {pRegData.photoUrl ? (
+                    <div className="relative h-20 w-20 rounded-full border-2 border-tech-blue overflow-hidden shadow-md">
+                      <img src={pRegData.photoUrl} alt="Profile" className="h-full w-full object-cover" />
+                      <button 
+                        type="button" 
+                        onClick={() => setPRegData(prev => ({ ...prev, photoUrl: '' }))}
+                        className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity font-bold text-xs"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <User className="h-10 w-10 text-slate-400" />
+                  )}
+                  
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-slate-700">Foto de Perfil</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{pRegData.photoUrl ? '✓ Foto cargada exitosamente' : 'Carga un archivo o abre tu cámara'}</p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50">
+                      <Upload className="h-3.5 w-3.5" />
+                      Subir
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => handleUploadPhotoData(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50">
+                      <Camera className="h-3.5 w-3.5" />
+                      Cámara
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="user" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => handleUploadPhotoData(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setPRegStep(3)}
+                    className="flex-1 rounded-xl border border-slate-200 py-3 text-xs font-bold text-slate-500 hover:bg-slate-50 uppercase tracking-wider"
+                  >
+                    Saltar Paso
+                  </button>
+                  {pRegData.photoUrl && (
+                    <button
+                      onClick={handleCompletePassengerPhoto}
+                      className="flex-1 rounded-xl bg-tech-blue py-3 text-xs font-bold text-white hover:brightness-110 uppercase tracking-wider"
+                      style={{ backgroundColor: '#0a2a5b' }}
+                    >
+                      Canjear +150 Puntos
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {pRegStep === 3 && (
+              <div className="text-center py-6 space-y-5 animate-fadeIn">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                  <Check className="h-8 w-8 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-800">¡Registro Completado!</h3>
+                  <p className="text-xs text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
+                    Tu perfil de pasajero está activo. En tu billetera tienes un saldo de **{pPoints} puntos Rewards** listos para ser canjeados.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setRegisterModal({ isOpen: false, role: 'passenger' })}
+                  className="w-full mt-4 rounded-xl bg-tech-blue py-3 font-bold text-white hover:brightness-110"
+                  style={{ backgroundColor: '#0a2a5b' }}
+                >
+                  Comenzar a Viajar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL: REGISTRO DE CONDUCTOR (4 PASOS COMPLETOS RRHH)
+      ======================================================== */}
+      {registerModal.isOpen && registerModal.role === 'driver' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 overflow-y-auto animate-fadeIn">
+          <div className="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-2xl animate-scaleIn max-h-[90vh] flex flex-col justify-between">
+            <button
+              onClick={() => setRegisterModal({ isOpen: false, role: 'driver' })}
+              className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full border border-slate-100 hover:bg-slate-50 text-slate-500 transition-colors z-10"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            {dRegSubmitted ? (
+              <div className="text-center py-10 space-y-5 animate-fadeIn">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                  <Check className="h-8 w-8 text-emerald-600" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800">¡Registro completado!</h2>
+                <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                  Gracias **{dRegData.firstName} {dRegData.lastName}** por postularte como socio conductor. Tus datos y documentación han sido cargados con éxito al sistema y están bajo análisis presencial en nuestras oficinas de Tucumán. Te contactaremos vía WhatsApp a la brevedad.
+                </p>
+                <div className="pt-4 max-w-xs mx-auto">
+                  <button
+                    onClick={() => setRegisterModal({ isOpen: false, role: 'driver' })}
+                    className="w-full rounded-xl bg-tech-blue py-3 font-bold text-white hover:brightness-110"
+                    style={{ backgroundColor: '#0a2a5b' }}
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                
+                <div className="border-b border-slate-100 pb-4">
+                  <h3 className="text-lg font-black text-tech-blue flex items-center gap-2">
+                    <Car className="h-6 w-6 text-vial-orange" />
+                    Registro de Conductor / Socio
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Completa los 4 pasos obligatorios del registro oficial de flota.</p>
+                </div>
+
+                {/* Progress Indicators */}
+                <div className="flex items-center justify-center gap-0 pb-4">
+                  {['Datos', 'Fiscal', 'Vehículo', 'Docs'].map((lbl, idx) => {
+                    const active = idx === dRegStep;
+                    const done = idx < dRegStep;
+                    return (
+                      <React.Fragment key={idx}>
+                        <div className="flex flex-col items-center">
+                          <div className={`flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-extrabold ${
+                            done ? 'bg-emerald-500 border-emerald-500 text-white' : active ? 'bg-tech-blue border-tech-blue text-white shadow-md' : 'bg-slate-50 border-slate-200 text-slate-400'
+                          }`}>
+                            {done ? '✓' : idx + 1}
+                          </div>
+                          <span className={`text-[9px] font-bold mt-1 ${active ? 'text-tech-blue' : done ? 'text-emerald-500' : 'text-slate-400'}`}>{lbl}</span>
+                        </div>
+                        {idx < 3 && <div className={`h-[2px] flex-1 max-w-[60px] mx-1 ${idx < dRegStep ? 'bg-emerald-400' : 'bg-slate-100'}`} />}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-4 text-xs font-semibold text-slate-600">
+                  
+                  {/* STEP 0: Personal */}
+                  {dRegStep === 0 && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Nombre <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.firstName}
+                            onChange={(e) => setDRegData({ ...dRegData, firstName: e.target.value })}
+                            placeholder="Ej: Carlos"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Apellido <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.lastName}
+                            onChange={(e) => setDRegData({ ...dRegData, lastName: e.target.value })}
+                            placeholder="Ej: Mamani"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Fecha de Nacimiento <span className="text-red-500">*</span></label>
+                          <input
+                            type="date"
+                            required
+                            value={dRegData.dob}
+                            onChange={(e) => setDRegData({ ...dRegData, dob: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                          {dRegData.dob && !isAdult(dRegData.dob) && (
+                            <p className="text-[9px] text-red-500 mt-1 font-bold">Debe ser mayor de 18 años.</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Email <span className="text-red-500">*</span></label>
+                          <input
+                            type="email"
+                            required
+                            value={dRegData.email}
+                            onChange={(e) => setDRegData({ ...dRegData, email: e.target.value })}
+                            placeholder="conductor@email.com"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-500 mb-1">Teléfono Móvil (WhatsApp) <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          required
+                          value={dRegData.phone}
+                          onChange={(e) => setDRegData({ ...dRegData, phone: e.target.value })}
+                          placeholder="+54 381 000-0000"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                        />
+                      </div>
+                      
+                      <hr className="border-slate-100" />
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Domicilio</p>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2">
+                          <label className="block text-[10px] text-slate-500 mb-1">Calle <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.street}
+                            onChange={(e) => setDRegData({ ...dRegData, street: e.target.value })}
+                            placeholder="Av. Belgrano"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Número <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.streetNumber}
+                            onChange={(e) => setDRegData({ ...dRegData, streetNumber: e.target.value })}
+                            placeholder="1250"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Piso</label>
+                          <input
+                            type="text"
+                            value={dRegData.floor}
+                            onChange={(e) => setDRegData({ ...dRegData, floor: e.target.value })}
+                            placeholder="3"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Depto</label>
+                          <input
+                            type="text"
+                            value={dRegData.apartment}
+                            onChange={(e) => setDRegData({ ...dRegData, apartment: e.target.value })}
+                            placeholder="B"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">CP <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.postalCode}
+                            onChange={(e) => setDRegData({ ...dRegData, postalCode: e.target.value })}
+                            placeholder="4000"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Localidad <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.city}
+                            onChange={(e) => setDRegData({ ...dRegData, city: e.target.value })}
+                            placeholder="San Miguel de Tucumán"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Provincia <span className="text-red-500">*</span></label>
+                          <select
+                            required
+                            value={dRegData.province}
+                            onChange={(e) => setDRegData({ ...dRegData, province: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          >
+                            <option value="">Seleccionar...</option>
+                            {ARGENTINA_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 1: Fiscal */}
+                  {dRegStep === 1 && (
+                    <div className="space-y-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Identificación Fiscal</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Tipo ID</label>
+                          <select
+                            value={dRegData.taxType}
+                            onChange={(e) => setDRegData({ ...dRegData, taxType: e.target.value as any })}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none font-bold"
+                          >
+                            <option value="CUIL">CUIL</option>
+                            <option value="CUIT">CUIT</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">{dRegData.taxType} (11 dígitos) <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.taxIdNumber}
+                            onChange={(e) => setDRegData({ ...dRegData, taxIdNumber: e.target.value })}
+                            placeholder="20-12345678-9"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {dRegData.taxType === 'CUIT' && (
+                        <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
+                          <p className="text-[11px] font-bold text-blue-700 flex items-center gap-1">
+                            <AlertTriangle className="h-3.5 w-3.5" /> Requisitos Fiscales CUIT
+                          </p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-1">Condición ARCA <span className="text-red-500">*</span></label>
+                              <select
+                                value={dRegData.registrationType}
+                                onChange={(e) => setDRegData({ ...dRegData, registrationType: e.target.value })}
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                              >
+                                <option value="">Seleccionar...</option>
+                                <option value="Monotributista">Monotributista</option>
+                                <option value="Responsable Inscripto">Responsable Inscripto</option>
+                                <option value="Exento">Exento</option>
+                              </select>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-1">Constancia ARCA (PDF/Foto) <span className="text-red-500">*</span></label>
+                              <div className="flex gap-2">
+                                <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] text-slate-600 shadow-sm hover:bg-slate-50">
+                                  <Upload className="h-3 w-3" />
+                                  Cargar
+                                  <input 
+                                    type="file" 
+                                    accept="image/*,application/pdf"
+                                    className="hidden" 
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleFileConversion(file, 'arcaConstanciaUrl');
+                                    }}
+                                  />
+                                </label>
+                                {dRegData.arcaConstanciaUrl && <span className="text-[9px] text-emerald-600 font-bold self-center">✓ Cargado</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <hr className="border-slate-100" />
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Datos Bancarios</p>
+                      
+                      <div>
+                        <label className="block text-[10px] text-slate-500 mb-1">CBU / CVU (22 dígitos) <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={22}
+                          value={dRegData.cbuCvu}
+                          onChange={(e) => setDRegData({ ...dRegData, cbuCvu: e.target.value.replace(/\D/g, '') })}
+                          placeholder="0000000000000000000000"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none font-mono"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Alias Bancario <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.alias}
+                            onChange={(e) => setDRegData({ ...dRegData, alias: e.target.value })}
+                            placeholder="alias.mp"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Titular de la Cuenta <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.accountHolder}
+                            onChange={(e) => setDRegData({ ...dRegData, accountHolder: e.target.value })}
+                            placeholder="Nombre del Titular"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 2: Vehículo */}
+                  {dRegStep === 2 && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Marca <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.make}
+                            onChange={(e) => setDRegData({ ...dRegData, make: e.target.value })}
+                            placeholder="Volkswagen"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Modelo <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.model}
+                            onChange={(e) => setDRegData({ ...dRegData, model: e.target.value })}
+                            placeholder="Gol Trend"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Año <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.year}
+                            onChange={(e) => setDRegData({ ...dRegData, year: e.target.value })}
+                            placeholder="2020"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Color <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.color}
+                            onChange={(e) => setDRegData({ ...dRegData, color: e.target.value })}
+                            placeholder="Blanco"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Patente <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={dRegData.licensePlate}
+                            onChange={(e) => setDRegData({ ...dRegData, licensePlate: e.target.value.toUpperCase() })}
+                            placeholder="AB 123 CD"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={dRegData.hasSutrappa}
+                            onChange={(e) => setDRegData({ ...dRegData, hasSutrappa: e.target.checked })}
+                            className="h-4.5 w-4.5 rounded border-slate-300 text-tech-blue accent-tech-blue"
+                          />
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">¿Posee Licencia SUTRAPPA?</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">Marcar si tiene habilitación municipal</p>
+                          </div>
+                        </label>
+
+                        {dRegData.hasSutrappa && (
+                          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-1">N° de Licencia SUTRAPPA <span className="text-red-500">*</span></label>
+                              <input
+                                type="text"
+                                required
+                                value={dRegData.sutrappaLicense}
+                                onChange={(e) => setDRegData({ ...dRegData, sutrappaLicense: e.target.value })}
+                                placeholder="REM-004512"
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-1">Titular de la Licencia <span className="text-red-500">*</span></label>
+                              <input
+                                type="text"
+                                required
+                                value={dRegData.sutrappaHolder}
+                                onChange={(e) => setDRegData({ ...dRegData, sutrappaHolder: e.target.value })}
+                                placeholder="Nombre completo"
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white text-slate-700 outline-none"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Documentos del Vehículo (Requeridos) <span className="text-red-500">*</span></p>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="block text-[10px] text-slate-500">Cédula Verde/Azul Frente</label>
+                            <div className="flex gap-2">
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2 py-1 bg-white hover:bg-slate-50">
+                                <Upload className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'cedulaFrente')} />
+                              </label>
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2 py-1 bg-white hover:bg-slate-50">
+                                <Camera className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'cedulaFrente')} />
+                              </label>
+                              {dRegData.cedulaFrente && <span className="text-[9px] text-emerald-600 font-bold self-center">✓</span>}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[10px] text-slate-500">Cédula Verde/Azul Dorso</label>
+                            <div className="flex gap-2">
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2 py-1 bg-white hover:bg-slate-50">
+                                <Upload className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'cedulaDorso')} />
+                              </label>
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2 py-1 bg-white hover:bg-slate-50">
+                                <Camera className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'cedulaDorso')} />
+                              </label>
+                              {dRegData.cedulaDorso && <span className="text-[9px] text-emerald-600 font-bold self-center">✓</span>}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[10px] text-slate-500">Foto Frontal/45° Vehículo</label>
+                            <div className="flex gap-2">
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2 py-1 bg-white hover:bg-slate-50">
+                                <Upload className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'fotoVehiculo')} />
+                              </label>
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2 py-1 bg-white hover:bg-slate-50">
+                                <Camera className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'fotoVehiculo')} />
+                              </label>
+                              {dRegData.fotoVehiculo && <span className="text-[9px] text-emerald-600 font-bold self-center">✓</span>}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[10px] text-slate-500">RTO (Revisión Técnica)</label>
+                            <div className="flex gap-2">
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2 py-1 bg-white hover:bg-slate-50">
+                                <Upload className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'rtoDoc')} />
+                              </label>
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2 py-1 bg-white hover:bg-slate-50">
+                                <Camera className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'rtoDoc')} />
+                              </label>
+                              {dRegData.rtoDoc && <span className="text-[9px] text-emerald-600 font-bold self-center">✓</span>}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1 sm:col-span-2">
+                            <label className="block text-[10px] text-slate-500">Seguro Comercial (Póliza)</label>
+                            <div className="flex gap-2">
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2.5 py-1 bg-white hover:bg-slate-50">
+                                <Upload className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'seguroComercial')} />
+                              </label>
+                              <label className="flex cursor-pointer items-center justify-center gap-1 rounded border px-2.5 py-1 bg-white hover:bg-slate-50">
+                                <Camera className="h-3.5 w-3.5" />
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'seguroComercial')} />
+                              </label>
+                              {dRegData.seguroComercial && <span className="text-[9px] text-emerald-600 font-bold self-center">✓ Seguro cargado exitosamente</span>}
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* STEP 3: Documentación Personal */}
+                  {dRegStep === 3 && (
+                    <div className="space-y-4">
+                      <p className="text-[10px] text-slate-400 mb-4 leading-normal">
+                        Adjunte los documentos requeridos del conductor utilizando la cámara o subiendo el archivo. Todos los campos son de carga obligatoria.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="rounded-xl border border-slate-200 p-3 bg-slate-50 space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-700">Licencia de Conducir <span className="text-red-500">*</span></label>
+                          <div className="flex gap-2">
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                              <Upload className="h-3.5 w-3.5" /> Subir
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'driverLicense')} />
+                            </label>
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                              <Camera className="h-3.5 w-3.5" /> Cámara
+                              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'driverLicense')} />
+                            </label>
+                          </div>
+                          {dRegData.driverLicense && <p className="text-[9px] text-emerald-600 font-bold text-center">✓ Licencia cargada</p>}
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 p-3 bg-slate-50 space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-700">Certificado de Reincidencia <span className="text-red-500">*</span></label>
+                          <div className="flex gap-2">
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                              <Upload className="h-3.5 w-3.5" /> Subir
+                              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'criminalRecord')} />
+                            </label>
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                              <Camera className="h-3.5 w-3.5" /> Cámara
+                              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'criminalRecord')} />
+                            </label>
+                          </div>
+                          {dRegData.criminalRecord && <p className="text-[9px] text-emerald-600 font-bold text-center">✓ Reincidencia cargado</p>}
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 p-3 bg-slate-50 space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-700">Buena Conducta (Policía) <span className="text-red-500">*</span></label>
+                          <div className="flex gap-2">
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                              <Upload className="h-3.5 w-3.5" /> Subir
+                              <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'conductCert')} />
+                            </label>
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                              <Camera className="h-3.5 w-3.5" /> Cámara
+                              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'conductCert')} />
+                            </label>
+                          </div>
+                          {dRegData.conductCert && <p className="text-[9px] text-emerald-600 font-bold text-center">✓ Buena conducta cargado</p>}
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 p-3 bg-slate-50 space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-700">Certificado de Sanidad <span className="text-red-500">*</span></label>
+                          <div className="flex gap-2">
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                              <Upload className="h-3.5 w-3.5" /> Subir
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'healthCert')} />
+                            </label>
+                            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                              <Camera className="h-3.5 w-3.5" /> Cámara
+                              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileConversion(e.target.files[0], 'healthCert')} />
+                            </label>
+                          </div>
+                          {dRegData.healthCert && <p className="text-[9px] text-emerald-600 font-bold text-center">✓ Sanidad cargado</p>}
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                <div className="mt-8 border-t border-slate-100 pt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => { if (dRegStep > 0) setDRegStep(dRegStep - 1); }}
+                    disabled={dRegStep === 0}
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 shadow-sm disabled:opacity-30"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-[10px] text-slate-400 font-bold">{dRegStep + 1} / 4</span>
+                  
+                  <button
+                    onClick={handleDriverNext}
+                    className="flex items-center gap-1.5 rounded-xl text-white px-5 py-2 text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all"
+                    style={{ backgroundColor: dRegStep === 3 ? '#059669' : '#ff6b00' }}
+                  >
+                    {dRegStep === 3 ? 'Completar Registro' : 'Siguiente'}
+                  </button>
+                </div>
+
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
