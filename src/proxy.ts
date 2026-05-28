@@ -26,8 +26,12 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // travelapp.ar → landing pages públicas por path
-  if (hostname.includes("travelapp.ar")) {
+  // B) travelapp.ar / www.travelapp.ar ➡️ Landings públicas y Root institucional
+  if (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.")) {
+    if (pathname === "/" || pathname === "/home") {
+      // travelapp.ar/ ➡️ landing institucional (utiliza experience por defecto)
+      return NextResponse.rewrite(new URL("/landing/experience", request.url));
+    }
     if (pathname === "/experience") {
       return NextResponse.rewrite(new URL("/landing/experience", request.url));
     }
