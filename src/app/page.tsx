@@ -1,17 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
-
-const TravelCabLanding = dynamic(() => import('@/app/landing/travelcab/page'), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#ff8c00]"></div>
-    </div>
-  )
-});
-
 import { 
   Users, 
   Car, 
@@ -57,8 +46,6 @@ const activityFeed = [
 ];
 
 export default function HomeDashboard() {
-  const [isTravelCabHost, setIsTravelCabHost] = useState(false);
-  const [checkingHost, setCheckingHost] = useState(true);
   const [stats, setStats] = useState({
     leads: 0,
     trips: 0,
@@ -67,32 +54,6 @@ export default function HomeDashboard() {
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const host = window.location.hostname;
-      if (host.includes('travelcab.ar')) {
-        setIsTravelCabHost(true);
-      }
-      setCheckingHost(false);
-    } else {
-      setCheckingHost(false);
-    }
-  }, []);
-
-  if (checkingHost) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#ff8c00]"></div>
-      </div>
-    );
-  }
-
-  if (isTravelCabHost) {
-    return <TravelCabLanding />;
-  }
-
-  useEffect(() => {
-    if (isTravelCabHost) return;
-
     // Escucha en tiempo real a Leads
     const unsubLeads = onSnapshot(collection(db, 'leads'), (snapshot) => {
       setStats(prev => ({ ...prev, leads: snapshot.size }));
