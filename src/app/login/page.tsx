@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Plane, Lock, Mail, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+
 export default function LoginPage() {
   const { login, user, loading } = useAuth();
   const router = useRouter();
@@ -13,7 +16,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   // If already authenticated, redirect immediately
   useEffect(() => {
@@ -25,6 +30,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setIsSubmitting(true);
 
     try {
@@ -56,6 +62,26 @@ export default function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Por favor, ingresá tu correo electrónico en la casilla para poder enviarte el enlace de recuperación.");
+      setSuccess(null);
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    setSendingReset(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setSuccess("¡Correo de recuperación enviado! Revisá tu bandeja de entrada y spam.");
+    } catch (err: any) {
+      console.error("Error resetting password:", err);
+      setError("No pudimos enviar el correo de recuperación. Asegurate de que el correo esté registrado.");
+    } finally {
+      setSendingReset(false);
+    }
+  };
+
   // Show nothing while resolving auth state (avoid flash)
   if (loading) {
     return (
@@ -68,17 +94,21 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen overflow-hidden font-[var(--font-quicksand),_Arial,_sans-serif]">
       {/* ── Left panel – Tech Blue ── */}
-      <div className="hidden w-1/2 flex-col items-center justify-center bg-[#0a2a5b] p-12 lg:flex">
+      <div className="hidden w-1/2 flex-col items-center justify-between bg-[#0a2a5b] py-16 px-12 lg:flex">
+        {/* Top dummy space to keep alignment */}
+        <div className="h-4" />
+
+        {/* Center content */}
         <div className="max-w-sm text-center">
-          {/* Logo placeholder – swap src for your actual logo asset */}
+          {/* White logo travelapp */}
           <div className="mb-8 flex justify-center">
             <img
-              src="/assets/travelapp_original.svg"
+              src="/assets/travelapp_blanco.svg"
               alt="TravelApp Ecosystem"
               className="h-16 w-auto drop-shadow-lg"
               onError={(e) => {
                 // Fallback: show icon if asset is missing
-                (e.target as HTMLImageElement).style.display = "none";
+                (e.target as HTMLImageElement).src = "/assets/travelapp_original.svg";
               }}
             />
           </div>
@@ -99,6 +129,33 @@ export default function LoginPage() {
             <div className="absolute inset-0 flex items-center justify-center">
               <Plane className="h-12 w-12 text-[#ff6b00] drop-shadow-glow" />
             </div>
+          </div>
+        </div>
+
+        {/* Bottom ecosystem sublogos */}
+        <div className="w-full max-w-sm text-center space-y-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-blue-300/60">
+            Marcas Integradas del Ecosistema
+          </p>
+          <div className="flex items-center justify-center gap-6 border-t border-blue-400/10 pt-4">
+            <img
+              src="/assets/travelcab_blanco.svg"
+              alt="TravelCab"
+              className="h-6 w-auto opacity-70 hover:opacity-100 transition-opacity"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+            <img
+              src="/assets/experience_blanco.svg"
+              alt="Experiences"
+              className="h-6 w-auto opacity-70 hover:opacity-100 transition-opacity"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+            <img
+              src="/assets/rewards_blanco.svg"
+              alt="Rewards"
+              className="h-6 w-auto opacity-70 hover:opacity-100 transition-opacity"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
           </div>
         </div>
       </div>
@@ -126,11 +183,18 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Error alert */}
+            {/* Alerts */}
             {error && (
               <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-6 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>{success}</span>
               </div>
             )}
 
@@ -162,12 +226,22 @@ export default function LoginPage() {
 
               {/* Password field */}
               <div>
-                <label
-                  htmlFor="login-password"
-                  className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500"
-                >
-                  Contraseña
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    htmlFor="login-password"
+                    className="block text-xs font-bold uppercase tracking-widest text-slate-500"
+                  >
+                    Contraseña
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={sendingReset}
+                    className="text-xs font-bold text-[#ff6b00] hover:text-[#e05f00] hover:underline transition-colors disabled:opacity-50"
+                  >
+                    {sendingReset ? "Enviando..." : "¿Olvidaste tu contraseña?"}
+                  </button>
+                </div>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                     <Lock className="h-4 w-4" />
@@ -217,11 +291,22 @@ export default function LoginPage() {
               </button>
             </form>
 
+            {/* Support section */}
+            <div className="mt-6 text-center border-t border-slate-100 pt-4">
+              <p className="text-xs text-slate-400">
+                ¿Necesitás soporte? Contactanos en{" "}
+                <a
+                  href="mailto:soporte@travelapp.ar"
+                  className="font-bold text-[#0a2a5b] hover:underline"
+                >
+                  soporte@travelapp.ar
+                </a>
+              </p>
+            </div>
           </div>
 
           <p className="mt-6 text-center text-xs text-slate-400">
-            © {new Date().getFullYear()} TravelApp Ecosystem · Todos los
-            derechos reservados
+            © {new Date().getFullYear()} TravelApp s.a.s. · Todos los derechos reservados
           </p>
         </div>
       </div>
