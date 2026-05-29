@@ -412,6 +412,14 @@ export default function TravelCabLanding() {
 
   // Escuchar CMS, categorías y tarifas activas en tiempo real
   useEffect(() => {
+    // Forzar que el diseño global oculte la barra de navegación y barra lateral del Dashboard
+    document.body.classList.add("shell-free");
+    return () => {
+      document.body.classList.remove("shell-free");
+    };
+  }, []);
+
+  useEffect(() => {
     // 1. Escucha reactiva en tiempo real al CMS de Firestore
     const unsubCms = onSnapshot(doc(db, 'cms', 'landing_travelcab'), (snap) => {
       if (snap.exists()) {
@@ -837,6 +845,7 @@ export default function TravelCabLanding() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-tech-blue font-sans selection:bg-vial-orange/20 selection:text-tech-blue overflow-x-hidden animate-fadeIn">
+      <span data-shell-free="true" className="hidden" />
       
       {/* ---------------- NAVIGATION HEADER ---------------- */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-md transition-all duration-300">
