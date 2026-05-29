@@ -38,7 +38,8 @@ export default function TravelCabSettingsPage() {
     name: '',
     description: '',
     eta: '3 - 5 min',
-    icon: 'Car'
+    icon: 'Car',
+    seats: 4
   });
   const [showCategoryForm, setShowCategoryForm] = useState(false);
 
@@ -87,7 +88,7 @@ export default function TravelCabSettingsPage() {
         setActiveTab('categories');
         if (actionParam === 'new') {
           setEditingCategory(null);
-          setCategoryForm({ id: '', name: '', description: '', eta: '3 - 5 min', icon: 'Car' });
+          setCategoryForm({ id: '', name: '', description: '', eta: '3 - 5 min', icon: 'Car', seats: 4 });
           setShowCategoryForm(true);
         }
       } else if (tabParam === 'branches') {
@@ -104,7 +105,8 @@ export default function TravelCabSettingsPage() {
         name: editingCategory.name,
         description: editingCategory.description,
         eta: editingCategory.eta,
-        icon: editingCategory.icon || 'Car'
+        icon: editingCategory.icon || 'Car',
+        seats: editingCategory.seats !== undefined ? editingCategory.seats : 4
       });
       setShowCategoryForm(true);
     }
@@ -189,13 +191,14 @@ export default function TravelCabSettingsPage() {
         description: categoryForm.description.trim(),
         eta: categoryForm.eta.trim(),
         icon: categoryForm.icon,
+        seats: Number(categoryForm.seats || 4),
         createdAt: editingCategory ? editingCategory.createdAt : Date.now()
       };
 
       await setDoc(doc(db, 'categories', categoryId), catData);
       
       alert(editingCategory ? "Categoría actualizada correctamente" : "Categoría creada correctamente");
-      setCategoryForm({ id: '', name: '', description: '', eta: '3 - 5 min', icon: 'Car' });
+      setCategoryForm({ id: '', name: '', description: '', eta: '3 - 5 min', icon: 'Car', seats: 4 });
       setEditingCategory(null);
       setShowCategoryForm(false);
     } catch (err: any) {
@@ -575,13 +578,28 @@ export default function TravelCabSettingsPage() {
                     </select>
                   </div>
 
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-500">Asientos Disponibles (Capacidad)</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      max="12"
+                      required
+                      placeholder="Ej. 4 o 8"
+                      value={categoryForm.seats}
+                      onChange={(e) => setCategoryForm({...categoryForm, seats: Number(e.target.value)})}
+                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Capacidad máxima de pasajeros. Especialmente útil para calcular disponibilidad en el Auto Rural Compartido (ARC).</p>
+                  </div>
+
                   <div className="flex pt-2 gap-2">
                     {editingCategory && (
                       <button 
                         type="button" 
                         onClick={() => {
                           setEditingCategory(null);
-                          setCategoryForm({ id: '', name: '', description: '', eta: '3 - 5 min', icon: 'Car' });
+                          setCategoryForm({ id: '', name: '', description: '', eta: '3 - 5 min', icon: 'Car', seats: 4 });
                         }}
                         className="flex-1 rounded-md border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
                       >
@@ -641,8 +659,10 @@ export default function TravelCabSettingsPage() {
                         </div>
                         
                         <div className="pt-3 border-t border-slate-200 flex justify-between items-center text-xs">
-                          <span className="font-bold text-slate-400">
-                            ETA: <span className="text-tech-blue">{cat.eta}</span>
+                          <span className="font-bold text-slate-400 flex items-center gap-3">
+                            <span>ETA: <span className="text-tech-blue font-extrabold">{cat.eta}</span></span>
+                            <span>|</span>
+                            <span>Asientos: <span className="text-[#ff6b00] font-extrabold">{cat.seats || 4}</span></span>
                           </span>
                           
                           <div className="flex space-x-2">

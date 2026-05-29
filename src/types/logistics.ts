@@ -4,6 +4,7 @@ export interface VehicleCategory {
   description: string; // Descripción comercial
   eta: string;         // Tiempo estimado de arribo (ej: '3 - 5 min')
   icon?: string;       // Icono de Lucide (ej: 'Car', 'Sparkles', 'Crown')
+  seats?: number;      // Capacidad de asientos disponibles para el servicio
   createdAt: number;
 }
 
