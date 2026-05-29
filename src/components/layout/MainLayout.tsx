@@ -14,7 +14,20 @@ const SHELL_FREE_ROUTES = ["/login"];
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [isLandingDomain, setIsLandingDomain] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      // Si la URL contiene travelcab.ar o travelapp.ar y NO empieza con admin., es una landing
+      if ((host.includes("travelcab.ar") || host.includes("travelapp.ar")) && !host.startsWith("admin.")) {
+        setIsLandingDomain(true);
+      }
+    }
+  }, []);
+
   const hideShell =
+    isLandingDomain ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
     pathname === "/landing/travelcab" ||
