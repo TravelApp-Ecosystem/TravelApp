@@ -15,7 +15,7 @@ const compressImage = (file: File, maxWidth = 800, maxHeight = 600, quality = 0.
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {
-      const img = new Image();
+      const img = document.createElement("img");
       img.src = event.target?.result as string;
       img.onload = () => {
         const canvas = document.createElement("canvas");
