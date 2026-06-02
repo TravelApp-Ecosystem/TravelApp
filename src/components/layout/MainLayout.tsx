@@ -14,30 +14,19 @@ const SHELL_FREE_ROUTES = ["/login"];
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [isLanding, setIsLanding] = React.useState(false);
+  const [isLandingHost, setIsLandingHost] = React.useState(false);
 
   React.useEffect(() => {
-    const checkShellFree = () => {
-      if (typeof window !== "undefined") {
-        const host = window.location.hostname;
-        const isLandingHost = (host.includes("travelcab.ar") || host.includes("travelapp.ar")) && !host.startsWith("admin.");
-        const hasClass = document.body.classList.contains("shell-free");
-        const hasElement = !!document.querySelector("[data-shell-free]");
-        setIsLanding(isLandingHost || hasClass || hasElement);
-      }
-    };
-
-    checkShellFree();
-
-    // Crear un observer para escuchar cambios en el DOM y clases
-    const observer = new MutationObserver(checkShellFree);
-    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
-
-    return () => observer.disconnect();
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      // El host pertenece al dashboard si contiene admin., localhost o 127.0.0.1
+      const isDashboardHost = host.includes("admin.") || host.includes("localhost") || host.includes("127.0.0.1");
+      setIsLandingHost(!isDashboardHost);
+    }
   }, []);
 
   const hideShell =
-    isLanding ||
+    isLandingHost ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
     pathname === "/landing/travelcab" ||
