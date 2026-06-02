@@ -9,6 +9,45 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+// Helper function to compress images using Canvas to bypass Firestore 1MB limits
+const compressImage = (file: File, maxWidth = 800, maxHeight = 600, quality = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const compressedBase64 = canvas.toDataURL("image/jpeg", quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 // Optimized text input component to prevent typing lag by maintaining local state
 const CMSInput = ({
   label,
@@ -362,14 +401,22 @@ export default function CMSPage() {
                 type="file" 
                 accept="image/*" 
                 className="hidden" 
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      updateField(section, field, reader.result as string);
-                    };
-                    reader.readAsDataURL(file);
+                    try {
+                      const compressed = await compressImage(file);
+                      updateField(section, field, compressed);
+                      setLocalVal(compressed);
+                    } catch (err) {
+                      console.error("Error compressing image, falling back to original:", err);
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        updateField(section, field, reader.result as string);
+                        setLocalVal(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
                   }
                 }}
               />
@@ -417,14 +464,22 @@ export default function CMSPage() {
               type="file" 
               accept="image/*" 
               className="hidden" 
-              onChange={(e) => {
+              onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    updateService(idx, 'imageUrl', reader.result as string);
-                  };
-                  reader.readAsDataURL(file);
+                  try {
+                    const compressed = await compressImage(file);
+                    updateService(idx, 'imageUrl', compressed);
+                    setLocalVal(compressed);
+                  } catch (err) {
+                    console.error("Error compressing service image, falling back to original:", err);
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      updateService(idx, 'imageUrl', reader.result as string);
+                      setLocalVal(reader.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                  }
                 }
               }}
             />
