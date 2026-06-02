@@ -26,9 +26,13 @@ const CMSInput = ({
   className?: string;
 }) => {
   const [localVal, setLocalVal] = useState(value);
+  const [isFocused, setIsFocused] = useState(false);
+
   useEffect(() => {
-    setLocalVal(value);
-  }, [value]);
+    if (!isFocused) {
+      setLocalVal(value);
+    }
+  }, [value, isFocused]);
 
   return (
     <div className="w-full">
@@ -37,7 +41,11 @@ const CMSInput = ({
         type={type}
         value={localVal || ''}
         onChange={(e) => setLocalVal(e.target.value)}
-        onBlur={() => onChange(localVal)}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => {
+          setIsFocused(false);
+          onChange(localVal);
+        }}
         placeholder={placeholder}
         className={className || "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"}
       />
@@ -62,9 +70,13 @@ const CMSTextarea = ({
   className?: string;
 }) => {
   const [localVal, setLocalVal] = useState(value);
+  const [isFocused, setIsFocused] = useState(false);
+
   useEffect(() => {
-    setLocalVal(value);
-  }, [value]);
+    if (!isFocused) {
+      setLocalVal(value);
+    }
+  }, [value, isFocused]);
 
   return (
     <div className="w-full">
@@ -73,7 +85,11 @@ const CMSTextarea = ({
         rows={rows}
         value={localVal || ''}
         onChange={(e) => setLocalVal(e.target.value)}
-        onBlur={() => onChange(localVal)}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => {
+          setIsFocused(false);
+          onChange(localVal);
+        }}
         placeholder={placeholder}
         className={className || "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"}
       />
@@ -420,9 +436,13 @@ export default function CMSPage() {
 
   const ServiceInput = ({ label, value, idx, field, placeholder, className }: { label: string; value: string; idx: number; field: string; placeholder?: string; className?: string }) => {
     const [localVal, setLocalVal] = useState(value);
+    const [isFocused, setIsFocused] = useState(false);
+
     useEffect(() => {
-      setLocalVal(value);
-    }, [value]);
+      if (!isFocused) {
+        setLocalVal(value);
+      }
+    }, [value, isFocused]);
 
     return (
       <div>
@@ -432,7 +452,11 @@ export default function CMSPage() {
           value={localVal || ''}
           placeholder={placeholder}
           onChange={(e) => setLocalVal(e.target.value)}
-          onBlur={() => updateService(idx, field, localVal)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => {
+            setIsFocused(false);
+            updateService(idx, field, localVal);
+          }}
           className={className || "w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"}
         />
       </div>
@@ -441,9 +465,13 @@ export default function CMSPage() {
 
   const FaqInput = ({ label, value, idx, field }: { label: string; value: string; idx: number; field: string }) => {
     const [localVal, setLocalVal] = useState(value);
+    const [isFocused, setIsFocused] = useState(false);
+
     useEffect(() => {
-      setLocalVal(value);
-    }, [value]);
+      if (!isFocused) {
+        setLocalVal(value);
+      }
+    }, [value, isFocused]);
 
     return (
       <div>
@@ -452,7 +480,11 @@ export default function CMSPage() {
           type="text"
           value={localVal || ''}
           onChange={(e) => setLocalVal(e.target.value)}
-          onBlur={() => updateFaq(idx, field, localVal)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => {
+            setIsFocused(false);
+            updateFaq(idx, field, localVal);
+          }}
           className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
         />
       </div>
@@ -461,9 +493,13 @@ export default function CMSPage() {
 
   const FaqTextarea = ({ label, value, idx, field }: { label: string; value: string; idx: number; field: string }) => {
     const [localVal, setLocalVal] = useState(value);
+    const [isFocused, setIsFocused] = useState(false);
+
     useEffect(() => {
-      setLocalVal(value);
-    }, [value]);
+      if (!isFocused) {
+        setLocalVal(value);
+      }
+    }, [value, isFocused]);
 
     return (
       <div>
@@ -472,7 +508,11 @@ export default function CMSPage() {
           rows={3}
           value={localVal || ''}
           onChange={(e) => setLocalVal(e.target.value)}
-          onBlur={() => updateFaq(idx, field, localVal)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => {
+            setIsFocused(false);
+            updateFaq(idx, field, localVal);
+          }}
           className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
         />
       </div>
