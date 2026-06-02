@@ -9,6 +9,78 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+// Optimized text input component to prevent typing lag by maintaining local state
+const CMSInput = ({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  className
+}: {
+  label?: string;
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  type?: string;
+  className?: string;
+}) => {
+  const [localVal, setLocalVal] = useState(value);
+  useEffect(() => {
+    setLocalVal(value);
+  }, [value]);
+
+  return (
+    <div className="w-full">
+      {label && <label className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>}
+      <input
+        type={type}
+        value={localVal || ''}
+        onChange={(e) => setLocalVal(e.target.value)}
+        onBlur={() => onChange(localVal)}
+        placeholder={placeholder}
+        className={className || "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"}
+      />
+    </div>
+  );
+};
+
+// Optimized textarea component to prevent typing lag by maintaining local state
+const CMSTextarea = ({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+  className
+}: {
+  label?: string;
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  rows?: number;
+  className?: string;
+}) => {
+  const [localVal, setLocalVal] = useState(value);
+  useEffect(() => {
+    setLocalVal(value);
+  }, [value]);
+
+  return (
+    <div className="w-full">
+      {label && <label className="block text-xs font-bold text-slate-600 mb-1.5">{label}</label>}
+      <textarea
+        rows={rows}
+        value={localVal || ''}
+        onChange={(e) => setLocalVal(e.target.value)}
+        onBlur={() => onChange(localVal)}
+        placeholder={placeholder}
+        className={className || "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"}
+      />
+    </div>
+  );
+};
+
 const DEFAULT_CMS_DATA = {
   pasajeroHero: {
     badge: "✓ EL ESTÁNDAR MÁS ALTO EN MOVILIDAD URBANA",
@@ -249,6 +321,11 @@ export default function CMSPage() {
 
   // Componente de entrada reutilizable con opción de URL o Subida local (Base64)
   const ImageUploaderInput = ({ label, section, field, value }: { label: string; section: string; field: string; value: string }) => {
+    const [localVal, setLocalVal] = useState(value);
+    useEffect(() => {
+      setLocalVal(value);
+    }, [value]);
+
     return (
       <div className="space-y-1.5 bg-slate-50/50 p-3 rounded-xl border border-slate-200/50">
         <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide">{label}</label>
@@ -256,8 +333,9 @@ export default function CMSPage() {
           <div className="flex gap-2">
             <input
               type="text"
-              value={value || ''}
-              onChange={(e) => updateField(section, field, e.target.value)}
+              value={localVal || ''}
+              onChange={(e) => setLocalVal(e.target.value)}
+              onBlur={() => updateField(section, field, localVal)}
               placeholder="Ingresa la URL de la foto..."
               className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none"
             />
@@ -299,14 +377,20 @@ export default function CMSPage() {
   };
 
   const ServiceImageUploader = ({ idx, value }: { idx: number; value: string }) => {
+    const [localVal, setLocalVal] = useState(value);
+    useEffect(() => {
+      setLocalVal(value);
+    }, [value]);
+
     return (
       <div className="space-y-1">
         <label className="block text-[10px] font-bold text-slate-500">Imagen de la Categoría</label>
         <div className="flex gap-2">
           <input
             type="text"
-            value={value || ''}
-            onChange={(e) => updateService(idx, 'imageUrl', e.target.value)}
+            value={localVal || ''}
+            onChange={(e) => setLocalVal(e.target.value)}
+            onBlur={() => updateService(idx, 'imageUrl', localVal)}
             placeholder="Pegar URL de la imagen..."
             className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] bg-white focus:outline-none"
           />
@@ -330,6 +414,67 @@ export default function CMSPage() {
             />
           </label>
         </div>
+      </div>
+    );
+  };
+
+  const ServiceInput = ({ label, value, idx, field, placeholder, className }: { label: string; value: string; idx: number; field: string; placeholder?: string; className?: string }) => {
+    const [localVal, setLocalVal] = useState(value);
+    useEffect(() => {
+      setLocalVal(value);
+    }, [value]);
+
+    return (
+      <div>
+        <label className="block text-[10px] font-bold text-slate-500 mb-1">{label}</label>
+        <input
+          type="text"
+          value={localVal || ''}
+          placeholder={placeholder}
+          onChange={(e) => setLocalVal(e.target.value)}
+          onBlur={() => updateService(idx, field, localVal)}
+          className={className || "w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"}
+        />
+      </div>
+    );
+  };
+
+  const FaqInput = ({ label, value, idx, field }: { label: string; value: string; idx: number; field: string }) => {
+    const [localVal, setLocalVal] = useState(value);
+    useEffect(() => {
+      setLocalVal(value);
+    }, [value]);
+
+    return (
+      <div>
+        <label className="block text-[10px] font-bold text-slate-500 mb-1">{label}</label>
+        <input
+          type="text"
+          value={localVal || ''}
+          onChange={(e) => setLocalVal(e.target.value)}
+          onBlur={() => updateFaq(idx, field, localVal)}
+          className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+        />
+      </div>
+    );
+  };
+
+  const FaqTextarea = ({ label, value, idx, field }: { label: string; value: string; idx: number; field: string }) => {
+    const [localVal, setLocalVal] = useState(value);
+    useEffect(() => {
+      setLocalVal(value);
+    }, [value]);
+
+    return (
+      <div>
+        <label className="block text-[10px] font-bold text-slate-500 mb-1">{label}</label>
+        <textarea
+          rows={3}
+          value={localVal || ''}
+          onChange={(e) => setLocalVal(e.target.value)}
+          onBlur={() => updateFaq(idx, field, localVal)}
+          className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+        />
       </div>
     );
   };
@@ -442,30 +587,25 @@ export default function CMSPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Badge Superior</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Badge Superior"
                   value={data.pasajeroHero?.badge || ''}
-                  onChange={(e) => updateField('pasajeroHero', 'badge', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('pasajeroHero', 'badge', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Título Principal</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Título Principal"
                   value={data.pasajeroHero?.title || ''}
-                  onChange={(e) => updateField('pasajeroHero', 'title', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('pasajeroHero', 'title', val)}
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Subtítulo Descriptivo</label>
-                <textarea
+                <CMSTextarea
+                  label="Subtítulo Descriptivo"
                   rows={2}
                   value={data.pasajeroHero?.subtitle || ''}
-                  onChange={(e) => updateField('pasajeroHero', 'subtitle', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('pasajeroHero', 'subtitle', val)}
                 />
               </div>
               <div className="md:col-span-2">
@@ -508,39 +648,32 @@ export default function CMSPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Badge Conductor</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Badge Conductor"
                   value={data.conductorHero?.badge || ''}
-                  onChange={(e) => updateField('conductorHero', 'badge', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('conductorHero', 'badge', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Título Conductor</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Título Conductor"
                   value={data.conductorHero?.title || ''}
-                  onChange={(e) => updateField('conductorHero', 'title', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('conductorHero', 'title', val)}
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Subtítulo Conductor</label>
-                <textarea
+                <CMSTextarea
+                  label="Subtítulo Conductor"
                   rows={2}
                   value={data.conductorHero?.subtitle || ''}
-                  onChange={(e) => updateField('conductorHero', 'subtitle', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('conductorHero', 'subtitle', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Texto Llamado a Acción (CTA)</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Texto Llamado a Acción (CTA)"
                   value={data.conductorHero?.ctaText || ''}
-                  onChange={(e) => updateField('conductorHero', 'ctaText', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('conductorHero', 'ctaText', val)}
                 />
               </div>
               <div className="md:col-span-2">
@@ -617,50 +750,38 @@ export default function CMSPage() {
                       </div>
                     )}
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Nombre del Servicio</label>
-                        <input
-                          type="text"
-                          value={svc.name}
-                          onChange={(e) => updateService(idx, 'name', e.target.value)}
-                          className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Subtítulo Descriptivo (Texto Libre) <span className="text-red-500">*</span></label>
-                        <input
-                          type="text"
-                          value={svc.subTag || 'Servicio Corporativo'}
-                          onChange={(e) => updateService(idx, 'subTag', e.target.value)}
-                          placeholder="Ej: Servicio Corporativo"
-                          className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Tiempo de Espera (ETA)</label>
-                        <input
-                          type="text"
-                          value={svc.eta}
-                          onChange={(e) => updateService(idx, 'eta', e.target.value)}
-                          className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto del Botón CTA (Acción)</label>
-                        <input
-                          type="text"
-                          value={svc.ctaText || 'Cotizar'}
-                          onChange={(e) => updateService(idx, 'ctaText', e.target.value)}
-                          className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
-                        />
-                      </div>
+                      <ServiceInput
+                        label="Nombre del Servicio"
+                        value={svc.name}
+                        idx={idx}
+                        field="name"
+                      />
+                      <ServiceInput
+                        label="Subtítulo Descriptivo (Texto Libre)"
+                        value={svc.subTag || 'Servicio Corporativo'}
+                        idx={idx}
+                        field="subTag"
+                        placeholder="Ej: Servicio Corporativo"
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none font-bold"
+                      />
+                      <ServiceInput
+                        label="Tiempo de Espera (ETA)"
+                        value={svc.eta}
+                        idx={idx}
+                        field="eta"
+                      />
+                      <ServiceInput
+                        label="Texto del Botón CTA (Acción)"
+                        value={svc.ctaText || 'Cotizar'}
+                        idx={idx}
+                        field="ctaText"
+                      />
                       <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción de la Categoría</label>
-                        <input
-                          type="text"
+                        <ServiceInput
+                          label="Descripción de la Categoría"
                           value={svc.description}
-                          onChange={(e) => updateService(idx, 'description', e.target.value)}
-                          className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                          idx={idx}
+                          field="description"
                         />
                       </div>
                       <div className="sm:col-span-2 pt-1">
@@ -687,41 +808,34 @@ export default function CMSPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Título del Bloque</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Título del Bloque"
                   value={data.tiposTrabajo?.title || ''}
-                  onChange={(e) => updateField('tiposTrabajo', 'title', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('tiposTrabajo', 'title', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Subtítulo del Bloque</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Subtítulo del Bloque"
                   value={data.tiposTrabajo?.subtitle || ''}
-                  onChange={(e) => updateField('tiposTrabajo', 'subtitle', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('tiposTrabajo', 'subtitle', val)}
                 />
               </div>
               <div className="rounded-xl border border-slate-100 p-4 bg-slate-50/50 space-y-3">
                 <p className="text-xs font-bold text-tech-blue uppercase tracking-wider">Esquema 1: Comisión</p>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">Título de la Tarjeta</label>
-                  <input
-                    type="text"
+                  <CMSInput
+                    label="Título de la Tarjeta"
                     value={data.tiposTrabajo?.comisionTitulo || ''}
-                    onChange={(e) => updateField('tiposTrabajo', 'comisionTitulo', e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm bg-white focus:outline-none"
+                    onChange={(val) => updateField('tiposTrabajo', 'comisionTitulo', val)}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">Texto Descriptivo</label>
-                  <textarea
+                  <CMSTextarea
+                    label="Texto Descriptivo"
                     rows={3}
                     value={data.tiposTrabajo?.comisionTexto || ''}
-                    onChange={(e) => updateField('tiposTrabajo', 'comisionTexto', e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm bg-white focus:outline-none"
+                    onChange={(val) => updateField('tiposTrabajo', 'comisionTexto', val)}
                   />
                 </div>
               </div>
@@ -729,21 +843,18 @@ export default function CMSPage() {
               <div className="rounded-xl border border-slate-100 p-4 bg-slate-50/50 space-y-3">
                 <p className="text-xs font-bold text-tech-blue uppercase tracking-wider">Esquema 2: Membresía</p>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">Título de la Tarjeta</label>
-                  <input
-                    type="text"
+                  <CMSInput
+                    label="Título de la Tarjeta"
                     value={data.tiposTrabajo?.membresiaTitulo || ''}
-                    onChange={(e) => updateField('tiposTrabajo', 'membresiaTitulo', e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm bg-white focus:outline-none"
+                    onChange={(val) => updateField('tiposTrabajo', 'membresiaTitulo', val)}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">Texto Descriptivo</label>
-                  <textarea
+                  <CMSTextarea
+                    label="Texto Descriptivo"
                     rows={3}
                     value={data.tiposTrabajo?.membresiaTexto || ''}
-                    onChange={(e) => updateField('tiposTrabajo', 'membresiaTexto', e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm bg-white focus:outline-none"
+                    onChange={(val) => updateField('tiposTrabajo', 'membresiaTexto', val)}
                   />
                 </div>
               </div>
@@ -761,30 +872,24 @@ export default function CMSPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Título del Resumen</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Título del Resumen"
                   value={data.resumenRewards?.title || ''}
-                  onChange={(e) => updateField('resumenRewards', 'title', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('resumenRewards', 'title', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Incentivo (Badge text)</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Incentivo (Badge text)"
                   value={data.resumenRewards?.pointsText || ''}
-                  onChange={(e) => updateField('resumenRewards', 'pointsText', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('resumenRewards', 'pointsText', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Etiqueta Superior</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Etiqueta Superior"
                   value={data.resumenRewards?.badgeText || ''}
-                  onChange={(e) => updateField('resumenRewards', 'badgeText', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('resumenRewards', 'badgeText', val)}
                 />
               </div>
               <div className="md:col-span-2">
@@ -796,12 +901,11 @@ export default function CMSPage() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Subtítulo Descriptivo</label>
-                <textarea
+                <CMSTextarea
+                  label="Subtítulo Descriptivo"
                   rows={3}
                   value={data.resumenRewards?.subtitle || ''}
-                  onChange={(e) => updateField('resumenRewards', 'subtitle', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('resumenRewards', 'subtitle', val)}
                 />
               </div>
             </div>
@@ -839,24 +943,18 @@ export default function CMSPage() {
                   </button>
                   
                   <div className="grid grid-cols-1 gap-3 max-w-[90%]">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Pregunta Frecuente N° {idx + 1}</label>
-                      <input
-                        type="text"
-                        value={item.question}
-                        onChange={(e) => updateFaq(idx, 'question', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Respuesta / Explicación</label>
-                      <textarea
-                        rows={2}
-                        value={item.answer}
-                        onChange={(e) => updateFaq(idx, 'answer', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
-                      />
-                    </div>
+                    <FaqInput
+                      label={`Pregunta Frecuente N° ${idx + 1}`}
+                      value={item.question}
+                      idx={idx}
+                      field="question"
+                    />
+                    <FaqTextarea
+                      label="Respuesta / Explicación"
+                      value={item.answer}
+                      idx={idx}
+                      field="answer"
+                    />
                   </div>
                 </div>
               ))}
@@ -877,39 +975,31 @@ export default function CMSPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Página de Facebook</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Página de Facebook"
                   value={data.redesSociales?.facebook || ''}
-                  onChange={(e) => updateField('redesSociales', 'facebook', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('redesSociales', 'facebook', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Página de Instagram</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Página de Instagram"
                   value={data.redesSociales?.instagram || ''}
-                  onChange={(e) => updateField('redesSociales', 'instagram', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('redesSociales', 'instagram', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Canal de Facebook Messenger</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Canal de Facebook Messenger"
                   value={data.redesSociales?.messenger || ''}
-                  onChange={(e) => updateField('redesSociales', 'messenger', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('redesSociales', 'messenger', val)}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Enlace / API WhatsApp (Travis chat)</label>
-                <input
-                  type="text"
+                <CMSInput
+                  label="Enlace / API WhatsApp (Travis chat)"
                   value={data.redesSociales?.whatsapp || ''}
-                  onChange={(e) => updateField('redesSociales', 'whatsapp', e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                  onChange={(val) => updateField('redesSociales', 'whatsapp', val)}
                 />
               </div>
             </div>
@@ -941,29 +1031,29 @@ export default function CMSPage() {
 
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Quiénes Somos (Presentación de la Empresa)</label>
-                <textarea
+                <CMSTextarea
+                  label="Quiénes Somos (Presentación de la Empresa)"
                   rows={4}
                   value={data.legales?.quienesSomos || ''}
-                  onChange={(e) => updateField('legales', 'quienesSomos', e.target.value)}
+                  onChange={(val) => updateField('legales', 'quienesSomos', val)}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none font-mono"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Términos y Condiciones Generales</label>
-                <textarea
+                <CMSTextarea
+                  label="Términos y Condiciones Generales"
                   rows={5}
                   value={data.legales?.terminosCondiciones || ''}
-                  onChange={(e) => updateField('legales', 'terminosCondiciones', e.target.value)}
+                  onChange={(val) => updateField('legales', 'terminosCondiciones', val)}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none font-mono"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Políticas de Privacidad</label>
-                <textarea
+                <CMSTextarea
+                  label="Políticas de Privacidad"
                   rows={5}
                   value={data.legales?.politicasPrivacidad || ''}
-                  onChange={(e) => updateField('legales', 'politicasPrivacidad', e.target.value)}
+                  onChange={(val) => updateField('legales', 'politicasPrivacidad', val)}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none font-mono"
                 />
               </div>
