@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -13,7 +13,13 @@ const firebaseConfig = {
 
 // Initialize Firebase only if it hasn't been initialized yet
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+
+// Configurar Firestore para usar experimentalAutoDetectLongPolling
+// Esto previene errores de gRPC de red ("GRPC error has no .code") en entornos Serverless como Vercel
+const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
+
 const auth = getAuth(app);
 
 export { app, db, auth };
