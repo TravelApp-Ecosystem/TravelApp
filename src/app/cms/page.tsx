@@ -13,10 +13,8 @@ import { db } from '@/lib/firebase';
 const compressImage = (file: File, maxWidth = 800, maxHeight = 600, quality = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onload = (event) => {
       const img = document.createElement("img");
-      img.src = event.target?.result as string;
       img.onload = () => {
         const canvas = document.createElement("canvas");
         let width = img.width;
@@ -43,8 +41,10 @@ const compressImage = (file: File, maxWidth = 800, maxHeight = 600, quality = 0.
         resolve(compressedBase64);
       };
       img.onerror = (err) => reject(err);
+      img.src = event.target?.result as string;
     };
     reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
   });
 };
 
@@ -287,8 +287,12 @@ export default function CMSPage() {
     setSaving(true);
     setStatusMsg(null);
     try {
+      // Sanitizar el objeto para eliminar cualquier valor undefined, prototipo custom o propiedad no serializable
+      const sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => {
+        return value === undefined ? null : value;
+      }));
       const docRef = doc(db, 'cms', 'landing_travelcab');
-      await setDoc(docRef, data);
+      await setDoc(docRef, sanitizedData);
       setStatusMsg({ type: 'success', text: '¡Cambios guardados e implementados en tiempo real!' });
       setTimeout(() => setStatusMsg(null), 5000);
     } catch (err: any) {

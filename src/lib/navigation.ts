@@ -1,7 +1,8 @@
-import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2 } from 'lucide-react';
+import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio } from 'lucide-react';
 
 export const topNavTabs = [
   { id: 'global', label: 'Visión Global', href: '/' },
+  { id: 'messages', label: '💬 Mensajería', href: '/messages' },
   { id: 'crm', label: 'CRM Ventas', href: '/crm' },
   { id: 'travelcab', label: 'TravelCab', href: '/travelcab' },
   { id: 'experiences', label: 'Experiencias', href: '/experiences' },
@@ -13,6 +14,18 @@ export const topNavTabs = [
 ];
 
 export const getSidebarConfig = (pathname: string) => {
+  // Configuración para Mensajería
+  if (pathname.startsWith('/messages')) {
+    return {
+      title: 'Centro de Mensajería',
+      items: [
+        { id: 'conversations', label: 'Conversaciones', href: '/messages', icon: MessageSquare },
+        { id: 'automated', label: 'Mensajes Automáticos', href: '/messages#automated', icon: Zap },
+        { id: 'broadcast', label: 'Broadcast / Campañas', href: '/messages#broadcast', icon: Radio },
+      ]
+    };
+  }
+
   // Configuración para Auditoría Contable
   if (pathname.startsWith('/audit')) {
     return {
@@ -92,7 +105,7 @@ export const getSidebarConfig = (pathname: string) => {
         { id: 'leads', label: 'Tablero de Leads', href: '/crm', icon: LayoutDashboard },
         { id: 'agenda', label: 'Mi Agenda (Meet)', href: '/crm/agenda', icon: Calendar },
         { id: 'history', label: 'Historial de Ventas', href: '/crm/history', icon: History },
-        { id: 'travis', label: 'Configuración de Travis', href: '/crm/travis', icon: Bot },
+        { id: 'travis', label: 'Travis IA ✦', href: '/crm/travis', icon: Bot },
       ]
     };
   }
