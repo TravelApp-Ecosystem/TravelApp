@@ -205,39 +205,45 @@ export async function POST(req: NextRequest) {
     };
     await addDoc(collection(db, `conversations/${conversationId}/messages`), messageData);
 
-    // 3. Si el bot está activo y no hay operador, llamar a Travis
+    // 3. Si el bot está activo y no hay operador, llamar a Travis (protegido contra fallos)
     if (conversationStatus === 'bot') {
-      // Obtener historial reciente para dar contexto a Travis
-      const historySnap = await getDocs(
-        query(
-          collection(db, `conversations/${conversationId}/messages`),
-          orderBy('timestamp', 'desc'),
-          limit(10)
-        )
-      );
-      const history = historySnap.docs
-        .map(d => d.data())
-        .reverse()
-        .map(m => ({
-          role: m.sender.role === 'customer' ? 'user' : 'assistant',
-          content: m.content,
-        }));
+      try {
+        // Obtener historial reciente para dar contexto a Travis
+        const historySnap = await getDocs(
+          query(
+            collection(db, `conversations/${conversationId}/messages`),
+            orderBy('timestamp', 'desc'),
+            limit(10)
+          )
+        );
+        const history = historySnap.docs
+          .map(d => d.data())
+          .reverse()
+          .map(m => ({
+            role: m.sender.role === 'customer' ? 'user' : 'assistant',
+            content: m.content,
+          }));
 
-      const travisReply = await callTravis(userMessage, history, businessUnit);
-      
-      if (travisReply) {
-        // Guardar respuesta de Travis en Firestore
-        await addDoc(collection(db, `conversations/${conversationId}/messages`), {
-          conversationId,
-          sender: { id: 'travis', name: 'Travis', role: 'travis' },
-          content: travisReply,
-          timestamp: Date.now() + 1,
-          type: 'text',
-          channel,
-        });
+        const travisReply = await callTravis(userMessage, history, businessUnit);
+        
+        if (travisReply) {
+          // Guardar respuesta de Travis en Firestore
+          await addDoc(collection(db, `conversations/${conversationId}/messages`), {
+            conversationId,
+            sender: { id: 'travis', name: 'Travis', role: 'travis' },
+            content: travisReply,
+            timestamp: Date.now() + 1,
+            type: 'text',
+            channel,
+          });
 
-        // Enviar via ManyChat
-        await sendManyChatReply(subscriberId, travisReply);
+          // Enviar via ManyChat
+          await sendManyChatReply(subscriberId, travisReply);
+        }
+      } catch (travisError) {
+        console.error('[ManyChat Webhook] Error al llamar a Travis:', travisError);
+        // No arrojamos el error hacia afuera para evitar tirar abajo el webhook de Zapier.
+        // De esta forma el mensaje del usuario igual queda registrado en el CRM.
       }
     }
 
