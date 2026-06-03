@@ -9,7 +9,8 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { collection, addDoc, query, where, getDocs, doc, updateDoc, orderBy, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Conversation, Message, MessageChannel, ConversationStatus } from '@/types/messaging';
 
 // ----- Helpers ----------------------------------------------------------------
@@ -120,12 +121,14 @@ export async function POST(req: NextRequest) {
     const businessUnit = detectBusinessUnit(userMessage);
 
     // 1. Buscar conversación existente para este suscriptor de ManyChat
-    const convsRef = adminDb.collection('conversations');
-    const existingSnap = await convsRef
-      .where('manyChatSubscriberId', '==', subscriberId)
-      .where('status', '!=', 'closed')
-      .limit(1)
-      .get();
+    const convsRef = collection(db, 'conversations');
+    const existingQuery = query(
+      convsRef,
+      where('manyChatSubscriberId', '==', subscriberId),
+      where('status', '!=', 'closed'),
+      limit(1)
+    );
+    const existingSnap = await getDocs(existingQuery);
 
     let conversationId: string;
     let conversationStatus: ConversationStatus;
@@ -138,7 +141,7 @@ export async function POST(req: NextRequest) {
       conversationStatus = existingDoc.data().status as ConversationStatus;
       
       // Actualizar lastMessage y timestamp
-      await convsRef.doc(conversationId).update({
+      await updateDoc(doc(db, 'conversations', conversationId), {
         lastMessage: userMessage.substring(0, 100),
         lastMessageAt: Date.now(),
         unreadCount: (existingDoc.data().unreadCount || 0) + 1,
@@ -167,14 +170,15 @@ export async function POST(req: NextRequest) {
         },
         createdAt: Date.now(),
       };
-      const newDoc = await convsRef.add(newConversation);
+      const newDoc = await addDoc(convsRef, newConversation);
       conversationId = newDoc.id;
 
       // También crear/actualizar lead en CRM
-      const leadsRef = adminDb.collection('leads');
-      const existingLeadSnap = await leadsRef.where('phone', '==', phone || '').limit(1).get();
+      const leadsRef = collection(db, 'leads');
+      const existingLeadQuery = query(leadsRef, where('phone', '==', phone || ''), limit(1));
+      const existingLeadSnap = await getDocs(existingLeadQuery);
       if (existingLeadSnap.empty && (phone || email)) {
-        await leadsRef.add({
+        await addDoc(leadsRef, {
           customerName,
           phone: phone || '',
           email: email || '',
@@ -199,17 +203,18 @@ export async function POST(req: NextRequest) {
       type: 'text',
       channel,
     };
-    await adminDb.collection(`conversations/${conversationId}/messages`).add(messageData);
+    await addDoc(collection(db, `conversations/${conversationId}/messages`), messageData);
 
     // 3. Si el bot está activo y no hay operador, llamar a Travis
     if (conversationStatus === 'bot') {
       // Obtener historial reciente para dar contexto a Travis
-      const historySnap = await adminDb
-        .collection(`conversations/${conversationId}/messages`)
-        .orderBy('timestamp', 'desc')
-        .limit(10)
-        .get();
-
+      const historySnap = await getDocs(
+        query(
+          collection(db, `conversations/${conversationId}/messages`),
+          orderBy('timestamp', 'desc'),
+          limit(10)
+        )
+      );
       const history = historySnap.docs
         .map(d => d.data())
         .reverse()
@@ -222,7 +227,7 @@ export async function POST(req: NextRequest) {
       
       if (travisReply) {
         // Guardar respuesta de Travis en Firestore
-        await adminDb.collection(`conversations/${conversationId}/messages`).add({
+        await addDoc(collection(db, `conversations/${conversationId}/messages`), {
           conversationId,
           sender: { id: 'travis', name: 'Travis', role: 'travis' },
           content: travisReply,

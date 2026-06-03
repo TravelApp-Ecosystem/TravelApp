@@ -14,10 +14,12 @@ const firebaseConfig = {
 // Initialize Firebase only if it hasn't been initialized yet
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Configurar Firestore para usar experimentalAutoDetectLongPolling
-// Esto previene errores de gRPC de red ("GRPC error has no .code") en entornos Serverless como Vercel
+// REST / HTTP Config:
+// Forzamos al SDK a usar conexiones puras HTTP en lugar de gRPC (WebSockets de larga duración / fetch)
+// Esto funciona perfectamente en Vercel Serverless sin necesitar claves de cuentas de servicio.
 const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true, // Fuerza HTTP Long Polling en lugar de gRPC WebSockets
+  useFetchStreams: false // Deshabilita los streams HTTP que causan timeouts en Vercel
 });
 
 const auth = getAuth(app);
