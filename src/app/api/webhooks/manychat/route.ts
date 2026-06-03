@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
           id: subscriberId,
           name: customerName,
           role: 'customer',
-          phone: phone || undefined,
+          phone: phone || '',
         }],
         status: 'bot',
         lastMessage: userMessage.substring(0, 100),
