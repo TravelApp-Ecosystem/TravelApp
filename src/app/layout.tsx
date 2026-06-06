@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Quicksand } from "next/font/google";
 import Script from "next/script";
+import { headers } from "next/headers";
 import "./globals.css";
 import { MainLayout } from "@/components/layout/MainLayout";
 
@@ -18,18 +19,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const isDashboard = host.includes("admin.") || host.includes("localhost") || host.includes("127.0.0.1");
+
   return (
     <html
       lang="es"
       className={`${quicksand.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <MainLayout>{children}</MainLayout>
+        <MainLayout isDashboard={isDashboard}>{children}</MainLayout>
 
         {/*
           ──────────────────────────────────────────────

@@ -12,9 +12,15 @@ import { AuthProvider } from "@/contexts/AuthContext";
  */
 const SHELL_FREE_ROUTES = ["/login"];
 
-function AppShell({ children }: { children: React.ReactNode }) {
+function AppShell({ 
+  children, 
+  isDashboard 
+}: { 
+  children: React.ReactNode; 
+  isDashboard: boolean;
+}) {
   const pathname = usePathname();
-  const [isLandingHost, setIsLandingHost] = React.useState(false);
+  const [isLandingHost, setIsLandingHost] = React.useState(!isDashboard);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -51,10 +57,16 @@ function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const MainLayout = ({ children }: { children: React.ReactNode }) => {
+export const MainLayout = ({ 
+  children, 
+  isDashboard = true 
+}: { 
+  children: React.ReactNode; 
+  isDashboard?: boolean;
+}) => {
   return (
     <AuthProvider>
-      <AppShell>{children}</AppShell>
+      <AppShell isDashboard={isDashboard}>{children}</AppShell>
     </AuthProvider>
   );
 };
