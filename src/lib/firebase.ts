@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { initializeFirestore, getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,9 +20,9 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 // Esto funciona perfectamente en Vercel Serverless sin necesitar claves de cuentas de servicio.
 const db = initializeFirestore(app, {
   experimentalForceLongPolling: true, // Fuerza HTTP Long Polling en lugar de gRPC WebSockets
-  useFetchStreams: false // Deshabilita los streams HTTP que causan timeouts en Vercel
 });
 
 const auth = getAuth(app);
+const storage = getStorage(app);
 
-export { app, db, auth };
+export { app, db, auth, storage };

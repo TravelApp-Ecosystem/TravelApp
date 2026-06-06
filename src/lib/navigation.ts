@@ -46,6 +46,7 @@ export const getSidebarConfig = (pathname: string) => {
       items: [
         { id: 'partners', label: 'Lista de Socios', href: '/hr', icon: UserCheck },
         { id: 'new-partner', label: 'Nuevo Conductor', href: '/hr/new-partner', icon: UserPlus },
+        { id: 'applications', label: 'Postulaciones', href: '/hr#postulaciones', icon: FileText },
       ]
     };
   }

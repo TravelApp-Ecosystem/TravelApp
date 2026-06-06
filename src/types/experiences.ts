@@ -1,12 +1,22 @@
 export type AvailabilityStatus = 'Disponible' | 'Cupos Limitados' | 'Agotado';
+export type TripType = 'Individual' | 'Grupal';
 
 export interface Tour {
-  id: string; // Firebase doc ID
+  id: string; // Código de viaje, ej. EXP-001
   title: string;
-  location: string;
+  location: string; // Destino, ej. Mendoza
   price: number;
-  description: string;
+  currency: 'ARS' | 'USD';
+  priceRewards: number; // Precio miembro Rewards
+  pointsEarned: number; // Puntos que suma
+  tripType: TripType; // Individual o Grupal
+  transportation: string; // Transporte, ej. Bus, Avión
+  departureDate: string; // Fecha de salida, ej. YYYY-MM-DD
+  departureOrigin: string; // Origen de salida, ej. Tucumán
+  services: string[]; // Servicios incluidos
   imageUrl: string;
+  description: string;
+  observations: string; // Observaciones generales
   availability: AvailabilityStatus;
 }
 
@@ -18,3 +28,4 @@ export interface Reservation {
   status: 'Confirmada' | 'Pendiente' | 'Cancelada';
   timestamp: number;
 }
+

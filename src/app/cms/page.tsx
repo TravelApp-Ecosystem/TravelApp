@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   FileText, Save, Image, Link as LinkIcon, Shield, Sparkles, 
   Trash2, Plus, ArrowRight, Eye, CheckCircle2, AlertCircle, RefreshCw,
-  Upload, X, HelpCircle
+  Upload, X, HelpCircle, Users
 } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -250,9 +250,109 @@ const DEFAULT_CMS_DATA = {
   }
 };
 
-type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales';
+const DEFAULT_EXPERIENCE_CMS_DATA = {
+  header: {
+    logo: "/assets/travelapp_logo.svg",
+    brand: "TravelApp",
+    product: "Experiences",
+    ctaText: "Reservar Ahora",
+    ctaUrl: "https://wa.me/5493814188106?text=Hola!%20Quiero%20saber%20más%20sobre%20TravelApp%20Experiences.",
+    loginUrl: "/login"
+  },
+  heroSlides: [
+    {
+      title: "Viví Argentina de otra manera",
+      subtitle: "Experiencias únicas en el NOA, Cuyo y la Patagonia",
+      text: "Recorridos exclusivos y curados con guías certificados locales.",
+      bgImage: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1920&q=80",
+      ctaText: "Descubrir Catálogo",
+      ctaUrl: "#catalog"
+    }
+  ],
+  carouselOffers: [
+    {
+      imageUrl: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=600&q=80",
+      title: "Mendoza Wine Tasting VIP",
+      link: "#catalog"
+    },
+    {
+      imageUrl: "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=600&q=80",
+      title: "Aventura en Jujuy 4x4",
+      link: "#catalog"
+    }
+  ],
+  servicios: [
+    {
+      id: "adventure",
+      title: "Aventura & Naturaleza",
+      summary: "Trekking, senderismo y experiencias en el entorno natural más espectacular de Argentina.",
+      imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=600&q=80",
+      modalDetail: "Detalles del servicio de aventura: Contamos con vehículos 4x4 equipados, guías profesionales de montaña inscritos en Parques Nacionales y seguros completos para cada pasajero."
+    },
+    {
+      id: "food",
+      title: "Cultura & Gastronomía",
+      summary: "Tours de bodegas, degustaciones exclusivas, y cenas privadas con chefs locales destacados.",
+      imageUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=600&q=80",
+      modalDetail: "Disfruta de Mendoza y el norte con los mejores maridajes. Ofrecemos reservas directas en restaurantes de bodegas con estrella Michelin y catas dirigidas por sommeliers certificados."
+    }
+  ],
+  rewardsBlock: {
+    title: "Viajá con TravelApp Rewards",
+    subtitle: "Acumulá puntos en cada viaje de experiencias y canjealos por traslados gratis con TravelCab o descuentos en tus próximos destinos.",
+    pointsText: "Obtené tarifas reducidas en todas nuestras experiencias al registrarte.",
+    badgeText: "ECOSISTEMA REWARDS",
+    imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80"
+  },
+  redesSociales: {
+    facebook: "https://facebook.com/travelapp.ar",
+    instagram: "https://instagram.com/travelapp.ar",
+    messenger: "https://m.me/travelapp.ar",
+    whatsapp: "https://wa.me/5493814188106"
+  },
+  footer: {
+    brandText: "TravelApp Experiences",
+    copyrightText: "© 2026 TravelApp Experiences. Una marca de TravelApp s.a.s."
+  }
+};
+
+const DEFAULT_ECOSISTEMA_CMS_DATA = {
+  hero: {
+    mediaType: "image",
+    mediaUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80",
+    overlayOpacity: 72,
+    badge: "✦ EL ECOSISTEMA DE VIAJES MÁS COMPLETO DE ARGENTINA",
+    title: "Un Ecosistema Diseñado\npara el Viajero Moderno",
+    subtitle: "Experiencias auténticas, movilidad segura y recompensas que crecen con cada aventura. Todo en un solo lugar.",
+    ctaText: "Descubrí el Ecosistema",
+    whatsappUrl: "https://wa.me/5493814188106",
+    whatsappText: "Hablá con Nosotros",
+    playStoreUrl: "",
+    appStoreUrl: "",
+  },
+  unidades: [
+    { id: "experience", nombre: "TravelApp Experience", descripcionBreve: "Descubrí Argentina como nunca la viviste. Excursiones curadas, guías certificados y destinos únicos.", descripcionExtendida: "TravelApp Experience es nuestra unidad de turismo premium. Diseñamos circuitos exclusivos, experiencias gastronómicas, aventura y cultura.", imagenUrl: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=800&q=80" },
+    { id: "rewards", nombre: "TravelApp Rewards", descripcionBreve: "Cada viaje suma puntos. Canjéalos por traslados gratuitos, descuentos en experiencias o beneficios exclusivos.", descripcionExtendida: "TravelApp Rewards es el corazón del ecosistema. Un programa de fidelización cruzado que conecta todas las unidades.", imagenUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80" },
+    { id: "travelcab", nombre: "TravelCab", descripcionBreve: "La movilidad urbana reinventada. Choferes certificados, tarifas transparentes y monitoreo satelital.", descripcionExtendida: "TravelCab es nuestra unidad de transporte premium. Flota certificada, choferes verificados y modelo híbrido de comisión o membresía.", imagenUrl: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80" },
+  ],
+  quienesSomos: { badge: "Nuestra Historia", titulo: "Construyendo el Futuro del Turismo Argentino", mision: "Conectar viajeros con experiencias auténticas, movilidad confiable y recompensas que hacen que cada viaje valga más.", vision: "Ser el ecosistema de viajes de referencia en Argentina.", valores: "Transparencia, excelencia en el servicio, innovación constante e impacto positivo en las comunidades donde operamos.", imagenUrl: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80" },
+  stats: [
+    { valor: "10.000+", label: "Viajes Realizados", icono: "Car" },
+    { valor: "500+", label: "Experiencias Únicas", icono: "Compass" },
+    { valor: "25.000+", label: "Miembros Rewards", icono: "Users" },
+    { valor: "12", label: "Ciudades Activas", icono: "MapPin" },
+  ],
+  apps: { playStoreUrl: "", appStoreUrl: "", titulo: "Llevá el Ecosistema en tu Bolsillo", subtitulo: "Descargá la app de TravelApp y gestioná tus viajes, puntos y experiencias desde cualquier lugar." },
+  trabajaNosotros: { titulo: "Sumate al Equipo TravelApp", subtitulo: "Buscamos personas apasionadas por los viajes, la tecnología y el servicio de excelencia.", puestos: ["Conductor Socio TravelCab", "Guía de Experiencias", "Atención al Cliente", "Desarrollo de Software", "Marketing Digital", "Operaciones", "Ventas B2B", "Otro"] },
+  legales: { razonSocial: "TravelApp s.a.s.", cuit: "30-XXXXXXXX-X", domicilio: "San Miguel de Tucumán, Argentina", terminos: "Al utilizar nuestros servicios, el usuario acepta los términos y condiciones vigentes de TravelApp s.a.s.", privacidad: "TravelApp s.a.s. garantiza la protección de datos personales de conformidad con la Ley 25.326." },
+  redesSociales: { facebook: "https://facebook.com/travelapp.ar", instagram: "https://instagram.com/travelapp.ar", whatsapp: "https://wa.me/5493814188106", linkedin: "" },
+  showStats: false,
+};
+
+type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales';
 
 export default function CMSPage() {
+  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema'>('travelcab');
   const [activeTab, setActiveTab] = useState<ActiveTab>('hero');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -262,36 +362,58 @@ export default function CMSPage() {
   // Cargar datos actuales de Firestore
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
       try {
-        const docRef = doc(db, 'cms', 'landing_travelcab');
+        const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : 'landing_ecosistema';
+        const docRef = doc(db, 'cms', docId);
         const docSnap = await getDoc(docRef);
+        const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : DEFAULT_ECOSISTEMA_CMS_DATA;
         if (docSnap.exists()) {
+          const loadedData = docSnap.data();
+          // Normalizar unidades para asegurar compatibilidad de campos imagenUrl y imageUrl
+          if (loadedData.unidades) {
+            loadedData.unidades = loadedData.unidades.map((u: any) => ({
+              ...u,
+              imagenUrl: u.imagenUrl || u.imageUrl,
+              imageUrl: u.imageUrl || u.imagenUrl
+            }));
+          }
           setData({
-            ...DEFAULT_CMS_DATA,
-            ...docSnap.data()
+            ...defaultData,
+            ...loadedData
           });
         } else {
-          setData(DEFAULT_CMS_DATA);
+          setData(defaultData);
         }
       } catch (err) {
         console.error("Error al leer CMS de Firestore:", err);
-        setData(DEFAULT_CMS_DATA);
+        const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : DEFAULT_ECOSISTEMA_CMS_DATA;
+        setData(defaultData);
       } finally {
         setLoading(false);
       }
     }
     loadData();
-  }, []);
+    // Reset active tab depending on the landing to prevent visual inconsistencies
+    if (selectedLanding === 'experience') {
+      setActiveTab('slider');
+    } else if (selectedLanding === 'ecosistema') {
+      setActiveTab('eco_hero');
+    } else {
+      setActiveTab('hero');
+    }
+  }, [selectedLanding]);
 
   const handleSave = async () => {
     setSaving(true);
     setStatusMsg(null);
     try {
       // Sanitizar el objeto para eliminar cualquier valor undefined, prototipo custom o propiedad no serializable
+      const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : 'landing_ecosistema';
       const sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => {
         return value === undefined ? null : value;
       }));
-      const docRef = doc(db, 'cms', 'landing_travelcab');
+      const docRef = doc(db, 'cms', docId);
       await setDoc(docRef, sanitizedData);
       setStatusMsg({ type: 'success', text: '¡Cambios guardados e implementados en tiempo real!' });
       setTimeout(() => setStatusMsg(null), 5000);
@@ -314,9 +436,19 @@ export default function CMSPage() {
   };
 
   const updateService = (idx: number, field: string, value: any) => {
-    const updated = [...data.servicios];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setData((prev: any) => ({ ...prev, servicios: updated }));
+    if (selectedLanding === 'ecosistema') {
+      const updated = [...data.unidades];
+      if (field === 'imageUrl' || field === 'imagenUrl') {
+        updated[idx] = { ...updated[idx], imagenUrl: value, imageUrl: value };
+      } else {
+        updated[idx] = { ...updated[idx], [field]: value };
+      }
+      setData((prev: any) => ({ ...prev, unidades: updated }));
+    } else {
+      const updated = [...data.servicios];
+      updated[idx] = { ...updated[idx], [field]: value };
+      setData((prev: any) => ({ ...prev, servicios: updated }));
+    }
   };
 
   const deleteService = (idx: number) => {
@@ -325,19 +457,33 @@ export default function CMSPage() {
   };
 
   const addService = () => {
-    const newSvc = {
-      id: `service_${Date.now()}`,
-      name: "Nueva Categoría",
-      description: "Descripción de la categoría de transporte y comodidades del sedán.",
-      subTag: "Servicio Premium",
-      ctaText: "Cotizar Ahora",
-      eta: "4 - 7 min",
-      imageUrl: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80"
-    };
-    setData((prev: any) => ({
-      ...prev,
-      servicios: [...prev.servicios, newSvc]
-    }));
+    if (selectedLanding === 'travelcab') {
+      const newSvc = {
+        id: `service_${Date.now()}`,
+        name: "Nueva Categoría",
+        description: "Descripción de la categoría de transporte y comodidades del sedán.",
+        subTag: "Servicio Premium",
+        ctaText: "Cotizar Ahora",
+        eta: "4 - 7 min",
+        imageUrl: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80"
+      };
+      setData((prev: any) => ({
+        ...prev,
+        servicios: [...prev.servicios, newSvc]
+      }));
+    } else {
+      const newSvc = {
+        id: `service_${Date.now()}`,
+        title: "Nuevo Servicio",
+        summary: "Resumen corto del servicio.",
+        imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=600&q=80",
+        modalDetail: "Detalles completos de la experiencia para mostrar en el popup modal."
+      };
+      setData((prev: any) => ({
+        ...prev,
+        servicios: [...prev.servicios, newSvc]
+      }));
+    }
   };
 
   // Funciones específicas para FAQ
@@ -376,6 +522,147 @@ export default function CMSPage() {
         items: [...prev.faq.items, newFaq]
       }
     }));
+  };
+
+  // Helper functions for Experience heroSlides
+  const updateHeroSlide = (idx: number, field: string, value: any) => {
+    const updated = [...data.heroSlides];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setData((prev: any) => ({ ...prev, heroSlides: updated }));
+  };
+
+  const deleteHeroSlide = (idx: number) => {
+    const updated = data.heroSlides.filter((_: any, i: number) => i !== idx);
+    setData((prev: any) => ({ ...prev, heroSlides: updated }));
+  };
+
+  const addHeroSlide = () => {
+    if ((data.heroSlides || []).length >= 10) {
+      alert('Límite de 10 diapositivas alcanzado');
+      return;
+    }
+    const newSlide = {
+      title: "Nueva Diapositiva",
+      subtitle: "Subtítulo de la diapositiva",
+      text: "Texto descriptivo de prueba.",
+      bgImage: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1920&q=80",
+      ctaText: "Ver Más",
+      ctaUrl: "#catalog"
+    };
+    setData((prev: any) => ({
+      ...prev,
+      heroSlides: [...(prev.heroSlides || []), newSlide]
+    }));
+  };
+
+  // Helper functions for Experience carouselOffers
+  const updateCarouselOffer = (idx: number, field: string, value: any) => {
+    const updated = [...data.carouselOffers];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setData((prev: any) => ({ ...prev, carouselOffers: updated }));
+  };
+
+  const deleteCarouselOffer = (idx: number) => {
+    const updated = data.carouselOffers.filter((_: any, i: number) => i !== idx);
+    setData((prev: any) => ({ ...prev, carouselOffers: updated }));
+  };
+
+  const addCarouselOffer = () => {
+    if ((data.carouselOffers || []).length >= 6) {
+      alert('Límite de 6 ofertas alcanzado');
+      return;
+    }
+    const newOffer = {
+      imageUrl: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=600&q=80",
+      title: "Nueva Oferta de Viaje",
+      link: "#catalog"
+    };
+    setData((prev: any) => ({
+      ...prev,
+      carouselOffers: [...(prev.carouselOffers || []), newOffer]
+    }));
+  };
+
+  const SlideImageUploader = ({ idx, value }: { idx: number; value: string }) => {
+    const [localVal, setLocalVal] = useState(value);
+    useEffect(() => {
+      setLocalVal(value);
+    }, [value]);
+
+    return (
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={localVal || ''}
+          onChange={(e) => setLocalVal(e.target.value)}
+          onBlur={() => updateHeroSlide(idx, 'bgImage', localVal)}
+          placeholder="Ingresa la URL de la foto..."
+          className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+        />
+        <label className="flex cursor-pointer items-center justify-center gap-1 text-[11px] font-bold text-tech-blue border border-tech-blue bg-white hover:bg-tech-blue/5 px-3 py-1 rounded-lg transition-all shadow-sm">
+          <Upload className="h-3.5 w-3.5" />
+          Subir
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                try {
+                  const compressed = await compressImage(file);
+                  updateHeroSlide(idx, 'bgImage', compressed);
+                  setLocalVal(compressed);
+                } catch (err) {
+                  console.error(err);
+                }
+              }
+            }}
+          />
+        </label>
+      </div>
+    );
+  };
+
+  const OfferImageUploader = ({ idx, value }: { idx: number; value: string }) => {
+    const [localVal, setLocalVal] = useState(value);
+    useEffect(() => {
+      setLocalVal(value);
+    }, [value]);
+
+    return (
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={localVal || ''}
+          onChange={(e) => setLocalVal(e.target.value)}
+          onBlur={() => updateCarouselOffer(idx, 'imageUrl', localVal)}
+          placeholder="Ingresa la URL de la foto..."
+          className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+        />
+        <label className="flex cursor-pointer items-center justify-center gap-1 text-[11px] font-bold text-tech-blue border border-tech-blue bg-white hover:bg-tech-blue/5 px-3 py-1 rounded-lg transition-all shadow-sm">
+          <Upload className="h-3.5 w-3.5" />
+          Subir
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                try {
+                  const compressed = await compressImage(file);
+                  updateCarouselOffer(idx, 'imageUrl', compressed);
+                  setLocalVal(compressed);
+                } catch (err) {
+                  console.error(err);
+                }
+              }
+            }}
+          />
+        </label>
+      </div>
+    );
   };
 
   // Componente de entrada reutilizable con opción de URL o Subida local (Base64)
@@ -595,7 +882,7 @@ export default function CMSPage() {
         <div>
           <h1 className="text-2xl font-bold text-tech-blue flex items-center gap-2">
             <FileText className="h-7 w-7 text-tech-blue" />
-            Editor CMS — TravelCab Landing
+            Editor CMS — {selectedLanding === 'travelcab' ? 'TravelCab Landing' : selectedLanding === 'experience' ? 'TravelApp Experience' : '🌐 Ecosistema TravelApp'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             Administra visualmente y en tiempo real el contenido de tu Landing Page sin modificar código.
@@ -604,7 +891,7 @@ export default function CMSPage() {
 
         <div className="flex items-center gap-3">
           <a
-            href="/landing/travelcab"
+            href={selectedLanding === 'travelcab' ? "/landing/travelcab" : selectedLanding === 'experience' ? "/landing/experience" : "/landing/ecosistema"}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition-all"
@@ -631,6 +918,46 @@ export default function CMSPage() {
         </div>
       </div>
 
+      {/* SELECTOR DE LANDING */}
+      <div className="mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">Seleccionar Landing a Editar</span>
+          <span className="text-sm font-bold text-slate-700">Elige cuál de las landing pages del ecosistema deseas modificar</span>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSelectedLanding('travelcab')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+              selectedLanding === 'travelcab' 
+                ? 'bg-tech-blue border-tech-blue text-white shadow-sm' 
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🚗 TravelCab
+          </button>
+          <button
+            onClick={() => setSelectedLanding('experience')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+              selectedLanding === 'experience' 
+                ? 'bg-tech-blue border-tech-blue text-white shadow-sm' 
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🌴 TravelApp Experience
+          </button>
+          <button
+            onClick={() => setSelectedLanding('ecosistema')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+              selectedLanding === 'ecosistema' 
+                ? 'bg-tech-blue border-tech-blue text-white shadow-sm' 
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🌐 Ecosistema TravelApp
+          </button>
+        </div>
+      </div>
+
       {/* MENSAJES DE ESTADO */}
       {statusMsg && (
         <div className={`mb-6 rounded-xl border p-4 flex items-start gap-3 shadow-sm animate-fadeIn ${
@@ -650,10 +977,15 @@ export default function CMSPage() {
 
       {/* PESTAÑAS DE EDICIÓN */}
       <div className="flex border-b border-slate-200 overflow-x-auto gap-2 bg-white px-4 pt-3 rounded-t-xl">
-        {(['hero', 'servicios', 'conductores', 'rewards', 'faq', 'legales'] as ActiveTab[]).map((tab) => (
+        {(selectedLanding === 'travelcab' 
+          ? ['hero', 'servicios', 'conductores', 'rewards', 'faq', 'legales'] 
+          : selectedLanding === 'experience'
+          ? ['slider', 'ofertas', 'servicios', 'rewards', 'social']
+          : ['eco_hero', 'eco_unidades', 'eco_quienes', 'eco_stats', 'eco_apps', 'eco_trabaja', 'eco_legales']
+        ).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => setActiveTab(tab as ActiveTab)}
             className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all whitespace-nowrap ${
               activeTab === tab 
                 ? 'border-tech-blue text-tech-blue bg-slate-50/50' 
@@ -661,11 +993,21 @@ export default function CMSPage() {
             }`}
           >
             {tab === 'hero' && '1. Heros y Portada'}
-            {tab === 'servicios' && '2. Servicios & Categorías'}
+            {tab === 'slider' && '1. Hero Slider (Max 10)'}
+            {tab === 'ofertas' && '2. Ofertas Carrusel (Max 6)'}
+            {tab === 'servicios' && (selectedLanding === 'travelcab' ? '2. Servicios & Categorías' : '3. Tarjetas Servicios')}
             {tab === 'conductores' && '3. Híbrido Conductor'}
-            {tab === 'rewards' && '4. Resumen Rewards'}
+            {tab === 'rewards' && (selectedLanding === 'travelcab' ? '4. Resumen Rewards' : '4. Bloque Rewards')}
             {tab === 'faq' && '5. FAQ (Preguntas Frecuentes)'}
             {tab === 'legales' && '6. Legales & Redes'}
+            {tab === 'social' && '5. Redes & Footer'}
+            {tab === 'eco_hero' && '1. Hero (Imagen/Video)'}
+            {tab === 'eco_unidades' && '2. Unidades de Negocio'}
+            {tab === 'eco_quienes' && '3. Quiénes Somos'}
+            {tab === 'eco_stats' && '4. Métricas'}
+            {tab === 'eco_apps' && '5. App Stores'}
+            {tab === 'eco_trabaja' && '6. Trabaja con Nosotros'}
+            {tab === 'eco_legales' && '7. Legal & Redes'}
           </button>
         ))}
       </div>
@@ -673,8 +1015,11 @@ export default function CMSPage() {
       {/* CUERPO DEL EDITOR */}
       <div className="bg-white border border-slate-200 border-t-0 p-6 rounded-b-xl shadow-sm space-y-6">
         
-        {/* PESTAÑA: HEROES */}
-        {activeTab === 'hero' && (
+        {/* ======================================================== */}
+        {/* EDITORES TRAVELCAB */}
+        {/* ======================================================== */}
+        
+        {selectedLanding === 'travelcab' && activeTab === 'hero' && (
           <div className="space-y-8">
             <div className="border-b border-slate-100 pb-4">
               <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-1.5">
@@ -701,7 +1046,7 @@ export default function CMSPage() {
               </div>
               <div className="md:col-span-2">
                 <CMSTextarea
-                  label="Subtítulo Descriptivo"
+                  label="Subtítulo / Bajada descriptiva"
                   rows={2}
                   value={data.pasajeroHero?.subtitle || ''}
                   onChange={(val) => updateField('pasajeroHero', 'subtitle', val)}
@@ -709,7 +1054,7 @@ export default function CMSPage() {
               </div>
               <div className="md:col-span-2">
                 <ImageUploaderInput 
-                  label="Imagen de Fondo Pasajeros" 
+                  label="Fondo de Imagen Principal" 
                   section="pasajeroHero" 
                   field="backgroundImage" 
                   value={data.pasajeroHero?.backgroundImage || ''} 
@@ -739,16 +1084,16 @@ export default function CMSPage() {
 
             <div className="border-b border-slate-100 pb-4 pt-4">
               <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-1.5">
-                <Sparkles className="h-5 w-5 text-vial-orange" />
+                <Users className="h-5 w-5 text-tech-blue" />
                 Hero de Portada: Vista Conductores (Socios)
               </h3>
-              <p className="text-xs text-slate-400 mt-1">Este bloque se muestra de forma dedicada cuando la página se filtra por conductor.</p>
+              <p className="text-xs text-slate-400 mt-1">Bloque que aparece cuando el usuario cambia a modo "Quiero Conducir".</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <CMSInput
-                  label="Badge Conductor"
+                  label="Badge Superior Conductor"
                   value={data.conductorHero?.badge || ''}
                   onChange={(val) => updateField('conductorHero', 'badge', val)}
                 />
@@ -770,14 +1115,14 @@ export default function CMSPage() {
               </div>
               <div>
                 <CMSInput
-                  label="Texto Llamado a Acción (CTA)"
+                  label="Texto del Botón de Registro"
                   value={data.conductorHero?.ctaText || ''}
                   onChange={(val) => updateField('conductorHero', 'ctaText', val)}
                 />
               </div>
               <div className="md:col-span-2">
                 <ImageUploaderInput 
-                  label="Imagen de Fondo Conductor" 
+                  label="Fondo de Imagen Conductor" 
                   section="conductorHero" 
                   field="backgroundImage" 
                   value={data.conductorHero?.backgroundImage || ''} 
@@ -807,15 +1152,12 @@ export default function CMSPage() {
           </div>
         )}
 
-        {/* PESTAÑA: SERVICIOS Y CATEGORÍAS */}
-        {activeTab === 'servicios' && (
+        {selectedLanding === 'travelcab' && activeTab === 'servicios' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Servicios y Categorías Activas</h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Administra las tarjetas de los distintos traslados. Modifica el subtítulo y el texto del botón CTA.
-                </p>
+                <h3 className="text-base font-extrabold text-slate-800">Categorías de Transporte (Servicios)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las categorías de vehículos, descripciones y ETAs de viaje.</p>
               </div>
               <button
                 onClick={addService}
@@ -825,9 +1167,9 @@ export default function CMSPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
-              {data.servicios?.map((svc: any, idx: number) => (
-                <div key={svc.id} className="rounded-xl border border-slate-200 p-5 bg-slate-50/50 shadow-sm relative group space-y-4">
+            <div className="space-y-4">
+              {data.servicios?.map((item: any, idx: number) => (
+                <div key={item.id} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 shadow-sm relative group space-y-3">
                   <button
                     onClick={() => deleteService(idx)}
                     className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
@@ -835,196 +1177,175 @@ export default function CMSPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
-
-                  <div className="flex flex-col sm:flex-row gap-4 items-start">
-                    {svc.imageUrl ? (
-                      <img 
-                        src={svc.imageUrl} 
-                        alt={svc.name}
-                        className="h-20 w-32 object-cover rounded-lg border border-slate-300 bg-slate-200 flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="h-20 w-32 rounded-lg border border-dashed border-slate-300 bg-slate-100 flex items-center justify-center text-slate-400 text-xs flex-shrink-0">
-                        Sin imagen
-                      </div>
-                    )}
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <ServiceInput
+                      label="Nombre Categoría"
+                      value={item.name}
+                      idx={idx}
+                      field="name"
+                    />
+                    <ServiceInput
+                      label="Subtítulo / Tag"
+                      value={item.subTag}
+                      idx={idx}
+                      field="subTag"
+                    />
+                    <ServiceInput
+                      label="ETA Estimado"
+                      value={item.eta}
+                      idx={idx}
+                      field="eta"
+                    />
+                    <div className="md:col-span-2">
                       <ServiceInput
-                        label="Nombre del Servicio"
-                        value={svc.name}
+                        label="Descripción Corta"
+                        value={item.description}
                         idx={idx}
-                        field="name"
+                        field="description"
                       />
-                      <ServiceInput
-                        label="Subtítulo Descriptivo (Texto Libre)"
-                        value={svc.subTag || 'Servicio Corporativo'}
+                    </div>
+                    <ServiceInput
+                      label="Texto Botón Llamado Acción"
+                      value={item.ctaText}
+                      idx={idx}
+                      field="ctaText"
+                    />
+                    <div className="md:col-span-3">
+                      <ServiceImageUploader
                         idx={idx}
-                        field="subTag"
-                        placeholder="Ej: Servicio Corporativo"
-                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none font-bold"
+                        value={item.imageUrl}
                       />
-                      <ServiceInput
-                        label="Tiempo de Espera (ETA)"
-                        value={svc.eta}
-                        idx={idx}
-                        field="eta"
-                      />
-                      <ServiceInput
-                        label="Texto del Botón CTA (Acción)"
-                        value={svc.ctaText || 'Cotizar'}
-                        idx={idx}
-                        field="ctaText"
-                      />
-                      <div className="sm:col-span-2">
-                        <ServiceInput
-                          label="Descripción de la Categoría"
-                          value={svc.description}
-                          idx={idx}
-                          field="description"
-                        />
-                      </div>
-                      <div className="sm:col-span-2 pt-1">
-                        <ServiceImageUploader idx={idx} value={svc.imageUrl || ''} />
-                      </div>
                     </div>
                   </div>
                 </div>
               ))}
-              {data.servicios?.length === 0 && (
-                <p className="text-slate-400 text-center py-8 text-sm">No hay servicios cargados. Agrega uno con el botón superior.</p>
-              )}
             </div>
           </div>
         )}
 
-        {/* PESTAÑA: CONDUCTORES - MODELO HÍBRIDO */}
-        {activeTab === 'conductores' && (
+        {selectedLanding === 'travelcab' && activeTab === 'conductores' && (
           <div className="space-y-6">
             <div className="border-b border-slate-100 pb-4">
-              <h3 className="text-base font-extrabold text-slate-800">Sección: Modelo Híbrido de Trabajo</h3>
-              <p className="text-xs text-slate-400 mt-1">Define los textos que explican el funcionamiento por Membresía Fija o Comisión tradicional.</p>
+              <h3 className="text-base font-extrabold text-slate-800">Sección Esquemas de Trabajo de Socios</h3>
+              <p className="text-xs text-slate-400 mt-1">Configura los detalles sobre Comisión y Membresía del portal de conductores.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <CMSInput
-                  label="Título del Bloque"
+                  label="Título Sección"
                   value={data.tiposTrabajo?.title || ''}
                   onChange={(val) => updateField('tiposTrabajo', 'title', val)}
                 />
               </div>
               <div>
                 <CMSInput
-                  label="Subtítulo del Bloque"
+                  label="Subtítulo Sección"
                   value={data.tiposTrabajo?.subtitle || ''}
                   onChange={(val) => updateField('tiposTrabajo', 'subtitle', val)}
                 />
               </div>
-              <div className="rounded-xl border border-slate-100 p-4 bg-slate-50/50 space-y-3">
-                <p className="text-xs font-bold text-tech-blue uppercase tracking-wider">Esquema 1: Comisión</p>
-                <div>
-                  <CMSInput
-                    label="Título de la Tarjeta"
-                    value={data.tiposTrabajo?.comisionTitulo || ''}
-                    onChange={(val) => updateField('tiposTrabajo', 'comisionTitulo', val)}
-                  />
-                </div>
-                <div>
-                  <CMSTextarea
-                    label="Texto Descriptivo"
-                    rows={3}
-                    value={data.tiposTrabajo?.comisionTexto || ''}
-                    onChange={(val) => updateField('tiposTrabajo', 'comisionTexto', val)}
-                  />
-                </div>
+              <div className="border-t border-slate-100 pt-4 md:col-span-2">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Esquema Comisión</h4>
+              </div>
+              <div>
+                <CMSInput
+                  label="Título Comisión"
+                  value={data.tiposTrabajo?.comisionTitulo || ''}
+                  onChange={(val) => updateField('tiposTrabajo', 'comisionTitulo', val)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <CMSTextarea
+                  label="Detalles de Comisión"
+                  value={data.tiposTrabajo?.comisionTexto || ''}
+                  onChange={(val) => updateField('tiposTrabajo', 'comisionTexto', val)}
+                />
               </div>
 
-              <div className="rounded-xl border border-slate-100 p-4 bg-slate-50/50 space-y-3">
-                <p className="text-xs font-bold text-tech-blue uppercase tracking-wider">Esquema 2: Membresía</p>
-                <div>
-                  <CMSInput
-                    label="Título de la Tarjeta"
-                    value={data.tiposTrabajo?.membresiaTitulo || ''}
-                    onChange={(val) => updateField('tiposTrabajo', 'membresiaTitulo', val)}
-                  />
-                </div>
-                <div>
-                  <CMSTextarea
-                    label="Texto Descriptivo"
-                    rows={3}
-                    value={data.tiposTrabajo?.membresiaTexto || ''}
-                    onChange={(val) => updateField('tiposTrabajo', 'membresiaTexto', val)}
-                  />
-                </div>
+              <div className="border-t border-slate-100 pt-4 md:col-span-2">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Esquema Membresía Fija</h4>
+              </div>
+              <div>
+                <CMSInput
+                  label="Título Membresía"
+                  value={data.tiposTrabajo?.membresiaTitulo || ''}
+                  onChange={(val) => updateField('tiposTrabajo', 'membresiaTitulo', val)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <CMSTextarea
+                  label="Detalles de Membresía"
+                  value={data.tiposTrabajo?.membresiaTexto || ''}
+                  onChange={(val) => updateField('tiposTrabajo', 'membresiaTexto', val)}
+                />
               </div>
             </div>
           </div>
         )}
 
-        {/* PESTAÑA: REWARDS - PROGRAMA DE LEALTAD */}
-        {activeTab === 'rewards' && (
+        {selectedLanding === 'travelcab' && activeTab === 'rewards' && (
           <div className="space-y-6">
             <div className="border-b border-slate-100 pb-4">
-              <h3 className="text-base font-extrabold text-slate-800">Sección: Resumen de Programa Rewards</h3>
-              <p className="text-xs text-slate-400 mt-1">Configura el texto e imágenes del bloque dinámico explicativo de fidelización y puntos.</p>
+              <h3 className="text-base font-extrabold text-slate-800">Bloque Informativo Rewards</h3>
+              <p className="text-xs text-slate-400 mt-1">Configura la sección que promociona el sistema de acumulación de puntos de fidelidad.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <CMSInput
-                  label="Título del Resumen"
+                  label="Título Informativo"
                   value={data.resumenRewards?.title || ''}
                   onChange={(val) => updateField('resumenRewards', 'title', val)}
                 />
               </div>
               <div>
                 <CMSInput
-                  label="Incentivo (Badge text)"
-                  value={data.resumenRewards?.pointsText || ''}
-                  onChange={(val) => updateField('resumenRewards', 'pointsText', val)}
-                />
-              </div>
-              <div>
-                <CMSInput
-                  label="Etiqueta Superior"
+                  label="Badge del Programa"
                   value={data.resumenRewards?.badgeText || ''}
                   onChange={(val) => updateField('resumenRewards', 'badgeText', val)}
                 />
               </div>
-              <div className="md:col-span-2">
-                <ImageUploaderInput 
-                  label="Imagen del Bloque de Rewards" 
-                  section="resumenRewards" 
-                  field="imageUrl" 
-                  value={data.resumenRewards?.imageUrl || ''} 
+              <div>
+                <CMSInput
+                  label="Texto Regalo / Puntos Bienvenida"
+                  value={data.resumenRewards?.pointsText || ''}
+                  onChange={(val) => updateField('resumenRewards', 'pointsText', val)}
                 />
               </div>
               <div className="md:col-span-2">
                 <CMSTextarea
-                  label="Subtítulo Descriptivo"
-                  rows={3}
+                  label="Subtítulo Explicativo"
                   value={data.resumenRewards?.subtitle || ''}
                   onChange={(val) => updateField('resumenRewards', 'subtitle', val)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <ImageUploaderInput 
+                  label="Imagen Ilustrativa Rewards" 
+                  section="resumenRewards" 
+                  field="imageUrl" 
+                  value={data.resumenRewards?.imageUrl || ''} 
                 />
               </div>
             </div>
           </div>
         )}
 
-        {/* PESTAÑA: PREGUNTAS FRECUENTES (FAQ DYNAMIC) */}
-        {activeTab === 'faq' && (
+        {selectedLanding === 'travelcab' && activeTab === 'faq' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-base font-extrabold text-slate-800">Preguntas Frecuentes (FAQ)</h3>
                 <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                   <HelpCircle className="h-4 w-4 text-tech-blue" />
-                  Administra las preguntas que se mostrarán en la sección de FAQ de la Landing Page. Puedes cargar al menos 10 preguntas.
+                  Administra las preguntas que se mostrarán en la sección de FAQ de la Landing Page.
                 </p>
               </div>
               <button
                 onClick={addFaq}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-tech-blue bg-tech-blue/5 px-3.5 py-2 text-xs font-bold text-tech-blue hover:bg-tech-blue hover:text-white transition-all animate-pulse"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-tech-blue bg-tech-blue/5 px-3.5 py-2 text-xs font-bold text-tech-blue hover:bg-tech-blue hover:text-white transition-all"
               >
                 <Plus className="h-3.5 w-3.5" /> Agregar Pregunta
               </button>
@@ -1057,18 +1378,14 @@ export default function CMSPage() {
                   </div>
                 </div>
               ))}
-              {data.faq?.items?.length === 0 && (
-                <p className="text-slate-400 text-center py-8 text-sm">No hay preguntas frecuentes cargadas. Agrega una con el botón superior.</p>
-              )}
             </div>
           </div>
         )}
 
-        {/* PESTAÑA: LEGALES Y REDES */}
-        {activeTab === 'legales' && (
+        {selectedLanding === 'travelcab' && activeTab === 'legales' && (
           <div className="space-y-6">
             <div className="border-b border-slate-100 pb-4">
-              <h3 className="text-base font-extrabold text-slate-800">Enlaces de Redes Sociales (Independientes por Landing)</h3>
+              <h3 className="text-base font-extrabold text-slate-800">Enlaces de Redes Sociales</h3>
               <p className="text-xs text-slate-400 mt-1">Modifica los perfiles oficiales y el número de la flota de WhatsApp.</p>
             </div>
 
@@ -1096,7 +1413,7 @@ export default function CMSPage() {
               </div>
               <div>
                 <CMSInput
-                  label="Enlace / API WhatsApp (Travis chat)"
+                  label="Enlace / API WhatsApp (Mensaje por defecto)"
                   value={data.redesSociales?.whatsapp || ''}
                   onChange={(val) => updateField('redesSociales', 'whatsapp', val)}
                 />
@@ -1125,7 +1442,7 @@ export default function CMSPage() {
 
             <div className="border-b border-slate-100 pb-4 pt-4">
               <h3 className="text-base font-extrabold text-slate-800">Contenido Legal Integrado (Popups / Modales)</h3>
-              <p className="text-xs text-slate-400 mt-1">Escribe las bases legales y Quiénes Somos. Se visualizarán dentro de la landing mediante ventanas emergentes premium.</p>
+              <p className="text-xs text-slate-400 mt-1">Escribe las bases legales y Quiénes Somos.</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
@@ -1155,6 +1472,634 @@ export default function CMSPage() {
                   onChange={(val) => updateField('legales', 'politicasPrivacidad', val)}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none font-mono"
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* EDITORES TRAVELAPP EXPERIENCE */}
+        {/* ======================================================== */}
+
+        {selectedLanding === 'experience' && activeTab === 'slider' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Slider Principal (Hasta 10 Diapositivas)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las fotos de fondo, textos y botones del carrusel superior.</p>
+              </div>
+              <button
+                onClick={addHeroSlide}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-tech-blue bg-tech-blue/5 px-3.5 py-2 text-xs font-bold text-tech-blue hover:bg-tech-blue hover:text-white transition-all"
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar Diapositiva
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(data.heroSlides || []).map((slide: any, idx: number) => (
+                <div key={idx} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 shadow-sm relative group space-y-3">
+                  <button
+                    onClick={() => deleteHeroSlide(idx)}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
+                    title="Eliminar Diapositiva"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="text-xs font-black text-slate-400 uppercase">Diapositiva N° {idx + 1}</div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título de la diapositiva</label>
+                      <input
+                        type="text"
+                        value={slide.title || ''}
+                        onChange={(e) => updateHeroSlide(idx, 'title', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Subtítulo</label>
+                      <input
+                        type="text"
+                        value={slide.subtitle || ''}
+                        onChange={(e) => updateHeroSlide(idx, 'subtitle', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto descriptivo</label>
+                      <textarea
+                        rows={2}
+                        value={slide.text || ''}
+                        onChange={(e) => updateHeroSlide(idx, 'text', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto del Botón CTA</label>
+                      <input
+                        type="text"
+                        value={slide.ctaText || ''}
+                        onChange={(e) => updateHeroSlide(idx, 'ctaText', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Enlace del Botón CTA</label>
+                      <input
+                        type="text"
+                        value={slide.ctaUrl || ''}
+                        onChange={(e) => updateHeroSlide(idx, 'ctaUrl', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de fondo</label>
+                      <SlideImageUploader idx={idx} value={slide.bgImage} />
+                    </div>
+                    {slide.bgImage && (
+                      <div className="w-32 h-20 border border-slate-200 rounded-lg overflow-hidden bg-slate-100">
+                        <img src={slide.bgImage} alt="slide preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(data.heroSlides || []).length === 0 && (
+                <p className="text-slate-400 text-center py-8 text-sm">No hay diapositivas cargadas en el slider. Agrega una arriba.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'experience' && activeTab === 'ofertas' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Ofertas Destacadas en Carrusel (Hasta 6)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las fotos de ofertas que enlazan al catálogo de viajes.</p>
+              </div>
+              <button
+                onClick={addCarouselOffer}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-tech-blue bg-tech-blue/5 px-3.5 py-2 text-xs font-bold text-tech-blue hover:bg-tech-blue hover:text-white transition-all"
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar Oferta
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(data.carouselOffers || []).map((offer: any, idx: number) => (
+                <div key={idx} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 shadow-sm relative group space-y-3">
+                  <button
+                    onClick={() => deleteCarouselOffer(idx)}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
+                    title="Eliminar Oferta"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="text-xs font-black text-slate-400 uppercase">Oferta N° {idx + 1}</div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título de la oferta / Destino</label>
+                      <input
+                        type="text"
+                        value={offer.title || ''}
+                        onChange={(e) => updateCarouselOffer(idx, 'title', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Enlace de redirección</label>
+                      <input
+                        type="text"
+                        value={offer.link || ''}
+                        onChange={(e) => updateCarouselOffer(idx, 'link', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de la oferta</label>
+                      <OfferImageUploader idx={idx} value={offer.imageUrl} />
+                    </div>
+                    {offer.imageUrl && (
+                      <div className="w-32 h-20 border border-slate-200 rounded-lg overflow-hidden bg-slate-100">
+                        <img src={offer.imageUrl} alt="offer preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(data.carouselOffers || []).length === 0 && (
+                <p className="text-slate-400 text-center py-8 text-sm">No hay ofertas cargadas en el carrusel. Agrega una arriba.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'experience' && activeTab === 'servicios' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Nuestros Servicios de Experiencia (Tarjetas Flotantes)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las tarjetas de servicio y el modal que se despliega de cada una.</p>
+              </div>
+              <button
+                onClick={addService}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-tech-blue bg-tech-blue/5 px-3.5 py-2 text-xs font-bold text-tech-blue hover:bg-tech-blue hover:text-white transition-all"
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar Servicio
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {data.servicios?.map((item: any, idx: number) => (
+                <div key={item.id} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 shadow-sm relative group space-y-3">
+                  <button
+                    onClick={() => deleteService(idx)}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
+                    title="Eliminar Servicio"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <ServiceInput
+                        label="Título del Servicio"
+                        value={item.title}
+                        idx={idx}
+                        field="title"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <ServiceInput
+                        label="Resumen corto (tarjeta)"
+                        value={item.summary}
+                        idx={idx}
+                        field="summary"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Detalle para modal emergente</label>
+                      <textarea
+                        rows={3}
+                        value={item.modalDetail || ''}
+                        onChange={(e) => updateService(idx, 'modalDetail', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <ServiceImageUploader
+                        idx={idx}
+                        value={item.imageUrl}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'experience' && activeTab === 'rewards' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">Bloque Informativo Rewards (Experiencias)</h3>
+              <p className="text-xs text-slate-400 mt-1">Configura la sección destacada de Rewards para motivar la suscripción de viajeros.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <CMSInput
+                  label="Título Informativo"
+                  value={data.rewardsBlock?.title || ''}
+                  onChange={(val) => updateField('rewardsBlock', 'title', val)}
+                />
+              </div>
+              <div>
+                <CMSInput
+                  label="Badge del Bloque"
+                  value={data.rewardsBlock?.badgeText || ''}
+                  onChange={(val) => updateField('rewardsBlock', 'badgeText', val)}
+                />
+              </div>
+              <div>
+                <CMSInput
+                  label="Texto Puntos / Regalo"
+                  value={data.rewardsBlock?.pointsText || ''}
+                  onChange={(val) => updateField('rewardsBlock', 'pointsText', val)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <CMSTextarea
+                  label="Subtítulo Explicativo"
+                  value={data.rewardsBlock?.subtitle || ''}
+                  onChange={(val) => updateField('rewardsBlock', 'subtitle', val)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <ImageUploaderInput 
+                  label="Imagen Ilustrativa Rewards" 
+                  section="rewardsBlock" 
+                  field="imageUrl" 
+                  value={data.rewardsBlock?.imageUrl || ''} 
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'experience' && activeTab === 'social' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">Enlaces de Redes Sociales (Experiencias)</h3>
+              <p className="text-xs text-slate-400 mt-1">Configura las redes oficiales de TravelApp Experience.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <CMSInput
+                  label="Página de Facebook"
+                  value={data.redesSociales?.facebook || ''}
+                  onChange={(val) => updateField('redesSociales', 'facebook', val)}
+                />
+              </div>
+              <div>
+                <CMSInput
+                  label="Página de Instagram (@usuario)"
+                  value={data.redesSociales?.instagram || ''}
+                  onChange={(val) => updateField('redesSociales', 'instagram', val)}
+                />
+              </div>
+              <div>
+                <CMSInput
+                  label="Canal de Messenger"
+                  value={data.redesSociales?.messenger || ''}
+                  onChange={(val) => updateField('redesSociales', 'messenger', val)}
+                />
+              </div>
+              <div>
+                <CMSInput
+                  label="WhatsApp de Reservas / Contacto"
+                  value={data.redesSociales?.whatsapp || ''}
+                  onChange={(val) => updateField('redesSociales', 'whatsapp', val)}
+                />
+              </div>
+            </div>
+
+            <div className="border-b border-slate-100 pb-4 pt-4">
+              <h3 className="text-base font-extrabold text-slate-800">Footer y Branding</h3>
+              <p className="text-xs text-slate-400 mt-1">Configura los derechos de autor y textos en el pie de página de la landing.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <CMSInput
+                  label="Marca Principal Footer"
+                  value={data.footer?.brandText || ''}
+                  onChange={(val) => updateField('footer', 'brandText', val)}
+                />
+              </div>
+              <div>
+                <CMSInput
+                  label="Derechos de Autor (Copyright)"
+                  value={data.footer?.copyrightText || ''}
+                  onChange={(val) => updateField('footer', 'copyrightText', val)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* EDITORES ECOSISTEMA */}
+        {/* ======================================================== */}
+
+        {/* ECO: HERO */}
+        {selectedLanding === 'ecosistema' && activeTab === 'eco_hero' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">Hero — Imagen o Video de Fondo</h3>
+              <p className="text-xs text-slate-400 mt-1">Configurá el banner principal. Podés usar una imagen estática o un video en loop.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Tipo de Media del Hero</label>
+                <select
+                  value={data.hero?.mediaType || 'image'}
+                  onChange={(e) => updateField('hero', 'mediaType', e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                >
+                  <option value="image">🖼️  Imagen de Fondo</option>
+                  <option value="video">🎬  Video en Loop (autoplay muted)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">Opacidad del Overlay (0-100)</label>
+                <input
+                  type="number" min="0" max="100"
+                  value={data.hero?.overlayOpacity ?? 72}
+                  onChange={(e) => updateField('hero', 'overlayOpacity', Number(e.target.value))}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <ImageUploaderInput label="URL o Archivo del Hero (imagen/video)" section="hero" field="mediaUrl" value={data.hero?.mediaUrl || ''} />
+
+            {data.hero?.mediaUrl && (
+              <div className="rounded-xl border border-slate-200 overflow-hidden h-32 relative bg-slate-100">
+                {data.hero.mediaType === 'video' ? (
+                  <video src={data.hero.mediaUrl} className="w-full h-full object-cover" muted />
+                ) : (
+                  <img src={data.hero.mediaUrl} alt="Hero Preview" className="w-full h-full object-cover" />
+                )}
+                <span className="absolute top-2 left-2 text-[10px] font-black bg-slate-900/70 text-white px-2 py-0.5 rounded">PREVIEW</span>
+              </div>
+            )}
+
+            <CMSInput label="Badge / Etiqueta Superior" value={data.hero?.badge || ''} onChange={(val) => updateField('hero', 'badge', val)} placeholder="Texto del badge animado..." />
+            <CMSTextarea label="Título Principal (usa \n para salto de línea entre palabras)" value={data.hero?.title || ''} onChange={(val) => updateField('hero', 'title', val)} rows={2} />
+            <CMSTextarea label="Subtítulo" value={data.hero?.subtitle || ''} onChange={(val) => updateField('hero', 'subtitle', val)} rows={2} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput label="Texto CTA Principal" value={data.hero?.ctaText || ''} onChange={(val) => updateField('hero', 'ctaText', val)} />
+              <CMSInput label="URL WhatsApp" value={data.hero?.whatsappUrl || ''} onChange={(val) => updateField('hero', 'whatsappUrl', val)} />
+              <CMSInput label="Texto Botón WhatsApp" value={data.hero?.whatsappText || ''} onChange={(val) => updateField('hero', 'whatsappText', val)} />
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-xs font-black text-slate-600 uppercase tracking-wider">📱 URLs App Stores (dejar vacío para ocultar)</p>
+              <CMSInput label="Google Play Store URL" value={data.hero?.playStoreUrl || ''} onChange={(val) => updateField('hero', 'playStoreUrl', val)} placeholder="https://play.google.com/store/apps/details?id=..." />
+              <CMSInput label="Apple App Store URL" value={data.hero?.appStoreUrl || ''} onChange={(val) => updateField('hero', 'appStoreUrl', val)} placeholder="https://apps.apple.com/ar/app/..." />
+            </div>
+          </div>
+        )}
+
+        {/* ECO: UNIDADES */}
+        {selectedLanding === 'ecosistema' && activeTab === 'eco_unidades' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">Tarjetas de Unidades de Negocio</h3>
+              <p className="text-xs text-slate-400 mt-1">Editá la imagen, descripción breve y descripción extendida (modal) de cada unidad.</p>
+            </div>
+            {(data.unidades || []).map((unit: any, idx: number) => (
+              <div key={unit.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 space-y-4">
+                <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
+                  <div className="h-8 w-8 rounded-lg bg-tech-blue/10 flex items-center justify-center">
+                    <span className="text-sm font-black text-tech-blue">0{idx+1}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-700">{unit.nombre}</p>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">{unit.id}</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500">Imagen Representativa</label>
+                  <ServiceImageUploader idx={idx} value={unit.imagenUrl || ''} />
+                </div>
+                <ServiceInput label="Nombre de la Unidad" value={unit.nombre || ''} idx={idx} field="nombre" />
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción Breve (tarjeta)</label>
+                  <textarea
+                    rows={2}
+                    value={unit.descripcionBreve || ''}
+                    onChange={(e) => {
+                      const updated = [...data.unidades];
+                      updated[idx] = { ...updated[idx], descripcionBreve: e.target.value };
+                      setData((prev: any) => ({ ...prev, unidades: updated }));
+                    }}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción Extendida (modal "Leer Más")</label>
+                  <textarea
+                    rows={3}
+                    value={unit.descripcionExtendida || ''}
+                    onChange={(e) => {
+                      const updated = [...data.unidades];
+                      updated[idx] = { ...updated[idx], descripcionExtendida: e.target.value };
+                      setData((prev: any) => ({ ...prev, unidades: updated }));
+                    }}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ECO: QUIÉNES SOMOS */}
+        {selectedLanding === 'ecosistema' && activeTab === 'eco_quienes' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">Quiénes Somos</h3>
+            </div>
+            <ImageUploaderInput label="Imagen de la Sección" section="quienesSomos" field="imagenUrl" value={data.quienesSomos?.imagenUrl || ''} />
+            <CMSInput label="Badge / Etiqueta" value={data.quienesSomos?.badge || ''} onChange={(val) => updateField('quienesSomos', 'badge', val)} />
+            <CMSInput label="Título Principal" value={data.quienesSomos?.titulo || ''} onChange={(val) => updateField('quienesSomos', 'titulo', val)} />
+            <CMSTextarea label="Misión" value={data.quienesSomos?.mision || ''} onChange={(val) => updateField('quienesSomos', 'mision', val)} rows={3} />
+            <CMSTextarea label="Visión" value={data.quienesSomos?.vision || ''} onChange={(val) => updateField('quienesSomos', 'vision', val)} rows={3} />
+            <CMSTextarea label="Valores" value={data.quienesSomos?.valores || ''} onChange={(val) => updateField('quienesSomos', 'valores', val)} rows={3} />
+          </div>
+        )}
+
+        {/* ECO: STATS */}
+        {selectedLanding === 'ecosistema' && activeTab === 'eco_stats' && data && (
+          <div className="space-y-6">
+            {/* Toggle showStats */}
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div>
+                <p className="text-xs font-black text-slate-700">Mostrar Sección de Métricas</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Habilita o deshabilita la sección "Números que Hablan" en la landing page.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setData((prev: any) => ({ ...prev, showStats: !prev.showStats }))}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  data.showStats ? 'bg-orange-500' : 'bg-slate-200'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    data.showStats ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Métricas de Impacto</h3>
+                <p className="text-xs text-slate-400 mt-1">Los contadores se animan al hacer scroll. Íconos válidos: Car, Compass, Users, MapPin, Globe, Star, Award, Sparkles</p>
+              </div>
+              <button
+                onClick={() => setData((prev: any) => ({ ...prev, stats: [...(prev.stats || []), { valor: '1.000+', label: 'Nueva Métrica', icono: 'Star' }] }))}
+                className="flex items-center gap-1 text-xs font-bold text-tech-blue border border-tech-blue/30 bg-tech-blue/5 px-3 py-1.5 rounded-lg hover:bg-tech-blue/10 transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar
+              </button>
+            </div>
+            {(data.stats || []).map((stat: any, idx: number) => (
+              <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 flex items-end gap-3">
+                <div className="flex-1 space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Valor</label>
+                      <input value={stat.valor || ''} onChange={(e) => { const s = [...data.stats]; s[idx] = {...s[idx], valor: e.target.value}; setData((p: any) => ({...p, stats: s})); }} className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs bg-white focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Etiqueta</label>
+                      <input value={stat.label || ''} onChange={(e) => { const s = [...data.stats]; s[idx] = {...s[idx], label: e.target.value}; setData((p: any) => ({...p, stats: s})); }} className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs bg-white focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Ícono</label>
+                      <input value={stat.icono || ''} onChange={(e) => { const s = [...data.stats]; s[idx] = {...s[idx], icono: e.target.value}; setData((p: any) => ({...p, stats: s})); }} className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs bg-white focus:outline-none" />
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => { const s = data.stats.filter((_: any, i: number) => i !== idx); setData((p: any) => ({...p, stats: s})); }} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ECO: APPS */}
+        {selectedLanding === 'ecosistema' && activeTab === 'eco_apps' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">Sección Descarga de la App</h3>
+              <p className="text-xs text-slate-400 mt-1">Dejá las URLs vacías para ocultar la sección de app stores en la landing.</p>
+            </div>
+            <CMSInput label="Título de la Sección" value={data.apps?.titulo || ''} onChange={(val) => updateField('apps', 'titulo', val)} />
+            <CMSTextarea label="Subtítulo / Descripción" value={data.apps?.subtitulo || ''} onChange={(val) => updateField('apps', 'subtitulo', val)} rows={2} />
+            <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-5 space-y-4">
+              <p className="text-xs font-black text-slate-500 uppercase tracking-wider">URLs de Descarga</p>
+              <CMSInput label="Google Play Store URL" value={data.apps?.playStoreUrl || ''} onChange={(val) => updateField('apps', 'playStoreUrl', val)} placeholder="https://play.google.com/store/apps/details?id=ar.travelapp" />
+              <CMSInput label="Apple App Store URL" value={data.apps?.appStoreUrl || ''} onChange={(val) => updateField('apps', 'appStoreUrl', val)} placeholder="https://apps.apple.com/ar/app/travelapp/id..." />
+            </div>
+            <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700">
+              <strong>Nota:</strong> Las URLs también están disponibles en el tab Hero para mostrar los badges directamente en el banner principal.
+            </div>
+          </div>
+        )}
+
+        {/* ECO: TRABAJA CON NOSOTROS */}
+        {selectedLanding === 'ecosistema' && activeTab === 'eco_trabaja' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">Sección "Trabaja con Nosotros"</h3>
+            </div>
+            <CMSInput label="Título de la Sección" value={data.trabajaNosotros?.titulo || ''} onChange={(val) => updateField('trabajaNosotros', 'titulo', val)} />
+            <CMSTextarea label="Subtítulo" value={data.trabajaNosotros?.subtitulo || ''} onChange={(val) => updateField('trabajaNosotros', 'subtitulo', val)} rows={2} />
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-xs font-bold text-slate-600">Puestos / Áreas Disponibles</label>
+                <button
+                  onClick={() => setData((prev: any) => ({ ...prev, trabajaNosotros: { ...prev.trabajaNosotros, puestos: [...(prev.trabajaNosotros?.puestos || []), 'Nuevo Puesto'] } }))}
+                  className="flex items-center gap-1 text-xs font-bold text-tech-blue border border-tech-blue/30 bg-tech-blue/5 px-3 py-1.5 rounded-lg hover:bg-tech-blue/10 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Agregar Puesto
+                </button>
+              </div>
+              <div className="space-y-2">
+                {(data.trabajaNosotros?.puestos || []).map((p: string, idx: number) => (
+                  <div key={idx} className="flex gap-2">
+                    <input
+                      value={p}
+                      onChange={(e) => {
+                        const puestos = [...(data.trabajaNosotros?.puestos || [])];
+                        puestos[idx] = e.target.value;
+                        setData((prev: any) => ({ ...prev, trabajaNosotros: { ...prev.trabajaNosotros, puestos } }));
+                      }}
+                      className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm bg-white focus:outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        const puestos = (data.trabajaNosotros?.puestos || []).filter((_: any, i: number) => i !== idx);
+                        setData((prev: any) => ({ ...prev, trabajaNosotros: { ...prev.trabajaNosotros, puestos } }));
+                      }}
+                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ECO: LEGAL & REDES */}
+        {selectedLanding === 'ecosistema' && activeTab === 'eco_legales' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">Información Legal & Redes Sociales</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput label="Razón Social" value={data.legales?.razonSocial || ''} onChange={(val) => updateField('legales', 'razonSocial', val)} />
+              <CMSInput label="CUIT" value={data.legales?.cuit || ''} onChange={(val) => updateField('legales', 'cuit', val)} />
+              <CMSInput label="Domicilio Legal" value={data.legales?.domicilio || ''} onChange={(val) => updateField('legales', 'domicilio', val)} />
+            </div>
+            <CMSTextarea label="Términos y Condiciones" value={data.legales?.terminos || ''} onChange={(val) => updateField('legales', 'terminos', val)} rows={4} />
+            <CMSTextarea label="Política de Privacidad" value={data.legales?.privacidad || ''} onChange={(val) => updateField('legales', 'privacidad', val)} rows={4} />
+
+            <div className="border-t border-slate-100 pt-4">
+              <h3 className="text-sm font-extrabold text-slate-700 mb-4">Redes Sociales</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSInput label="Facebook URL" value={data.redesSociales?.facebook || ''} onChange={(val) => updateField('redesSociales', 'facebook', val)} />
+                <CMSInput label="Instagram URL" value={data.redesSociales?.instagram || ''} onChange={(val) => updateField('redesSociales', 'instagram', val)} />
+                <CMSInput label="WhatsApp URL" value={data.redesSociales?.whatsapp || ''} onChange={(val) => updateField('redesSociales', 'whatsapp', val)} />
+                <CMSInput label="LinkedIn URL" value={data.redesSociales?.linkedin || ''} onChange={(val) => updateField('redesSociales', 'linkedin', val)} />
               </div>
             </div>
           </div>
