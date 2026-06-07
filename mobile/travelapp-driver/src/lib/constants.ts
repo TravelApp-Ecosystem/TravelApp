@@ -15,4 +15,4 @@ export const Colors = {
   textMuted: '#94A3B8',
 };
 
-export const GOOGLE_MAPS_KEY = 'AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U';
+export const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
