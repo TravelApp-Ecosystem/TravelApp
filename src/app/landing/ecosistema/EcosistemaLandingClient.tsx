@@ -314,6 +314,17 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const statsRef = useRef<HTMLDivElement>(null);
 
+  const getUrl = (id: string) => {
+    if (typeof window === "undefined") return `/landing/${id}`;
+    const isLocal = window.location.hostname.includes("localhost") || 
+                    window.location.hostname.includes("127.0.0.1");
+    if (isLocal) return `/landing/${id}`;
+    if (id === "travelcab") return "https://travelcab.ar";
+    if (id === "experience") return "https://experience.travelapp.ar";
+    if (id === "rewards") return "https://rewards.travelapp.ar";
+    return `/landing/${id}`;
+  };
+
   // Estados interactivos para contacto y Travis Chat
   const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
   const [travisDropdownOpen, setTravisDropdownOpen] = useState(false);
@@ -965,7 +976,7 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                       {/* Buttons */}
                       <div className="flex flex-col gap-3 mt-auto">
                         <a
-                          href={cfg.landingUrl}
+                          href={getUrl(unit.id)}
                           className="inline-flex items-center justify-center gap-2 rounded-xl py-3 px-5 text-sm font-black text-white transition-all hover:opacity-90 hover:shadow-lg shadow-md"
                           style={{ backgroundColor: cfg.color }}
                         >
@@ -1486,7 +1497,7 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
               <ul className="space-y-3 text-xs">
                 <li>
                   <a
-                    href="/landing/experience"
+                    href={getUrl("experience")}
                     className="flex items-center gap-2 hover:text-orange-500 transition-colors"
                   >
                     <img
@@ -1499,7 +1510,7 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                 </li>
                 <li>
                   <a
-                    href="/landing/rewards"
+                    href={getUrl("rewards")}
                     className="flex items-center gap-2 hover:text-orange-500 transition-colors"
                   >
                     <img
@@ -1512,7 +1523,7 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                 </li>
                 <li>
                   <a
-                    href="/landing/travelcab"
+                    href={getUrl("travelcab")}
                     className="flex items-center gap-2 hover:text-orange-500 transition-colors"
                   >
                     <img
@@ -1712,7 +1723,7 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                 </p>
                 {cfg && (
                   <a
-                    href={cfg.landingUrl}
+                    href={getUrl(activeUnitModal.id)}
                     className="inline-flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-black text-white transition-all hover:opacity-90 hover:shadow-lg"
                     style={{ backgroundColor: cfg.color }}
                   >

@@ -19,17 +19,31 @@ export function proxy(request: NextRequest) {
 
   // ─── 1. DOMAIN-SPECIFIC PUBLIC REWRITES ────────────────────────────────────
 
-  // travelcab.ar → muestra landing de TravelCab directamente
+  // A) experience.travelapp.ar ➡️ Landing de Experience directamente
+  if (hostname.includes("experience.travelapp.ar")) {
+    if (pathname === "/" || pathname === "/home") {
+      return NextResponse.rewrite(new URL("/landing/experience", request.url));
+    }
+  }
+
+  // B) rewards.travelapp.ar ➡️ Landing de Rewards directamente
+  if (hostname.includes("rewards.travelapp.ar")) {
+    if (pathname === "/" || pathname === "/home") {
+      return NextResponse.rewrite(new URL("/landing/rewards", request.url));
+    }
+  }
+
+  // C) travelcab.ar / www.travelcab.ar ➡️ Landing de TravelCab directamente
   if (hostname.includes("travelcab.ar")) {
     if (pathname === "/" || pathname === "/home") {
       return NextResponse.rewrite(new URL("/landing/travelcab", request.url));
     }
   }
 
-  // B) travelapp.ar / www.travelapp.ar ➡️ Landings públicas y Root institucional
-  if (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.")) {
+  // D) travelapp.ar / www.travelapp.ar ➡️ Landings públicas y Root institucional
+  if (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.") && !hostname.startsWith("experience.") && !hostname.startsWith("rewards.")) {
     if (pathname === "/" || pathname === "/home") {
-      // travelapp.ar/ ➡️ landing institucional (utiliza ecosistema por defecto)
+      // travelapp.ar/ ➡️ landing institucional (ecosistema)
       return NextResponse.rewrite(new URL("/landing/ecosistema", request.url));
     }
     if (pathname === "/experience") {

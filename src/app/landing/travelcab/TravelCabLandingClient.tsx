@@ -850,7 +850,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
       {/* ---------------- NAVIGATION HEADER ---------------- */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-md transition-all duration-300">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 md:px-8">
-          <a href="/landing/travelcab" className="flex items-center">
+          <a href="/" className="flex items-center">
             <img
               src={cmsData.navigation?.logoImage || DEFAULT_CMS_DATA.navigation.logoImage}
               alt="TravelCab"
