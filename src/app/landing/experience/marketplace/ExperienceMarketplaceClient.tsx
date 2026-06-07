@@ -82,6 +82,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
   const cmsData = initialCms || {};
   const [tours, setTours] = useState<Tour[]>([]);
   const [loadingTours, setLoadingTours] = useState(true);
+  const [errorTours, setErrorTours] = useState<string | null>(null);
 
   // Filtros
   const [searchQuery, setSearchQuery] = useState("");
@@ -105,14 +106,23 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
 
   // Cargar tours en tiempo real
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "experiences"), (snapshot) => {
-      const list: Tour[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as Tour);
-      });
-      setTours(list);
-      setLoadingTours(false);
-    });
+    const unsub = onSnapshot(
+      collection(db, "experiences"),
+      (snapshot) => {
+        const list: Tour[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as Tour);
+        });
+        setTours(list);
+        setErrorTours(null);
+        setLoadingTours(false);
+      },
+      (error) => {
+        console.error("Error cargando catálogo desde Firestore:", error);
+        setErrorTours(error.message || "Error de conexión o permisos en la base de datos.");
+        setLoadingTours(false);
+      }
+    );
     return () => unsub();
   }, []);
 
@@ -212,19 +222,15 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
         <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <a href="https://experience.travelapp.ar" className="h-9 w-9 rounded-xl bg-slate-850 hover:bg-slate-800 flex items-center justify-center border border-slate-700 transition-colors">
-              <ArrowLeft className="h-5 w-5 text-lime-400" />
+              <ArrowLeft className="h-5 w-5 text-red-500" />
             </a>
             <div className="flex items-center gap-2">
-              <Compass className="h-6 w-6 text-lime-400" />
-              <div>
-                <span className="font-black text-lg block leading-none tracking-tight">TravelApp</span>
-                <span className="text-[10px] text-lime-400 font-bold uppercase tracking-wider block mt-0.5">Experiences</span>
-              </div>
+              <img src="/assets/experience_blanco.svg" alt="TravelApp Experiences" className="h-8 w-auto object-contain" />
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lime-500/10 border border-lime-500/20 text-xs text-lime-400 font-black tracking-wide">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-xs text-red-500 font-black tracking-wide">
               <Sparkles className="h-3.5 w-3.5" /> CATÁLOGO OFICIAL
             </span>
           </div>
@@ -233,10 +239,10 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
 
       {/* PORTADA BANNER */}
       <section className="bg-slate-900 text-white py-12 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-lime-400 via-slate-900 to-slate-950"></div>
+        <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-red-600 via-slate-900 to-slate-950"></div>
         <div className="mx-auto max-w-7xl relative z-10 text-center space-y-3">
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            Explorá el Marketplace de <span className="text-lime-400">Viajes & Experiencias</span>
+            Explorá el Marketplace de <span className="text-red-500">Viajes & Experiencias</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
             Descubrí salidas grupales, catas VIP, cabalgatas y aventuras guiadas por todo el país. Sumá puntos Rewards y reservá al instante.
@@ -262,7 +268,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                 setSelectedAvailability("all");
                 setPriceSortOrder("none");
               }}
-              className="text-[10px] font-bold text-lime-600 hover:text-lime-700 uppercase"
+              className="text-[10px] font-bold text-red-600 hover:text-red-700 uppercase"
             >
               Limpiar
             </button>
@@ -275,7 +281,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
               <select 
                 value={selectedDestination} 
                 onChange={(e) => setSelectedDestination(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-lime-500 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-red-500 transition-colors"
               >
                 <option value="all">Todos los destinos</option>
                 {uniqueDestinations.map((dest, i) => (
@@ -290,7 +296,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
               <select 
                 value={selectedTripType} 
                 onChange={(e) => setSelectedTripType(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-lime-500 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-red-500 transition-colors"
               >
                 <option value="all">Grupal e Individual</option>
                 <option value="Grupal">Grupal</option>
@@ -304,7 +310,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
               <select 
                 value={selectedTransport} 
                 onChange={(e) => setSelectedTransport(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-lime-500 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-red-500 transition-colors"
               >
                 <option value="all">Todos los transportes</option>
                 {uniqueTransports.map((trans, i) => (
@@ -319,7 +325,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
               <select 
                 value={selectedAvailability} 
                 onChange={(e) => setSelectedAvailability(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-lime-500 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-red-500 transition-colors"
               >
                 <option value="all">Cualquier estado</option>
                 <option value="Disponible">Disponible</option>
@@ -334,7 +340,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
               <select 
                 value={priceSortOrder} 
                 onChange={(e) => setPriceSortOrder(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-lime-500 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 focus:outline-none focus:border-red-500 transition-colors"
               >
                 <option value="none">Sin ordenar</option>
                 <option value="asc">Menor a Mayor precio</option>
@@ -355,15 +361,28 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
               placeholder="Buscar por excursión, destino, descripción..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-2xl py-3.5 pl-12 pr-4 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-lime-400/40 focus:border-lime-500 transition-all"
+              className="w-full bg-white border border-slate-200 rounded-2xl py-3.5 pl-12 pr-4 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all"
             />
           </div>
 
           {/* Estado de Carga */}
           {loadingTours ? (
             <div className="py-20 flex flex-col items-center justify-center space-y-4">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-lime-500 border-t-transparent"></div>
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-red-500 border-t-transparent"></div>
               <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Sincronizando Catálogo en tiempo real...</p>
+            </div>
+          ) : errorTours ? (
+            <div className="py-20 text-center bg-white rounded-3xl border border-red-200 p-8 space-y-3 shadow-sm">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
+              <h3 className="text-lg font-black text-red-700">Error al cargar experiencias</h3>
+              <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+                No pudimos conectar con la base de datos de viajes. Asegúrate de habilitar los permisos de lectura públicos en las reglas de tu Firestore en Firebase Console para la colección <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">experiences</span>.
+              </p>
+              <div className="pt-2">
+                <span className="inline-block bg-red-50 border border-red-100 rounded-lg px-3 py-1 text-[10px] font-mono text-red-600">
+                  {errorTours}
+                </span>
+              </div>
             </div>
           ) : filteredTours.length === 0 ? (
             <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 p-8 space-y-2">
@@ -408,7 +427,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-slate-500 text-[10px] font-black uppercase tracking-wider">
                           <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-lime-600" />
+                            <MapPin className="h-3 w-3 text-red-600" />
                             {tour.location}
                           </span>
                           <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
@@ -431,7 +450,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                           </span>
                         ))}
                         {tour.services?.length > 3 && (
-                          <span className="text-[9px] text-lime-600 font-bold px-1 py-0.5">+{tour.services.length - 3}</span>
+                          <span className="text-[9px] text-red-600 font-bold px-1 py-0.5">+{tour.services.length - 3}</span>
                         )}
                       </div>
 
@@ -451,16 +470,16 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                         </div>
 
                         {/* Caja Destacada Rewards */}
-                        <div className="bg-lime-500/10 border border-lime-500/20 rounded-2xl p-2.5 flex items-center justify-between gap-2">
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-2.5 flex items-center justify-between gap-2">
                           <div>
-                            <span className="text-[9px] font-black text-lime-700 uppercase block tracking-wider leading-none">Miembro Rewards</span>
-                            <span className="text-base font-black text-lime-600 mt-1 block">
+                            <span className="text-[9px] font-black text-red-700 uppercase block tracking-wider leading-none">Miembro Rewards</span>
+                            <span className="text-base font-black text-red-600 mt-1 block">
                               {formatPrice(tour.priceRewards, tour.currency)}
                             </span>
                           </div>
                           <button
                             onClick={() => setActiveTourDetail(tour)}
-                            className="bg-lime-500 hover:bg-lime-600 rounded-xl px-3 py-2 text-xs font-black text-gray-950 transition-colors shadow-sm"
+                            className="bg-red-600 hover:bg-red-700 rounded-xl px-3 py-2 text-xs font-black text-white transition-colors shadow-sm"
                           >
                             Ver Ficha
                           </button>
@@ -483,8 +502,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
           
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Compass className="h-6 w-6 text-lime-400" />
-              <span className="font-black text-white text-lg">{cmsData.footer?.brandText || "TravelApp Experiences"}</span>
+              <img src="/assets/experience_blanco.svg" alt="TravelApp Experiences" className="h-8 w-auto object-contain" />
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               Viajá, explorá y acumulá recompensas en el ecosistema turístico más completo de Argentina.
@@ -507,7 +525,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                   href={cmsData.redesSociales.facebook}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <FacebookIcon className="h-4 w-4" />
                 </a>
@@ -517,7 +535,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                   href={cmsData.redesSociales.instagram}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <InstagramIcon className="h-4 w-4" />
                 </a>
@@ -527,7 +545,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                   href={cmsData.redesSociales.linkedin}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <LinkedinIcon className="h-4 w-4" />
                 </a>
@@ -537,7 +555,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                   href={cmsData.redesSociales.youtube}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <YoutubeIcon className="h-4 w-4" />
                 </a>
@@ -547,7 +565,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                   href={cmsData.redesSociales.tiktok}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <TiktokIcon className="h-4 w-4" />
                 </a>
@@ -559,7 +577,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
             <h4 className="text-xs font-black text-white uppercase tracking-wider mb-4">Soporte & Reservas</h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <a href={cmsData.redesSociales?.whatsapp || "#"} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-lime-400 hover:underline">
+                <a href={cmsData.redesSociales?.whatsapp || "#"} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-red-500 hover:underline">
                   <Phone className="h-3 w-3" /> Contactar por WhatsApp
                 </a>
               </li>
@@ -613,7 +631,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
               </button>
 
               <div className="absolute bottom-4 left-6 right-6 text-white space-y-1">
-                <span className="px-2 py-0.5 rounded-lg bg-lime-500 text-[10px] font-black text-gray-950 uppercase tracking-wider">
+                <span className="px-2 py-0.5 rounded-lg bg-red-600 text-white-[10px] font-black text-white uppercase tracking-wider">
                   {activeTourDetail.id}
                 </span>
                 <h3 className="text-xl sm:text-2xl font-black leading-snug">{activeTourDetail.title}</h3>
@@ -651,14 +669,14 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                     {formatPrice(activeTourDetail.price, activeTourDetail.currency)}
                   </span>
                 </div>
-                <div className="bg-lime-500/10 border border-lime-500/20 p-4 rounded-2xl flex items-center justify-between">
+                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] font-extrabold text-lime-700 uppercase tracking-wider block leading-none">Miembro Rewards</span>
-                    <span className="text-xl font-black text-lime-600 mt-1 block">
+                    <span className="text-[10px] font-extrabold text-red-700 uppercase tracking-wider block leading-none">Miembro Rewards</span>
+                    <span className="text-xl font-black text-red-600 mt-1 block">
                       {formatPrice(activeTourDetail.priceRewards, activeTourDetail.currency)}
                     </span>
                   </div>
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-lime-500/20 px-2.5 py-1 text-[10px] font-black text-lime-700 border border-lime-500/30">
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500/20 px-2.5 py-1 text-[10px] font-black text-red-700 border border-red-500/30">
                     Suma +{activeTourDetail.pointsEarned} pts
                   </span>
                 </div>
@@ -676,7 +694,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {activeTourDetail.services?.map((srv, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
-                      <span className="text-lime-500 font-bold self-center">✓</span>
+                      <span className="text-red-500 font-bold self-center">✓</span>
                       <span className="text-slate-600 font-medium">{srv}</span>
                     </div>
                   ))}
@@ -712,7 +730,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                     setActiveTourDetail(null);
                     setResStatus("idle");
                   }}
-                  className="w-full sm:flex-1 px-8 py-3 rounded-2xl bg-lime-500 hover:bg-lime-600 text-gray-950 font-black text-xs text-center transition-colors shadow-md flex items-center justify-center gap-2"
+                  className="w-full sm:flex-1 px-8 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs text-center transition-colors shadow-md flex items-center justify-center gap-2"
                 >
                   <Calendar className="h-4 w-4" /> Solicitar Reserva Directa
                 </button>
@@ -744,7 +762,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
           >
             <div className="bg-slate-900 text-white p-6 relative">
               <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
-                <Compass className="h-5 w-5 text-lime-400" /> Solicitud de Reserva
+                <Compass className="h-5 w-5 text-red-500" /> Solicitud de Reserva
               </h3>
               <p className="text-xs text-slate-400 mt-1 truncate">Viaje: {tourToReserve.title} ({tourToReserve.id})</p>
               
@@ -804,7 +822,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                     value={passengerName}
                     onChange={(e) => setPassengerName(e.target.value)}
                     placeholder="Ej. Juan Pérez"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:border-lime-500 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
 
@@ -816,7 +834,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                     value={passengerEmail}
                     onChange={(e) => setPassengerEmail(e.target.value)}
                     placeholder="juan@email.com"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:border-lime-500 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
 
@@ -828,7 +846,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                     value={passengerPhone}
                     onChange={(e) => setPassengerPhone(e.target.value)}
                     placeholder="Ej. +54 9 381 XXXXXXX"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:border-lime-500 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
 
@@ -841,7 +859,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                     required
                     value={passengerCount}
                     onChange={(e) => setPassengerCount(parseInt(e.target.value) || 1)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:border-lime-500 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
 
@@ -857,7 +875,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                   <button
                     type="submit"
                     disabled={isSubmittingRes}
-                    className="flex-1 px-6 py-3 rounded-2xl bg-lime-500 hover:bg-lime-600 disabled:bg-slate-200 text-gray-950 font-black flex items-center justify-center gap-2 transition-colors shadow-md"
+                    className="flex-1 px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-700 disabled:bg-slate-200 text-white font-black flex items-center justify-center gap-2 transition-colors shadow-md"
                   >
                     {isSubmittingRes ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-850 border-t-transparent"></div>

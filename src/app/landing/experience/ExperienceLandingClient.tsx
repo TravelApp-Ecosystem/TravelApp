@@ -187,17 +187,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
       <header className="sticky top-0 z-40 w-full bg-tech-blue border-b border-white/10 shadow-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <a href="#" className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center border border-white/20">
-              <Compass className="h-6 w-6 text-white animate-spin-slow" />
-            </div>
-            <div>
-              <span className="font-black text-white text-xl tracking-tight leading-none block">
-                {cmsData.header?.brand || "TravelApp"}
-              </span>
-              <span className="text-[10px] font-black text-lime-400 uppercase tracking-widest leading-none">
-                {cmsData.header?.product || "Experiences"}
-              </span>
-            </div>
+            <img src="/assets/experience_blanco.svg" alt="TravelApp Experiences" className="h-10 w-auto object-contain" />
           </a>
 
           {/* Nav links */}
@@ -208,7 +198,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
             >
               Quiénes Somos
             </button>
-            <a href="#catalog" className="hover:text-white transition-colors">
+            <a href="/marketplace" className="hover:text-white transition-colors">
               Catálogo de Viajes
             </a>
             <a href="#services" className="hover:text-white transition-colors">
@@ -219,7 +209,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
           <div className="hidden md:flex items-center gap-4">
             <a
               href={cmsData.header?.loginUrl || "/login"}
-              className="text-sm font-bold text-white hover:text-lime-400 transition-colors"
+              className="text-sm font-bold text-white hover:text-red-500 transition-colors"
             >
               Ingresar
             </a>
@@ -227,7 +217,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
               href={cmsData.header?.ctaUrl || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-lime-500 hover:bg-lime-600 px-5 py-2.5 text-sm font-black text-gray-950 shadow-lg shadow-lime-500/20 transition-all hover:scale-[1.02]"
+              className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-red-500/20 transition-all hover:scale-[1.02]"
             >
               {cmsData.header?.ctaText || "Reservar"}
               <ArrowRight className="h-4 w-4" />
@@ -252,7 +242,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
               Quiénes Somos
             </button>
             <a 
-              href="#catalog" 
+              href="/marketplace" 
               onClick={() => setMobileOpen(false)}
               className="font-bold text-white/90 py-2"
             >
@@ -273,7 +263,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
               href={cmsData.header?.ctaUrl || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-lime-500 py-3 text-sm font-black text-gray-950"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-black text-white"
             >
               {cmsData.header?.ctaText || "Reservar"} <ArrowRight className="h-4 w-4" />
             </a>
@@ -309,8 +299,8 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
               )}
               <div className="pt-4">
                 <a
-                  href={slide.ctaUrl || "#catalog"}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-lime-500 hover:bg-lime-600 px-8 py-4 text-base font-black text-gray-950 transition-all duration-300 hover:-translate-y-1 shadow-2xl shadow-lime-500/20"
+                  href={slide.ctaUrl === "#catalog" ? "/marketplace" : (slide.ctaUrl || "/marketplace")}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-red-600 hover:bg-red-700 px-8 py-4 text-base font-black text-white transition-all duration-300 hover:-translate-y-1 shadow-2xl shadow-red-500/20"
                 >
                   {slide.ctaText || "Ver Catálogo"}
                   <ArrowRight className="h-5 w-5" />
@@ -343,7 +333,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
                   key={idx}
                   onClick={() => setCurrentSlide(idx)}
                   className={`h-2.5 rounded-full transition-all ${
-                    currentSlide === idx ? "w-8 bg-lime-500" : "w-2.5 bg-white/40"
+                    currentSlide === idx ? "w-8 bg-red-600" : "w-2.5 bg-white/40"
                   }`}
                 />
               ))}
@@ -361,7 +351,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
               <h2 className="mt-2 text-3xl font-black text-slate-800">Ofertas de Viajes Exclusivos</h2>
             </div>
             <a
-              href="#catalog"
+              href="/marketplace"
               className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 hover:border-tech-blue hover:text-tech-blue px-5 py-2.5 text-sm font-bold text-slate-600 transition-all"
             >
               Ver Catálogo Completo
@@ -373,7 +363,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
             {(cmsData.carouselOffers || []).map((offer: any, idx: number) => (
               <a
                 key={idx}
-                href={offer.link || "#catalog"}
+                href={offer.link === "#catalog" ? "/marketplace" : (offer.link || "/marketplace")}
                 className="group relative h-64 overflow-hidden rounded-2xl border border-slate-200 shadow-md block"
               >
                 <img
@@ -383,10 +373,10 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/20 to-transparent"></div>
                 <div className="absolute bottom-5 left-5 right-5 text-white">
-                  <span className="inline-flex items-center rounded-lg bg-lime-500 text-gray-950 font-bold text-[10px] px-2 py-0.5 mb-2 uppercase">
+                  <span className="inline-flex items-center rounded-lg bg-red-600 text-white font-bold text-[10px] px-2 py-0.5 mb-2 uppercase">
                     Oferta Especial
                   </span>
-                  <h3 className="text-lg font-black leading-snug group-hover:text-lime-300 transition-colors">
+                  <h3 className="text-lg font-black leading-snug group-hover:text-red-400 transition-colors">
                     {offer.title}
                   </h3>
                 </div>
@@ -437,14 +427,14 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
 
       {/* SECCIÓN PROMO MARKETPLACE */}
       <section id="catalog" className="py-24 bg-white border-t border-slate-200 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-lime-400 via-white to-white"></div>
+        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-red-500 via-white to-white"></div>
         <div className="mx-auto max-w-4xl px-6 text-center space-y-8 relative z-10">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lime-500/10 border border-lime-500/20 text-xs text-lime-600 font-black tracking-wide">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-xs text-red-600 font-black tracking-wide">
             <Sparkles className="h-3.5 w-3.5" /> EXPLORÁ LAS MEJORES EXPERIENCIAS
           </span>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
             Descubrí Salidas, Aventuras y <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime-500 to-tech-blue">Tours Curados al Instante</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-tech-blue">Tours Curados al Instante</span>
           </h2>
           <p className="text-base text-slate-500 max-w-2xl mx-auto leading-relaxed font-semibold">
             Ingresá a nuestro Marketplace completo e interactivo de viajes. Filtra por destinos favoritos, transporte, disponibilidad en tiempo real y gestioná tu reserva en segundos.
@@ -452,7 +442,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a 
               href="/marketplace"
-              className="group inline-flex w-full sm:w-auto items-center justify-center gap-3 rounded-2xl bg-slate-900 hover:bg-lime-500 hover:text-slate-950 px-8 py-4 text-sm font-black text-white transition-all duration-300 shadow-xl shadow-slate-200 hover:-translate-y-1"
+              className="group inline-flex w-full sm:w-auto items-center justify-center gap-3 rounded-2xl bg-slate-900 hover:bg-red-600 hover:text-white px-8 py-4 text-sm font-black text-white transition-all duration-300 shadow-xl shadow-slate-200 hover:-translate-y-1"
             >
               Ver Catálogo e Iniciar Reserva
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -464,7 +454,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
       {/* RESUMEN FUERTE REWARDS (DINÁMICO CMS) */}
       <section className="py-20 bg-tech-blue text-white overflow-hidden relative">
         <div className="absolute inset-0 pointer-events-none opacity-10">
-          <div className="absolute top-10 right-10 h-96 w-96 rounded-full bg-lime-400 blur-3xl" />
+          <div className="absolute top-10 right-10 h-96 w-96 rounded-full bg-red-500 blur-3xl" />
           <div className="absolute bottom-10 left-10 h-72 w-72 rounded-full bg-blue-300 blur-3xl" />
         </div>
 
@@ -472,7 +462,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
           
           {/* Texto Izquierda */}
           <div className="lg:col-span-7 space-y-6">
-            <span className="inline-flex items-center rounded-full bg-lime-400/25 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-lime-400 border border-lime-400/20">
+            <span className="inline-flex items-center rounded-full bg-red-500/20 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-red-400 border border-red-500/20">
               {cmsData.rewardsBlock?.badgeText || "MEMBER CLUB"}
             </span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight text-white">
@@ -482,8 +472,8 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
               {cmsData.rewardsBlock?.subtitle}
             </p>
             {cmsData.rewardsBlock?.pointsText && (
-              <div className="flex items-center gap-2.5 text-lime-400 font-bold text-sm">
-                <Sparkles className="h-5 w-5 text-lime-400" />
+              <div className="flex items-center gap-2.5 text-red-400 font-bold text-sm">
+                <Sparkles className="h-5 w-5 text-red-400" />
                 {cmsData.rewardsBlock.pointsText}
               </div>
             )}
@@ -517,8 +507,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
           
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Compass className="h-6 w-6 text-lime-400" />
-              <span className="font-black text-white text-lg">{cmsData.footer?.brandText || "TravelApp Experiences"}</span>
+              <img src="/assets/experience_blanco.svg" alt="TravelApp Experiences" className="h-8 w-auto object-contain" />
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               Viajá, explorá y acumulá recompensas en el ecosistema turístico más completo de Argentina.
@@ -529,7 +518,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
             <h4 className="text-xs font-black text-white uppercase tracking-wider mb-4">Navegación</h4>
             <ul className="space-y-2 text-xs">
               <li><button onClick={() => setIsQuienesSomosOpen(true)} className="hover:text-white transition-colors">Quiénes Somos</button></li>
-              <li><a href="#catalog" className="hover:text-white transition-colors">Catálogo de Viajes</a></li>
+              <li><a href="/marketplace" className="hover:text-white transition-colors">Catálogo de Viajes</a></li>
               <li><a href="#services" className="hover:text-white transition-colors">Servicios Exclusivos</a></li>
               <li><a href={cmsData.header?.loginUrl || "/login"} className="hover:text-white transition-colors">Portal Administrativo</a></li>
             </ul>
@@ -543,7 +532,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
                   href={cmsData.redesSociales.facebook}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <FacebookIcon className="h-4 w-4" />
                 </a>
@@ -553,7 +542,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
                   href={cmsData.redesSociales.instagram}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <InstagramIcon className="h-4 w-4" />
                 </a>
@@ -563,7 +552,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
                   href={cmsData.redesSociales.linkedin}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <LinkedinIcon className="h-4 w-4" />
                 </a>
@@ -573,7 +562,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
                   href={cmsData.redesSociales.youtube}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <YoutubeIcon className="h-4 w-4" />
                 </a>
@@ -583,7 +572,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
                   href={cmsData.redesSociales.tiktok}
                   target="_blank"
                   rel="noreferrer"
-                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
                 >
                   <TiktokIcon className="h-4 w-4" />
                 </a>
@@ -595,7 +584,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
             <h4 className="text-xs font-black text-white uppercase tracking-wider mb-4">Soporte & Reservas</h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <a href={cmsData.redesSociales?.whatsapp || "#"} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-lime-400 hover:underline">
+                <a href={cmsData.redesSociales?.whatsapp || "#"} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-red-500 hover:underline">
                   <Phone className="h-3 w-3" /> Contactar por WhatsApp
                 </a>
               </li>
