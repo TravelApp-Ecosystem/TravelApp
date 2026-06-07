@@ -24,6 +24,9 @@ export function proxy(request: NextRequest) {
     if (pathname === "/" || pathname === "/home") {
       return NextResponse.rewrite(new URL("/landing/experience", request.url));
     }
+    if (pathname === "/marketplace" || pathname === "/marketplaces") {
+      return NextResponse.rewrite(new URL("/landing/experience/marketplace", request.url));
+    }
   }
 
   // B) rewards.travelapp.ar ➡️ Landing de Rewards directamente

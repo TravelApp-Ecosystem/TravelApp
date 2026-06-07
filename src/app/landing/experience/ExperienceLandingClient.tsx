@@ -24,11 +24,8 @@ import {
   Clock,
   Sparkles
 } from "lucide-react";
-import { doc, onSnapshot, collection } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Tour } from "@/types/experiences";
-
-const CONVERSION_RATE = 1000; // 1 USD = 1000 ARS (Valor de referencia para conversión dinámica)
 
 const DEFAULT_EXPERIENCE_CMS_DATA = {
   header: {
@@ -96,9 +93,58 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
   }
 };
 
+const FacebookIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+  </svg>
+);
+const InstagramIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+    <circle cx="12" cy="12" r="4"/>
+    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+  </svg>
+);
+const LinkedinIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+  </svg>
+);
+const YoutubeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.5 12 3.5 12 3.5s-7.518 0-9.388.503a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11C4.482 20.5 12 20.5 12 20.5s7.518 0 9.388-.503a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+);
+const TiktokIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.525.02c1.31-.032 2.61-.019 3.91-.006.03 1.56.7 2.92 1.94 3.79.79.56 1.7.93 2.65 1.11.01 1.41-.01 2.82.003 4.23-.88-.13-1.74-.46-2.52-.94-.85-.52-1.55-1.24-2.02-2.11v6.92c-.01 1.43-.37 2.85-1.07 4.09-.76 1.34-1.92 2.4-3.32 2.99-1.57.66-3.37.76-5.02.26-1.5-.45-2.83-1.46-3.69-2.82-1-1.58-1.28-3.56-.78-5.38.48-1.76 1.7-3.26 3.34-4.08 1.15-.58 2.44-.81 3.72-.66v4.3c-.76-.23-1.61-.13-2.3.29-.63.39-1.05 1.05-1.16 1.79-.17.99.31 2.05 1.17 2.53.69.39 1.54.43 2.26.11.83-.37 1.39-1.19 1.44-2.1.03-3.64.01-7.28.02-10.93.01-.13.01-.26.01-.39z"/>
+  </svg>
+);
+
+const RenderLegalSeal = ({ content, alt }: { content?: string; alt: string }) => {
+  if (!content) return null;
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('<') || trimmed.includes('<script')) {
+    return (
+      <div 
+        className="flex items-center justify-center min-h-[40px] max-h-16 overflow-hidden [&_img]:max-h-10 [&_img]:w-auto"
+        dangerouslySetInnerHTML={{ __html: trimmed }} 
+      />
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 hover:border-slate-700 transition-colors">
+      <img src={trimmed} alt={alt} className="h-6 w-auto object-contain" />
+      <span className="text-[8px] font-bold text-slate-400 uppercase">{alt}</span>
+    </div>
+  );
+};
+
 export default function ExperienceLanding({ initialCms }: { initialCms?: any }) {
   const [cmsData, setCmsData] = useState<any>(initialCms ? { ...DEFAULT_EXPERIENCE_CMS_DATA, ...initialCms } : DEFAULT_EXPERIENCE_CMS_DATA);
-  const [tours, setTours] = useState<Tour[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   
   // Hero Slider State
@@ -106,20 +152,11 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
   
   // Modales
   const [activeServiceModal, setActiveServiceModal] = useState<any | null>(null);
-  const [activeTourDetail, setActiveTourDetail] = useState<Tour | null>(null);
   const [isQuienesSomosOpen, setIsQuienesSomosOpen] = useState(false);
-
-  // Filtros del Catálogo
-  const [searchDest, setSearchDest] = useState("");
-  const [filterType, setFilterType] = useState("");
-  const [filterTransport, setFilterTransport] = useState("");
-  const [filterOrigin, setFilterOrigin] = useState("");
-  const [filterDate, setFilterDate] = useState("");
-  const [selectedCurrency, setSelectedCurrency] = useState<'ARS' | 'USD'>('USD');
 
   // Listeners de Firestore
   useEffect(() => {
-    // 1. Escuchar CMS Config en tiempo real
+    // Escuchar CMS Config en tiempo real
     const unsubCms = onSnapshot(doc(db, "cms", "landing_experience"), (snap) => {
       if (snap.exists()) {
         setCmsData({
@@ -129,18 +166,8 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
       }
     });
 
-    // 2. Escuchar colección de viajes (experiences)
-    const unsubTours = onSnapshot(collection(db, "experiences"), (snap) => {
-      const list: Tour[] = [];
-      snap.forEach(d => {
-        list.push(d.data() as Tour);
-      });
-      setTours(list);
-    });
-
     return () => {
       unsubCms();
-      unsubTours();
     };
   }, []);
 
@@ -152,37 +179,6 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
     }, 6000);
     return () => clearInterval(interval);
   }, [cmsData.heroSlides]);
-
-  // Lista de destinos únicos para el filtro
-  const uniqueDestinations = Array.from(new Set(tours.map(t => t.location.split(',')[0].trim())));
-  const uniqueTransports = Array.from(new Set(tours.map(t => t.transportation).filter(Boolean)));
-  const uniqueOrigins = Array.from(new Set(tours.map(t => t.departureOrigin).filter(Boolean)));
-
-  // Filtrado de viajes
-  const filteredTours = tours.filter(tour => {
-    const matchDest = !searchDest || tour.location.toLowerCase().includes(searchDest.toLowerCase());
-    const matchType = !filterType || tour.tripType === filterType;
-    const matchTransport = !filterTransport || tour.transportation === filterTransport;
-    const matchOrigin = !filterOrigin || tour.departureOrigin === filterOrigin;
-    const matchDate = !filterDate || tour.departureDate >= filterDate;
-    return matchDest && matchType && matchTransport && matchOrigin && matchDate;
-  });
-
-  // Helper de conversión de precios
-  const formatPrice = (price: number = 0, fromCurrency: 'ARS' | 'USD') => {
-    const safePrice = price || 0;
-    if (fromCurrency === selectedCurrency) {
-      return `${selectedCurrency === 'ARS' ? '$' : 'USD '} ${safePrice.toLocaleString('es-AR')}`;
-    }
-    // Conversión aproximada
-    let converted = safePrice;
-    if (fromCurrency === 'ARS' && selectedCurrency === 'USD') {
-      converted = safePrice / CONVERSION_RATE;
-    } else if (fromCurrency === 'USD' && selectedCurrency === 'ARS') {
-      converted = safePrice * CONVERSION_RATE;
-    }
-    return `${selectedCurrency === 'ARS' ? '$' : 'USD '} ${Math.round(converted).toLocaleString('es-AR')}`;
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans overflow-x-hidden">
@@ -439,231 +435,29 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
         </div>
       </section>
 
-      {/* CATÁLOGO DE VIAJES INTERACTIVO CON FILTROS */}
-      <section id="catalog" className="py-20 bg-white border-t border-slate-200">
-        <div className="mx-auto max-w-7xl px-6">
-          
-          {/* Título e Selector Bimonetario */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6 border-b border-slate-100 pb-6">
-            <div>
-              <span className="text-xs font-black uppercase tracking-widest text-tech-blue">Planificá tu destino</span>
-              <h2 className="mt-2 text-3xl font-black text-slate-800">Catálogo de Viajes Disponibles</h2>
-              <p className="text-sm text-slate-500 mt-2">Filtra por fecha, destino, transporte y más para encontrar tu viaje perfecto.</p>
-            </div>
-            
-            {/* Toggle de Monedas */}
-            <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 w-max shadow-inner">
-              <button
-                onClick={() => setSelectedCurrency('ARS')}
-                className={`px-4 py-2 rounded-lg text-xs font-extrabold uppercase transition-all ${
-                  selectedCurrency === 'ARS' ? 'bg-white text-tech-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                Pesos ($)
-              </button>
-              <button
-                onClick={() => setSelectedCurrency('USD')}
-                className={`px-4 py-2 rounded-lg text-xs font-extrabold uppercase transition-all ${
-                  selectedCurrency === 'USD' ? 'bg-white text-tech-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                Dólares (USD)
-              </button>
-            </div>
-          </div>
-
-          {/* FILTROS INTERACTIVOS */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-10 shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-            
-            {/* Destino Selector */}
-            <div>
-              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Destino / Localidad</label>
-              <select
-                value={searchDest}
-                onChange={(e) => setSearchDest(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs bg-white focus:outline-none"
-              >
-                <option value="">Todos los Destinos</option>
-                {uniqueDestinations.map(dest => (
-                  <option key={dest} value={dest}>{dest}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Tipo de Viaje */}
-            <div>
-              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Tipo de Viaje</label>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs bg-white focus:outline-none"
-              >
-                <option value="">Todos los esquemas</option>
-                <option value="Individual">Individual</option>
-                <option value="Grupal">Grupal</option>
-              </select>
-            </div>
-
-            {/* Transporte */}
-            <div>
-              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Medio de Transporte</label>
-              <select
-                value={filterTransport}
-                onChange={(e) => setFilterTransport(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs bg-white focus:outline-none"
-              >
-                <option value="">Cualquier Transporte</option>
-                {uniqueTransports.map(tr => (
-                  <option key={tr} value={tr}>{tr}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Origen */}
-            <div>
-              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Origen de Salida</label>
-              <select
-                value={filterOrigin}
-                onChange={(e) => setFilterOrigin(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs bg-white focus:outline-none"
-              >
-                <option value="">Cualquier Origen</option>
-                {uniqueOrigins.map(ori => (
-                  <option key={ori} value={ori}>{ori}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Fecha Salida */}
-            <div>
-              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">A partir de fecha</label>
-              <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Reset Filtros link */}
-          {(searchDest || filterType || filterTransport || filterOrigin || filterDate) && (
-            <button
-              onClick={() => {
-                setSearchDest("");
-                setFilterType("");
-                setFilterTransport("");
-                setFilterOrigin("");
-                setFilterDate("");
-              }}
-              className="text-xs font-bold text-red-500 hover:text-red-600 mb-6 block"
+      {/* SECCIÓN PROMO MARKETPLACE */}
+      <section id="catalog" className="py-24 bg-white border-t border-slate-200 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-lime-400 via-white to-white"></div>
+        <div className="mx-auto max-w-4xl px-6 text-center space-y-8 relative z-10">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lime-500/10 border border-lime-500/20 text-xs text-lime-600 font-black tracking-wide">
+            <Sparkles className="h-3.5 w-3.5" /> EXPLORÁ LAS MEJORES EXPERIENCIAS
+          </span>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+            Descubrí Salidas, Aventuras y <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime-500 to-tech-blue">Tours Curados al Instante</span>
+          </h2>
+          <p className="text-base text-slate-500 max-w-2xl mx-auto leading-relaxed font-semibold">
+            Ingresá a nuestro Marketplace completo e interactivo de viajes. Filtra por destinos favoritos, transporte, disponibilidad en tiempo real y gestioná tu reserva en segundos.
+          </p>
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a 
+              href="/marketplace"
+              className="group inline-flex w-full sm:w-auto items-center justify-center gap-3 rounded-2xl bg-slate-900 hover:bg-lime-500 hover:text-slate-950 px-8 py-4 text-sm font-black text-white transition-all duration-300 shadow-xl shadow-slate-200 hover:-translate-y-1"
             >
-              × Limpiar filtros de búsqueda
-            </button>
-          )}
-
-          {/* GRID DE TARJETAS DE VIAJES */}
-          {filteredTours.length === 0 ? (
-            <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white">
-              <Compass className="mb-4 h-12 w-12 text-slate-300 animate-pulse" />
-              <h3 className="text-lg font-bold text-slate-600">No encontramos viajes con esos filtros</h3>
-              <p className="mt-1 text-sm text-slate-400">Intenta reestableciendo los filtros para ver otras opciones.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredTours.map(tour => {
-                const isAvailable = tour.availability === 'Disponible' || tour.availability === 'Cupos Limitados';
-                
-                return (
-                  <div key={tour.id} className="flex flex-col bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                    {/* Imagen Portada */}
-                    <div className="h-44 w-full bg-slate-100 relative overflow-hidden">
-                      <img src={tour.imageUrl || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"} alt={tour.title} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent"></div>
-                      
-                      {/* Código de Viaje */}
-                      <span className="absolute top-3 left-3 px-2 py-0.5 rounded-lg bg-slate-900/80 text-[10px] font-black text-white uppercase backdrop-blur-sm tracking-wider">
-                        {tour.id}
-                      </span>
-
-                      {/* Badge disponibilidad */}
-                      <span className={`absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-white ${
-                        tour.availability === 'Disponible' ? 'bg-emerald-500' : tour.availability === 'Cupos Limitados' ? 'bg-amber-500' : 'bg-slate-500'
-                      }`}>
-                        {tour.availability}
-                      </span>
-                    </div>
-
-                    {/* Contenido */}
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-slate-500 text-[11px] font-bold">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5 text-tech-blue" />
-                            {tour.location}
-                          </span>
-                          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
-                            {tour.tripType}
-                          </span>
-                        </div>
-                        <h3 className="text-base font-black text-slate-800 leading-snug line-clamp-1">
-                          {tour.title}
-                        </h3>
-                        <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                          {tour.description}
-                        </p>
-                      </div>
-
-                      {/* Servicios Incluidos (Vista Rápida) */}
-                      <div className="flex flex-wrap gap-1 border-t border-slate-100 pt-3">
-                        {tour.services?.slice(0, 3).map((srv, i) => (
-                          <span key={i} className="text-[10px] bg-slate-50 border border-slate-200/80 rounded px-1.5 py-0.5 text-slate-500 font-semibold truncate max-w-[80px]">
-                            {srv}
-                          </span>
-                        ))}
-                        {tour.services?.length > 3 && (
-                          <span className="text-[10px] text-tech-blue font-bold px-1 py-0.5">+{tour.services.length - 3}</span>
-                        )}
-                      </div>
-
-                      {/* Precios bimonetarios y botón de Ficha */}
-                      <div className="border-t border-slate-100 pt-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-[9px] font-black text-slate-400 uppercase">Tarifa Regular</span>
-                            <span className="block text-sm font-semibold text-slate-500">
-                              {formatPrice(tour.price, tour.currency)}
-                            </span>
-                          </div>
-                          
-                          {/* Puntos que suma */}
-                          <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 text-[10px] font-black text-emerald-600 px-2 py-0.5">
-                            <Award className="h-3 w-3" /> +{tour.pointsEarned} pts
-                          </span>
-                        </div>
-
-                        {/* Caja Destacada Rewards */}
-                        <div className="bg-lime-500/10 border border-lime-500/20 rounded-2xl p-2.5 flex items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[9px] font-black text-lime-700 uppercase block tracking-wider leading-none">Miembro Rewards</span>
-                            <span className="text-base font-black text-lime-600 mt-1 block">
-                              {formatPrice(tour.priceRewards, tour.currency)}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => setActiveTourDetail(tour)}
-                            className="bg-lime-500 hover:bg-lime-600 rounded-xl px-3 py-2 text-xs font-black text-gray-950 transition-colors shadow-sm"
-                          >
-                            Ver Ficha
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+              Ver Catálogo e Iniciar Reserva
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </a>
+          </div>
         </div>
       </section>
 
@@ -743,23 +537,58 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
 
           <div>
             <h4 className="text-xs font-black text-white uppercase tracking-wider mb-4">Redes Sociales</h4>
-            <ul className="space-y-2 text-xs">
-              <li>
-                <a href={cmsData.redesSociales?.facebook || "https://facebook.com/travelapp.ar"} target="_blank" rel="noreferrer" className="hover:text-white transition-colors">
-                  Facebook: facebook.com/travelapp.ar
+            <div className="flex flex-wrap gap-2.5">
+              {cmsData.redesSociales?.facebook && (
+                <a
+                  href={cmsData.redesSociales.facebook}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                >
+                  <FacebookIcon className="h-4 w-4" />
                 </a>
-              </li>
-              <li>
-                <a href={`https://instagram.com/${cmsData.redesSociales?.instagram?.replace('@', '') || 'travelapp.ar'}`} target="_blank" rel="noreferrer" className="hover:text-white transition-colors">
-                  Instagram: {cmsData.redesSociales?.instagram || "@travelapp.ar"}
+              )}
+              {cmsData.redesSociales?.instagram && (
+                <a
+                  href={cmsData.redesSociales.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                >
+                  <InstagramIcon className="h-4 w-4" />
                 </a>
-              </li>
-              <li>
-                <a href={cmsData.redesSociales?.messenger || "https://m.me/travelapp.ar"} target="_blank" rel="noreferrer" className="hover:text-white transition-colors">
-                  Messenger: {cmsData.redesSociales?.messenger || "@travelapp.ar"}
+              )}
+              {cmsData.redesSociales?.linkedin && (
+                <a
+                  href={cmsData.redesSociales.linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                >
+                  <LinkedinIcon className="h-4 w-4" />
                 </a>
-              </li>
-            </ul>
+              )}
+              {cmsData.redesSociales?.youtube && (
+                <a
+                  href={cmsData.redesSociales.youtube}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                >
+                  <YoutubeIcon className="h-4 w-4" />
+                </a>
+              )}
+              {cmsData.redesSociales?.tiktok && (
+                <a
+                  href={cmsData.redesSociales.tiktok}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="h-9 w-9 rounded-xl bg-slate-800 hover:bg-lime-500 hover:text-slate-900 flex items-center justify-center transition-colors border border-slate-700 text-slate-300"
+                >
+                  <TiktokIcon className="h-4 w-4" />
+                </a>
+              )}
+            </div>
           </div>
 
           <div>
@@ -775,9 +604,15 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>{cmsData.footer?.copyrightText || "© 2026 TravelApp Experiences. Una marca de TravelApp s.a.s."}</p>
-          <div className="flex gap-4">
+        <div className="mx-auto max-w-7xl border-t border-slate-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-500">
+          <p className="order-2 md:order-1 text-center md:text-left">
+            {cmsData.footer?.copyrightText || "© 2026 TravelApp Experiences. Una marca de TravelApp s.a.s."}
+          </p>
+          <div className="order-1 md:order-2 flex flex-wrap items-center justify-center gap-4">
+            <RenderLegalSeal content={cmsData.sellosLegales?.arcaQr} alt="ARCA" />
+            <RenderLegalSeal content={cmsData.sellosLegales?.baseDatosSello} alt="Base de Datos" />
+          </div>
+          <div className="order-3 flex gap-4">
             <a href="#" className="hover:text-slate-300">Términos de Servicio</a>
             <a href="#" className="hover:text-slate-300">Políticas de Privacidad</a>
           </div>
@@ -822,146 +657,7 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* MODAL DETALLE DE FICHA DE VIAJE */}
-      {/* ======================================================== */}
-      {activeTourDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] animate-scaleUp">
-            
-            {/* Header Imagen */}
-            <div className="h-52 w-full relative">
-              <img
-                src={activeTourDetail.imageUrl || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"}
-                alt={activeTourDetail.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
-              
-              <button
-                onClick={() => setActiveTourDetail(null)}
-                className="absolute top-4 right-4 text-white bg-slate-900/60 p-2 rounded-full hover:bg-slate-900/80 transition-all border border-white/10"
-              >
-                <X className="h-5 w-5" />
-              </button>
 
-              <div className="absolute bottom-4 left-5 right-5 text-white">
-                <span className="px-2 py-0.5 rounded bg-lime-500 text-gray-950 font-black text-[9px] uppercase tracking-widest block w-max mb-1">
-                  Código: {activeTourDetail.id}
-                </span>
-                <h3 className="text-xl font-black leading-snug">{activeTourDetail.title}</h3>
-              </div>
-            </div>
-
-            {/* Cuerpo de la ficha scrollable */}
-            <div className="p-6 flex-1 overflow-y-auto space-y-6">
-              
-              {/* Info rápida */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 border border-slate-200/60 p-4 rounded-2xl text-xs">
-                <div className="space-y-1">
-                  <span className="text-slate-400 block font-bold uppercase text-[9px]">Destino</span>
-                  <span className="font-extrabold text-slate-700 flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 text-tech-blue" />
-                    {activeTourDetail.location}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-slate-400 block font-bold uppercase text-[9px]">Salida</span>
-                  <span className="font-extrabold text-slate-700 flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5 text-tech-blue" />
-                    {activeTourDetail.departureDate}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-slate-400 block font-bold uppercase text-[9px]">Desde</span>
-                  <span className="font-extrabold text-slate-700 truncate block">
-                    {activeTourDetail.departureOrigin}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-slate-400 block font-bold uppercase text-[9px]">Esquema</span>
-                  <span className="font-extrabold text-slate-700 flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5 text-tech-blue" />
-                    {activeTourDetail.tripType} ({activeTourDetail.transportation})
-                  </span>
-                </div>
-              </div>
-
-              {/* Precios del modal */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="border border-slate-200 p-4 rounded-2xl flex flex-col justify-between">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">Tarifa Público General</span>
-                  <span className="text-xl font-bold text-slate-600 mt-2 block">
-                    {formatPrice(activeTourDetail.price, activeTourDetail.currency)}
-                  </span>
-                </div>
-
-                <div className="bg-lime-500/10 border border-lime-500/20 p-4 rounded-2xl flex flex-col justify-between relative overflow-hidden">
-                  <span className="text-[10px] font-black text-lime-700 uppercase tracking-wide block">Tarifa Club Rewards</span>
-                  <span className="text-2xl font-black text-lime-600 mt-2 block">
-                    {formatPrice(activeTourDetail.priceRewards, activeTourDetail.currency)}
-                  </span>
-                  <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 rounded bg-lime-500 text-gray-950 font-black text-[9px] px-1.5 py-0.5">
-                    +{activeTourDetail.pointsEarned} pts
-                  </span>
-                </div>
-              </div>
-
-              {/* Descripción */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="h-4 w-4 text-tech-blue" /> Descripción General
-                </h4>
-                <p className="text-slate-500 text-xs leading-relaxed leading-relaxed whitespace-pre-line">
-                  {activeTourDetail.description}
-                </p>
-              </div>
-
-              {/* Servicios Incluidos */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <Globe className="h-4 w-4 text-tech-blue" /> Servicios Incluidos
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {activeTourDetail.services?.map((srv, i) => (
-                    <span key={i} className="bg-slate-100 border border-slate-200 text-slate-600 rounded-lg px-2.5 py-1 text-xs font-bold">
-                      ✓ {srv}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Observaciones */}
-              {activeTourDetail.observations && (
-                <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-2xl space-y-1">
-                  <h5 className="text-xs font-extrabold text-amber-700 uppercase tracking-wide">Observaciones importantes</h5>
-                  <p className="text-[11px] text-amber-800 leading-relaxed">{activeTourDetail.observations}</p>
-                </div>
-              )}
-
-            </div>
-
-            {/* Footer Modal Controles */}
-            <div className="bg-slate-50 border-t border-slate-100 p-4 flex gap-3">
-              <button
-                onClick={() => setActiveTourDetail(null)}
-                className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-xs font-bold text-slate-500 hover:bg-slate-50 text-center"
-              >
-                Cerrar Ficha
-              </button>
-              <a
-                href={`https://wa.me/5493814188106?text=Hola!%20Quiero%20reservar%20el%20viaje%20con%20código%20${activeTourDetail.id}%20(${activeTourDetail.title}).`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 rounded-xl bg-lime-500 hover:bg-lime-600 py-3 text-xs font-black text-gray-950 text-center flex items-center justify-center gap-1.5 shadow-md shadow-lime-500/20"
-              >
-                <Phone className="h-4 w-4" /> Reservar por WhatsApp
-              </a>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       {/* ======================================================== */}
       {/* MODAL QUIÉNES SOMOS */}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowRight,
   Gift,
@@ -15,7 +15,10 @@ import {
   Plane,
   Coffee,
   ShoppingBag,
+  Phone,
 } from "lucide-react";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const REWARDS_DATA = {
   nav: {
@@ -100,8 +103,68 @@ const IconMap: Record<string, React.ElementType> = {
   Gift,
 };
 
+const FacebookIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+  </svg>
+);
+const InstagramIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+    <circle cx="12" cy="12" r="4"/>
+    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+  </svg>
+);
+const LinkedinIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+  </svg>
+);
+const YoutubeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.5 12 3.5 12 3.5s-7.518 0-9.388.503a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11C4.482 20.5 12 20.5 12 20.5s7.518 0 9.388-.503a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+);
+const TiktokIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.525.02c1.31-.032 2.61-.019 3.91-.006.03 1.56.7 2.92 1.94 3.79.79.56 1.7.93 2.65 1.11.01 1.41-.01 2.82.003 4.23-.88-.13-1.74-.46-2.52-.94-.85-.52-1.55-1.24-2.02-2.11v6.92c-.01 1.43-.37 2.85-1.07 4.09-.76 1.34-1.92 2.4-3.32 2.99-1.57.66-3.37.76-5.02.26-1.5-.45-2.83-1.46-3.69-2.82-1-1.58-1.28-3.56-.78-5.38.48-1.76 1.7-3.26 3.34-4.08 1.15-.58 2.44-.81 3.72-.66v4.3c-.76-.23-1.61-.13-2.3.29-.63.39-1.05 1.05-1.16 1.79-.17.99.31 2.05 1.17 2.53.69.39 1.54.43 2.26.11.83-.37 1.39-1.19 1.44-2.1.03-3.64.01-7.28.02-10.93.01-.13.01-.26.01-.39z"/>
+  </svg>
+);
+
+const RenderLegalSeal = ({ content, alt }: { content?: string; alt: string }) => {
+  if (!content) return null;
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('<') || trimmed.includes('<script')) {
+    return (
+      <div 
+        className="flex items-center justify-center min-h-[40px] max-h-16 overflow-hidden [&_img]:max-h-10 [&_img]:w-auto"
+        dangerouslySetInnerHTML={{ __html: trimmed }} 
+      />
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-slate-900 bg-slate-950 px-3 py-1.5 hover:border-slate-800 transition-colors">
+      <img src={trimmed} alt={alt} className="h-6 w-auto object-contain" />
+      <span className="text-[8px] font-bold text-slate-400 uppercase">{alt}</span>
+    </div>
+  );
+};
+
 export default function RewardsLanding() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [ecosistemaCms, setEcosistemaCms] = useState<any>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "cms", "landing_ecosistema"), (docSnap) => {
+      if (docSnap.exists()) {
+        setEcosistemaCms(docSnap.data());
+      }
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans overflow-x-hidden">
@@ -314,15 +377,90 @@ export default function RewardsLanding() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-200/10 bg-slate-950 text-slate-500 py-10 px-4">
-        <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center">
-              <Gift className="h-4 w-4 text-white" />
+      <footer className="border-t border-slate-200/10 bg-slate-950 text-slate-500 py-12 px-6">
+        <div className="mx-auto max-w-7xl flex flex-col gap-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center">
+                <Gift className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-black text-slate-300">TravelApp Rewards</span>
             </div>
-            <span className="font-black text-slate-300">TravelApp Rewards</span>
+
+            {/* Redes Sociales del Ecosistema */}
+            {ecosistemaCms?.redesSociales && (
+              <div className="flex gap-2.5">
+                {ecosistemaCms.redesSociales.facebook && (
+                  <a
+                    href={ecosistemaCms.redesSociales.facebook}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400"
+                  >
+                    <FacebookIcon className="h-4 w-4" />
+                  </a>
+                )}
+                {ecosistemaCms.redesSociales.instagram && (
+                  <a
+                    href={ecosistemaCms.redesSociales.instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400"
+                  >
+                    <InstagramIcon className="h-4 w-4" />
+                  </a>
+                )}
+                {ecosistemaCms.redesSociales.linkedin && (
+                  <a
+                    href={ecosistemaCms.redesSociales.linkedin}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400"
+                  >
+                    <LinkedinIcon className="h-4 w-4" />
+                  </a>
+                )}
+                {ecosistemaCms.redesSociales.youtube && (
+                  <a
+                    href={ecosistemaCms.redesSociales.youtube}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400"
+                  >
+                    <YoutubeIcon className="h-4 w-4" />
+                  </a>
+                )}
+                {ecosistemaCms.redesSociales.tiktok && (
+                  <a
+                    href={ecosistemaCms.redesSociales.tiktok}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400"
+                  >
+                    <TiktokIcon className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
-          <p className="text-sm">© 2026 TravelApp Rewards. Una marca de TravelApp s.a.s.</p>
+
+          <div className="border-t border-slate-900/50 pt-6 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-600">
+            <p className="order-2 md:order-1 text-center md:text-left">
+              © 2026{" "}
+              {ecosistemaCms?.legales?.razonSocial || "TravelApp s.a.s."} —
+              Todos los derechos reservados.
+            </p>
+            {ecosistemaCms?.sellosLegales && (
+              <div className="order-1 md:order-2 flex flex-wrap items-center justify-center gap-4">
+                <RenderLegalSeal content={ecosistemaCms.sellosLegales.arcaQr} alt="ARCA" />
+                <RenderLegalSeal content={ecosistemaCms.sellosLegales.baseDatosSello} alt="Base de Datos" />
+              </div>
+            )}
+            <div className="order-3 flex gap-4">
+              <a href="#" className="hover:text-slate-400 transition-colors">Términos</a>
+              <a href="#" className="hover:text-slate-400 transition-colors">Privacidad</a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

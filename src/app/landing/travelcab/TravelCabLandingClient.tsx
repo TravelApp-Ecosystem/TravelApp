@@ -344,6 +344,28 @@ const DEFAULT_MU_TARIFFS_FALLBACK: MUTariff[] = [
   }
 ];
 
+const RenderLegalSeal = ({ content, alt }: { content?: string; alt: string }) => {
+  if (!content) return null;
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('<') || trimmed.includes('<script')) {
+    return (
+      <div 
+        className="flex items-center justify-center min-h-[40px] max-h-16 overflow-hidden [&_img]:max-h-10 [&_img]:w-auto"
+        dangerouslySetInnerHTML={{ __html: trimmed }} 
+      />
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-slate-900 bg-slate-950 px-3 py-1.5 hover:border-slate-800 transition-colors">
+      <img src={trimmed} alt={alt} className="h-6 w-auto object-contain" />
+      <span className="text-[8px] font-bold text-slate-400 uppercase">{alt}</span>
+    </div>
+  );
+};
+
 export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -1612,51 +1634,83 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
           </div>
 
           <div className="flex items-center justify-center gap-3">
-            <a
-              href={cmsData.redesSociales?.facebook || DEFAULT_CMS_DATA.redesSociales.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
-            >
-              <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/>
-              </svg>
-            </a>
-            <a
-              href={cmsData.redesSociales?.instagram || DEFAULT_CMS_DATA.redesSociales.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
-            >
-              <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-              </svg>
-            </a>
-            <a
-              href={cmsData.redesSociales?.messenger || DEFAULT_CMS_DATA.redesSociales.messenger}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
-            >
-              <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.652V24l4.088-2.242c1.092.3 2.246.464 3.443.464C18.627 22.222 24 17.247 24 11.111 24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/>
-              </svg>
-            </a>
+            {cmsData.redesSociales?.facebook && (
+              <a
+                href={cmsData.redesSociales.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
+              >
+                <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/>
+                </svg>
+              </a>
+            )}
+            {cmsData.redesSociales?.instagram && (
+              <a
+                href={cmsData.redesSociales.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
+              >
+                <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                </svg>
+              </a>
+            )}
+            {cmsData.redesSociales?.messenger && (
+              <a
+                href={cmsData.redesSociales.messenger}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
+              >
+                <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.652V24l4.088-2.242c1.092.3 2.246.464 3.443.464C18.627 22.222 24 17.247 24 11.111 24 4.974 18.627 0 12 0zm1.191 14.963l-3.055-3.26-5.963 3.26L10.732 8l3.131 3.26L19.752 8l-6.561 6.963z"/>
+                </svg>
+              </a>
+            )}
+            {cmsData.redesSociales?.whatsapp && (
+              <a
+                href={cmsData.redesSociales.whatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
+              >
+                <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 11.968.01c3.178.001 6.169 1.24 8.424 3.496 2.254 2.256 3.491 5.249 3.491 8.43 0 6.615-5.337 11.953-11.905 11.953-2.006-.001-3.98-.507-5.732-1.468L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.859-4.407 9.862-9.83.001-2.628-1.02-5.1-2.871-6.955C16.6 1.965 14.138.94 11.52.94c-5.44 0-9.863 4.41-9.866 9.833-.001 1.777.464 3.51 1.346 5.034l-.993 3.626 3.73-.978c1.478.807 3.125 1.233 4.71 1.234zm11.39-7.9c-.27-.135-1.593-.787-1.84-.878-.247-.09-.427-.135-.607.135-.18.27-.697.878-.854 1.057-.158.18-.315.202-.585.067-.27-.135-1.14-.42-2.172-1.34-.803-.717-1.345-1.603-1.502-1.873-.158-.27-.017-.417.118-.552.122-.122.27-.315.405-.472.135-.158.18-.27.27-.45.09-.18.045-.337-.022-.472-.068-.135-.608-1.464-.833-2.005-.22-.53-.44-.457-.607-.466-.157-.008-.337-.01-.517-.01-.18 0-.472.067-.72.337-.247.27-.945.923-.945 2.25 0 1.327.965 2.61 1.1 2.78.135.17 1.9 2.9 4.603 4.07 1.1.48 1.758.646 2.378.736.623.09 1.134.072 1.56.009.477-.07 1.594-.652 1.819-1.282.225-.63.225-1.17.157-1.282-.067-.11-.247-.18-.517-.315z"/>
+                </svg>
+              </a>
+            )}
+            {cmsData.redesSociales?.youtube && (
+              <a
+                href={cmsData.redesSociales.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
+              >
+                <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.5 12 3.5 12 3.5s-7.518 0-9.388.503a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11C4.482 20.5 12 20.5 12 20.5s7.518 0 9.388-.503a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+              </a>
+            )}
+            {cmsData.redesSociales?.tiktok && (
+              <a
+                href={cmsData.redesSociales.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-vial-orange hover:text-slate-950 transition-all duration-200"
+              >
+                <svg className="h-4.5 w-4.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12.525.02c1.31-.032 2.61-.019 3.91-.006.03 1.56.7 2.92 1.94 3.79.79.56 1.7.93 2.65 1.11.01 1.41-.01 2.82.003 4.23-.88-.13-1.74-.46-2.52-.94-.85-.52-1.55-1.24-2.02-2.11v6.92c-.01 1.43-.37 2.85-1.07 4.09-.76 1.34-1.92 2.4-3.32 2.99-1.57.66-3.37.76-5.02.26-1.5-.45-2.83-1.46-3.69-2.82-1-1.58-1.28-3.56-.78-5.38.48-1.76 1.7-3.26 3.34-4.08 1.15-.58 2.44-.81 3.72-.66v4.3c-.76-.23-1.61-.13-2.3.29-.63.39-1.05 1.05-1.16 1.79-.17.99.31 2.05 1.17 2.53.69.39 1.54.43 2.26.11.83-.37 1.39-1.19 1.44-2.1.03-3.64.01-7.28.02-10.93.01-.13.01-.26.01-.39z"/>
+                </svg>
+              </a>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4">
-            {cmsData.sellosLegales?.arcaQrUrl && (
-              <a href="https://www.afip.gob.ar" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-900 bg-slate-950 px-3 py-1.5 hover:border-slate-800 transition-colors">
-                <img src={cmsData.sellosLegales.arcaQrUrl} alt="ARCA" className="h-6 w-auto object-contain" />
-                <span className="text-[8px] font-bold text-slate-400 uppercase">ARCA QR</span>
-              </a>
-            )}
-            {cmsData.sellosLegales?.baseDatosSelloUrl && (
-              <div className="flex items-center gap-2 rounded-lg border border-slate-900 bg-slate-950 px-3 py-1.5 hover:border-slate-800 transition-colors">
-                <img src={cmsData.sellosLegales.baseDatosSelloUrl} alt="DB" className="h-4.5 w-auto object-contain" />
-                <span className="text-[8px] font-bold text-slate-400 uppercase">Base de Datos</span>
-              </div>
-            )}
+            <RenderLegalSeal content={cmsData.sellosLegales?.arcaQr} alt="ARCA" />
+            <RenderLegalSeal content={cmsData.sellosLegales?.baseDatosSello} alt="Base de Datos" />
           </div>
 
           <div className="w-full border-t border-slate-900 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-500 font-semibold">

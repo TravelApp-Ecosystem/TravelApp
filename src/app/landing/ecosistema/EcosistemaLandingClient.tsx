@@ -54,6 +54,16 @@ const Linkedin = ({ className }: { className?: string }) => (
     <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
   </svg>
 );
+const Youtube = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.5 12 3.5 12 3.5s-7.518 0-9.388.503a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11C4.482 20.5 12 20.5 12 20.5s7.518 0 9.388-.503a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+);
+const Tiktok = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.525.02c1.31-.032 2.61-.019 3.91-.006.03 1.56.7 2.92 1.94 3.79.79.56 1.7.93 2.65 1.11.01 1.41-.01 2.82.003 4.23-.88-.13-1.74-.46-2.52-.94-.85-.52-1.55-1.24-2.02-2.11v6.92c-.01 1.43-.37 2.85-1.07 4.09-.76 1.34-1.92 2.4-3.32 2.99-1.57.66-3.37.76-5.02.26-1.5-.45-2.83-1.46-3.69-2.82-1-1.58-1.28-3.56-.78-5.38.48-1.76 1.7-3.26 3.34-4.08 1.15-.58 2.44-.81 3.72-.66v4.3c-.76-.23-1.61-.13-2.3.29-.63.39-1.05 1.05-1.16 1.79-.17.99.31 2.05 1.17 2.53.69.39 1.54.43 2.26.11.83-.37 1.39-1.19 1.44-2.1.03-3.64.01-7.28.02-10.93.01-.13.01-.26.01-.39z"/>
+  </svg>
+);
 
 /* ══════════════════════════════════════════════════════════════════
    STATIC UNIT CONFIG — logos & routes (not CMS-driven)
@@ -291,6 +301,28 @@ function LegalModal({
 /* ══════════════════════════════════════════════════════════════════
    MAIN PAGE
    ══════════════════════════════════════════════════════════════════ */
+const RenderLegalSeal = ({ content, alt }: { content?: string; alt: string }) => {
+  if (!content) return null;
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('<') || trimmed.includes('<script')) {
+    return (
+      <div 
+        className="flex items-center justify-center min-h-[40px] max-h-16 overflow-hidden [&_img]:max-h-10 [&_img]:w-auto"
+        dangerouslySetInnerHTML={{ __html: trimmed }} 
+      />
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-slate-900 bg-slate-950 px-3 py-1.5 hover:border-slate-800 transition-colors">
+      <img src={trimmed} alt={alt} className="h-6 w-auto object-contain" />
+      <span className="text-[8px] font-bold text-slate-400 uppercase">{alt}</span>
+    </div>
+  );
+};
+
 export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) {
   const [cms, setCms] = useState<any>(initialCms ? { ...DEFAULT_CMS, ...initialCms } : DEFAULT_CMS);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -1486,6 +1518,26 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                     <Phone className="h-4 w-4 text-slate-400 hover:text-white" />
                   </a>
                 )}
+                {cms.redesSociales?.youtube && (
+                  <a
+                    href={cms.redesSociales.youtube}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-9 w-9 rounded-xl bg-slate-850 hover:bg-red-600 flex items-center justify-center transition-colors border border-slate-800"
+                  >
+                    <Youtube className="h-4 w-4 text-slate-400 hover:text-white" />
+                  </a>
+                )}
+                {cms.redesSociales?.tiktok && (
+                  <a
+                    href={cms.redesSociales.tiktok}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-9 w-9 rounded-xl bg-slate-850 hover:bg-black flex items-center justify-center transition-colors border border-slate-800"
+                  >
+                    <Tiktok className="h-4 w-4 text-slate-400 hover:text-white" />
+                  </a>
+                )}
               </div>
             </div>
 
@@ -1635,13 +1687,17 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
-            <p>
+          <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-600">
+            <p className="order-2 md:order-1 text-center md:text-left">
               © 2026{" "}
               {cms.legales?.razonSocial || DEFAULT_CMS.legales.razonSocial} —
               Todos los derechos reservados.
             </p>
-            <div className="flex gap-5">
+            <div className="order-1 md:order-2 flex flex-wrap items-center justify-center gap-4">
+              <RenderLegalSeal content={cms.sellosLegales?.arcaQr} alt="ARCA" />
+              <RenderLegalSeal content={cms.sellosLegales?.baseDatosSello} alt="Base de Datos" />
+            </div>
+            <div className="order-3 flex gap-5">
               <button
                 onClick={() =>
                   setLegalModal({

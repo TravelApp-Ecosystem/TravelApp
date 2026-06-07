@@ -191,9 +191,13 @@ const DEFAULT_CMS_DATA = {
     facebook: "https://facebook.com/travelcab",
     instagram: "https://instagram.com/travelcab.ar",
     messenger: "https://m.me/travelcab",
-    whatsapp: "https://wa.me/5493814188106"
+    whatsapp: "https://wa.me/5493814188106",
+    youtube: "",
+    tiktok: ""
   },
   sellosLegales: {
+    arcaQr: "",
+    baseDatosSello: "",
     arcaQrUrl: "https://www.afip.gob.ar/images/f960/DATAWEB.jpg",
     baseDatosSelloUrl: "https://www.argentina.gob.ar/sites/default/files/aaip-logo-sello.png"
   },
@@ -308,7 +312,13 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
     facebook: "https://facebook.com/travelapp.ar",
     instagram: "https://instagram.com/travelapp.ar",
     messenger: "https://m.me/travelapp.ar",
-    whatsapp: "https://wa.me/5493814188106"
+    whatsapp: "https://wa.me/5493814188106",
+    youtube: "",
+    tiktok: ""
+  },
+  sellosLegales: {
+    arcaQr: "",
+    baseDatosSello: ""
   },
   footer: {
     brandText: "TravelApp Experiences",
@@ -345,7 +355,11 @@ const DEFAULT_ECOSISTEMA_CMS_DATA = {
   apps: { playStoreUrl: "", appStoreUrl: "", titulo: "Llevá el Ecosistema en tu Bolsillo", subtitulo: "Descargá la app de TravelApp y gestioná tus viajes, puntos y experiencias desde cualquier lugar." },
   trabajaNosotros: { titulo: "Sumate al Equipo TravelApp", subtitulo: "Buscamos personas apasionadas por los viajes, la tecnología y el servicio de excelencia.", puestos: ["Conductor Socio TravelCab", "Guía de Experiencias", "Atención al Cliente", "Desarrollo de Software", "Marketing Digital", "Operaciones", "Ventas B2B", "Otro"] },
   legales: { razonSocial: "TravelApp s.a.s.", cuit: "30-XXXXXXXX-X", domicilio: "San Miguel de Tucumán, Argentina", terminos: "Al utilizar nuestros servicios, el usuario acepta los términos y condiciones vigentes de TravelApp s.a.s.", privacidad: "TravelApp s.a.s. garantiza la protección de datos personales de conformidad con la Ley 25.326." },
-  redesSociales: { facebook: "https://facebook.com/travelapp.ar", instagram: "https://instagram.com/travelapp.ar", whatsapp: "https://wa.me/5493814188106", linkedin: "" },
+  redesSociales: { facebook: "https://facebook.com/travelapp.ar", instagram: "https://instagram.com/travelapp.ar", whatsapp: "https://wa.me/5493814188106", linkedin: "", youtube: "", tiktok: "" },
+  sellosLegales: {
+    arcaQr: "",
+    baseDatosSello: ""
+  },
   showStats: false,
 };
 
@@ -1418,25 +1432,39 @@ export default function CMSPage() {
                   onChange={(val) => updateField('redesSociales', 'whatsapp', val)}
                 />
               </div>
+              <div>
+                <CMSInput
+                  label="Canal de YouTube"
+                  value={data.redesSociales?.youtube || ''}
+                  onChange={(val) => updateField('redesSociales', 'youtube', val)}
+                />
+              </div>
+              <div>
+                <CMSInput
+                  label="Perfil de TikTok"
+                  value={data.redesSociales?.tiktok || ''}
+                  onChange={(val) => updateField('redesSociales', 'tiktok', val)}
+                />
+              </div>
             </div>
 
             <div className="border-b border-slate-100 pb-4 pt-4">
               <h3 className="text-base font-extrabold text-slate-800">Sellos Gubernamentales y de Registro</h3>
-              <p className="text-xs text-slate-400 mt-1">Configura las URLs de imágenes oficiales que irán al pie de la página.</p>
+              <p className="text-xs text-slate-400 mt-1">Configura el código QR de ARCA y el sello de Registro Nacional de Base de Datos (soporta código HTML/script o URL de imagen).</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ImageUploaderInput 
-                label="Sello QR ARCA (ex-AFIP)" 
-                section="sellosLegales" 
-                field="arcaQrUrl" 
-                value={data.sellosLegales?.arcaQrUrl || ''} 
+              <CMSTextarea
+                label="Código o URL del Sello QR ARCA"
+                value={data.sellosLegales?.arcaQr || ''}
+                onChange={(val) => updateField('sellosLegales', 'arcaQr', val)}
+                rows={3}
               />
-              <ImageUploaderInput 
-                label="Sello Registro Nacional de Base de Datos" 
-                section="sellosLegales" 
-                field="baseDatosSelloUrl" 
-                value={data.sellosLegales?.baseDatosSelloUrl || ''} 
+              <CMSTextarea
+                label="Código o URL del Sello Registro Nacional de Base de Datos"
+                value={data.sellosLegales?.baseDatosSello || ''}
+                onChange={(val) => updateField('sellosLegales', 'baseDatosSello', val)}
+                rows={3}
               />
             </div>
 
@@ -1789,6 +1817,40 @@ export default function CMSPage() {
                   onChange={(val) => updateField('redesSociales', 'whatsapp', val)}
                 />
               </div>
+              <div>
+                <CMSInput
+                  label="Canal de YouTube"
+                  value={data.redesSociales?.youtube || ''}
+                  onChange={(val) => updateField('redesSociales', 'youtube', val)}
+                />
+              </div>
+              <div>
+                <CMSInput
+                  label="Perfil de TikTok"
+                  value={data.redesSociales?.tiktok || ''}
+                  onChange={(val) => updateField('redesSociales', 'tiktok', val)}
+                />
+              </div>
+            </div>
+
+            <div className="border-b border-slate-100 pb-4 pt-4">
+              <h3 className="text-base font-extrabold text-slate-800">Sellos Gubernamentales y de Registro</h3>
+              <p className="text-xs text-slate-400 mt-1">Configura el código QR de ARCA y el sello de Registro Nacional de Base de Datos para el footer de experiencias (soporta código HTML/script o URL de imagen).</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSTextarea
+                label="Código o URL del Sello QR ARCA"
+                value={data.sellosLegales?.arcaQr || ''}
+                onChange={(val) => updateField('sellosLegales', 'arcaQr', val)}
+                rows={3}
+              />
+              <CMSTextarea
+                label="Código o URL del Sello Registro Nacional de Base de Datos"
+                value={data.sellosLegales?.baseDatosSello || ''}
+                onChange={(val) => updateField('sellosLegales', 'baseDatosSello', val)}
+                rows={3}
+              />
             </div>
 
             <div className="border-b border-slate-100 pb-4 pt-4">
@@ -2100,6 +2162,27 @@ export default function CMSPage() {
                 <CMSInput label="Instagram URL" value={data.redesSociales?.instagram || ''} onChange={(val) => updateField('redesSociales', 'instagram', val)} />
                 <CMSInput label="WhatsApp URL" value={data.redesSociales?.whatsapp || ''} onChange={(val) => updateField('redesSociales', 'whatsapp', val)} />
                 <CMSInput label="LinkedIn URL" value={data.redesSociales?.linkedin || ''} onChange={(val) => updateField('redesSociales', 'linkedin', val)} />
+                <CMSInput label="YouTube URL" value={data.redesSociales?.youtube || ''} onChange={(val) => updateField('redesSociales', 'youtube', val)} />
+                <CMSInput label="TikTok URL" value={data.redesSociales?.tiktok || ''} onChange={(val) => updateField('redesSociales', 'tiktok', val)} />
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 pt-4">
+              <h3 className="text-sm font-extrabold text-slate-700 mb-2">Sellos Gubernamentales y de Registro</h3>
+              <p className="text-xs text-slate-400 mb-4">Configura el código QR de ARCA y el sello de Registro Nacional de Base de Datos para el pie de página de Ecosistema y Rewards (soporta código HTML/script o URL de imagen).</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSTextarea
+                  label="Código o URL del Sello QR ARCA"
+                  value={data.sellosLegales?.arcaQr || ''}
+                  onChange={(val) => updateField('sellosLegales', 'arcaQr', val)}
+                  rows={3}
+                />
+                <CMSTextarea
+                  label="Código o URL del Sello Registro Nacional de Base de Datos"
+                  value={data.sellosLegales?.baseDatosSello || ''}
+                  onChange={(val) => updateField('sellosLegales', 'baseDatosSello', val)}
+                  rows={3}
+                />
               </div>
             </div>
           </div>

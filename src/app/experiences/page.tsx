@@ -46,9 +46,22 @@ const SEED_TOURS: Tour[] = [
   }
 ];
 
+interface Reservation {
+  id: string;
+  tourId: string;
+  tourTitle: string;
+  nombrePasajero: string;
+  emailPasajero: string;
+  telefonoPasajero: string;
+  cantidadPersonas: number;
+  estado: 'Pendiente' | 'Confirmada' | 'Cancelada';
+  createdAt: string;
+}
+
 export default function ExperiencesPage() {
   const [activeTab, setActiveTab] = useState<'catalog' | 'reservations'>('catalog');
   const [tours, setTours] = useState<Tour[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isSeeding, setIsSeeding] = useState(false);
   
   // Editor States
@@ -58,8 +71,8 @@ export default function ExperiencesPage() {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    // Sincronización en vivo con Firestore
-    const unsubscribe = onSnapshot(collection(db, 'experiences'), (snapshot) => {
+    // Sincronización en vivo con Firestore (Tours)
+    const unsubscribeTours = onSnapshot(collection(db, 'experiences'), (snapshot) => {
       const fetchedTours: Tour[] = [];
       snapshot.forEach(doc => {
         fetchedTours.push(doc.data() as Tour);
@@ -67,7 +80,20 @@ export default function ExperiencesPage() {
       setTours(fetchedTours);
     });
 
-    return () => unsubscribe();
+    // Sincronización en vivo con Firestore (Reservas)
+    const unsubscribeReservations = onSnapshot(collection(db, 'experience_reservations'), (snapshot) => {
+      const fetchedRes: Reservation[] = [];
+      snapshot.forEach(doc => {
+        fetchedRes.push({ id: doc.id, ...doc.data() } as Reservation);
+      });
+      fetchedRes.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setReservations(fetchedRes);
+    });
+
+    return () => {
+      unsubscribeTours();
+      unsubscribeReservations();
+    };
   }, []);
 
   const handleSeedTours = async () => {
@@ -138,6 +164,27 @@ export default function ExperiencesPage() {
       }
     }
   };
+
+  const handleUpdateReservationStatus = async (id: string, newStatus: 'Confirmada' | 'Cancelada' | 'Pendiente') => {
+    try {
+      await setDoc(doc(db, 'experience_reservations', id), { estado: newStatus }, { merge: true });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('No se pudo actualizar el estado de la reserva.');
+    }
+  };
+
+  const handleDeleteReservation = async (id: string) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar esta reserva?')) {
+      try {
+        await deleteDoc(doc(db, 'experience_reservations', id));
+      } catch (error) {
+        console.error('Error deleting reservation:', error);
+        alert('No se pudo eliminar la reserva.');
+      }
+    }
+  };
+
 
   // Image base64 compression helper
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -283,28 +330,107 @@ export default function ExperiencesPage() {
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-slate-200 p-6 bg-slate-50 flex items-center justify-between">
               <h3 className="text-lg font-bold text-tech-blue">Reservas Activas de Experiencias</h3>
-              <span className="text-sm font-semibold text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-full">Próximos Viajes</span>
+              <span className="text-sm font-semibold text-slate-500 bg-slate-200/60 px-2.5 py-0.5 rounded-full">
+                {reservations.length} Reservas en total
+              </span>
             </div>
-            <div className="divide-y divide-slate-100">
-              <div className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors">
-                <div>
-                  <p className="text-sm font-bold text-slate-800">Gonzalo Pérez</p>
-                  <p className="text-xs text-slate-500 mt-1">Mendoza Wine Tour Premium • 2 Personas • Código: EXP-001</p>
-                </div>
-                <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-600">
-                  Confirmada
-                </span>
+
+            {reservations.length === 0 ? (
+              <div className="flex h-64 flex-col items-center justify-center p-6 text-center">
+                <Ticket className="mb-4 h-12 w-12 text-slate-350" />
+                <h3 className="text-base font-bold text-slate-600">No hay solicitudes de reservas</h3>
+                <p className="mt-1 text-xs text-slate-400 max-w-sm">
+                  Las reservas realizadas por los usuarios en el marketplace aparecerán aquí en tiempo real de forma automática.
+                </p>
               </div>
-              <div className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors">
-                <div>
-                  <p className="text-sm font-bold text-slate-800">Martina Silva</p>
-                  <p className="text-xs text-slate-500 mt-1">Aventura en Quebrada de Humahuaca • 1 Persona • Código: EXP-002</p>
-                </div>
-                <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-600">
-                  Pendiente
-                </span>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 font-extrabold text-slate-500 uppercase tracking-wider">
+                      <th className="p-4">Pasajero Principal</th>
+                      <th className="p-4">Contacto</th>
+                      <th className="p-4">Experiencia Solicitada</th>
+                      <th className="p-4">Pax</th>
+                      <th className="p-4">Fecha Solicitud</th>
+                      <th className="p-4">Estado</th>
+                      <th className="p-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                    {reservations.map((res) => (
+                      <tr key={res.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-4 font-bold text-slate-800">{res.nombrePasajero}</td>
+                        <td className="p-4">
+                          <p>{res.emailPasajero}</p>
+                          <p className="text-slate-400 mt-0.5">{res.telefonoPasajero}</p>
+                        </td>
+                        <td className="p-4">
+                          <p className="font-bold text-slate-800">{res.tourTitle || 'Cargando título...'}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider">Código: {res.tourId}</p>
+                        </td>
+                        <td className="p-4 font-bold text-center sm:text-left">{res.cantidadPersonas || 1} pax</td>
+                        <td className="p-4 text-slate-400">
+                          {res.createdAt ? new Date(res.createdAt).toLocaleDateString('es-AR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : '—'}
+                        </td>
+                        <td className="p-4">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                            res.estado === 'Confirmada' 
+                              ? 'bg-emerald-50 border border-emerald-200 text-emerald-600' 
+                              : res.estado === 'Cancelada' 
+                              ? 'bg-red-50 border border-red-200 text-red-600' 
+                              : 'bg-amber-50 border border-amber-200 text-amber-600'
+                          }`}>
+                            {res.estado || 'Pendiente'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {res.estado !== 'Confirmada' && (
+                              <button
+                                onClick={() => handleUpdateReservationStatus(res.id, 'Confirmada')}
+                                className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[10px] font-black text-emerald-600 transition-colors"
+                              >
+                                Confirmar
+                              </button>
+                            )}
+                            {res.estado !== 'Cancelada' && (
+                              <button
+                                onClick={() => handleUpdateReservationStatus(res.id, 'Cancelada')}
+                                className="px-2 py-1 rounded bg-red-50 hover:bg-red-100 border border-red-200 text-[10px] font-black text-red-600 transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                            {res.estado !== 'Pendiente' && (
+                              <button
+                                onClick={() => handleUpdateReservationStatus(res.id, 'Pendiente')}
+                                className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[10px] font-black text-slate-600 transition-colors"
+                              >
+                                Reabrir
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteReservation(res.id)}
+                              className="p-1.5 rounded-lg border border-slate-200 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title="Eliminar solicitud"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
