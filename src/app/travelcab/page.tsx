@@ -74,12 +74,12 @@ export default function DispatcherPage() {
     }
   };
 
-  // Filtrar viajes en base a búsqueda
+  // Filtrar viajes en base a búsqueda de forma segura
   const filteredTrips = trips.filter(trip => 
-    trip.passengerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trip.origin.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trip.destination.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trip.id.toLowerCase().includes(searchTerm.toLowerCase())
+    (trip?.passengerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (trip?.origin || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (trip?.destination || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (trip?.id || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
