@@ -25,7 +25,7 @@ const GoogleInteractiveMap = dynamic(
 
 export default function DispatcherPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
+  const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const [rightPanelMode, setRightPanelMode] = useState<'list' | 'dispatch'>('dispatch');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +33,9 @@ export default function DispatcherPage() {
     originCoords: { lat: number; lng: number } | null;
     destinationCoords: { lat: number; lng: number } | null;
   } | null>(null);
+
+  // Derivar activeTrip para evitar bucles infinitos en el useEffect
+  const activeTrip = trips.find(t => t.id === activeTripId) || null;
 
   // Escuchar viajes en tiempo real desde Firestore
   useEffect(() => {
@@ -46,23 +49,13 @@ export default function DispatcherPage() {
       
       setTrips(tripsData);
       setIsLoading(false);
-
-      // Si hay un viaje activo seleccionado, lo sincronizamos con los datos actualizados
-      if (activeTrip) {
-        const updated = tripsData.find(t => t.id === activeTrip.id);
-        if (updated) {
-          setActiveTrip(updated);
-        } else {
-          setActiveTrip(null);
-        }
-      }
     }, (error) => {
       console.error("Error al obtener viajes en tiempo real:", error);
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [activeTrip]);
+  }, []);
 
   // Actualizar estado del viaje en Firestore
   const handleUpdateTripStatus = async (tripId: string, newStatus: TripStatus, driverName?: string) => {
@@ -123,7 +116,7 @@ export default function DispatcherPage() {
           <button
             onClick={() => {
               setRightPanelMode('dispatch');
-              setActiveTrip(null); // Clear active trip so the new quote route can render on the map
+              setActiveTripId(null); // Clear active trip so the new quote route can render on the map
             }}
             className={`flex-1 py-3 text-sm font-bold transition-all ${
               rightPanelMode === 'dispatch' 
@@ -179,7 +172,7 @@ export default function DispatcherPage() {
                     <TripCard 
                       trip={trip} 
                       onClick={() => {
-                        setActiveTrip(trip);
+                        setActiveTripId(trip.id);
                         // Cuando se selecciona un viaje, mostramos su ruta en el mapa
                       }}
                     />

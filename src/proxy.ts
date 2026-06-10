@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
  * PUBLIC_ROUTES – paths that never require authentication.
  * Everything else in the ecosystem is considered protected.
  */
-const PUBLIC_ROUTES = ["/login", "/landing"];
+const PUBLIC_ROUTES = ["/login", "/landing", "/marketplace", "/canjes", "/rewards"];
 
 /**
  * SESSION_COOKIE – lightweight presence signal set by AuthContext on login/logout.
@@ -23,6 +23,16 @@ export function proxy(request: NextRequest) {
   // El catálogo de marketplace funciona en cualquier dominio del ecosistema
   if (cleanPath === "/marketplace" || cleanPath === "/marketplaces") {
     return NextResponse.rewrite(new URL("/landing/experience/marketplace", request.url));
+  }
+
+  // El catálogo de canjes de Rewards funciona públicamente en cualquier dominio
+  if (cleanPath === "/canjes") {
+    return NextResponse.rewrite(new URL("/landing/rewards/canjes", request.url));
+  }
+
+  // La landing pública de Rewards
+  if (cleanPath === "/rewards") {
+    return NextResponse.rewrite(new URL("/landing/rewards", request.url));
   }
 
   // ─── 2. DOMAIN-SPECIFIC PUBLIC REWRITES ────────────────────────────────────

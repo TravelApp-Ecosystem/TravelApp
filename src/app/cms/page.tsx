@@ -363,10 +363,56 @@ const DEFAULT_ECOSISTEMA_CMS_DATA = {
   showStats: false,
 };
 
-type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales';
+const DEFAULT_REWARDS_CMS_DATA_FOR_CMS = {
+  heroSlides: [
+    {
+      title: "Tus viajes tienen recompensa",
+      subtitle: "Acumulá puntos en cada viaje y canjeálos por beneficios exclusivos en todo el ecosistema TravelApp.",
+      text: "Gratis, automático y sin costos ocultos.",
+      bgImage: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=1920&q=80",
+      ctaText: "Ver Catálogo de Canjes",
+      ctaUrl: "/canjes",
+      overlayOpacity: 65,
+    }
+  ],
+  howItWorks: [
+    { step: "01", title: "Viajá o Reservá", description: "Pedí un TravelCab o reservá una experiencia desde tu cuenta." },
+    { step: "02", title: "Sumá Puntos", description: "Tus puntos se acreditan automáticamente al finalizar." },
+    { step: "03", title: "Canjeá Beneficios", description: "Ingresá al catálogo y elegí tu recompensa favorita." },
+  ],
+  benefits: [
+    { icon: "Plane", title: "Viajes Bonificados", description: "Usá tus puntos para pagar total o parcialmente tus próximos viajes en TravelCab." },
+    { icon: "Coffee", title: "Gastronomía", description: "Descuentos en cafeterías y restaurantes adheridos." },
+    { icon: "ShoppingBag", title: "Retail & Compras", description: "Vouchers de descuento en marcas exclusivas." },
+    { icon: "Star", title: "Status Premium", description: "Subís de categoría con más viajes para obtener mejores beneficios." },
+  ],
+  ctaBlock: {
+    title: "Empezá a sumar hoy mismo",
+    subtitle: "Iniciá sesión o registrate gratis para activar tu Travel Wallet.",
+    buttonText: "Activar mi Billetera Rewards",
+    buttonUrl: "/login",
+  },
+  businessSection: {
+    title: "¿Tenés un negocio?",
+    subtitle: "Sumate al ecosistema TravelApp y ofrecé beneficios Rewards a tus clientes.",
+    buttonText: "Quiero ser Partner",
+    buttonUrl: "mailto:partners@travelapp.ar",
+    features: [
+      "Visibilidad en el catálogo de canjes",
+      "Integración automática de puntos",
+      "Panel de control de métricas",
+      "Soporte comercial dedicado",
+    ],
+  },
+  redesSociales: { facebook: "", instagram: "", whatsapp: "", youtube: "", tiktok: "" },
+  sellosLegales: { arcaQr: "", baseDatosSello: "" },
+  footer: { copyrightText: "© 2026 TravelApp Rewards. Una marca de TravelApp s.a.s." },
+};
+
+type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales';
 
 export default function CMSPage() {
-  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema'>('travelcab');
+  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards'>('travelcab');
   const [activeTab, setActiveTab] = useState<ActiveTab>('hero');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -378,10 +424,10 @@ export default function CMSPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : 'landing_ecosistema';
+        const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
         const docRef = doc(db, 'cms', docId);
         const docSnap = await getDoc(docRef);
-        const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : DEFAULT_ECOSISTEMA_CMS_DATA;
+        const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
         if (docSnap.exists()) {
           const loadedData = docSnap.data();
           // Normalizar unidades para asegurar compatibilidad de campos imagenUrl y imageUrl
@@ -401,7 +447,7 @@ export default function CMSPage() {
         }
       } catch (err) {
         console.error("Error al leer CMS de Firestore:", err);
-        const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : DEFAULT_ECOSISTEMA_CMS_DATA;
+        const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
         setData(defaultData);
       } finally {
         setLoading(false);
@@ -413,6 +459,8 @@ export default function CMSPage() {
       setActiveTab('slider');
     } else if (selectedLanding === 'ecosistema') {
       setActiveTab('eco_hero');
+    } else if (selectedLanding === 'rewards') {
+      setActiveTab('rew_slider');
     } else {
       setActiveTab('hero');
     }
@@ -423,7 +471,7 @@ export default function CMSPage() {
     setStatusMsg(null);
     try {
       // Sanitizar el objeto para eliminar cualquier valor undefined, prototipo custom o propiedad no serializable
-      const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : 'landing_ecosistema';
+      const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
       const sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => {
         return value === undefined ? null : value;
       }));
@@ -895,8 +943,8 @@ export default function CMSPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-tech-blue flex items-center gap-2">
-            <FileText className="h-7 w-7 text-tech-blue" />
-            Editor CMS — {selectedLanding === 'travelcab' ? 'TravelCab Landing' : selectedLanding === 'experience' ? 'TravelApp Experience' : '🌐 Ecosistema TravelApp'}
+                      <FileText className="h-7 w-7 text-tech-blue" />
+            Editor CMS — {selectedLanding === 'travelcab' ? 'TravelCab Landing' : selectedLanding === 'experience' ? 'TravelApp Experience' : selectedLanding === 'rewards' ? '🎁 TravelApp Rewards' : '🌐 Ecosistema TravelApp'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             Administra visualmente y en tiempo real el contenido de tu Landing Page sin modificar código.
@@ -960,6 +1008,16 @@ export default function CMSPage() {
             🌴 TravelApp Experience
           </button>
           <button
+            onClick={() => setSelectedLanding('rewards')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+              selectedLanding === 'rewards' 
+                ? 'bg-violet-600 border-violet-600 text-white shadow-sm' 
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🎁 TravelApp Rewards
+          </button>
+          <button
             onClick={() => setSelectedLanding('ecosistema')}
             className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
               selectedLanding === 'ecosistema' 
@@ -995,6 +1053,8 @@ export default function CMSPage() {
           ? ['hero', 'servicios', 'conductores', 'rewards', 'faq', 'legales'] 
           : selectedLanding === 'experience'
           ? ['slider', 'ofertas', 'servicios', 'rewards', 'social']
+          : selectedLanding === 'rewards'
+          ? ['rew_slider', 'rew_beneficios', 'rew_negocio', 'rew_social', 'rew_legales']
           : ['eco_hero', 'eco_unidades', 'eco_quienes', 'eco_stats', 'eco_apps', 'eco_trabaja', 'eco_legales']
         ).map((tab) => (
           <button
@@ -1592,6 +1652,24 @@ export default function CMSPage() {
                         <img src={slide.bgImage} alt="slide preview" className="w-full h-full object-cover" />
                       </div>
                     )}
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        Opacidad de la capa oscura del Hero: <strong>{slide.overlayOpacity ?? 65}%</strong>
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={slide.overlayOpacity ?? 65}
+                        onChange={(e) => updateHeroSlide(idx, 'overlayOpacity', Number(e.target.value))}
+                        className="w-full accent-tech-blue"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
+                        <span>0% (sin capa)</span>
+                        <span>50% (medio)</span>
+                        <span>100% (negro)</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1599,6 +1677,209 @@ export default function CMSPage() {
                 <p className="text-slate-400 text-center py-8 text-sm">No hay diapositivas cargadas en el slider. Agrega una arriba.</p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* EDITORES TRAVELAPP REWARDS */}
+        {/* ======================================================== */}
+
+        {/* REWARDS: SLIDER */}
+        {selectedLanding === 'rewards' && activeTab === 'rew_slider' && data && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-violet-100 pb-4">
+              <div>
+                <h3 className="text-base font-extrabold text-violet-800">🎁 Slider Principal Rewards (Hasta 10 Diapositivas)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las imágenes, textos y opacidad de cada slide del carrusel.</p>
+              </div>
+              <button
+                onClick={() => {
+                  if ((data.heroSlides || []).length >= 10) { alert('Límite de 10 diapositivas'); return; }
+                  setData((prev: any) => ({
+                    ...prev,
+                    heroSlides: [...(prev.heroSlides || []), {
+                      title: "Nueva Diapositiva",
+                      subtitle: "Subtítulo descriptivo del programa Rewards.",
+                      text: "Texto adicional.",
+                      bgImage: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=1920&q=80",
+                      ctaText: "Ver Catálogo de Canjes",
+                      ctaUrl: "/canjes",
+                      overlayOpacity: 65,
+                    }]
+                  }));
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-violet-600 bg-violet-50 px-3.5 py-2 text-xs font-bold text-violet-700 hover:bg-violet-600 hover:text-white transition-all"
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar Diapositiva
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(data.heroSlides || []).map((slide: any, idx: number) => (
+                <div key={idx} className="rounded-xl border border-violet-100 p-4 bg-violet-50/30 shadow-sm relative space-y-3">
+                  <button
+                    onClick={() => {
+                      const updated = data.heroSlides.filter((_: any, i: number) => i !== idx);
+                      setData((prev: any) => ({ ...prev, heroSlides: updated }));
+                    }}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
+                    title="Eliminar Diapositiva"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <div className="text-xs font-black text-violet-400 uppercase">Diapositiva N° {idx + 1}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título</label>
+                      <input type="text" value={slide.title || ''} onChange={(e) => { const u = [...data.heroSlides]; u[idx] = { ...u[idx], title: e.target.value }; setData((p: any) => ({ ...p, heroSlides: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Subtítulo</label>
+                      <input type="text" value={slide.subtitle || ''} onChange={(e) => { const u = [...data.heroSlides]; u[idx] = { ...u[idx], subtitle: e.target.value }; setData((p: any) => ({ ...p, heroSlides: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto descriptivo</label>
+                      <textarea rows={2} value={slide.text || ''} onChange={(e) => { const u = [...data.heroSlides]; u[idx] = { ...u[idx], text: e.target.value }; setData((p: any) => ({ ...p, heroSlides: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto Botón CTA</label>
+                      <input type="text" value={slide.ctaText || ''} onChange={(e) => { const u = [...data.heroSlides]; u[idx] = { ...u[idx], ctaText: e.target.value }; setData((p: any) => ({ ...p, heroSlides: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Enlace del Botón CTA</label>
+                      <input type="text" value={slide.ctaUrl || ''} onChange={(e) => { const u = [...data.heroSlides]; u[idx] = { ...u[idx], ctaUrl: e.target.value }; setData((p: any) => ({ ...p, heroSlides: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">URL de imagen de fondo</label>
+                      <input type="text" value={slide.bgImage || ''} onChange={(e) => { const u = [...data.heroSlides]; u[idx] = { ...u[idx], bgImage: e.target.value }; setData((p: any) => ({ ...p, heroSlides: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" placeholder="https://..." />
+                    </div>
+                    {slide.bgImage && (
+                      <div className="w-32 h-20 border border-slate-200 rounded-lg overflow-hidden bg-slate-100">
+                        <img src={slide.bgImage} alt="preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        Opacidad de la capa oscura del Hero: <strong>{slide.overlayOpacity ?? 65}%</strong>
+                      </label>
+                      <input
+                        type="range" min="0" max="100"
+                        value={slide.overlayOpacity ?? 65}
+                        onChange={(e) => { const u = [...data.heroSlides]; u[idx] = { ...u[idx], overlayOpacity: Number(e.target.value) }; setData((p: any) => ({ ...p, heroSlides: u })); }}
+                        className="w-full accent-violet-600"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
+                        <span>0% (sin capa)</span>
+                        <span>50% (medio)</span>
+                        <span>100% (negro)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(data.heroSlides || []).length === 0 && (
+                <p className="text-slate-400 text-center py-8 text-sm">No hay diapositivas. Agrega una arriba.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* REWARDS: BENEFICIOS */}
+        {selectedLanding === 'rewards' && activeTab === 'rew_beneficios' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-violet-100 pb-4">
+              <h3 className="text-base font-extrabold text-violet-800">🎁 Cómo Sumar Puntos + Beneficios</h3>
+              <p className="text-xs text-slate-400 mt-1">Editá los 3 pasos de cómo sumar puntos y las 4 tarjetas de beneficios.</p>
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-xs font-black text-slate-600 uppercase">Pasos: ¿Cómo sumar puntos?</h4>
+              {(data.howItWorks || []).map((step: any, idx: number) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Número (ej: 01)</label>
+                    <input type="text" value={step.step || ''} onChange={(e) => { const u = [...data.howItWorks]; u[idx] = { ...u[idx], step: e.target.value }; setData((p: any) => ({ ...p, howItWorks: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Título</label>
+                    <input type="text" value={step.title || ''} onChange={(e) => { const u = [...data.howItWorks]; u[idx] = { ...u[idx], title: e.target.value }; setData((p: any) => ({ ...p, howItWorks: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción</label>
+                    <input type="text" value={step.description || ''} onChange={(e) => { const u = [...data.howItWorks]; u[idx] = { ...u[idx], description: e.target.value }; setData((p: any) => ({ ...p, howItWorks: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-3 pt-2">
+              <h4 className="text-xs font-black text-slate-600 uppercase">Tarjetas de Beneficios</h4>
+              {(data.benefits || []).map((b: any, idx: number) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Ícono (Plane, Coffee, ShoppingBag, Star)</label>
+                    <input type="text" value={b.icon || ''} onChange={(e) => { const u = [...data.benefits]; u[idx] = { ...u[idx], icon: e.target.value }; setData((p: any) => ({ ...p, benefits: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Título</label>
+                    <input type="text" value={b.title || ''} onChange={(e) => { const u = [...data.benefits]; u[idx] = { ...u[idx], title: e.target.value }; setData((p: any) => ({ ...p, benefits: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción</label>
+                    <input type="text" value={b.description || ''} onChange={(e) => { const u = [...data.benefits]; u[idx] = { ...u[idx], description: e.target.value }; setData((p: any) => ({ ...p, benefits: u })); }} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-3 pt-2 rounded-xl border border-slate-200 p-4 bg-slate-50/50">
+              <h4 className="text-xs font-black text-slate-600 uppercase">CTA Final (activar cuenta)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <CMSInput label="Título del CTA" value={data.ctaBlock?.title || ''} onChange={(val) => updateField('ctaBlock', 'title', val)} />
+                <CMSInput label="Texto del botón" value={data.ctaBlock?.buttonText || ''} onChange={(val) => updateField('ctaBlock', 'buttonText', val)} />
+                <CMSTextarea label="Subtítulo" value={data.ctaBlock?.subtitle || ''} onChange={(val) => updateField('ctaBlock', 'subtitle', val)} rows={2} />
+                <CMSInput label="URL del botón" value={data.ctaBlock?.buttonUrl || ''} onChange={(val) => updateField('ctaBlock', 'buttonUrl', val)} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* REWARDS: SUMÁ TU NEGOCIO */}
+        {selectedLanding === 'rewards' && activeTab === 'rew_negocio' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-violet-100 pb-4">
+              <h3 className="text-base font-extrabold text-violet-800">🏢 Sección "Sumá tu Negocio al Ecosistema"</h3>
+              <p className="text-xs text-slate-400 mt-1">Editá la sección de captación de partners comerciales.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput label="Título" value={data.businessSection?.title || ''} onChange={(val) => updateField('businessSection', 'title', val)} />
+              <CMSInput label="Texto del botón" value={data.businessSection?.buttonText || ''} onChange={(val) => updateField('businessSection', 'buttonText', val)} />
+              <CMSTextarea label="Subtítulo" value={data.businessSection?.subtitle || ''} onChange={(val) => updateField('businessSection', 'subtitle', val)} rows={3} />
+              <CMSInput label="URL del botón" value={data.businessSection?.buttonUrl || ''} onChange={(val) => updateField('businessSection', 'buttonUrl', val)} />
+            </div>
+          </div>
+        )}
+
+        {/* REWARDS: REDES SOCIALES */}
+        {selectedLanding === 'rewards' && activeTab === 'rew_social' && data && (
+          <div className="space-y-4">
+            <div className="border-b border-violet-100 pb-4">
+              <h3 className="text-base font-extrabold text-violet-800">📱 Redes Sociales de Rewards</h3>
+            </div>
+            <CMSInput label="Facebook" value={data.redesSociales?.facebook || ''} onChange={(val) => updateField('redesSociales', 'facebook', val)} placeholder="https://facebook.com/..." />
+            <CMSInput label="Instagram" value={data.redesSociales?.instagram || ''} onChange={(val) => updateField('redesSociales', 'instagram', val)} placeholder="https://instagram.com/..." />
+            <CMSInput label="WhatsApp" value={data.redesSociales?.whatsapp || ''} onChange={(val) => updateField('redesSociales', 'whatsapp', val)} placeholder="https://wa.me/..." />
+            <CMSInput label="YouTube" value={data.redesSociales?.youtube || ''} onChange={(val) => updateField('redesSociales', 'youtube', val)} placeholder="https://youtube.com/..." />
+            <CMSInput label="TikTok" value={data.redesSociales?.tiktok || ''} onChange={(val) => updateField('redesSociales', 'tiktok', val)} placeholder="https://tiktok.com/..." />
+          </div>
+        )}
+
+        {/* REWARDS: SELLOS LEGALES */}
+        {selectedLanding === 'rewards' && activeTab === 'rew_legales' && data && (
+          <div className="space-y-4">
+            <div className="border-b border-violet-100 pb-4">
+              <h3 className="text-base font-extrabold text-violet-800">⚖️ Sellos Legales y Copyright de Rewards</h3>
+            </div>
+            <CMSTextarea label="Sello ARCA / AFIP (URL de imagen o HTML del iframe)" value={data.sellosLegales?.arcaQr || ''} onChange={(val) => updateField('sellosLegales', 'arcaQr', val)} rows={3} />
+            <CMSTextarea label="Sello Base de Datos (URL de imagen o HTML del iframe)" value={data.sellosLegales?.baseDatosSello || ''} onChange={(val) => updateField('sellosLegales', 'baseDatosSello', val)} rows={3} />
+            <CMSInput label="Texto de Copyright" value={data.footer?.copyrightText || ''} onChange={(val) => updateField('footer', 'copyrightText', val)} />
           </div>
         )}
 

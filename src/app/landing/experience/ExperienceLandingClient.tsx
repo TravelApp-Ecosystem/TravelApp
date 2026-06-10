@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { TravisOmnichannelWidget } from "@/components/shared/TravisOmnichannelWidget";
 import {
   ArrowRight,
   Star,
@@ -273,42 +274,50 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
 
       {/* HERO SLIDER (HASTA 10 SLIDES) */}
       <section className="relative h-[65vh] min-h-[500px] w-full overflow-hidden bg-slate-900">
-        {(cmsData.heroSlides || []).map((slide: any, idx: number) => (
-          <div
-            key={idx}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out flex items-center ${
-              currentSlide === idx ? "opacity-100 z-10" : "opacity-0 z-0"
-            }`}
-            style={{
-              backgroundImage: `linear-gradient(135deg, rgba(15, 32, 67, 0.85), rgba(10, 20, 40, 0.95)), url('${slide.bgImage}')`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            <div className="mx-auto max-w-5xl px-6 text-center text-white space-y-6 animate-fadeIn">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
-                {slide.title}
-              </h1>
-              <p className="text-lg sm:text-xl text-slate-200 max-w-3xl mx-auto font-medium">
-                {slide.subtitle}
-              </p>
-              {slide.text && (
-                <p className="text-sm text-slate-300 max-w-2xl mx-auto opacity-90">
-                  {slide.text}
+        {(cmsData.heroSlides || []).map((slide: any, idx: number) => {
+          const overlayOpacity = (slide.overlayOpacity ?? 65) / 100;
+          return (
+            <div
+              key={idx}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out flex items-center ${
+                currentSlide === idx ? "opacity-100 z-10" : "opacity-0 z-0"
+              }`}
+              style={{
+                backgroundImage: `url('${slide.bgImage}')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              {/* Overlay con opacidad controlada desde CMS */}
+              <div
+                className="absolute inset-0"
+                style={{ backgroundColor: `rgba(15, 32, 67, ${overlayOpacity})` }}
+              />
+              <div className="relative z-10 mx-auto max-w-5xl px-6 text-center text-white space-y-6 animate-fadeIn">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
+                  {slide.title}
+                </h1>
+                <p className="text-lg sm:text-xl text-slate-200 max-w-3xl mx-auto font-medium">
+                  {slide.subtitle}
                 </p>
-              )}
-              <div className="pt-4">
-                <a
-                  href={slide.ctaUrl === "#catalog" ? "/marketplace" : (slide.ctaUrl || "/marketplace")}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-red-600 hover:bg-red-700 px-8 py-4 text-base font-black text-white transition-all duration-300 hover:-translate-y-1 shadow-2xl shadow-red-500/20"
-                >
-                  {slide.ctaText || "Ver Catálogo"}
-                  <ArrowRight className="h-5 w-5" />
-                </a>
+                {slide.text && (
+                  <p className="text-sm text-slate-300 max-w-2xl mx-auto opacity-90">
+                    {slide.text}
+                  </p>
+                )}
+                <div className="pt-4">
+                  <a
+                    href={slide.ctaUrl === "#catalog" ? "/marketplace" : (slide.ctaUrl || "/marketplace")}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-red-600 hover:bg-red-700 px-8 py-4 text-base font-black text-white transition-all duration-300 hover:-translate-y-1 shadow-2xl shadow-red-500/20"
+                  >
+                    {slide.ctaText || "Ver Catálogo"}
+                    <ArrowRight className="h-5 w-5" />
+                  </a>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Controles del Slider */}
         {cmsData.heroSlides?.length > 1 && (
@@ -679,6 +688,15 @@ export default function ExperienceLanding({ initialCms }: { initialCms?: any }) 
         </div>
       )}
 
+      {/* 🤖 Travis Chat Web Widget (Flotante Omnicanal) */}
+      <TravisOmnichannelWidget 
+        businessUnit="Experiences" 
+        whatsappUrl={cmsData.redesSociales?.whatsapp || "https://wa.me/5493814188106"}
+        messengerUrl={cmsData.redesSociales?.messenger || "https://m.me/travelapp"}
+        instagramUrl={cmsData.redesSociales?.instagram || "https://instagram.com/travelapp.ar"}
+        primaryColor="#ef4444" // Red for Experiences branding
+        brandName="Experiences"
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { TravisOmnichannelWidget } from "@/components/shared/TravisOmnichannelWidget";
 import {
   ArrowRight,
   ChevronDown,
@@ -2098,105 +2099,17 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
         </div>
       )}
 
-      {/* 🤖 Travis Chat Web Widget (Flotante) */}
-      {showTravisChat && (
-        <div className="fixed bottom-6 right-6 z-50 w-full max-w-[360px] sm:max-w-[400px] h-[550px] bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-slideUp" style={{ animation: "scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}>
-          {/* Header */}
-          <div className="bg-tech-blue text-white p-4 flex items-center justify-between shadow-md relative" style={{ backgroundColor: '#0a2a5b' }}>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="h-10 w-10 rounded-full bg-white overflow-hidden border border-white/20">
-                  <img src="/assets/travis_perfil.svg" alt="Travis" className="h-full w-full object-cover scale-110" />
-                </div>
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-tech-blue" />
-              </div>
-              <div className="text-left">
-                <p className="font-black text-sm">Travis IA</p>
-                <p className="text-[10px] text-orange-400 font-semibold tracking-wider uppercase">Soporte Inteligente</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowTravisChat(false)}
-              className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all cursor-pointer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Messages Container */}
-          <div className="flex-1 p-4 overflow-y-auto bg-slate-55 space-y-3.5 flex flex-col">
-            {travisMessages.map((msg, idx) => {
-              const isTravis = msg.sender === "travis";
-              return (
-                <div
-                  key={idx}
-                  className={`flex flex-col max-w-[82%] ${
-                    isTravis ? "self-start items-start" : "self-end items-end"
-                  }`}
-                >
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-xs leading-relaxed ${
-                      isTravis
-                        ? "bg-white text-slate-700 shadow-sm border border-slate-100 rounded-tl-none whitespace-pre-wrap text-left"
-                        : "bg-orange-500 text-white rounded-tr-none text-left"
-                    }`}
-                    style={!isTravis ? { backgroundColor: '#ff6b00' } : {}}
-                  >
-                    {msg.text}
-                  </div>
-                  <span className="text-[9px] text-slate-400 mt-1 px-1 font-medium">{msg.time}</span>
-                </div>
-              );
-            })}
-            
-            {/* Travis typing indicator */}
-            {isTravisTyping && (
-              <div className="self-start flex flex-col items-start max-w-[82%]">
-                <div className="bg-white text-slate-400 rounded-2xl px-4 py-3 shadow-sm border border-slate-100 rounded-tl-none flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 bg-slate-450 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="h-1.5 w-1.5 bg-slate-450 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="h-1.5 w-1.5 bg-slate-450 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Form Input */}
-          <form onSubmit={handleSendTravisMessage} className="p-3 border-t border-slate-100 bg-white flex gap-2 items-center">
-            <input
-              required
-              type="text"
-              value={currentTravisMessage}
-              onChange={(e) => setCurrentTravisMessage(e.target.value)}
-              placeholder="Preguntale algo a Travis..."
-              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-xs outline-none focus:border-orange-400 transition-all bg-slate-50/50"
-              disabled={isTravisTyping}
-            />
-            <button
-              type="submit"
-              disabled={!currentTravisMessage.trim() || isTravisTyping}
-              className="h-10 w-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center hover:bg-orange-650 disabled:opacity-45 transition-colors cursor-pointer shrink-0"
-              style={{ backgroundColor: '#ff6b00' }}
-            >
-              <Send className="h-4.5 w-4.5" />
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Botón flotante de chat con Travis (solo visible si el chat está cerrado y no se está editando nada) */}
-      {!showTravisChat && (
-        <button
-          onClick={() => setShowTravisChat(true)}
-          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-2xl hover:bg-orange-600 transition-all hover:scale-105 active:scale-95 cursor-pointer border border-white/20"
-          style={{ backgroundColor: '#ff6b00' }}
-        >
-          <div className="h-11 w-11 rounded-full overflow-hidden flex items-center justify-center">
-            <img src="/assets/travis_perfil.svg" alt="Chatear con Travis" className="h-full w-full object-cover scale-110" />
-          </div>
-        </button>
-      )}
+      {/* 🤖 Travis Chat Web Widget (Flotante Omnicanal) */}
+      <TravisOmnichannelWidget 
+        businessUnit="General" 
+        whatsappUrl={cms.hero?.whatsappUrl || "https://wa.me/5493814188106"}
+        messengerUrl={cms.socials?.messenger || "https://m.me/travelapp"}
+        instagramUrl={cms.socials?.instagram || "https://instagram.com/travelapp.ar"}
+        primaryColor="#ff6b00"
+        brandName="TravelApp Ecosistema"
+        isOpenExternal={showTravisChat}
+        onCloseExternal={() => setShowTravisChat(false)}
+      />
     </div>
   );
 }
