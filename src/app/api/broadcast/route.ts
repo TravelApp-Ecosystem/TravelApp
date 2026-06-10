@@ -8,7 +8,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { BroadcastCampaign, BroadcastAudience, MessageChannel } from '@/types/messaging';
 
@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
       channel,
       specificIds = [],
       createdBy = 'admin',
+      scheduledAt,
     }: {
       title: string;
       message: string;
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
       channel: MessageChannel | 'both';
       specificIds?: string[];
       createdBy?: string;
+      scheduledAt?: number;
     } = body;
 
     if (!title || !message || !audience) {
@@ -109,20 +111,33 @@ export async function POST(req: NextRequest) {
       targetedCount = manyChatSubscriberIds.length;
     }
 
-    // 2. Guardar la campaña en Firestore (estado: sending)
+    const isScheduled = !!scheduledAt && scheduledAt > Date.now();
+
+    // 2. Guardar la campaña en Firestore (estado: scheduled o sending)
     const campaign: Omit<BroadcastCampaign, 'id'> = {
       title,
       message,
       audience,
       specificIds: audience === 'specific' ? specificIds : undefined,
       channel,
-      status: 'sending',
-      sentAt: Date.now(),
+      status: isScheduled ? 'scheduled' : 'sending',
+      scheduledAt: scheduledAt || undefined,
+      sentAt: isScheduled ? undefined : Date.now(),
       stats: { targeted: targetedCount, sent: 0, delivered: 0, read: 0 },
       createdBy,
       createdAt: Date.now(),
     };
     const campaignDoc = await addDoc(collection(db, 'broadcastCampaigns'), campaign);
+
+    // Si está programada, retornamos de inmediato
+    if (isScheduled) {
+      return NextResponse.json({
+        success: true,
+        campaignId: campaignDoc.id,
+        scheduled: true,
+        stats: campaign.stats
+      });
+    }
 
     // 3. Guardar en la colección `notifications` para notificaciones internas (push)
     if (channel === 'push' || channel === 'both' || channel === 'internal') {
@@ -143,7 +158,7 @@ export async function POST(req: NextRequest) {
       manyChatStats = await sendViaManyChatBroadcast(manyChatSubscriberIds, message);
     }
 
-    // 5. Actualizar stats de la campaña
+    // 5. Actualizar stats de la campaña existente
     const finalStats: BroadcastCampaign['stats'] = {
       targeted: targetedCount,
       sent: channel === 'push' ? targetedCount : manyChatStats.sent,
@@ -151,9 +166,9 @@ export async function POST(req: NextRequest) {
       read: 0,
     };
 
-    await addDoc(collection(db, 'broadcastCampaigns'), {
-      ...campaign,
+    await updateDoc(doc(db, 'broadcastCampaigns', campaignDoc.id), {
       status: 'sent',
+      sentAt: Date.now(),
       stats: finalStats,
     });
 

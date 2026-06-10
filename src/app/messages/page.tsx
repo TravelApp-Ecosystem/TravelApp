@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   collection, query, orderBy, onSnapshot, addDoc, updateDoc,
-  doc, serverTimestamp, where, getDocs, limit
+  doc, serverTimestamp, where, getDocs, limit, deleteDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
@@ -11,6 +11,8 @@ import {
   MessageChannel, AUTOMATED_TRIGGER_LABELS, DEFAULT_AUTOMATED_MESSAGES,
   AutomatedTrigger,
 } from '@/types/messaging';
+import { LeadDetailSlideOver } from '@/components/crm/LeadDetailSlideOver';
+import { Lead } from '@/types/crm';
 import {
   MessageSquare, Send, Bot, Users, Zap, Megaphone, Search,
   Phone, Globe, X, Check,
@@ -448,8 +450,23 @@ function ChatWindow({
 function AutomatedMessagesPanel() {
   const [messages, setMessages] = useState<AutomatedMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTrigger, setEditTrigger] = useState<AutomatedTrigger>('welcome');
   const [editContent, setEditContent] = useState('');
+  const [editDelay, setEditDelay] = useState(0);
+  const [editChannel, setEditChannel] = useState<MessageChannel | 'both'>('whatsapp');
+  
+  // Create state
+  const [creating, setCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newTrigger, setNewTrigger] = useState<AutomatedTrigger>('welcome');
+  const [newContent, setNewContent] = useState('');
+  const [newDelay, setNewDelay] = useState(0);
+  const [newChannel, setNewChannel] = useState<MessageChannel | 'both'>('whatsapp');
+
   const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(false);
 
@@ -458,7 +475,6 @@ function AutomatedMessagesPanel() {
     const unsub = onSnapshot(q, async snap => {
       if (snap.empty && !seeded) {
         setSeeded(true);
-        // Seed default messages
         for (const msg of DEFAULT_AUTOMATED_MESSAGES) {
           await addDoc(collection(db, 'automatedMessages'), {
             ...msg, createdAt: Date.now(), updatedAt: Date.now(),
@@ -476,11 +492,54 @@ function AutomatedMessagesPanel() {
     await updateDoc(doc(db, 'automatedMessages', msg.id), { isActive: !msg.isActive, updatedAt: Date.now() });
   };
 
+  const startEdit = (msg: AutomatedMessage) => {
+    setEditingId(msg.id);
+    setEditTitle(msg.title);
+    setEditTrigger(msg.trigger);
+    setEditContent(msg.content);
+    setEditDelay(msg.delaySeconds || 0);
+    setEditChannel(msg.channel || 'whatsapp');
+  };
+
   const saveEdit = async (id: string) => {
     setSaving(true);
-    await updateDoc(doc(db, 'automatedMessages', id), { content: editContent, updatedAt: Date.now() });
+    await updateDoc(doc(db, 'automatedMessages', id), { 
+      title: editTitle,
+      trigger: editTrigger,
+      content: editContent,
+      delaySeconds: Number(editDelay),
+      channel: editChannel,
+      updatedAt: Date.now() 
+    });
     setEditingId(null);
     setSaving(false);
+  };
+
+  const createMessage = async () => {
+    if (!newTitle.trim() || !newContent.trim()) return;
+    setSaving(true);
+    await addDoc(collection(db, 'automatedMessages'), {
+      title: newTitle,
+      trigger: newTrigger,
+      content: newContent,
+      delaySeconds: Number(newDelay),
+      channel: newChannel,
+      isActive: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    setCreating(false);
+    setNewTitle('');
+    setNewContent('');
+    setNewDelay(0);
+    setNewChannel('whatsapp');
+    setSaving(false);
+  };
+
+  const deleteMessage = async (id: string) => {
+    if (confirm('¿Estás seguro de eliminar este mensaje automático?')) {
+      await deleteDoc(doc(db, 'automatedMessages', id));
+    }
   };
 
   return (
@@ -490,8 +549,81 @@ function AutomatedMessagesPanel() {
           <h3 className="font-bold text-slate-800">Mensajes Automáticos</h3>
           <p className="text-xs text-slate-400 mt-0.5">Se envían por WhatsApp o push según el evento del viaje.</p>
         </div>
-        <span className="text-xs bg-tech-blue/10 text-tech-blue px-2 py-1 rounded-full font-semibold">{messages.filter(m => m.isActive).length} activos</span>
+        {!creating && (
+          <button 
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-tech-blue text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" /> Nuevo
+          </button>
+        )}
       </div>
+
+      {creating && (
+        <div className="bg-white border border-tech-blue/30 rounded-xl p-4 shadow-md space-y-3">
+          <h4 className="text-sm font-bold text-slate-800">Nuevo Mensaje Automático</h4>
+          <input
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            placeholder="Título del mensaje"
+            className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-tech-blue"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase">Trigger / Evento</label>
+              <select
+                value={newTrigger}
+                onChange={e => setNewTrigger(e.target.value as any)}
+                className="w-full text-xs border border-slate-200 rounded-lg p-1.5 focus:outline-none"
+              >
+                {Object.entries(AUTOMATED_TRIGGER_LABELS).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase">Canal de Envío</label>
+              <select
+                value={newChannel}
+                onChange={e => setNewChannel(e.target.value as any)}
+                className="w-full text-xs border border-slate-200 rounded-lg p-1.5 focus:outline-none"
+              >
+                <option value="whatsapp">📱 WhatsApp</option>
+                <option value="push">🔔 Notificación Push</option>
+                <option value="both">⚡ Ambos (WA + Push)</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase">Retardo (segundos)</label>
+            <input
+              type="number"
+              value={newDelay}
+              onChange={e => setNewDelay(Number(e.target.value))}
+              className="w-24 px-2 py-1 text-xs border border-slate-200 rounded-lg"
+            />
+          </div>
+          <textarea
+            value={newContent}
+            onChange={e => setNewContent(e.target.value)}
+            rows={4}
+            placeholder="Contenido..."
+            className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-tech-blue resize-none font-mono"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={createMessage}
+              disabled={saving || !newTitle.trim() || !newContent.trim()}
+              className="px-3 py-1.5 bg-tech-blue text-white text-xs font-bold rounded-lg disabled:opacity-50"
+            >
+              {saving ? 'Creando...' : 'Crear'}
+            </button>
+            <button onClick={() => setCreating(false)} className="px-3 py-1.5 border border-slate-200 text-slate-600 text-xs rounded-lg">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center h-40 text-slate-400 text-sm">Cargando...</div>
@@ -514,17 +646,65 @@ function AutomatedMessagesPanel() {
                     </span>
                   )}
                 </div>
+                
                 {editingId === msg.id ? (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Título</label>
+                        <input
+                          value={editTitle}
+                          onChange={e => setEditTitle(e.target.value)}
+                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Trigger</label>
+                        <select
+                          value={editTrigger}
+                          onChange={e => setEditTrigger(e.target.value as any)}
+                          className="w-full text-xs border border-slate-200 rounded-lg p-1 focus:outline-none"
+                        >
+                          {Object.entries(AUTOMATED_TRIGGER_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Canal</label>
+                        <select
+                          value={editChannel}
+                          onChange={e => setEditChannel(e.target.value as any)}
+                          className="w-full text-xs border border-slate-200 rounded-lg p-1 focus:outline-none"
+                        >
+                          <option value="whatsapp">📱 WhatsApp</option>
+                          <option value="push">🔔 Notificación Push</option>
+                          <option value="both">⚡ Ambos (WA + Push)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Retardo (segundos)</label>
+                        <input
+                          type="number"
+                          value={editDelay}
+                          onChange={e => setEditDelay(Number(e.target.value))}
+                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                    </div>
+
                     <textarea
                       value={editContent}
                       onChange={e => setEditContent(e.target.value)}
                       rows={3}
-                      className="w-full text-sm border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-tech-blue/20"
+                      className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-tech-blue"
                     />
                     <div className="flex gap-2">
                       <button onClick={() => saveEdit(msg.id)} disabled={saving} className="px-3 py-1 bg-tech-blue text-white text-xs font-semibold rounded-lg disabled:opacity-50">
-                        {saving ? 'Guardando...' : <><Save className="h-3 w-3 inline mr-1" />Guardar</>}
+                        {saving ? 'Guardando...' : 'Guardar'}
                       </button>
                       <button onClick={() => setEditingId(null)} className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg">Cancelar</button>
                     </div>
@@ -533,11 +713,16 @@ function AutomatedMessagesPanel() {
                   <p className="mt-1.5 text-xs text-slate-500 leading-relaxed line-clamp-2">{msg.content}</p>
                 )}
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 {editingId !== msg.id && (
-                  <button onClick={() => { setEditingId(msg.id); setEditContent(msg.content); }} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-                    <Edit2 className="h-3.5 w-3.5 text-slate-400" />
-                  </button>
+                  <>
+                    <button onClick={() => startEdit(msg)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+                      <Edit2 className="h-3.5 w-3.5 text-slate-400" />
+                    </button>
+                    <button onClick={() => deleteMessage(msg.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                    </button>
+                  </>
                 )}
                 <button onClick={() => toggleActive(msg)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
                   {msg.isActive
@@ -552,9 +737,6 @@ function AutomatedMessagesPanel() {
     </div>
   );
 }
-
-// ─── Broadcast Panel ─────────────────────────────────────────────────────────
-
 function BroadcastPanel() {
   const [campaigns, setCampaigns] = useState<BroadcastCampaign[]>([]);
   const [composing, setComposing] = useState(false);
@@ -562,6 +744,10 @@ function BroadcastPanel() {
   const [message, setMessage] = useState('');
   const [audience, setAudience] = useState<string>('all');
   const [channel, setChannel] = useState('push');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<{ id: string; name: string; phone?: string; role: string }[]>([]);
+  const [contactSearch, setContactSearch] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -573,18 +759,61 @@ function BroadcastPanel() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    if (audience === 'specific') {
+      const fetchContacts = async () => {
+        try {
+          const snap = await getDocs(collection(db, 'conversations'));
+          const list = snap.docs.map(doc => {
+            const data = doc.data();
+            const p = data.participants?.find((part: any) => part.role === 'customer' || part.role === 'driver');
+            return {
+              id: data.manyChatSubscriberId || doc.id,
+              name: p?.name || 'Contacto Desconocido',
+              phone: p?.phone || '',
+              role: p?.role || 'customer'
+            };
+          }).filter((item, index, self) => 
+            item.id && self.findIndex(t => t.id === item.id) === index
+          );
+          setContacts(list);
+        } catch (error) {
+          console.error("Error cargando contactos:", error);
+        }
+      };
+      fetchContacts();
+    }
+  }, [audience]);
+
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) return;
     setSending(true);
     try {
+      const scheduledAt = scheduledTime ? new Date(scheduledTime).getTime() : undefined;
       await fetch('/api/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), message: message.trim(), audience, channel }),
+        body: JSON.stringify({ 
+          title: title.trim(), 
+          message: message.trim(), 
+          audience, 
+          channel,
+          specificIds: audience === 'specific' ? selectedIds : undefined,
+          scheduledAt
+        }),
       });
       setSent(true);
-      setTimeout(() => { setSent(false); setComposing(false); setTitle(''); setMessage(''); }, 2000);
-    } catch { /* error */ }
+      setTimeout(() => { 
+        setSent(false); 
+        setComposing(false); 
+        setTitle(''); 
+        setMessage(''); 
+        setScheduledTime('');
+        setSelectedIds([]);
+      }, 2000);
+    } catch (err) {
+      console.error("Error al enviar campaña:", err);
+    }
     setSending(false);
   };
 
@@ -592,7 +821,7 @@ function BroadcastPanel() {
     { value: 'all', label: '🌎 Todos', desc: 'Pasajeros y conductores' },
     { value: 'passengers', label: '👤 Solo Pasajeros', desc: 'Usuarios del servicio' },
     { value: 'drivers', label: '🚗 Solo Conductores', desc: 'Choferes activos' },
-    { value: 'specific', label: '🎯 Específico', desc: 'Por ID de usuario' },
+    { value: 'specific', label: '🎯 Específico', desc: 'Por nombre/ID de usuario' },
   ];
 
   return (
@@ -603,7 +832,7 @@ function BroadcastPanel() {
           <p className="text-xs text-slate-400 mt-0.5">Enviá mensajes segmentados a tu audiencia.</p>
         </div>
         {!composing && (
-          <button onClick={() => setComposing(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-tech-blue text-white text-xs font-bold rounded-lg">
+          <button onClick={() => setComposing(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-tech-blue text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors">
             <Plus className="h-3.5 w-3.5" /> Nueva Campaña
           </button>
         )}
@@ -627,12 +856,13 @@ function BroadcastPanel() {
             placeholder="Escribí el mensaje que van a recibir..."
             className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-tech-blue/20 resize-none"
           />
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">Audiencia</label>
               <div className="space-y-1">
                 {AUDIENCE_OPTIONS.map(o => (
-                  <label key={o.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${audience === o.value ? 'border-tech-blue bg-tech-blue/5' : 'border-slate-200 hover:bg-slate-50'}`}>
+                  <label key={o.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${audience === o.value ? 'border-tech-blue bg-tech-blue/5' : 'border-slate-200 hover:bg-slate-55'}`}>
                     <input type="radio" name="audience" value={o.value} checked={audience === o.value} onChange={e => setAudience(e.target.value)} className="sr-only" />
                     <div>
                       <div className="text-xs font-semibold text-slate-800">{o.label}</div>
@@ -643,14 +873,14 @@ function BroadcastPanel() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Canal</label>
+              <label className="block text-xs font-bold text-slate-500 mb-1">Canal de Envío</label>
               <div className="space-y-1">
                 {[
                   { value: 'push', label: '🔔 Solo Push (App)', desc: 'Notificación interna' },
                   { value: 'whatsapp', label: '📱 Solo WhatsApp', desc: 'Requiere ManyChat' },
                   { value: 'both', label: '⚡ Push + WhatsApp', desc: 'Máximo alcance' },
                 ].map(o => (
-                  <label key={o.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${channel === o.value ? 'border-tech-blue bg-tech-blue/5' : 'border-slate-200 hover:bg-slate-50'}`}>
+                  <label key={o.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${channel === o.value ? 'border-tech-blue bg-tech-blue/5' : 'border-slate-200 hover:bg-slate-55'}`}>
                     <input type="radio" name="channel" value={o.value} checked={channel === o.value} onChange={e => setChannel(e.target.value)} className="sr-only" />
                     <div>
                       <div className="text-xs font-semibold text-slate-800">{o.label}</div>
@@ -661,15 +891,77 @@ function BroadcastPanel() {
               </div>
             </div>
           </div>
+
+          {audience === 'specific' && (
+            <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-2">
+              <label className="block text-xs font-bold text-slate-600">Seleccionar Destinatarios Específicos</label>
+              <input
+                type="text"
+                value={contactSearch}
+                onChange={e => setContactSearch(e.target.value)}
+                placeholder="Buscar contacto por nombre o teléfono..."
+                className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none bg-white"
+              />
+              <div className="max-h-36 overflow-y-auto space-y-1.5 border border-slate-200 rounded-lg p-2 bg-white">
+                {contacts
+                  .filter(c => 
+                    c.name.toLowerCase().includes(contactSearch.toLowerCase()) || 
+                    c.phone?.includes(contactSearch)
+                  )
+                  .map(c => {
+                    const isChecked = selectedIds.includes(c.id);
+                    return (
+                      <label key={c.id} className="flex items-center gap-2 hover:bg-slate-50 p-1 rounded cursor-pointer text-xs">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setSelectedIds(selectedIds.filter(id => id !== c.id));
+                            } else {
+                              setSelectedIds([...selectedIds, c.id]);
+                            }
+                          }}
+                          className="rounded border-slate-300 text-tech-blue focus:ring-tech-blue"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-800 truncate">{c.name}</p>
+                          <p className="text-[10px] text-slate-400 capitalize">{c.role === 'driver' ? '🚗 Chofer' : '👤 Pasajero'} • {c.phone || 'Sin número'}</p>
+                        </div>
+                      </label>
+                    );
+                  })
+                }
+                {contacts.length === 0 && (
+                  <p className="text-center text-xs text-slate-400 py-4">No se encontraron contactos</p>
+                )}
+              </div>
+              <div className="text-[10px] text-slate-500 font-semibold">
+                Seleccionados: {selectedIds.length} destinatarios
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">Programar Fecha/Hora de Envío</label>
+            <input
+              type="datetime-local"
+              value={scheduledTime}
+              onChange={e => setScheduledTime(e.target.value)}
+              className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-tech-blue"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">Dejar vacío para enviar inmediatamente</p>
+          </div>
+
           <div className="flex gap-2 pt-1">
             <button
               onClick={handleSend}
-              disabled={sending || sent || !title.trim() || !message.trim()}
+              disabled={sending || sent || !title.trim() || !message.trim() || (audience === 'specific' && selectedIds.length === 0)}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-tech-blue hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50"
             >
-              {sent ? <><Check className="h-4 w-4" /> ¡Enviado!</> : sending ? <><RefreshCw className="h-4 w-4 animate-spin" /> Enviando...</> : <><Send className="h-4 w-4" /> Enviar Campaña</>}
+              {sent ? <><Check className="h-4 w-4" /> {scheduledTime ? '¡Programada!' : '¡Enviada!'}</> : sending ? <><RefreshCw className="h-4 w-4 animate-spin" /> Procesando...</> : <><Send className="h-4 w-4" /> {scheduledTime ? 'Programar Campaña' : 'Enviar Campaña'}</>}
             </button>
-            <button onClick={() => setComposing(false)} className="px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50">
+            <button onClick={() => setComposing(false)} className="px-4 py-2.5 border border-slate-200 text-slate-655 text-sm font-semibold rounded-xl hover:bg-slate-50">
               Cancelar
             </button>
           </div>
@@ -684,16 +976,23 @@ function BroadcastPanel() {
         ) : (
           <div className="space-y-2">
             {campaigns.map(c => (
-              <div key={c.id} className="bg-white border border-slate-200 rounded-xl p-3">
+              <div key={c.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-slate-800">{c.title}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.status === 'sent' ? 'bg-emerald-100 text-emerald-700' : c.status === 'sending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
-                        {c.status === 'sent' ? '✅ Enviada' : c.status === 'sending' ? '⏳ Enviando' : c.status}
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.status === 'sent' ? 'bg-emerald-50 text-emerald-700' : c.status === 'scheduled' ? 'bg-indigo-50 text-indigo-700' : c.status === 'sending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-55'}`}>
+                        {c.status === 'sent' ? '✅ Enviada' : c.status === 'scheduled' ? '📅 Programada' : c.status === 'sending' ? '⏳ Enviando' : c.status}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{c.message}</p>
+                    
+                    {c.status === 'scheduled' && c.scheduledAt && (
+                      <p className="text-[10px] text-indigo-650 font-semibold mt-1">
+                        📅 Programada para: {new Date(c.scheduledAt).toLocaleString('es-AR')}
+                      </p>
+                    )}
+
                     <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-400">
                       <span>🎯 {c.stats?.targeted || 0} destinatarios</span>
                       <span>📤 {c.stats?.sent || 0} enviados</span>
@@ -710,10 +1009,13 @@ function BroadcastPanel() {
     </div>
   );
 }
-
-// ─── Contact Panel ────────────────────────────────────────────────────────────
-
-function ContactPanel({ conversation }: { conversation: Conversation | null }) {
+function ContactPanel({ 
+  conversation,
+  onViewCRM,
+}: { 
+  conversation: Conversation | null;
+  onViewCRM: () => void;
+}) {
   if (!conversation) return (
     <div className="p-4 text-center text-slate-400 text-sm mt-8">
       <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
@@ -723,11 +1025,57 @@ function ContactPanel({ conversation }: { conversation: Conversation | null }) {
 
   const main = conversation.participants.find(p => p.role === 'customer' || p.role === 'driver');
 
+  const handleUpdateBusinessUnit = async (unit: 'TravelCab' | 'Experiences' | 'Rewards' | 'General') => {
+    try {
+      await updateDoc(doc(db, 'conversations', conversation.id), {
+        'metadata.businessUnit': unit
+      });
+      const q = query(collection(db, 'leads'), where('conversationId', '==', conversation.id), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const leadUnit = unit === 'Experiences' ? 'Experiencias' : unit;
+        if (leadUnit !== 'General') {
+          await updateDoc(doc(db, 'leads', snap.docs[0].id), {
+            businessUnit: leadUnit
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error al actualizar unidad:", error);
+    }
+  };
+
+  const handleUpdateChannel = async (channel: MessageChannel) => {
+    try {
+      await updateDoc(doc(db, 'conversations', conversation.id), {
+        channel: channel
+      });
+      const q = query(collection(db, 'leads'), where('conversationId', '==', conversation.id), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const sourceMap: Record<string, string> = {
+          whatsapp: 'WhatsApp',
+          web: 'Web',
+          instagram: 'IG',
+          messenger: 'Messenger'
+        };
+        const origin = sourceMap[channel];
+        if (origin) {
+          await updateDoc(doc(db, 'leads', snap.docs[0].id), {
+            origin
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error al actualizar canal:", error);
+    }
+  };
+
   return (
     <div className="p-4 space-y-4 overflow-y-auto h-full">
       {/* Avatar */}
       <div className="flex flex-col items-center py-4">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-tech-blue to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-tech-blue to-indigo-650 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
           {main?.name?.[0]?.toUpperCase() || '?'}
         </div>
         <h3 className="mt-3 font-bold text-slate-800">{main?.name || 'Contacto'}</h3>
@@ -741,16 +1089,46 @@ function ContactPanel({ conversation }: { conversation: Conversation | null }) {
       </div>
 
       {/* Conversation info */}
-      <div className="bg-slate-50 rounded-xl p-3 space-y-2">
-        <div className="flex justify-between text-xs">
-          <span className="text-slate-400">Estado</span>
-          <span className="font-semibold text-slate-700 capitalize">{conversation.status}</span>
+      <div className="bg-slate-50 rounded-xl p-4 space-y-4 border border-slate-100">
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado Conversación</label>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${STATUS_DOT[conversation.status]}`} />
+            <span className="text-xs font-semibold text-slate-700 capitalize">{conversation.status}</span>
+          </div>
         </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-slate-400">Unidad</span>
-          <span className="font-semibold text-slate-700">{conversation.metadata?.businessUnit || 'General'}</span>
+        
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Unidad de Negocio</label>
+          <select 
+            value={conversation.metadata?.businessUnit || 'General'}
+            onChange={(e) => handleUpdateBusinessUnit(e.target.value as any)}
+            className="w-full text-xs bg-white border border-slate-202 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-tech-blue text-slate-800"
+          >
+            <option value="General">General (Ecosistema)</option>
+            <option value="TravelCab">TravelCab (Movilidad)</option>
+            <option value="Experiences">Experiences (Tours)</option>
+            <option value="Rewards">Rewards (Lealtad)</option>
+          </select>
         </div>
-        <div className="flex justify-between text-xs">
+
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Canal de Ingreso</label>
+          <select 
+            value={conversation.channel}
+            onChange={(e) => handleUpdateChannel(e.target.value as any)}
+            className="w-full text-xs bg-white border border-slate-202 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-tech-blue text-slate-800"
+          >
+            <option value="whatsapp">WhatsApp</option>
+            <option value="web">Chat Web</option>
+            <option value="instagram">Instagram</option>
+            <option value="messenger">Messenger</option>
+            <option value="push">Notificación Push</option>
+            <option value="internal">Interno</option>
+          </select>
+        </div>
+
+        <div className="flex justify-between text-xs pt-1 border-t border-slate-100 text-slate-600">
           <span className="text-slate-400">Iniciada</span>
           <span className="font-semibold text-slate-700">{new Date(conversation.createdAt).toLocaleDateString('es-AR')}</span>
         </div>
@@ -765,17 +1143,19 @@ function ContactPanel({ conversation }: { conversation: Conversation | null }) {
       {/* Quick actions */}
       <div className="space-y-2">
         <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Acciones Rápidas</h4>
-        <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+        <button 
+          onClick={onViewCRM}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-202 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+        >
           <Users className="h-4 w-4 text-tech-blue" /> Ver en CRM
         </button>
-        <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-sm text-red-600 hover:bg-red-50 transition-colors">
+        <button className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-sm text-red-600 hover:bg-red-50 transition-colors">
           <X className="h-4 w-4" /> Cerrar Conversación
         </button>
       </div>
     </div>
   );
 }
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 type Tab = 'conversations' | 'automated' | 'broadcast';
@@ -786,6 +1166,39 @@ export default function MessagesPage() {
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [crmLead, setCrmLead] = useState<Lead | null>(null);
+  const [crmSlideOpen, setCrmSlideOpen] = useState(false);
+
+  const handleViewCRM = async () => {
+    if (!activeConversation) return;
+    try {
+      const leadsRef = collection(db, 'leads');
+      let q = query(leadsRef, where('conversationId', '==', activeConversation.id), limit(1));
+      let snap = await getDocs(q);
+      
+      if (snap.empty && activeConversation.manyChatSubscriberId) {
+        q = query(leadsRef, where('manyChatSubscriberId', '==', activeConversation.manyChatSubscriberId), limit(1));
+        snap = await getDocs(q);
+      }
+      
+      if (snap.empty) {
+        const main = activeConversation.participants.find(p => p.role === 'customer' || p.role === 'driver');
+        if (main?.phone) {
+          q = query(leadsRef, where('phone', '==', main.phone), limit(1));
+          snap = await getDocs(q);
+        }
+      }
+      
+      if (!snap.empty) {
+        setCrmLead({ id: snap.docs[0].id, ...snap.docs[0].data() } as Lead);
+        setCrmSlideOpen(true);
+      } else {
+        alert("No se encontró un Lead asociado en el CRM para este contacto.");
+      }
+    } catch (error) {
+      console.error("Error al buscar Lead en CRM:", error);
+    }
+  };
   const [loadingConvs, setLoadingConvs] = useState(true);
 
   // Real-time conversations listener
@@ -902,7 +1315,7 @@ export default function MessagesPage() {
             <h3 className="text-sm font-bold text-slate-700">Información del Contacto</h3>
           </div>
           <div className="flex-1 overflow-y-auto">
-            <ContactPanel conversation={activeConversation} />
+            <ContactPanel conversation={activeConversation} onViewCRM={handleViewCRM} />
           </div>
         </div>
       )}
