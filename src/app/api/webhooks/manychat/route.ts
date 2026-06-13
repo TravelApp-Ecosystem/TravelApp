@@ -2,16 +2,13 @@
 // WEBHOOK — ManyChat → TravelApp
 // Recibe mensajes de WhatsApp, Instagram DM y Messenger enviados por usuarios
 // a través de ManyChat y los procesa en el sistema de mensajería.
-//
-// ManyChat lo llama automáticamente cuando un usuario envía un mensaje.
-// URL: POST /api/webhooks/manychat
-// Header requerido: x-webhook-secret: [valor de WEBHOOK_SECRET en .env.local]
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { collection, addDoc, query, where, getDocs, doc, updateDoc, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Conversation, Message, MessageChannel, ConversationStatus } from '@/types/messaging';
+import { processTravisMessage } from '../../travis/chat/route';
 
 // ----- Helpers ----------------------------------------------------------------
 
@@ -37,24 +34,17 @@ function detectBusinessUnit(message: string): 'TravelCab' | 'Experiences' | 'Rew
   return 'General';
 }
 
-async function callTravis(message: string, conversationHistory: { role: string; content: string }[], businessUnit: string): Promise<string | null> {
-  const travisUrl = process.env.TRAVIS_WEBHOOK_URL;
-  if (!travisUrl || travisUrl.includes('cloudfunctions.net/travis-webhook') === false) {
-    return null;
-  }
+async function callTravis(
+  message: string, 
+  conversationHistory: { role: string; content: string }[], 
+  businessUnit: string,
+  conversationId?: string
+): Promise<string | null> {
   try {
-    const response = await fetch(travisUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(process.env.TRAVIS_WEBHOOK_SECRET ? { 'x-webhook-secret': process.env.TRAVIS_WEBHOOK_SECRET } : {})
-      },
-      body: JSON.stringify({ message, history: conversationHistory, businessUnit }),
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.response || data.message || data.reply || null;
-  } catch {
+    const result = await processTravisMessage(message, conversationHistory, businessUnit, conversationId);
+    return result.response;
+  } catch (err) {
+    console.error('[ManyChat Webhook] Error calling processTravisMessage:', err);
     return null;
   }
 }
@@ -63,26 +53,48 @@ async function sendManyChatReply(subscriberId: string, message: string): Promise
   const token = process.env.MANYCHAT_API_TOKEN;
   if (!token || token === 'TU_MANYCHAT_API_TOKEN_AQUI') return false;
   
+  const fieldId = process.env.MANYCHAT_TRAVIS_RESPONSE_FIELD_ID;
+  const useField = fieldId && fieldId !== 'TU_FIELD_ID_AQUI' && fieldId.trim() !== '';
+
   try {
-    const response = await fetch('https://api.manychat.com/fb/sending/sendContent', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        subscriber_id: subscriberId,
-        data: {
-          version: 'v2',
-          content: {
-            messages: [{ type: 'text', text: message }],
-          },
+    if (useField) {
+      // Set subscriber custom user field in ManyChat to support WhatsApp, Instagram DM, Comments, etc.
+      const response = await fetch('https://api.manychat.com/fb/subscriber/setCustomField', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        message_tag: 'ACCOUNT_UPDATE',
-      }),
-    });
-    return response.ok;
-  } catch {
+        body: JSON.stringify({
+          subscriber_id: subscriberId,
+          field_id: fieldId,
+          field_value: message,
+        }),
+      });
+      return response.ok;
+    } else {
+      // Fallback: direct sendContent (Messenger/Facebook)
+      const response = await fetch('https://api.manychat.com/fb/sending/sendContent', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscriber_id: subscriberId,
+          data: {
+            version: 'v2',
+            content: {
+              messages: [{ type: 'text', text: message }],
+            },
+          },
+          message_tag: 'ACCOUNT_UPDATE',
+        }),
+      });
+      return response.ok;
+    }
+  } catch (err) {
+    console.error('[ManyChat Webhook] Error sending reply to ManyChat:', err);
     return false;
   }
 }
@@ -224,7 +236,7 @@ export async function POST(req: NextRequest) {
             content: m.content,
           }));
 
-        const travisReply = await callTravis(userMessage, history, businessUnit);
+        const travisReply = await callTravis(userMessage, history, businessUnit, conversationId);
         
         if (travisReply) {
           // Guardar respuesta de Travis en Firestore
@@ -242,8 +254,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (travisError) {
         console.error('[ManyChat Webhook] Error al llamar a Travis:', travisError);
-        // No arrojamos el error hacia afuera para evitar tirar abajo el webhook de Zapier.
-        // De esta forma el mensaje del usuario igual queda registrado en el CRM.
+        // No arrojamos el error hacia afuera para evitar tirar abajo el webhook
       }
     }
 
