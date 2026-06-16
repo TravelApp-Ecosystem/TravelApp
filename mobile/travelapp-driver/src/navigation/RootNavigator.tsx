@@ -12,6 +12,8 @@ import TripRequestScreen from '../screens/TripRequestScreen';
 import ActiveTripScreen from '../screens/ActiveTripScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import WalletScreen from '../screens/WalletScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -51,6 +53,8 @@ export default function RootNavigator() {
             <Stack.Screen name="ActiveTrip" component={ActiveTripScreen} />
             <Stack.Screen name="History" component={HistoryScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Wallet" component={WalletScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
           </>
         )}
       </Stack.Navigator>

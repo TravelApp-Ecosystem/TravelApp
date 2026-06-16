@@ -1,6 +1,7 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBouuxeZhMl3LNyRQOe6BxUnnYc0hVbjIo',
@@ -11,12 +12,15 @@ const firebaseConfig = {
   appId: '1:596622732697:web:6765f2beee41420c3db708',
 };
 
+let app;
 if (!firebase.apps.length) {
   console.log('Inicializando Firebase Compat (Driver)...');
-  firebase.initializeApp(firebaseConfig);
+  app = firebase.initializeApp(firebaseConfig);
+} else {
+  app = firebase.app();
 }
 
 export const auth = firebase.auth();
-export const db = firebase.firestore();
+export const db = getFirestore(app); // Exportar como instancia modular
 export default firebase;
 

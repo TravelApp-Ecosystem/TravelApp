@@ -24,14 +24,72 @@ export default function TripRequestScreen() {
     setLoading(true);
     try {
       const user = auth.currentUser!;
-      await updateDoc(doc(db, 'trips', trip.id), {
-        status: 'accepted',
-        driverId: user.uid,
-        driverName: user.displayName || 'Conductor',
-        acceptedAt: Timestamp.now(),
-      });
-      navigation.navigate('ActiveTrip', { tripId: trip.id });
-    } catch {
+      const isMercadoPago = trip.paymentMethod === 'Mercado Pago' || trip.paymentMethod === 'Mercado Pago (Wallet Connect)';
+
+      if (isMercadoPago) {
+        let paymentSuccess = false;
+        let payData: any = null;
+
+        // Intentamos llamar a la API de débito en localhost:3000 y 10.0.2.2:3000 (Android emulator)
+        const endpoints = [
+          `http://localhost:3000/api/checkout/process-debit`,
+          `http://10.0.2.2:3000/api/checkout/process-debit`
+        ];
+
+        for (const url of endpoints) {
+          try {
+            const payResponse = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tripId: trip.id,
+                passengerId: trip.passengerId,
+                driverId: user.uid,
+                amount: trip.estimatedPrice
+              })
+            });
+            if (payResponse.ok) {
+              payData = await payResponse.json();
+              if (payData && payData.success) {
+                paymentSuccess = true;
+                break;
+              }
+            }
+          } catch (e) {
+            console.log(`Failed to connect to ${url}, trying next...`);
+          }
+        }
+
+        if (paymentSuccess) {
+          // Una vez acreditado el pago, se asigna el viaje al conductor
+          await updateDoc(doc(db, 'trips', trip.id), {
+            status: 'accepted',
+            driverId: user.uid,
+            driverName: user.displayName || 'Conductor',
+            acceptedAt: Timestamp.now(),
+            paymentStatus: 'paid',
+            paymentId: payData?.paymentId || 'simulated'
+          });
+          navigation.navigate('ActiveTrip', { tripId: trip.id });
+        } else {
+          Alert.alert(
+            'Cobro fallido',
+            'No se pudo procesar el pago automático del pasajero. Por favor, asegúrate de que el pasajero tenga saldo o una cuenta vinculada.',
+            [{ text: 'Entendido' }]
+          );
+          setLoading(false);
+        }
+      } else {
+        // Para pago en Efectivo, se asigna directamente al aceptar
+        await updateDoc(doc(db, 'trips', trip.id), {
+          status: 'accepted',
+          driverId: user.uid,
+          driverName: user.displayName || 'Conductor',
+          acceptedAt: Timestamp.now(),
+        });
+        navigation.navigate('ActiveTrip', { tripId: trip.id });
+      }
+    } catch (err) {
       Alert.alert('Error', 'No se pudo aceptar el viaje. Intentá nuevamente.');
       setLoading(false);
     }
@@ -130,14 +188,14 @@ const styles = StyleSheet.create({
   pingDot: {
     width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.success,
   },
-  panelTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+  panelTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
   priceContainer: {
     backgroundColor: Colors.primary + '0F', borderRadius: 16,
     padding: 20, alignItems: 'center',
     borderWidth: 1.5, borderColor: Colors.primary + '30',
   },
-  priceLabel: { fontSize: 13, color: Colors.primary, marginBottom: 4 },
-  price: { fontSize: 36, fontWeight: '900', color: Colors.primary },
+  priceLabel: { fontSize: 13, fontFamily: 'Quicksand-Medium', color: Colors.primary, marginBottom: 4 },
+  price: { fontSize: 36, fontFamily: 'Quicksand-Bold', color: Colors.primary },
   routeCard: {
     backgroundColor: Colors.background, borderRadius: 16, padding: 16, gap: 4,
   },
@@ -145,8 +203,8 @@ const styles = StyleSheet.create({
   dotGreen: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.success },
   dotRed: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.danger },
   routeDash: { width: 1, height: 16, backgroundColor: Colors.border, marginLeft: 5 },
-  routeLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '600', textTransform: 'uppercase' },
-  routeText: { fontSize: 14, color: Colors.textPrimary, fontWeight: '600' },
+  routeLabel: { fontSize: 11, color: Colors.textMuted, fontFamily: 'Quicksand-Bold', textTransform: 'uppercase' },
+  routeText: { fontSize: 14, color: Colors.textPrimary, fontFamily: 'Quicksand-Bold' },
   passengerCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: Colors.background, borderRadius: 14, padding: 14,
@@ -155,19 +213,19 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
   },
-  passengerName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  passengerName: { fontSize: 15, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  ratingText: { fontSize: 13, color: Colors.textSecondary },
+  ratingText: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary },
   buttonsRow: { flexDirection: 'row', gap: 12 },
   rejectBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderRadius: 16, paddingVertical: 16,
     borderWidth: 2, borderColor: Colors.danger,
   },
-  rejectText: { color: Colors.danger, fontSize: 16, fontWeight: '700' },
+  rejectText: { color: Colors.danger, fontSize: 16, fontFamily: 'Quicksand-Bold' },
   acceptBtn: {
     flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 16,
   },
-  acceptText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  acceptText: { color: Colors.white, fontSize: 16, fontFamily: 'Quicksand-Bold' },
 });

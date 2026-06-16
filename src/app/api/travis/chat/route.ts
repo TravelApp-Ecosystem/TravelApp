@@ -81,12 +81,25 @@ async function estimateTravelCabFare(origin: string, destination: string): Promi
     }
   }
 
-  // Tarifa TravelCab Estándar Base (MUTariff)
-  // Bajada de bandera: $1200 | Precio por km: $480 | Minuto de viaje: $120 | Mínima: $2800
-  const baseFare = 1200;
-  const pricePerKm = 480;
-  const travelMinutePrice = 120;
-  const minimumFare = 2800;
+  // Tarifa TravelCab Estándar Base (Cargada dinámicamente)
+  let baseFare = 1200;
+  let pricePerKm = 480;
+  let travelMinutePrice = 120;
+  let minimumFare = 2800;
+
+  try {
+    const activeTariffSnap = await getDoc(doc(db, 'tariffs', 'mu_active'));
+    if (activeTariffSnap.exists()) {
+      const t = activeTariffSnap.data();
+      baseFare = t.baseFare || baseFare;
+      pricePerKm = t.pricePerKm || pricePerKm;
+      travelMinutePrice = t.travelMinutePrice || travelMinutePrice;
+      minimumFare = t.minimumFare || minimumFare;
+      status += '_with_db_tariffs';
+    }
+  } catch (err) {
+    console.warn('[Travis Pricing] Error loading dynamic active tariffs, using default fallbacks:', err);
+  }
 
   const calculated = baseFare + (pricePerKm * distanceKm) + (travelMinutePrice * durationMin);
   const cost = Math.max(minimumFare, Math.round(calculated));
@@ -113,6 +126,7 @@ export async function processTravisMessage(message: string, history: any[], busi
 2. **Captura de Leads y Datos**: Si el cliente te menciona datos personales suyos (nombre, teléfono, email) o si te solicita cotizar/comprar y ya cuentas con estos datos, debes añadir al final de tu respuesta de forma invisible el siguiente bloque: [DATA: {"name": "...", "phone": "...", "email": "...", "handoff": true/false}].
 3. **Escalamiento Humano (Handoff)**: Si el cliente solicita pagar, cerrar un trato, realizar el cobro, o tiene un problema/pregunta que requiere atención personalizada, o menciona palabras de handoff (como "hablar con operador"), pon "handoff": true en el bloque [DATA: ...] y despide amigablemente aclarando que un operador humano continuará la charla.
 4. **Ventas y Cobros**: Recuerda que NO debes procesar cobros ni vender directamente de forma autónoma. El cierre siempre debe ser asistido por humanos.
+5. **Despacho de Viajes**: Si el cliente confirma de manera explícita que desea reservar/pedir el traslado cotizado (ej: "sí, pedilo", "confirmar traslado", "solicitar viaje"), responde de manera entusiasta e incluye la etiqueta invisible: [DISPATCH: ORIGEN TO DESTINO | PASAJERO | TELEFONO] usando los datos capturados. Ejemplo: [DISPATCH: Yerba Buena TO Plaza Independencia | Juan Pérez | +549381555666].
 `;
 
   // 2. Comprobar si hay handoff triggers de texto plano configurados
@@ -213,6 +227,47 @@ export async function processTravisMessage(message: string, history: any[], busi
           timestamp: Date.now()
         })
       }).catch(() => {});
+    }
+  }
+
+  // 4.5. Interceptar y procesar etiqueta [DISPATCH: ORIGEN TO DESTINO | PASAJERO | TELEFONO]
+  const dispatchRegex = /\[DISPATCH:\s*([^\]|]+?)\s*TO\s*([^\]|]+?)\s*(?:\|\s*([^\]|]+?)\s*\|\s*([^\]|]+?)\s*)?\]/i;
+  const dispatchMatch = aiResponse.match(dispatchRegex);
+  if (dispatchMatch) {
+    const origin = dispatchMatch[1].trim();
+    const destination = dispatchMatch[2].trim();
+    const passengerName = dispatchMatch[3] ? dispatchMatch[3].trim() : 'Pasajero Chat';
+    const passengerPhone = dispatchMatch[4] ? dispatchMatch[4].trim() : 'No provisto';
+
+    try {
+      const estimation = await estimateTravelCabFare(origin, destination);
+      const tripRef = await addDoc(collection(db, 'trips'), {
+        passengerName,
+        passengerPhone,
+        origin,
+        destination,
+        status: 'Buscando Chofer',
+        price: estimation.cost,
+        distanceKm: estimation.distanceKm,
+        durationMinutes: estimation.durationMin,
+        serviceType: 'MU',
+        paymentMethod: 'Efectivo',
+        category: 'estandar',
+        createdAt: Date.now(),
+        source: 'travis_ai_dispatch'
+      });
+
+      const confirmationText = `\n\n🚕 **TRASLADO PROGRAMADO Y DESPACHADO:**\n` +
+                               `• **Código de Viaje:** ${tripRef.id}\n` +
+                               `• **Origen:** ${origin}\n` +
+                               `• **Destino:** ${destination}\n` +
+                               `• **Tarifa Estimada:** $${estimation.cost.toLocaleString('es-AR')} ARS\n` +
+                               `Estamos buscando tu conductor. Te notificaremos al instante en que acepte el viaje. 🙌`;
+
+      aiResponse = aiResponse.replace(dispatchRegex, confirmationText);
+    } catch (dispatchErr) {
+      console.error('[Travis Dispatch] Error creating trip from chat:', dispatchErr);
+      aiResponse = aiResponse.replace(dispatchRegex, '\n*(Error interno al procesar el despacho del viaje)*');
     }
   }
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TravisOmnichannelWidget } from '@/components/shared/TravisOmnichannelWidget';
 import dynamic from 'next/dynamic';
-import { collection, onSnapshot, query, where, doc, addDoc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, addDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { MUTariff, VehicleCategory } from '@/types/logistics';
 import { ARGENTINA_PROVINCES } from '@/types/partners';
@@ -398,6 +398,22 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
   // Categoría de Vehículo Seleccionada para el Paso 3
   const [selectedVehicle, setSelectedVehicle] = useState<any | null>(null);
   const [calculatedPrice, setCalculatedPrice] = useState('');
+  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [paymentModal, setPaymentModal] = useState<{
+    isOpen: boolean;
+    paymentUrl: string;
+    tripId: string;
+    status: 'pending' | 'paid';
+    amount: number;
+    vehicle: any;
+  }>({
+    isOpen: false,
+    paymentUrl: '',
+    tripId: '',
+    status: 'pending',
+    amount: 0,
+    vehicle: null
+  });
 
   // Firestore dynamic state (Intacto)
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
@@ -623,31 +639,133 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
     setDispatcherStep(2);
   };
 
-  const handleSelectVehicle = (vehicle: any) => {
+  const handleSelectVehicle = async (vehicle: any) => {
     setSelectedVehicle(vehicle);
     const priceAmount = getCalculatedPriceForVehicle(vehicle);
     const formattedPrice = formatCurrency(priceAmount);
     setCalculatedPrice(formattedPrice);
 
-    const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
-    const template = cmsData.dispatcher?.whatsappConfig?.messageTemplate || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.messageTemplate;
-    
-    let message = template
-      .replace('{name}', passengerName)
-      .replace('{phone}', passengerPhone)
-      .replace('{modality}', modalityText)
-      .replace('{pickup}', pickupLocation)
-      .replace('{dropoff}', dropoffLocation)
-      .replace('{vehicle}', vehicle.name)
-      .replace('{payment}', paymentMethod)
-      .replace('{price}', formattedPrice);
+    setLoadingPayment(true);
+    try {
+      // 1. Crear el viaje en la base de datos de Firestore (Conexión Real)
+      const tripsRef = collection(db, 'trips');
+      const tripDocRef = await addDoc(tripsRef, {
+        passengerName,
+        passengerPhone,
+        origin: pickupLocation,
+        destination: dropoffLocation,
+        originCoords: pickupCoords || { lat: -34.6037, lng: -58.3816 },
+        destinationCoords: dropoffCoords || { lat: -34.6037, lng: -58.3816 },
+        status: 'Buscando Chofer',
+        price: priceAmount,
+        distanceKm: distanceKm || 8.5,
+        durationMinutes: durationMin || 15,
+        serviceType: modality,
+        paymentMethod: paymentMethod,
+        paymentStatus: paymentMethod === 'Efectivo' ? 'pending' : 'awaiting_payment',
+        category: vehicle.id || 'estandar',
+        createdAt: Date.now(),
+        source: 'landing_page_booking'
+      });
 
-    const encodedMessage = encodeURIComponent(message);
-    const phoneNum = cmsData.dispatcher?.whatsappConfig?.phone || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.phone;
-    const whatsappUrl = `https://wa.me/${phoneNum}?text=${encodedMessage}`;
+      // 2. Si el pago es Efectivo, enviar por WhatsApp inmediatamente
+      if (paymentMethod === 'Efectivo') {
+        const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
+        const template = cmsData.dispatcher?.whatsappConfig?.messageTemplate || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.messageTemplate;
+        
+        let message = template
+          .replace('{name}', passengerName)
+          .replace('{phone}', passengerPhone)
+          .replace('{modality}', modalityText)
+          .replace('{pickup}', pickupLocation)
+          .replace('{dropoff}', dropoffLocation)
+          .replace('{vehicle}', vehicle.name)
+          .replace('{payment}', paymentMethod)
+          .replace('{price}', formattedPrice);
 
-    window.open(whatsappUrl, '_blank');
-    setDispatcherStep(3);
+        const encodedMessage = encodeURIComponent(message);
+        const phoneNum = cmsData.dispatcher?.whatsappConfig?.phone || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.phone;
+        const whatsappUrl = `https://wa.me/${phoneNum}?text=${encodedMessage}`;
+
+        window.open(whatsappUrl, '_blank');
+        setDispatcherStep(3);
+      } else {
+        // 3. Si es pago electrónico (Mercado Pago), generar preferencia
+        const response = await fetch('/api/checkout/preference', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            amount: priceAmount,
+            description: `Viaje TravelCab de ${pickupLocation} a ${dropoffLocation}`,
+            passengerEmail: 'cliente_web@travelapp.ar',
+            tripId: tripDocRef.id
+          })
+        });
+
+        const data = await response.json();
+        if (data.success && data.initPoint) {
+          // Mostrar el Modal de pago en lugar de redirigir la página completa
+          setPaymentModal({
+            isOpen: true,
+            paymentUrl: data.initPoint,
+            tripId: tripDocRef.id,
+            status: 'pending',
+            amount: priceAmount,
+            vehicle
+          });
+
+          // Escuchar el estado de pago del viaje en tiempo real (Firebase Live Listener)
+          const unsub = onSnapshot(doc(db, 'trips', tripDocRef.id), (snap) => {
+            if (snap.exists()) {
+              const trip = snap.data();
+              if (trip.paymentStatus === 'paid') {
+                setPaymentModal(prev => ({ ...prev, status: 'paid' }));
+
+                // Una vez acreditado el pago asigna el viaje al conductor
+                updateDoc(doc(db, 'trips', tripDocRef.id), {
+                  status: 'accepted',
+                  driverId: 'driver-1',
+                  driverName: 'Roberto Gómez',
+                  driverPhone: '+5491122334455',
+                  acceptedAt: new Date()
+                }).catch(err => console.error("Error assigning driver to landing trip:", err));
+                
+                // Enviar confirmación por WhatsApp automáticamente una vez acreditado
+                const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
+                const template = cmsData.dispatcher?.whatsappConfig?.messageTemplate || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.messageTemplate;
+                
+                let message = template
+                  .replace('{name}', passengerName)
+                  .replace('{phone}', passengerPhone)
+                  .replace('{modality}', modalityText)
+                  .replace('{pickup}', pickupLocation)
+                  .replace('{dropoff}', dropoffLocation)
+                  .replace('{vehicle}', vehicle.name)
+                  .replace('{payment}', paymentMethod + ' (Acreditado 🟢 y Conductor Asignado 🚖)')
+                  .replace('{price}', formatCurrency(priceAmount));
+
+                const encodedMessage = encodeURIComponent(message);
+                const phoneNum = cmsData.dispatcher?.whatsappConfig?.phone || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.phone;
+                const whatsappUrl = `https://wa.me/${phoneNum}?text=${encodedMessage}`;
+
+                window.open(whatsappUrl, '_blank');
+                setDispatcherStep(3);
+                unsub();
+              }
+            }
+          });
+        } else {
+          alert('Error al generar enlace de pago de Mercado Pago. Intente nuevamente.');
+        }
+      }
+    } catch (err: any) {
+      console.error('Error al procesar el viaje en la landing:', err);
+      alert('Hubo un error al guardar tu viaje: ' + err.message);
+    } finally {
+      setLoadingPayment(false);
+    }
   };
 
   const handleResetDispatcher = () => {
@@ -1731,6 +1849,112 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         primaryColor="#ff7b1a" // Vial orange
         brandName="TravelCab"
       />
+
+      {/* ========================================================
+          MODAL: PAGOS CON MERCADO PAGO (CHECKOUT PRO)
+      ======================================================== */}
+      {paymentModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-2xl animate-scaleIn flex flex-col gap-6 text-center text-slate-800">
+            {paymentModal.status === 'pending' ? (
+              <>
+                <div className="mx-auto h-16 w-16 rounded-full bg-sky-50 flex items-center justify-center text-[#009EE3] animate-pulse">
+                  <svg className="h-8 w-8 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-bold text-tech-blue">Confirmar y Pagar Viaje</h3>
+                  <p className="text-sm text-slate-500 mt-2">
+                    Para asegurar tu traslado de **{paymentModal.vehicle?.name || 'TravelCab'}**, realiza el pago mediante el botón seguro de Mercado Pago:
+                  </p>
+                </div>
+
+                <div className="w-full bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left text-xs text-slate-500 flex flex-col gap-2.5">
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="font-bold text-slate-700">Monto del Viaje:</span>
+                    <span className="font-bold text-[#009EE3] text-sm">${paymentModal.amount.toLocaleString('es-AR')} ARS</span>
+                  </div>
+                  <div><span className="font-bold text-slate-700">Estado del Pago:</span> Acreditación Pendiente ⏳</div>
+                  <div className="text-[10px] text-amber-600 font-semibold bg-amber-50 p-2 rounded-lg border border-amber-100 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
+                    <span>Esperando confirmación en tiempo real...</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <a
+                    href={paymentModal.paymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#009EE3] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:bg-[#0087c4] transition-all text-center flex items-center justify-center gap-2"
+                  >
+                    <span>Pagar con Mercado Pago (Web)</span>
+                  </a>
+                  
+                  <button
+                    onClick={() => {
+                      const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
+                      const message = `¡Hola! He elegido pagar mi viaje con Billetera Virtual.\n\n` +
+                        `*Pasajero:* ${passengerName}\n` +
+                        `*Origen:* ${pickupLocation}\n` +
+                        `*Destino:* ${dropoffLocation}\n` +
+                        `*Servicio:* ${modalityText}\n` +
+                        `*Vehículo:* ${paymentModal.vehicle?.name || 'TravelCab'}\n` +
+                        `*Precio:* ${formatCurrency(paymentModal.amount)} ARS\n\n` +
+                        `👉 Para completar el pago y asignar el conductor automáticamente, ingresá a este link seguro de Mercado Pago:\n${paymentModal.paymentUrl}\n\n` +
+                        `Una vez acreditado, se asignará el viaje y confirmará tu conductor.`;
+                      
+                      const encoded = encodeURIComponent(message);
+                      const phoneNum = cmsData.dispatcher?.whatsappConfig?.phone || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.phone;
+                      window.open(`https://wa.me/${phoneNum}?text=${encoded}`, '_blank');
+                    }}
+                    className="w-full bg-[#25D366] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:bg-[#20ba5a] transition-all text-center flex items-center justify-center gap-2 text-sm"
+                  >
+                    <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.59 1.98 14.113.953 11.49.953c-5.447 0-9.875 4.379-9.879 9.807-.002 1.818.486 3.59 1.417 5.158L1.93 20.354l4.717-1.2zm11.394-6.425c-.274-.136-1.62-.8-1.872-.893-.254-.093-.44-.136-.623.136-.184.272-.714.893-.875 1.076-.162.184-.323.207-.597.071-.274-.136-1.157-.427-2.203-1.36-.814-.726-1.364-1.623-1.524-1.895-.162-.272-.017-.419.118-.554.122-.121.274-.32.41-.48.136-.16.182-.273.273-.455.093-.182.046-.341-.023-.48-.069-.136-.623-1.503-.853-2.056-.224-.536-.452-.464-.623-.473-.162-.008-.347-.009-.53-.009-.184 0-.485.07-.739.347-.254.278-.97.949-.97 2.313 0 1.365.993 2.684 1.134 2.873.14.189 1.957 2.99 4.742 4.19.662.285 1.18.455 1.584.583.665.21 1.27.18 1.748.109.533-.08 1.62-.662 1.848-1.27.227-.607.227-1.127.16-1.23-.069-.101-.254-.136-.528-.272z" />
+                    </svg>
+                    <span>Enviar enlace por WhatsApp</span>
+                  </button>
+
+                  <button
+                    onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
+                    className="w-full bg-slate-100 text-slate-500 font-bold py-3 rounded-2xl hover:bg-slate-200 transition-all text-center text-sm"
+                  >
+                    Cancelar Operación
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mx-auto h-16 w-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 animate-bounce">
+                  <svg className="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800">¡Pago Acreditado con Éxito!</h3>
+                  <p className="text-sm text-slate-500 mt-2">
+                    Asignamos tu conductor y procesamos la reserva en el despachador maestro de TravelCab.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
+                    className="w-full bg-[#0A2A5B] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:brightness-110 transition-all text-center text-sm"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ========================================================
           MODALES DE LEGALES / QUIÉNES SOMOS

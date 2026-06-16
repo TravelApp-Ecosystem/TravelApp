@@ -1,17 +1,17 @@
 export const Colors = {
-  primary: '#0F4C35',      // Verde oscuro — identidad conductor
-  primaryLight: '#1A7A57',
-  accent: '#F59E0B',
+  primary: '#0A2A5B',      // Tech Blue — identidad corporativa
+  primaryLight: '#1E3A8A',
+  accent: '#FF6B00',       // Vial Orange
   success: '#10B981',
   danger: '#EF4444',
   online: '#10B981',
   offline: '#94A3B8',
   white: '#FFFFFF',
-  background: '#F1F5F2',
+  background: '#F8FAFC',
   card: '#FFFFFF',
   border: '#E2E8F0',
-  textPrimary: '#1E293B',
-  textSecondary: '#64748B',
+  textPrimary: '#0F172A',
+  textSecondary: '#475569',
   textMuted: '#94A3B8',
 };
 

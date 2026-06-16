@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Verifica si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Verifica si el usuario es el propietario del documento
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper: Verifica si el usuario es un administrador u operador del sistema
+    // (Podemos verificarlo si tiene un campo isAdmin en su documento de usuario)
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // Colección: Usuarios (Pasajeros y Cuentas Generales)
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // Colección: Choferes / Socios Conductores
+    match /drivers/{driverId} {
+      // Cualquier usuario autenticado puede ver choferes activos (necesario para el mapa)
+      allow read: if isAuthenticated();
+      // Solo el chofer propietario o un admin puede editar su perfil/estado
+      allow write: if isOwner(driverId) || isAdmin();
+    }
+
+    // Colección: Viajes / Traslados (Trips)
+    match /trips/{tripId} {
+      // Permitir creación a cualquier pasajero autenticado
+      allow create: if isAuthenticated();
+      // Permitir lectura a los involucrados en el viaje (pasajero, chofer asignado) o administradores
+      allow read: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        isAdmin()
+      );
+      // Permitir actualizar campos si eres el pasajero o el chofer del viaje
+      allow update, delete: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // Colección: Tarifas y Sucursales
+    match /tariffs/{tariffId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /branches/{branchId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Colección: Categorías de vehículos
+    match /categories/{catId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Colección: Bloques CMS promocionales
+    match /cms_blocks/{blockId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Colección: Catálogo de Canjes de Rewards
+    match /rewards_catalog/{itemId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Colección: Transacciones de auditoría contable (Ledger)
+    match /transactions/{txId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Colección: Leads de CRM capturados por Travis
+    match /leads/{leadId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Colección: Conversaciones de Chat (Travis y Omnicanal)
+    match /conversations/{convId} {
+      allow read: if isAuthenticated() && (resource.data.customerId == request.auth.uid || isAdmin());
+      allow write: if isAuthenticated();
+    }
+    
+    match /conversations/{convId}/messages/{msgId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+  }
+}

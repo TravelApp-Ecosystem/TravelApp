@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, elevation: 4,
   },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  headerTitle: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
   panel: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
@@ -194,8 +194,8 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
   },
-  passengerName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  passengerDest: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  passengerName: { fontSize: 15, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  passengerDest: { fontSize: 12, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, marginTop: 2 },
   callBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center',
@@ -207,12 +207,12 @@ const styles = StyleSheet.create({
   stepLine: { flex: 1, height: 3, backgroundColor: Colors.border },
   stepLineDone: { backgroundColor: Colors.success },
   earningsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  earningsLabel: { fontSize: 14, color: Colors.textSecondary },
-  earnings: { fontSize: 22, fontWeight: '800', color: Colors.primary },
+  earningsLabel: { fontSize: 14, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
+  earnings: { fontSize: 22, fontFamily: 'Quicksand-Bold', color: Colors.primary },
   actionBtn: {
     backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   actionBtnComplete: { backgroundColor: Colors.success },
-  actionBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  actionBtnText: { color: Colors.white, fontSize: 16, fontFamily: 'Quicksand-Bold' },
 });
