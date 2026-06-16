@@ -1920,6 +1920,32 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                   </button>
 
                   <button
+                    onClick={() => {
+                      const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
+                      const subject = encodeURIComponent("Enlace de Pago para tu viaje de TravelCab");
+                      const body = encodeURIComponent(
+                        `Hola,\n\n` +
+                        `Aquí tienes los detalles para realizar el pago de tu viaje de TravelCab:\n\n` +
+                        `• Pasajero: ${passengerName}\n` +
+                        `• Origen: ${pickupLocation}\n` +
+                        `• Destino: ${dropoffLocation}\n` +
+                        `• Servicio: ${modalityText}\n` +
+                        `• Vehículo: ${paymentModal.vehicle?.name || 'TravelCab'}\n` +
+                        `• Precio: ${formatCurrency(paymentModal.amount)} ARS\n\n` +
+                        `👉 Para completar el pago y asignar el conductor automáticamente, ingresá a este enlace seguro de Mercado Pago:\n${paymentModal.paymentUrl}\n\n` +
+                        `Una vez acreditado, se asignará tu conductor automáticamente y confirmaremos tu traslado.\n\n¡Buen viaje!`
+                      );
+                      window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+                    }}
+                    className="w-full bg-[#0A2A5B] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:brightness-110 transition-all text-center flex items-center justify-center gap-2 text-sm"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>Enviar enlace por Correo</span>
+                  </button>
+
+                  <button
                     onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
                     className="w-full bg-slate-100 text-slate-500 font-bold py-3 rounded-2xl hover:bg-slate-200 transition-all text-center text-sm"
                   >
