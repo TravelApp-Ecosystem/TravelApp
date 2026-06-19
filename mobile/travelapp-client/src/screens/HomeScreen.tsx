@@ -7,7 +7,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo, TravelAppLogo } from '../components/BrandLogos';

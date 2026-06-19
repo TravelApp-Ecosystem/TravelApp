@@ -414,6 +414,30 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
     amount: 0,
     vehicle: null
   });
+  
+  // Nuevos Estados para Despacho y Checkout Inteligente (Invitado vs Registrado)
+  const [bookingType, setBookingType] = useState<'guest' | 'registered'>('guest');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [selectedSeats, setSelectedSeats] = useState(1);
+
+  const [searchingDriverModal, setSearchingDriverModal] = useState<{
+    isOpen: boolean;
+    tripId: string;
+    status: 'searching' | 'payment_required' | 'driver_assigned' | 'failed';
+    driverInfo: any;
+    amount: number;
+    paymentUrl: string;
+  }>({
+    isOpen: false,
+    tripId: '',
+    status: 'searching',
+    driverInfo: null,
+    amount: 0,
+    paymentUrl: ''
+  });
 
   // Firestore dynamic state (Intacto)
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
@@ -647,7 +671,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
 
     setLoadingPayment(true);
     try {
-      // 1. Crear el viaje en la base de datos de Firestore (Conexión Real)
+      // 1. Crear el viaje en la base de datos de Firestore
       const tripsRef = collection(db, 'trips');
       const tripDocRef = await addDoc(tripsRef, {
         passengerName,
@@ -661,6 +685,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         distanceKm: distanceKm || 8.5,
         durationMinutes: durationMin || 15,
         serviceType: modality,
+        seats: modality === 'ARC' ? selectedSeats : 1,
         paymentMethod: paymentMethod,
         paymentStatus: paymentMethod === 'Efectivo' ? 'pending' : 'awaiting_payment',
         category: vehicle.id || 'estandar',
@@ -668,98 +693,114 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         source: 'landing_page_booking'
       });
 
-      // 2. Si el pago es Efectivo, enviar por WhatsApp inmediatamente
-      if (paymentMethod === 'Efectivo') {
-        const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
-        const template = cmsData.dispatcher?.whatsappConfig?.messageTemplate || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.messageTemplate;
-        
-        let message = template
-          .replace('{name}', passengerName)
-          .replace('{phone}', passengerPhone)
-          .replace('{modality}', modalityText)
-          .replace('{pickup}', pickupLocation)
-          .replace('{dropoff}', dropoffLocation)
-          .replace('{vehicle}', vehicle.name)
-          .replace('{payment}', paymentMethod)
-          .replace('{price}', formattedPrice);
+      // 2. Abrir el modal inteligente de búsqueda
+      setSearchingDriverModal({
+        isOpen: true,
+        tripId: tripDocRef.id,
+        status: 'searching',
+        driverInfo: null,
+        amount: priceAmount,
+        paymentUrl: ''
+      });
 
-        const encodedMessage = encodeURIComponent(message);
-        const phoneNum = cmsData.dispatcher?.whatsappConfig?.phone || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.phone;
-        const whatsappUrl = `https://wa.me/${phoneNum}?text=${encodedMessage}`;
+      // 3. Escuchar el estado de asignación de chofer en tiempo real
+      let currentPaymentUrlGenerated = false;
+      const unsub = onSnapshot(doc(db, 'trips', tripDocRef.id), async (snap) => {
+        if (snap.exists()) {
+          const tripData = snap.data();
 
-        window.open(whatsappUrl, '_blank');
-        setDispatcherStep(3);
-      } else {
-        // 3. Si es pago electrónico (Mercado Pago), generar preferencia
-        const response = await fetch('/api/checkout/preference', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            amount: priceAmount,
-            description: `Viaje TravelCab de ${pickupLocation} a ${dropoffLocation}`,
-            passengerEmail: 'cliente_web@travelapp.ar',
-            tripId: tripDocRef.id
-          })
-        });
-
-        const data = await response.json();
-        if (data.success && data.initPoint) {
-          // Mostrar el Modal de pago en lugar de redirigir la página completa
-          setPaymentModal({
-            isOpen: true,
-            paymentUrl: data.initPoint,
-            tripId: tripDocRef.id,
-            status: 'pending',
-            amount: priceAmount,
-            vehicle
-          });
-
-          // Escuchar el estado de pago del viaje en tiempo real (Firebase Live Listener)
-          const unsub = onSnapshot(doc(db, 'trips', tripDocRef.id), (snap) => {
-            if (snap.exists()) {
-              const trip = snap.data();
-              if (trip.paymentStatus === 'paid') {
-                setPaymentModal(prev => ({ ...prev, status: 'paid' }));
-
-                // Una vez acreditado el pago asigna el viaje al conductor
-                updateDoc(doc(db, 'trips', tripDocRef.id), {
-                  status: 'accepted',
-                  driverId: 'driver-1',
-                  driverName: 'Roberto Gómez',
-                  driverPhone: '+5491122334455',
-                  acceptedAt: new Date()
-                }).catch(err => console.error("Error assigning driver to landing trip:", err));
-                
-                // Enviar confirmación por WhatsApp automáticamente una vez acreditado
-                const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
-                const template = cmsData.dispatcher?.whatsappConfig?.messageTemplate || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.messageTemplate;
-                
-                let message = template
-                  .replace('{name}', passengerName)
-                  .replace('{phone}', passengerPhone)
-                  .replace('{modality}', modalityText)
-                  .replace('{pickup}', pickupLocation)
-                  .replace('{dropoff}', dropoffLocation)
-                  .replace('{vehicle}', vehicle.name)
-                  .replace('{payment}', paymentMethod + ' (Acreditado 🟢 y Conductor Asignado 🚖)')
-                  .replace('{price}', formatCurrency(priceAmount));
-
-                const encodedMessage = encodeURIComponent(message);
-                const phoneNum = cmsData.dispatcher?.whatsappConfig?.phone || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.phone;
-                const whatsappUrl = `https://wa.me/${phoneNum}?text=${encodedMessage}`;
-
-                window.open(whatsappUrl, '_blank');
-                setDispatcherStep(3);
+          // A) Si un conductor acepta el viaje
+          if (tripData.status === 'accepted' || tripData.driverId) {
+            
+            // Si el método es Mercado Pago y aún está pendiente de pago
+            if (tripData.paymentMethod === 'Mercado Pago' && tripData.paymentStatus !== 'paid') {
+              if (tripData.paymentStatus === 'failed') {
+                setSearchingDriverModal(prev => ({ ...prev, status: 'failed' }));
                 unsub();
+                return;
               }
+
+              // Generar link de Mercado Pago para el cobro si no se ha generado
+              if (!currentPaymentUrlGenerated) {
+                currentPaymentUrlGenerated = true;
+                try {
+                  const response = await fetch('/api/checkout/preference', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      amount: priceAmount,
+                      description: `Viaje TravelCab de ${pickupLocation} a ${dropoffLocation}`,
+                      passengerEmail: 'cliente_web@travelapp.ar',
+                      tripId: tripDocRef.id
+                    })
+                  });
+                  const data = await response.json();
+                  if (data.success && data.initPoint) {
+                    setSearchingDriverModal(prev => ({
+                      ...prev,
+                      status: 'payment_required',
+                      paymentUrl: data.initPoint,
+                      driverInfo: tripData
+                    }));
+                  }
+                } catch (err) {
+                  console.error('Error generando preferencia de pago:', err);
+                }
+              }
+            } else {
+              // Si ya está pagado o es en Efectivo, confirmar viaje y asignar conductor
+              setSearchingDriverModal(prev => ({
+                ...prev,
+                status: 'driver_assigned',
+                driverInfo: tripData
+              }));
+
+              // Formatear patente (dominio) tapando los 3 primeros caracteres
+              const rawPlate = tripData.vehiclePlate || 'AF123JK';
+              const maskedPlate = 'XXX ' + rawPlate.substring(Math.max(3, rawPlate.length - 3));
+
+              // Abrir confirmación por WhatsApp automáticamente enviada al Pasajero (Solicitante)
+              const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
+              const whatsappMsg = `¡Tu viaje en TravelCab está confirmado! 🚖\n\n` +
+                `👤 *Pasajero:* ${tripData.passengerName}\n` +
+                `🛣️ *Servicio:* ${modalityText}\n` +
+                `📍 *Origen:* ${tripData.origin}\n` +
+                `🏁 *Destino:* ${tripData.destination}\n\n` +
+                `🚘 *Vehículo:* ${tripData.vehicleModel || 'Fiat Cronos'} (Gris)\n` +
+                `🔢 *Patente:* ${maskedPlate}\n` +
+                `👨‍✈️ *Conductor:* ${tripData.driverName} (⭐ ${tripData.driverRating || '4.8'})\n` +
+                `💵 *Tarifa:* ${formatCurrency(tripData.price)} (${tripData.paymentMethod})\n\n` +
+                `_¡Tu conductor ya está en camino!_`;
+
+              const cleanPhone = tripData.passengerPhone.replace(/[^0-9]/g, '');
+              const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMsg)}`;
+              window.open(whatsappUrl, '_blank');
+
+              setDispatcherStep(3);
+              unsub();
             }
-          });
-        } else {
-          alert('Error al generar enlace de pago de Mercado Pago. Intente nuevamente.');
+          }
+
+          // B) Si el estado de pago cambia a acreditado
+          if (tripData.paymentStatus === 'paid' && (tripData.status === 'accepted' || tripData.driverId)) {
+            setSearchingDriverModal(prev => ({
+              ...prev,
+              status: 'driver_assigned',
+              driverInfo: tripData
+            }));
+          }
+
+          // C) Si el pago falla
+          if (tripData.paymentStatus === 'failed') {
+            setSearchingDriverModal(prev => ({
+              ...prev,
+              status: 'failed'
+            }));
+            unsub();
+          }
         }
-      }
+      });
+
     } catch (err: any) {
       console.error('Error al procesar el viaje en la landing:', err);
       alert('Hubo un error al guardar tu viaje: ' + err.message);
@@ -1235,62 +1276,166 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                   </div>
                 </div>
 
-                <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2 mb-6 border border-slate-200/40">
+                {/* Selector de tipo de registro: Invitado vs Registrado */}
+                <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-2 mb-6 border border-slate-200/40">
                   <button
                     type="button"
-                    onClick={() => { setModality('MU'); handleResetDispatcher(); }}
-                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
-                      modality === 'MU' 
-                        ? 'bg-tech-blue text-white shadow-lg shadow-tech-blue/20' 
+                    onClick={() => { setBookingType('guest'); handleResetDispatcher(); }}
+                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                      bookingType === 'guest' 
+                        ? 'bg-vial-orange text-white shadow-lg shadow-vial-orange/20' 
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
-                    🚕 Movilidad Urbana
+                    👤 Invitado
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setModality('ARC'); handleResetDispatcher(); }}
-                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
-                      modality === 'ARC' 
-                        ? 'bg-tech-blue text-white shadow-lg shadow-tech-blue/20' 
+                    onClick={() => { setBookingType('registered'); handleResetDispatcher(); }}
+                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                      bookingType === 'registered' 
+                        ? 'bg-vial-orange text-white shadow-lg shadow-vial-orange/20' 
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
-                    🤝 Auto Compartido (ARC)
+                    🔐 Usuario Registrado
                   </button>
                 </div>
 
-                {dispatcherStep === 1 && (
-                  <form onSubmit={handleCalculateRate} className="space-y-4">
+                {dispatcherStep === 1 && bookingType === 'registered' && !isLoggedIn && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="text-center pb-2">
+                      <h4 className="text-sm font-black uppercase tracking-wider text-[#0A2A5B]">Ingreso a la Plataforma</h4>
+                      <p className="text-xs text-slate-500 mt-1">Ingresa para usar tus datos del perfil de TravelApp automáticamente</p>
+                    </div>
                     <div>
-                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
-                        <span>{cmsData.dispatcher?.passengerNameLabel || DEFAULT_CMS_DATA.dispatcher.passengerNameLabel}</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={passengerName}
-                        onChange={(e) => setPassengerName(e.target.value)}
-                        placeholder={cmsData.dispatcher?.passengerNamePlaceholder || DEFAULT_CMS_DATA.dispatcher.passengerNamePlaceholder}
-                        className={`w-full rounded-2xl border bg-slate-50/50 px-4 py-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tech-blue/10 ${
-                          formErrors.name ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
-                        }`}
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Email</label>
+                      <input 
+                        type="email"
+                        placeholder="usuario@travelapp.ar"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:ring-4 focus:ring-tech-blue/10"
                       />
                     </div>
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Contraseña</label>
+                      <input 
+                        type="password"
+                        placeholder="••••••••"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:ring-4 focus:ring-tech-blue/10"
+                      />
+                    </div>
+                    {loginError && <p className="text-xs text-red-500 font-bold">{loginError}</p>}
+                    <div className="flex flex-col gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (loginEmail && loginPassword) {
+                            setIsLoggedIn(true);
+                            setPassengerName("Juan Pérez");
+                            setPassengerPhone("+5493816554433");
+                            setLoginError("");
+                          } else {
+                            setLoginError("Por favor ingresa correo y contraseña.");
+                          }
+                        }}
+                        className="w-full bg-[#0A2A5B] text-white font-black py-3.5 rounded-2xl shadow-lg hover:brightness-110 transition-all text-center text-xs uppercase tracking-wider"
+                      >
+                        Ingresar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsLoggedIn(true);
+                          setPassengerName("Juan Pérez");
+                          setPassengerPhone("+5493816554433");
+                          setLoginError("");
+                        }}
+                        className="w-full bg-slate-100 text-slate-600 font-black py-3 rounded-2xl hover:bg-slate-200 transition-all text-center text-xs uppercase tracking-wider border border-slate-200"
+                      >
+                        ⚡ Ingreso de Prueba Rápido
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                    <div>
-                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
-                        <span>{cmsData.dispatcher?.passengerPhoneLabel || DEFAULT_CMS_DATA.dispatcher.passengerPhoneLabel}</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={passengerPhone}
-                        onChange={(e) => setPassengerPhone(e.target.value)}
-                        placeholder={cmsData.dispatcher?.passengerPhonePlaceholder || DEFAULT_CMS_DATA.dispatcher.passengerPhonePlaceholder}
-                        className={`w-full rounded-2xl border bg-slate-50/50 px-4 py-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tech-blue/10 ${
-                          formErrors.phone ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
-                        }`}
-                      />
-                    </div>
+                {dispatcherStep === 1 && (bookingType === 'guest' || isLoggedIn) && (
+                  <form onSubmit={handleCalculateRate} className="space-y-4 animate-fadeIn">
+                    {isLoggedIn && (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex justify-between items-center mb-4">
+                        <div>
+                          <p className="text-[10px] text-emerald-800 font-black uppercase tracking-wider">Sesión de Usuario ✓</p>
+                          <p className="text-sm font-black text-slate-800 mt-0.5">{passengerName}</p>
+                          <p className="text-xs text-slate-500 font-bold">{passengerPhone}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsLoggedIn(false);
+                            setPassengerName("");
+                            setPassengerPhone("");
+                          }}
+                          className="text-xs text-red-500 hover:text-red-700 font-black underline uppercase"
+                        >
+                          Salir
+                        </button>
+                      </div>
+                    )}
+
+                    {bookingType === 'guest' && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                            <span>{cmsData.dispatcher?.passengerNameLabel || DEFAULT_CMS_DATA.dispatcher.passengerNameLabel}</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={passengerName}
+                            onChange={(e) => setPassengerName(e.target.value)}
+                            placeholder={cmsData.dispatcher?.passengerNamePlaceholder || DEFAULT_CMS_DATA.dispatcher.passengerNamePlaceholder}
+                            className={`w-full rounded-2xl border bg-slate-50/50 px-4 py-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tech-blue/10 ${
+                              formErrors.name ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
+                            }`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                            <span>{cmsData.dispatcher?.passengerPhoneLabel || DEFAULT_CMS_DATA.dispatcher.passengerPhoneLabel}</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={passengerPhone}
+                            onChange={(e) => setPassengerPhone(e.target.value)}
+                            placeholder={cmsData.dispatcher?.passengerPhonePlaceholder || DEFAULT_CMS_DATA.dispatcher.passengerPhonePlaceholder}
+                            className={`w-full rounded-2xl border bg-slate-50/50 px-4 py-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tech-blue/10 ${
+                              formErrors.phone ? 'border-red-300 bg-red-50/30' : 'border-slate-200'
+                            }`}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {modality === 'ARC' && (
+                      <div>
+                        <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                          <span>Cantidad de Asientos (ARC)</span>
+                        </label>
+                        <select
+                          value={selectedSeats}
+                          onChange={(e) => setSelectedSeats(Number(e.target.value))}
+                          className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3.5 text-sm text-slate-800 outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tech-blue/10 font-bold"
+                        >
+                          <option value={1}>1 Asiento (Individual)</option>
+                          <option value={2}>2 Asientos</option>
+                          <option value={3}>3 Asientos</option>
+                          <option value={4}>4 Asientos (Vehículo Completo)</option>
+                        </select>
+                      </div>
+                    )}
 
                     <div className="relative">
                       <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5 flex justify-between">
@@ -1324,22 +1469,29 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                       <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">
                         {cmsData.dispatcher?.paymentMethodLabel || DEFAULT_CMS_DATA.dispatcher.paymentMethodLabel}
                       </label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(cmsData.dispatcher?.paymentMethods || DEFAULT_CMS_DATA.dispatcher.paymentMethods).map((method: any) => {
-                          const IconComponent = IconMap[method.icon] || Coins;
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: "Efectivo", label: "Efectivo", icon: Coins },
+                          { id: "Mercado Pago", label: "Mercado Pago", icon: Wallet }
+                        ].map((method) => {
+                          const IconComponent = method.icon;
                           return (
                             <button
                               key={method.id}
                               type="button"
                               onClick={() => setPaymentMethod(method.id)}
-                              className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all ${
+                              className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all ${
                                 paymentMethod === method.id 
                                   ? 'border-tech-blue bg-tech-blue/5 text-tech-blue shadow-sm font-bold' 
                                   : 'border-slate-200 hover:border-slate-300 text-slate-500'
                               }`}
                             >
-                              <IconComponent className="h-4.5 w-4.5 mb-1.5" />
-                              <span className="text-[9px] uppercase font-black tracking-wide leading-none">{method.label.split(' ')[0]}</span>
+                              <IconComponent className="h-5 w-5 mb-1.5" />
+                              {method.id === 'Mercado Pago' ? (
+                                <span className="text-[10px] bg-[#009EE3]/15 text-[#009EE3] px-2 py-0.5 rounded font-black tracking-wider mt-1">Mercado Pago</span>
+                              ) : (
+                                <span className="text-[9px] uppercase font-black tracking-wide leading-none">{method.label}</span>
+                              )}
                             </button>
                           );
                         })}
@@ -1851,12 +2003,69 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
       />
 
       {/* ========================================================
-          MODAL: PAGOS CON MERCADO PAGO (CHECKOUT PRO)
+          MODAL INTELIGENTE DE BÚSQUEDA Y ASIGNACIÓN DE CHOFER
       ======================================================== */}
-      {paymentModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
+      {searchingDriverModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-fadeIn">
           <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-2xl animate-scaleIn flex flex-col gap-6 text-center text-slate-800">
-            {paymentModal.status === 'pending' ? (
+            
+            {/* ESTADO 1: BUSCANDO CHOFER */}
+            {searchingDriverModal.status === 'searching' && (
+              <>
+                <div className="relative mx-auto h-24 w-24 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full bg-vial-orange/20 animate-ping duration-1000" />
+                  <div className="absolute h-16 w-16 rounded-full bg-vial-orange/30 animate-pulse" />
+                  <div className="relative h-12 w-12 rounded-full bg-vial-orange flex items-center justify-center text-white shadow-lg shadow-vial-orange/50">
+                    <Navigation className="h-6 w-6 rotate-45 animate-bounce" />
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-black text-tech-blue uppercase tracking-tight">Buscando Conductor</h3>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Estamos localizando el móvil más cercano de la flota para tu traslado de <strong>{modality === 'MU' ? 'Movilidad Urbana' : 'Auto Compartido (ARC)'}</strong>...
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-left space-y-2">
+                  <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                    <span className="text-xs text-slate-500 font-bold">Pasajero:</span>
+                    <span className="text-xs text-slate-800 font-black">{passengerName}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                    <span className="text-xs text-slate-500 font-bold">Desde:</span>
+                    <span className="text-xs text-slate-800 font-black truncate max-w-[200px]" title={pickupLocation}>{pickupLocation}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                    <span className="text-xs text-slate-500 font-bold">Hasta:</span>
+                    <span className="text-xs text-slate-800 font-black truncate max-w-[200px]" title={dropoffLocation}>{dropoffLocation}</span>
+                  </div>
+                  <div className="flex justify-between pt-1">
+                    <span className="text-xs text-slate-500 font-bold">Tarifa Estimada:</span>
+                    <span className="text-xs text-vial-orange font-black">{calculatedPrice} ({paymentMethod})</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={async () => {
+                    // Cancelar viaje en Firestore
+                    try {
+                      await updateDoc(doc(db, 'trips', searchingDriverModal.tripId), { status: 'cancelled' });
+                    } catch (e) {
+                      console.warn(e);
+                    }
+                    setSearchingDriverModal(prev => ({ ...prev, isOpen: false }));
+                    setDispatcherStep(1);
+                  }}
+                  className="w-full bg-slate-100 text-slate-500 font-bold py-3.5 rounded-2xl hover:bg-slate-200 transition-all text-center text-xs uppercase tracking-wider"
+                >
+                  Cancelar Solicitud
+                </button>
+              </>
+            )}
+
+            {/* ESTADO 2: PAGO REQUERIDO (MERCADO PAGO) */}
+            {searchingDriverModal.status === 'payment_required' && (
               <>
                 <div className="mx-auto h-16 w-16 rounded-full bg-sky-50 flex items-center justify-center text-[#009EE3] animate-pulse">
                   <svg className="h-8 w-8 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -1864,114 +2073,113 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
-                
+
                 <div>
-                  <h3 className="text-xl font-bold text-tech-blue">Confirmar y Pagar Viaje</h3>
-                  <p className="text-sm text-slate-500 mt-2">
-                    Para asegurar tu traslado de **{paymentModal.vehicle?.name || 'TravelCab'}**, realiza el pago mediante el botón seguro de Mercado Pago:
+                  <h3 className="text-xl font-black text-tech-blue uppercase tracking-tight">Pago Pendiente</h3>
+                  <p className="text-xs text-slate-500 mt-2">
+                    ¡Conductor encontrado! Para iniciar el traslado con <strong>{searchingDriverModal.driverInfo?.driverName || 'Roberto Gómez'}</strong>, completa el pago en el botón de Mercado Pago:
                   </p>
                 </div>
 
-                <div className="w-full bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left text-xs text-slate-500 flex flex-col gap-2.5">
+                <div className="w-full bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left text-xs text-slate-500 flex flex-col gap-2">
                   <div className="flex justify-between border-b border-slate-200 pb-2">
-                    <span className="font-bold text-slate-700">Monto del Viaje:</span>
-                    <span className="font-bold text-[#009EE3] text-sm">${paymentModal.amount.toLocaleString('es-AR')} ARS</span>
+                    <span className="font-bold text-slate-700">Total a Pagar:</span>
+                    <span className="font-black text-[#009EE3] text-sm">${searchingDriverModal.amount.toLocaleString('es-AR')} ARS</span>
                   </div>
-                  <div><span className="font-bold text-slate-700">Estado del Pago:</span> Acreditación Pendiente ⏳</div>
-                  <div className="text-[10px] text-amber-600 font-semibold bg-amber-50 p-2 rounded-lg border border-amber-100 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
-                    <span>Esperando confirmación en tiempo real...</span>
-                  </div>
+                  <div><span className="font-bold text-slate-700">Patente Vehículo:</span> XXX-{searchingDriverModal.driverInfo?.vehiclePlate?.substring(Math.max(0, (searchingDriverModal.driverInfo?.vehiclePlate?.length || 7) - 3))}</div>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                   <a
-                    href={paymentModal.paymentUrl}
+                    href={searchingDriverModal.paymentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full bg-[#009EE3] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:bg-[#0087c4] transition-all text-center flex items-center justify-center gap-2"
+                    className="w-full bg-[#009EE3] text-white font-black py-3.5 rounded-2xl shadow-lg hover:bg-[#0087c4] transition-all text-center flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
                   >
-                    <span>Pagar con Mercado Pago (Web)</span>
+                    Pagar con Mercado Pago
                   </a>
                   
+                  {/* Botón exclusivo de pruebas/desarrollo */}
                   <button
-                    onClick={() => {
-                      const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
-                      const message = `¡Hola! He elegido pagar mi viaje con Billetera Virtual.\n\n` +
-                        `*Pasajero:* ${passengerName}\n` +
-                        `*Origen:* ${pickupLocation}\n` +
-                        `*Destino:* ${dropoffLocation}\n` +
-                        `*Servicio:* ${modalityText}\n` +
-                        `*Vehículo:* ${paymentModal.vehicle?.name || 'TravelCab'}\n` +
-                        `*Precio:* ${formatCurrency(paymentModal.amount)} ARS\n\n` +
-                        `👉 Para completar el pago y asignar el conductor automáticamente, ingresá a este link seguro de Mercado Pago:\n${paymentModal.paymentUrl}\n\n` +
-                        `Una vez acreditado, se asignará el viaje y confirmará tu conductor.`;
-                      
-                      const encoded = encodeURIComponent(message);
-                      const phoneNum = cmsData.dispatcher?.whatsappConfig?.phone || DEFAULT_CMS_DATA.dispatcher.whatsappConfig.phone;
-                      window.open(`https://wa.me/${phoneNum}?text=${encoded}`, '_blank');
+                    onClick={async () => {
+                      try {
+                        await updateDoc(doc(db, 'trips', searchingDriverModal.tripId), { paymentStatus: 'paid' });
+                      } catch (err) {
+                        console.error(err);
+                      }
                     }}
-                    className="w-full bg-[#25D366] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:bg-[#20ba5a] transition-all text-center flex items-center justify-center gap-2 text-sm"
+                    className="w-full bg-emerald-500 text-white font-black py-3 rounded-2xl hover:bg-emerald-600 transition-all text-center text-xs uppercase tracking-wider"
                   >
-                    <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">
-                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.59 1.98 14.113.953 11.49.953c-5.447 0-9.875 4.379-9.879 9.807-.002 1.818.486 3.59 1.417 5.158L1.93 20.354l4.717-1.2zm11.394-6.425c-.274-.136-1.62-.8-1.872-.893-.254-.093-.44-.136-.623.136-.184.272-.714.893-.875 1.076-.162.184-.323.207-.597.071-.274-.136-1.157-.427-2.203-1.36-.814-.726-1.364-1.623-1.524-1.895-.162-.272-.017-.419.118-.554.122-.121.274-.32.41-.48.136-.16.182-.273.273-.455.093-.182.046-.341-.023-.48-.069-.136-.623-1.503-.853-2.056-.224-.536-.452-.464-.623-.473-.162-.008-.347-.009-.53-.009-.184 0-.485.07-.739.347-.254.278-.97.949-.97 2.313 0 1.365.993 2.684 1.134 2.873.14.189 1.957 2.99 4.742 4.19.662.285 1.18.455 1.584.583.665.21 1.27.18 1.748.109.533-.08 1.62-.662 1.848-1.27.227-.607.227-1.127.16-1.23-.069-.101-.254-.136-.528-.272z" />
-                    </svg>
-                    <span>Enviar enlace por WhatsApp</span>
+                    ⚡ Simular Aprobación de Pago (Dev)
                   </button>
 
                   <button
-                    onClick={() => {
-                      const modalityText = modality === 'MU' ? 'Movilidad Urbana (Privado)' : 'Auto Rural Compartido (ARC)';
-                      const subject = encodeURIComponent("Enlace de Pago para tu viaje de TravelCab");
-                      const body = encodeURIComponent(
-                        `Hola,\n\n` +
-                        `Aquí tienes los detalles para realizar el pago de tu viaje de TravelCab:\n\n` +
-                        `• Pasajero: ${passengerName}\n` +
-                        `• Origen: ${pickupLocation}\n` +
-                        `• Destino: ${dropoffLocation}\n` +
-                        `• Servicio: ${modalityText}\n` +
-                        `• Vehículo: ${paymentModal.vehicle?.name || 'TravelCab'}\n` +
-                        `• Precio: ${formatCurrency(paymentModal.amount)} ARS\n\n` +
-                        `👉 Para completar el pago y asignar el conductor automáticamente, ingresá a este enlace seguro de Mercado Pago:\n${paymentModal.paymentUrl}\n\n` +
-                        `Una vez acreditado, se asignará tu conductor automáticamente y confirmaremos tu traslado.\n\n¡Buen viaje!`
-                      );
-                      window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+                    onClick={async () => {
+                      try {
+                        await updateDoc(doc(db, 'trips', searchingDriverModal.tripId), { status: 'cancelled', paymentStatus: 'failed' });
+                      } catch (e) {}
+                      setSearchingDriverModal(prev => ({ ...prev, isOpen: false }));
                     }}
-                    className="w-full bg-[#0A2A5B] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:brightness-110 transition-all text-center flex items-center justify-center gap-2 text-sm"
+                    className="w-full bg-slate-100 text-slate-500 font-bold py-3 rounded-2xl hover:bg-slate-200 transition-all text-center text-xs uppercase tracking-wider"
                   >
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span>Enviar enlace por Correo</span>
-                  </button>
-
-                  <button
-                    onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
-                    className="w-full bg-slate-100 text-slate-500 font-bold py-3 rounded-2xl hover:bg-slate-200 transition-all text-center text-sm"
-                  >
-                    Cancelar Operación
+                    Cancelar Viaje
                   </button>
                 </div>
               </>
-            ) : (
+            )}
+
+            {/* ESTADO 3: VIAJE CONFIRMADO / CONDUCTOR ASIGNADO */}
+            {searchingDriverModal.status === 'driver_assigned' && (
               <>
-                <div className="mx-auto h-16 w-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 animate-bounce">
-                  <svg className="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="mx-auto h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 animate-bounce">
+                  <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                   </svg>
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-bold text-slate-800">¡Pago Acreditado con Éxito!</h3>
-                  <p className="text-sm text-slate-500 mt-2">
-                    Asignamos tu conductor y procesamos la reserva en el despachador maestro de TravelCab.
-                  </p>
+                  <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">¡Viaje Confirmado!</h3>
+                  <p className="text-xs text-slate-500 mt-1">El conductor ya fue asignado y se notificó a tu teléfono.</p>
+                </div>
+
+                {/* Tarjeta del Conductor */}
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={searchingDriverModal.driverInfo?.driverProfilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200"}
+                      className="h-14 w-14 rounded-full object-cover border border-slate-200 shadow-sm"
+                      alt="Perfil"
+                    />
+                    <div className="text-left flex-1">
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Conductor Asignado</p>
+                      <p className="text-sm font-black text-slate-800">{searchingDriverModal.driverInfo?.driverName || 'Roberto Gómez'}</p>
+                      <p className="text-xs text-vial-orange font-extrabold">⭐ {searchingDriverModal.driverInfo?.driverRating || '4.8'} Reputación</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 border-t border-slate-200/60 pt-3">
+                    <img 
+                      src={searchingDriverModal.driverInfo?.driverCarPhoto || "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=400"}
+                      className="h-14 w-20 rounded-xl object-cover border border-slate-200 shadow-sm"
+                      alt="Vehículo"
+                    />
+                    <div className="text-left">
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Vehículo</p>
+                      <p className="text-xs font-black text-slate-800">{searchingDriverModal.driverInfo?.vehicleModel || 'Fiat Cronos (Gris)'}</p>
+                      <p className="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mt-1 inline-block">
+                        Patente: XXX {searchingDriverModal.driverInfo?.vehiclePlate?.substring(Math.max(0, (searchingDriverModal.driverInfo?.vehiclePlate?.length || 7) - 3)) || '123'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
                   <button
-                    onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
-                    className="w-full bg-[#0A2A5B] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:brightness-110 transition-all text-center text-sm"
+                    onClick={() => {
+                      setSearchingDriverModal(prev => ({ ...prev, isOpen: false }));
+                      handleResetDispatcher();
+                    }}
+                    className="w-full bg-[#0A2A5B] text-white font-black py-3.5 rounded-2xl shadow-lg hover:brightness-110 transition-all text-center text-xs uppercase tracking-wider"
                   >
                     Entendido
                   </button>

@@ -66,6 +66,12 @@ export default function TripRequestScreen() {
             status: 'accepted',
             driverId: user.uid,
             driverName: user.displayName || 'Conductor',
+            driverPhone: '+5491122334455',
+            driverRating: 4.8,
+            vehicleModel: 'Fiat Cronos (Gris)',
+            vehiclePlate: 'AF123JK',
+            driverProfilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+            driverCarPhoto: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=400',
             acceptedAt: Timestamp.now(),
             paymentStatus: 'paid',
             paymentId: payData?.paymentId || 'simulated'
@@ -85,6 +91,12 @@ export default function TripRequestScreen() {
           status: 'accepted',
           driverId: user.uid,
           driverName: user.displayName || 'Conductor',
+          driverPhone: '+5491122334455',
+          driverRating: 4.8,
+          vehicleModel: 'Fiat Cronos (Gris)',
+          vehiclePlate: 'AF123JK',
+          driverProfilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+          driverCarPhoto: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=400',
           acceptedAt: Timestamp.now(),
         });
         navigation.navigate('ActiveTrip', { tripId: trip.id });
