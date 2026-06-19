@@ -1276,6 +1276,32 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                   </div>
                 </div>
 
+                {/* Selector de Modalidad: MU vs ARC */}
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2 mb-4 border border-slate-200/40">
+                  <button
+                    type="button"
+                    onClick={() => { setModality('MU'); handleResetDispatcher(); }}
+                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                      modality === 'MU' 
+                        ? 'bg-tech-blue text-white shadow-lg shadow-tech-blue/20' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    🚕 Movilidad Urbana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setModality('ARC'); handleResetDispatcher(); }}
+                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                      modality === 'ARC' 
+                        ? 'bg-tech-blue text-white shadow-lg shadow-tech-blue/20' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    🤝 Auto Compartido (ARC)
+                  </button>
+                </div>
+
                 {/* Selector de tipo de registro: Invitado vs Registrado */}
                 <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-2 mb-6 border border-slate-200/40">
                   <button
