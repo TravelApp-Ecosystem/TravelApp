@@ -15,8 +15,13 @@ const mockBranches: Branch[] = [
 ];
 
 export default function TravelCabSettingsPage() {
-  const [activeTab, setActiveTab] = useState<'tariffs' | 'branches' | 'categories'>('tariffs');
+  const [activeTab, setActiveTab] = useState<'tariffs' | 'branches' | 'categories' | 'system'>('tariffs');
   const [tariffSubTab, setTariffSubTab] = useState<'mu' | 'arc'>('mu');
+  
+  // System Config / Logistics States
+  const [notificationSoundUrl, setNotificationSoundUrl] = useState('');
+  const [isSavingSystem, setIsSavingSystem] = useState(false);
+  const [isLoadingSystem, setIsLoadingSystem] = useState(true);
   
   // Real-Time States
   const [muTariffs, setMuTariffs] = useState<MUTariff[]>([]);
@@ -70,6 +75,35 @@ export default function TravelCabSettingsPage() {
     });
     return unsub;
   }, []);
+
+  // 3. Escuchar Configuración de Logística y Sonidos
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'system_config', 'logistics'), (snap) => {
+      if (snap.exists()) {
+        setNotificationSoundUrl(snap.data().notificationSoundUrl || '');
+      }
+      setIsLoadingSystem(false);
+    }, (error) => {
+      console.error("Error listening to system config:", error);
+      setIsLoadingSystem(false);
+    });
+    return unsub;
+  }, []);
+
+  const handleSaveSystemConfig = async () => {
+    setIsSavingSystem(true);
+    try {
+      await setDoc(doc(db, 'system_config', 'logistics'), {
+        notificationSoundUrl
+      }, { merge: true });
+      alert('Configuración del sistema guardada con éxito.');
+    } catch (err) {
+      console.error("Error saving system config:", err);
+      alert('Error al guardar la configuración.');
+    } finally {
+      setIsSavingSystem(false);
+    }
+  };
 
   // 3. Detectar parámetros de la URL para redirección profunda (Sidebar links)
   useEffect(() => {
@@ -286,6 +320,17 @@ export default function TravelCabSettingsPage() {
         >
           <MapPin className="h-5 w-5" />
           <span>Sucursales</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('system')}
+          className={`flex items-center space-x-2 border-b-2 px-6 py-3 font-semibold transition-colors ${
+            activeTab === 'system'
+              ? 'border-vial-orange text-vial-orange'
+              : 'border-transparent text-slate-500 hover:text-slate-600'
+          }`}
+        >
+          <Settings className="h-5 w-5" />
+          <span>Configuración Sistema</span>
         </button>
       </div>
 
@@ -774,6 +819,56 @@ export default function TravelCabSettingsPage() {
                   ))}
                 </div>
              </div>
+          </div>
+        )}
+
+        {/* TAB DE CONFIGURACIÓN DEL SISTEMA */}
+        {activeTab === 'system' && (
+          <div className="lg:col-span-1">
+            <div className="rounded-xl border border-slate-200 bg-white/50 p-6 shadow-lg">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-tech-blue flex items-center">
+                  <Settings className="mr-2 h-5 w-5 text-vial-orange" />
+                  Configuración del Sistema
+                </h3>
+              </div>
+
+              <div className="space-y-6 max-w-2xl bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                <div>
+                  <h4 className="text-base font-bold text-tech-blue mb-1">Alertas y Notificaciones Sonoras</h4>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Configura la pista de audio de notificación que se reproducirá en bucle en la aplicación del conductor al recibir solicitudes, y como alerta emergente en la aplicación del pasajero.
+                  </p>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                      URL del Audio de Notificación (MP3 / WAV)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-tech-blue placeholder-slate-400 focus:border-vial-orange focus:outline-none transition-colors"
+                      placeholder="https://example.com/sound.mp3"
+                      value={notificationSoundUrl}
+                      onChange={(e) => setNotificationSoundUrl(e.target.value)}
+                    />
+                    <p className="text-xs text-slate-400">
+                      Proporciona un enlace directo a un archivo de sonido público (ej. hospedado en Firebase Storage, AWS S3 o similar).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-200 flex justify-end">
+                  <button
+                    onClick={handleSaveSystemConfig}
+                    disabled={isSavingSystem}
+                    className="flex items-center space-x-2 rounded-lg bg-vial-orange px-5 py-2.5 text-sm font-black text-gray-950 hover:opacity-90 disabled:opacity-50 transition-all shadow-sm"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>{isSavingSystem ? 'Guardando...' : 'Guardar Configuración'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

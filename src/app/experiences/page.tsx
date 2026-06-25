@@ -235,7 +235,7 @@ export default function ExperiencesPage() {
     if (!selectedWebTrip) return;
     try {
       const currentRooming = selectedWebTrip.roomingList || [];
-      const updatedRooming = currentRooming.filter((_, idx) => idx !== indexToDelete);
+      const updatedRooming = currentRooming.filter((_: any, idx: number) => idx !== indexToDelete);
       
       const tripRef = doc(db, 'contracted_trips', selectedWebTrip.id);
       await updateDoc(tripRef, {
