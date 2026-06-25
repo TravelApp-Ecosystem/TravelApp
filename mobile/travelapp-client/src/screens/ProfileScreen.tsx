@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { Colors } from '../lib/constants';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const MENU_ITEMS = [
   { icon: 'card-outline', label: 'Métodos de pago', route: null },
@@ -17,6 +18,21 @@ const MENU_ITEMS = [
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const user = auth.currentUser;
+  const [points, setPoints] = useState(850);
+
+  useEffect(() => {
+    if (user?.uid) {
+      const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.rewardsPoints !== undefined) {
+            setPoints(data.rewardsPoints);
+          }
+        }
+      });
+      return unsub;
+    }
+  }, [user?.uid]);
 
   const handleLogout = () => {
     Alert.alert('Cerrar sesión', '¿Estás seguro que querés salir?', [
@@ -57,7 +73,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={styles.statValue}>850</Text>
+              <Text style={styles.statValue}>{points}</Text>
               <Text style={styles.statLabel}>Puntos</Text>
             </View>
             <View style={styles.statDivider} />

@@ -409,10 +409,47 @@ const DEFAULT_REWARDS_CMS_DATA_FOR_CMS = {
   footer: { copyrightText: "© 2026 TravelApp Rewards. Una marca de TravelApp s.a.s." },
 };
 
-type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales';
+const DEFAULT_APP_INICIO_CMS_DATA = {
+  id: "block-1",
+  blockTitle: "Novedades del Ecosistema",
+  cards: [
+    {
+      title: "TravelApp Rewards",
+      description: "Completá tu foto de perfil en el panel y ganá 150 puntos extra al instante para tu próximo canje.",
+      imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/rewards"
+    },
+    {
+      title: "Nuevas Experiencias",
+      description: "Ya podés agendar paseos de aventura y traslados rurales en las yungas tucumanas.",
+      imageUrl: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/experiences"
+    },
+    {
+      title: "Travis AI Chatbot",
+      description: "Hablá con nuestro asistente inteligente de viajes para programar traslados con IA.",
+      imageUrl: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/chatbot"
+    },
+    {
+      title: "Viajes Compartidos",
+      description: "Viajá con otros pasajeros en la misma dirección y ahorrá hasta un 40% del traslado.",
+      imageUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/share"
+    },
+    {
+      title: "Socio Conductor",
+      description: "Registrá tu auto o taxi y empezá a generar ingresos con soporte local certificado.",
+      imageUrl: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/conductor"
+    }
+  ]
+};
+
+type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards';
 
 export default function CMSPage() {
-  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards'>('travelcab');
+  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards' | 'app-inicio'>('travelcab');
   const [activeTab, setActiveTab] = useState<ActiveTab>('hero');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -424,30 +461,43 @@ export default function CMSPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
-        const docRef = doc(db, 'cms', docId);
-        const docSnap = await getDoc(docRef);
-        const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
-        if (docSnap.exists()) {
-          const loadedData = docSnap.data();
-          // Normalizar unidades para asegurar compatibilidad de campos imagenUrl y imageUrl
-          if (loadedData.unidades) {
-            loadedData.unidades = loadedData.unidades.map((u: any) => ({
-              ...u,
-              imagenUrl: u.imagenUrl || u.imageUrl,
-              imageUrl: u.imageUrl || u.imagenUrl
-            }));
+        if (selectedLanding === 'app-inicio') {
+          const docRef = doc(db, 'cms_blocks', 'block-1');
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setData({
+              ...DEFAULT_APP_INICIO_CMS_DATA,
+              ...docSnap.data()
+            });
+          } else {
+            setData(DEFAULT_APP_INICIO_CMS_DATA);
           }
-          setData({
-            ...defaultData,
-            ...loadedData
-          });
         } else {
-          setData(defaultData);
+          const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
+          const docRef = doc(db, 'cms', docId);
+          const docSnap = await getDoc(docRef);
+          const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
+          if (docSnap.exists()) {
+            const loadedData = docSnap.data();
+            // Normalizar unidades para asegurar compatibilidad de campos imagenUrl y imageUrl
+            if (loadedData.unidades) {
+              loadedData.unidades = loadedData.unidades.map((u: any) => ({
+                ...u,
+                imagenUrl: u.imagenUrl || u.imageUrl,
+                imageUrl: u.imageUrl || u.imagenUrl
+              }));
+            }
+            setData({
+              ...defaultData,
+              ...loadedData
+            });
+          } else {
+            setData(defaultData);
+          }
         }
       } catch (err) {
         console.error("Error al leer CMS de Firestore:", err);
-        const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
+        const defaultData = selectedLanding === 'app-inicio' ? DEFAULT_APP_INICIO_CMS_DATA : selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
         setData(defaultData);
       } finally {
         setLoading(false);
@@ -461,6 +511,8 @@ export default function CMSPage() {
       setActiveTab('eco_hero');
     } else if (selectedLanding === 'rewards') {
       setActiveTab('rew_slider');
+    } else if (selectedLanding === 'app-inicio') {
+      setActiveTab('app_cards');
     } else {
       setActiveTab('hero');
     }
@@ -471,12 +523,17 @@ export default function CMSPage() {
     setStatusMsg(null);
     try {
       // Sanitizar el objeto para eliminar cualquier valor undefined, prototipo custom o propiedad no serializable
-      const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
       const sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => {
         return value === undefined ? null : value;
       }));
-      const docRef = doc(db, 'cms', docId);
-      await setDoc(docRef, sanitizedData);
+      if (selectedLanding === 'app-inicio') {
+        const docRef = doc(db, 'cms_blocks', 'block-1');
+        await setDoc(docRef, sanitizedData);
+      } else {
+        const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
+        const docRef = doc(db, 'cms', docId);
+        await setDoc(docRef, sanitizedData);
+      }
       setStatusMsg({ type: 'success', text: '¡Cambios guardados e implementados en tiempo real!' });
       setTimeout(() => setStatusMsg(null), 5000);
     } catch (err: any) {
@@ -727,6 +784,76 @@ export default function CMSPage() {
     );
   };
 
+  // Helper functions for App Inicio cards
+  const updateAppCard = (idx: number, field: string, value: any) => {
+    const updated = [...(data.cards || [])];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setData((prev: any) => ({ ...prev, cards: updated }));
+  };
+
+  const deleteAppCard = (idx: number) => {
+    const updated = (data.cards || []).filter((_: any, i: number) => i !== idx);
+    setData((prev: any) => ({ ...prev, cards: updated }));
+  };
+
+  const addAppCard = () => {
+    const newCard = {
+      title: "Nueva Promoción/Socio",
+      description: "Descripción detallada de la promoción o enlace al socio estratégico.",
+      imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/promocion"
+    };
+    setData((prev: any) => ({
+      ...prev,
+      cards: [...(prev.cards || []), newCard]
+    }));
+  };
+
+  const updateBlockTitle = (title: string) => {
+    setData((prev: any) => ({ ...prev, blockTitle: title }));
+  };
+
+  const AppCardImageUploader = ({ idx, value }: { idx: number; value: string }) => {
+    const [localVal, setLocalVal] = useState(value);
+    useEffect(() => {
+      setLocalVal(value);
+    }, [value]);
+
+    return (
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={localVal || ''}
+          onChange={(e) => setLocalVal(e.target.value)}
+          onBlur={() => updateAppCard(idx, 'imageUrl', localVal)}
+          placeholder="Ingresa la URL de la foto..."
+          className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+        />
+        <label className="flex cursor-pointer items-center justify-center gap-1 text-[11px] font-bold text-tech-blue border border-tech-blue bg-white hover:bg-tech-blue/5 px-3 py-1 rounded-lg transition-all shadow-sm">
+          <Upload className="h-3.5 w-3.5" />
+          Subir
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                try {
+                  const compressed = await compressImage(file);
+                  updateAppCard(idx, 'imageUrl', compressed);
+                  setLocalVal(compressed);
+                } catch (err) {
+                  console.error(err);
+                }
+              }
+            }}
+          />
+        </label>
+      </div>
+    );
+  };
+
   // Componente de entrada reutilizable con opción de URL o Subida local (Base64)
   const ImageUploaderInput = ({ label, section, field, value }: { label: string; section: string; field: string; value: string }) => {
     const [localVal, setLocalVal] = useState(value);
@@ -944,23 +1071,25 @@ export default function CMSPage() {
         <div>
           <h1 className="text-2xl font-bold text-tech-blue flex items-center gap-2">
                       <FileText className="h-7 w-7 text-tech-blue" />
-            Editor CMS — {selectedLanding === 'travelcab' ? 'TravelCab Landing' : selectedLanding === 'experience' ? 'TravelApp Experience' : selectedLanding === 'rewards' ? '🎁 TravelApp Rewards' : '🌐 Ecosistema TravelApp'}
+            Editor CMS — {selectedLanding === 'travelcab' ? 'TravelCab Landing' : selectedLanding === 'experience' ? 'TravelApp Experience' : selectedLanding === 'rewards' ? '🎁 TravelApp Rewards' : selectedLanding === 'app-inicio' ? '📱 App Cliente (Tarjetas)' : '🌐 Ecosistema TravelApp'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Administra visualmente y en tiempo real el contenido de tu Landing Page sin modificar código.
+            Administra visualmente y en tiempo real el contenido de tu Ecosistema sin modificar código.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <a
-            href={selectedLanding === 'travelcab' ? "/landing/travelcab" : selectedLanding === 'experience' ? "/landing/experience" : "/landing/ecosistema"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition-all"
-          >
-            <Eye className="h-4 w-4" />
-            Previsualizar Landing
-          </a>
+          {selectedLanding !== 'app-inicio' && (
+            <a
+              href={selectedLanding === 'travelcab' ? "/landing/travelcab" : selectedLanding === 'experience' ? "/landing/experience" : "/landing/ecosistema"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition-all"
+            >
+              <Eye className="h-4 w-4" />
+              Previsualizar Landing
+            </a>
+          )}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -986,7 +1115,7 @@ export default function CMSPage() {
           <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">Seleccionar Landing a Editar</span>
           <span className="text-sm font-bold text-slate-700">Elige cuál de las landing pages del ecosistema deseas modificar</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setSelectedLanding('travelcab')}
             className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
@@ -1027,6 +1156,16 @@ export default function CMSPage() {
           >
             🌐 Ecosistema TravelApp
           </button>
+          <button
+            onClick={() => setSelectedLanding('app-inicio')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+              selectedLanding === 'app-inicio' 
+                ? 'bg-amber-600 border-amber-600 text-white shadow-sm' 
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            📱 App Tarjetas
+          </button>
         </div>
       </div>
 
@@ -1054,7 +1193,9 @@ export default function CMSPage() {
           : selectedLanding === 'experience'
           ? ['slider', 'ofertas', 'servicios', 'rewards', 'social']
           : selectedLanding === 'rewards'
-          ? ['rew_slider', 'rew_beneficios', 'rew_negocio', 'rew_social', 'rew_legales']
+          ? ['rew_slider', 'rew_beneficios', 'rew_social', 'rew_negocio', 'rew_legales']
+          : selectedLanding === 'app-inicio'
+          ? ['app_cards']
           : ['eco_hero', 'eco_unidades', 'eco_quienes', 'eco_stats', 'eco_apps', 'eco_trabaja', 'eco_legales']
         ).map((tab) => (
           <button
@@ -1082,6 +1223,7 @@ export default function CMSPage() {
             {tab === 'eco_apps' && '5. App Stores'}
             {tab === 'eco_trabaja' && '6. Trabaja con Nosotros'}
             {tab === 'eco_legales' && '7. Legal & Redes'}
+            {tab === 'app_cards' && '📱 Tarjetas Novedades App'}
           </button>
         ))}
       </div>
@@ -2465,6 +2607,96 @@ export default function CMSPage() {
                   rows={3}
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* APP INICIO - NOVEDADES CARDS */}
+        {selectedLanding === 'app-inicio' && activeTab === 'app_cards' && data && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Tarjetas Promocionales de la App (Home)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las tarjetas de novedades, promociones y enlaces a socios estratégicos del carrusel en la App Cliente.</p>
+              </div>
+              <button
+                onClick={addAppCard}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-600 bg-amber-600/5 px-3.5 py-2 text-xs font-bold text-amber-700 hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar Tarjeta
+              </button>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <label className="block text-xs font-extrabold text-slate-700 mb-1">Título de la Sección en la App</label>
+              <input
+                type="text"
+                value={data.blockTitle || ''}
+                onChange={(e) => updateBlockTitle(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="Ej: Novedades del Ecosistema"
+              />
+            </div>
+
+            <div className="space-y-4">
+              {(data.cards || []).map((card: any, idx: number) => (
+                <div key={idx} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 shadow-sm relative group space-y-3">
+                  <button
+                    onClick={() => deleteAppCard(idx)}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
+                    title="Eliminar Tarjeta"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="text-xs font-black text-amber-600 uppercase">Tarjeta N° {idx + 1}</div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título de la Tarjeta</label>
+                      <input
+                        type="text"
+                        value={card.title || ''}
+                        onChange={(e) => updateAppCard(idx, 'title', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Enlace / URL de redirección</label>
+                      <input
+                        type="text"
+                        value={card.url || ''}
+                        onChange={(e) => updateAppCard(idx, 'url', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción / Contenido</label>
+                      <textarea
+                        rows={2}
+                        value={card.description || ''}
+                        onChange={(e) => updateAppCard(idx, 'description', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de la Tarjeta (URL o subida)</label>
+                      <AppCardImageUploader idx={idx} value={card.imageUrl || ''} />
+                      {card.imageUrl ? (
+                        <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border border-slate-200">
+                          <img src={card.imageUrl} alt={card.title} className="w-full h-full object-cover" />
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(data.cards || []).length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  No hay tarjetas agregadas. Haz clic en "Agregar Tarjeta" para crear una.
+                </div>
+              )}
             </div>
           </div>
         )}

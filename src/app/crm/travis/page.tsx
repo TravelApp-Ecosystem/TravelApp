@@ -671,7 +671,22 @@ export default function TravisSettingsPage() {
               <span>Artículos KB</span>
               <span className="font-bold">{config?.knowledgeBase?.length || 0}</span>
             </div>
+            <div className="flex justify-between pt-1 border-t border-emerald-200/30 mt-1">
+              <span>Forzar Despacho IA</span>
+              <span className="font-bold">{config?.isAiDispatchForcedEnabled ? 'SÍ' : 'NO'}</span>
+            </div>
           </div>
+          
+          <button
+            onClick={() => handleSave({ isAiDispatchForcedEnabled: !config?.isAiDispatchForcedEnabled })}
+            className={`w-full mt-2 py-1 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${
+              config?.isAiDispatchForcedEnabled
+                ? 'bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200'
+                : 'bg-emerald-600 border-emerald-700 text-white hover:bg-emerald-700'
+            }`}
+          >
+            {config?.isAiDispatchForcedEnabled ? '🔴 Desactivar Forzado' : '⚡ Forzar Despacho IA'}
+          </button>
         </div>
       </div>
 

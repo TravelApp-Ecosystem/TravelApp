@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
@@ -15,6 +16,7 @@ const STEPS = [
 ];
 
 export default function ActiveTripScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { tripId } = route.params;
@@ -96,7 +98,7 @@ export default function ActiveTripScreen() {
       </MapView>
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 10 : 40 }]}>
         <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
         <Text style={styles.headerTitle}>{currentStep?.label || 'Viaje activo'}</Text>
       </View>
@@ -177,7 +179,7 @@ const styles = StyleSheet.create({
   header: {
     position: 'absolute', top: 0, left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingTop: 56, paddingHorizontal: 20, paddingBottom: 16,
+    paddingTop: 12, paddingHorizontal: 20, paddingBottom: 16,
     backgroundColor: Colors.white,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, elevation: 4,
   },

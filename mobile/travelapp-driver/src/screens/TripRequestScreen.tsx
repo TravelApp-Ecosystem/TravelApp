@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Alert, ActivityIndicator,
+  Animated, Alert, ActivityIndicator, Vibration,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { db, auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
@@ -15,15 +16,71 @@ export default function TripRequestScreen() {
   const { trip } = route.params;
   const [loading, setLoading] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const soundRef = useRef<any>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true }).start();
+
+    let isSubscribed = true;
+    let soundObj: any = null;
+
+    // Reproducir sonido y vibración
+    const startAlerts = async () => {
+      try {
+        // Vibrar en patrón
+        Vibration.vibrate([0, 500, 200, 500, 200, 500], true);
+
+        const snap = await getDoc(doc(db, 'system_config', 'logistics'));
+        if (!isSubscribed) return;
+
+        if (snap.exists()) {
+          const soundUrl = snap.data()?.notificationSoundUrl;
+          if (soundUrl) {
+            const { sound } = await Audio.Sound.createAsync(
+              { uri: soundUrl },
+              { shouldPlay: true, isLooping: true }
+            );
+            soundObj = sound;
+            soundRef.current = sound;
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to play request sound in driver app:", err);
+      }
+    };
+
+    startAlerts();
+
+    return () => {
+      isSubscribed = false;
+      Vibration.cancel();
+      if (soundObj) {
+        soundObj.stopAsync().catch(() => {});
+        soundObj.unloadAsync().catch(() => {});
+      }
+    };
   }, []);
 
   const handleAccept = async () => {
     setLoading(true);
     try {
       const user = auth.currentUser!;
+      
+      // Fetch dynamic driver profile details from drivers/{uid}
+      const driverSnap = await getDoc(doc(db, 'drivers', user.uid));
+      const driverData = driverSnap.exists() ? driverSnap.data() : null;
+      
+      const driverName = driverData?.name || user.displayName || 'Conductor';
+      const driverPhone = driverData?.phone || '+5491122334455';
+      const driverRating = driverData?.rating || 4.9;
+      
+      const activeVehicle = driverData?.activeVehicle;
+      const vehicleModel = activeVehicle ? `${activeVehicle.brand} (${activeVehicle.color})` : 'Fiat Cronos (Gris)';
+      const vehiclePlate = activeVehicle?.plate || 'AF123JK';
+      
+      const driverProfilePhoto = driverData?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200';
+      const driverCarPhoto = activeVehicle?.photoUrl || 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=400';
+
       const isMercadoPago = trip.paymentMethod === 'Mercado Pago' || trip.paymentMethod === 'Mercado Pago (Wallet Connect)';
 
       if (isMercadoPago) {
@@ -61,17 +118,17 @@ export default function TripRequestScreen() {
         }
 
         if (paymentSuccess) {
-          // Una vez acreditado el pago, se asigna el viaje al conductor
+          // Una vez acreditado el pago, se asigna el viaje al conductor con los datos dinámicos
           await updateDoc(doc(db, 'trips', trip.id), {
             status: 'accepted',
             driverId: user.uid,
-            driverName: user.displayName || 'Conductor',
-            driverPhone: '+5491122334455',
-            driverRating: 4.8,
-            vehicleModel: 'Fiat Cronos (Gris)',
-            vehiclePlate: 'AF123JK',
-            driverProfilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-            driverCarPhoto: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=400',
+            driverName,
+            driverPhone,
+            driverRating,
+            vehicleModel,
+            vehiclePlate,
+            driverProfilePhoto,
+            driverCarPhoto,
             acceptedAt: Timestamp.now(),
             paymentStatus: 'paid',
             paymentId: payData?.paymentId || 'simulated'
@@ -86,17 +143,17 @@ export default function TripRequestScreen() {
           setLoading(false);
         }
       } else {
-        // Para pago en Efectivo, se asigna directamente al aceptar
+        // Para pago en Efectivo, se asigna directamente al aceptar con los datos dinámicos
         await updateDoc(doc(db, 'trips', trip.id), {
           status: 'accepted',
           driverId: user.uid,
-          driverName: user.displayName || 'Conductor',
-          driverPhone: '+5491122334455',
-          driverRating: 4.8,
-          vehicleModel: 'Fiat Cronos (Gris)',
-          vehiclePlate: 'AF123JK',
-          driverProfilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-          driverCarPhoto: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=400',
+          driverName,
+          driverPhone,
+          driverRating,
+          vehicleModel,
+          vehiclePlate,
+          driverProfilePhoto,
+          driverCarPhoto,
           acceptedAt: Timestamp.now(),
         });
         navigation.navigate('ActiveTrip', { tripId: trip.id });

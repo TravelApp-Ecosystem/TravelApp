@@ -51,7 +51,7 @@ export const LeadsKanban = () => {
         {/* Columna: Nuevos */}
         <div className="flex w-80 min-w-80 flex-col rounded-xl bg-slate-50/50 border border-slate-200 p-3">
           <div className="mb-3 flex items-center justify-between px-1">
-            <h3 className="font-semibold text-gray-200">Nuevos (Travis)</h3>
+            <h3 className="font-semibold text-slate-700">Nuevos (Travis)</h3>
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs font-medium text-slate-500">
               {nuevos.length}
             </span>
@@ -66,7 +66,7 @@ export const LeadsKanban = () => {
         {/* Columna: Agendados */}
         <div className="flex w-80 min-w-80 flex-col rounded-xl bg-slate-50/50 border border-slate-200 p-3">
           <div className="mb-3 flex items-center justify-between px-1">
-            <h3 className="font-semibold text-gray-200">Agendados</h3>
+            <h3 className="font-semibold text-slate-700">Agendados</h3>
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs font-medium text-slate-500">
               {agendados.length}
             </span>
@@ -81,7 +81,7 @@ export const LeadsKanban = () => {
         {/* Columna: En Negociación */}
         <div className="flex w-80 min-w-80 flex-col rounded-xl bg-slate-50/50 border border-slate-200 p-3">
           <div className="mb-3 flex items-center justify-between px-1">
-            <h3 className="font-semibold text-gray-200">En Negociación</h3>
+            <h3 className="font-semibold text-slate-700">En Negociación</h3>
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs font-medium text-slate-500">
               {negociacion.length}
             </span>
@@ -96,7 +96,7 @@ export const LeadsKanban = () => {
         {/* Columna: Ganados/Perdidos */}
         <div className="flex w-80 min-w-80 flex-col rounded-xl bg-slate-50/50 border border-slate-200 p-3">
           <div className="mb-3 flex items-center justify-between px-1">
-            <h3 className="font-semibold text-gray-200">Ganados / Perdidos</h3>
+            <h3 className="font-semibold text-slate-700">Ganados / Perdidos</h3>
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs font-medium text-slate-500">
               {cerrados.length}
             </span>

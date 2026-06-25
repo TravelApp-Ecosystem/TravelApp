@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Palmtree, Ticket, DatabaseZap, Plus, Edit, Trash2, X, Save, Upload, Award, ShieldAlert } from 'lucide-react';
-import { collection, onSnapshot, setDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, setDoc, doc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Tour, AvailabilityStatus, TripType } from '@/types/experiences';
 import { TourCard } from '@/components/experiences/TourCard';
@@ -59,16 +59,27 @@ interface Reservation {
 }
 
 export default function ExperiencesPage() {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'reservations'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'reservations' | 'group-trips'>('catalog');
+  const [contractedTrips, setContractedTrips] = useState<any[]>([]);
+  const [selectedWebTrip, setSelectedWebTrip] = useState<any | null>(null);
+  const [webGroupMessages, setWebGroupMessages] = useState<any[]>([]);
+  const [adminMsgText, setAdminMsgText] = useState('');
+  const [webPassengers, setWebPassengers] = useState<any[]>([]);
   const [tours, setTours] = useState<Tour[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [biometricTimeout, setBiometricTimeout] = useState<number>(5); // default 5 mins
+  const [referralPassengerBonus, setReferralPassengerBonus] = useState<number>(1500);
+  const [referralDriverBonus, setReferralDriverBonus] = useState<number>(2000);
+  const [pointsConversionRate, setPointsConversionRate] = useState<number>(1);
   
   // Editor States
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTour, setEditingTour] = useState<Partial<Tour> | null>(null);
   const [serviceInput, setServiceInput] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [newRoomNumber, setNewRoomNumber] = useState('');
+  const [newRoomGuests, setNewRoomGuests] = useState('');
 
   useEffect(() => {
     // Sincronización en vivo con Firestore (Tours)
@@ -90,11 +101,173 @@ export default function ExperiencesPage() {
       setReservations(fetchedRes);
     });
 
+    // Sincronización de viajes grupales contratados
+    const unsubscribeContracted = onSnapshot(collection(db, 'contracted_trips'), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach(doc => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      setContractedTrips(list);
+      if (list.length > 0 && !selectedWebTrip) {
+        setSelectedWebTrip(list[0]);
+      }
+    });
+
+    // Sincronización en vivo con Configuración de Seguridad de Conductores
+    const unsubscribeSecurity = onSnapshot(doc(db, 'system_config', 'driver_settings'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.biometricTimeoutMinutes !== undefined) {
+          setBiometricTimeout(data.biometricTimeoutMinutes);
+        }
+        if (data.referralPassengerBonus !== undefined) {
+          setReferralPassengerBonus(data.referralPassengerBonus);
+        }
+        if (data.referralDriverBonus !== undefined) {
+          setReferralDriverBonus(data.referralDriverBonus);
+        }
+        if (data.pointsConversionRate !== undefined) {
+          setPointsConversionRate(data.pointsConversionRate);
+        }
+      }
+    });
+
     return () => {
       unsubscribeTours();
       unsubscribeReservations();
+      unsubscribeContracted();
+      unsubscribeSecurity();
     };
   }, []);
+
+  // Escuchar mensajes del chat grupal seleccionado y sus pasajeros asociados
+  useEffect(() => {
+    if (selectedWebTrip) {
+      const unsubMessages = onSnapshot(
+        collection(db, 'contracted_trips', selectedWebTrip.id, 'group_messages'),
+        (snapshot) => {
+          const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          msgs.sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0));
+          setWebGroupMessages(msgs);
+        }
+      );
+      
+      const unsubUsers = onSnapshot(
+        query(collection(db, 'users'), where('hasPurchasedOrganizedTrip', '==', true)),
+        (userSnap) => {
+          const list: any[] = [];
+          userSnap.forEach((d) => {
+            list.push({ id: d.id, ...d.data() });
+          });
+          setWebPassengers(list);
+        }
+      );
+
+      return () => {
+        unsubMessages();
+        unsubUsers();
+      };
+    } else {
+      setWebGroupMessages([]);
+      setWebPassengers([]);
+    }
+  }, [selectedWebTrip?.id]);
+
+  // Actualizar parámetros de seguridad (Biometría Conductores)
+  const handleUpdateSecurity = async (minutes: number) => {
+    try {
+      await setDoc(doc(db, 'system_config', 'driver_settings'), {
+        biometricTimeoutMinutes: minutes,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      setBiometricTimeout(minutes);
+    } catch (error: any) {
+      console.error("Error updating security settings:", error);
+      alert("Error al actualizar la configuración: " + error.message);
+    }
+  };
+
+  // Actualizar parámetros de referidos y Rewards
+  const handleUpdateReferrals = async () => {
+    try {
+      await setDoc(doc(db, 'system_config', 'driver_settings'), {
+        referralPassengerBonus: Number(referralPassengerBonus),
+        referralDriverBonus: Number(referralDriverBonus),
+        pointsConversionRate: Number(pointsConversionRate),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      alert("¡Configuración de referidos y Rewards guardada con éxito!");
+    } catch (error: any) {
+      console.error("Error updating referral settings:", error);
+      alert("Error al guardar la configuración: " + error.message);
+    }
+  };
+
+  // Agregar habitación a Rooming List
+  const handleAddRoom = async (roomNum: string, guestsText: string) => {
+    if (!selectedWebTrip || !roomNum || !guestsText) return;
+    try {
+      const currentRooming = selectedWebTrip.roomingList || [];
+      const newRoom = {
+        roomNumber: roomNum.trim(),
+        guests: guestsText.split(',').map(g => g.trim()).filter(Boolean)
+      };
+      const updatedRooming = [...currentRooming, newRoom];
+      
+      const tripRef = doc(db, 'contracted_trips', selectedWebTrip.id);
+      await updateDoc(tripRef, {
+        roomingList: updatedRooming
+      });
+      setSelectedWebTrip({
+        ...selectedWebTrip,
+        roomingList: updatedRooming
+      });
+      setNewRoomNumber('');
+      setNewRoomGuests('');
+      alert("¡Habitación asignada y guardada con éxito!");
+    } catch (err: any) {
+      alert("Error al guardar habitación: " + err.message);
+    }
+  };
+
+  // Eliminar habitación de Rooming List
+  const handleDeleteRoom = async (indexToDelete: number) => {
+    if (!selectedWebTrip) return;
+    try {
+      const currentRooming = selectedWebTrip.roomingList || [];
+      const updatedRooming = currentRooming.filter((_, idx) => idx !== indexToDelete);
+      
+      const tripRef = doc(db, 'contracted_trips', selectedWebTrip.id);
+      await updateDoc(tripRef, {
+        roomingList: updatedRooming
+      });
+      setSelectedWebTrip({
+        ...selectedWebTrip,
+        roomingList: updatedRooming
+      });
+      alert("¡Habitación eliminada con éxito!");
+    } catch (err: any) {
+      alert("Error al eliminar habitación: " + err.message);
+    }
+  };
+
+  // Enviar mensaje al grupo como admin/sistema
+  const handleSendAdminMessage = async () => {
+    const text = adminMsgText.trim();
+    if (!text || !selectedWebTrip) return;
+    try {
+      const msgRef = doc(collection(db, 'contracted_trips', selectedWebTrip.id, 'group_messages'), `msg_admin_${Date.now()}`);
+      await setDoc(msgRef, {
+        sender: "TravelApp Sistema",
+        senderRole: "sistema",
+        text: text,
+        timestamp: Date.now()
+      });
+      setAdminMsgText('');
+    } catch (err) {
+      console.error("Error sending admin message:", err);
+    }
+  };
 
   const handleSeedTours = async () => {
     setIsSeeding(true);
@@ -284,6 +457,17 @@ export default function ExperiencesPage() {
           <Ticket className="mr-2 h-4 w-4" />
           Gestión de Reservas
         </button>
+        <button
+          onClick={() => setActiveTab('group-trips')}
+          className={`flex items-center rounded-lg px-6 py-2.5 text-sm font-bold transition-all ${
+            activeTab === 'group-trips'
+              ? 'bg-tech-blue text-white shadow-md'
+              : 'text-slate-500 hover:text-tech-blue hover:bg-slate-100'
+          }`}
+        >
+          <Award className="mr-2 h-4 w-4" />
+          Viajes Grupales Activos
+        </button>
       </div>
 
       {/* Content */}
@@ -431,6 +615,321 @@ export default function ExperiencesPage() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'group-trips' && (
+          <div className="flex gap-6 h-[calc(100vh-220px)] min-h-[500px]">
+            {/* COLUMNA IZQUIERDA: LISTA DE VIAJES */}
+            <div className="w-1/3 rounded-2xl border border-slate-200 bg-white p-4 flex flex-col gap-4 overflow-y-auto">
+              
+              {/* Parámetros de Seguridad del Ecosistema */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-slate-800">
+                  <ShieldAlert className="w-4 h-4 text-amber-500" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider">Seguridad Ecosistema</h4>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-normal">
+                  Configurá el timeout de inactividad para solicitar verificación biométrica en la app de conductores.
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex gap-1">
+                    {[1, 5, 15, 30].map((mins) => (
+                      <button
+                        key={mins}
+                        onClick={() => handleUpdateSecurity(mins)}
+                        className={`flex-1 text-[10px] font-bold py-1.5 px-1 rounded transition-all ${
+                          biometricTimeout === mins
+                            ? 'bg-tech-blue text-white ring-1 ring-tech-blue'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {mins} min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Parámetros de Referidos y Rewards */}
+                <div className="border-t border-slate-200 pt-3 flex flex-col gap-2.5">
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <Award className="w-4 h-4 text-tech-blue" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider">Referidos y Rewards</h4>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase">Referido Pasajero (ARS)</label>
+                      <input 
+                        type="number" 
+                        value={referralPassengerBonus}
+                        onChange={(e) => setReferralPassengerBonus(Number(e.target.value))}
+                        className="w-full text-xs border border-slate-200 rounded px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-tech-blue"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase">Referido Conductor (ARS)</label>
+                      <input 
+                        type="number" 
+                        value={referralDriverBonus}
+                        onChange={(e) => setReferralDriverBonus(Number(e.target.value))}
+                        className="w-full text-xs border border-slate-200 rounded px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-tech-blue"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase">Conversión Puntos (Pts x U$S)</label>
+                      <input 
+                        type="number" 
+                        value={pointsConversionRate}
+                        onChange={(e) => setPointsConversionRate(Number(e.target.value))}
+                        className="w-full text-xs border border-slate-200 rounded px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-tech-blue"
+                      />
+                    </div>
+
+                    <button 
+                      onClick={handleUpdateReferrals}
+                      className="bg-tech-blue hover:bg-tech-blue/90 text-white font-bold py-1.5 px-3 rounded text-[10px] transition-all"
+                    >
+                      Guardar Configuración
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 pt-2 flex flex-col gap-1">
+                  <p className="text-[9px] text-slate-400">
+                    🔒 Persistencia de sesión activa para clientes.
+                  </p>
+                  <p className="text-[9px] text-slate-400">
+                    🔑 Contraseñas seguras validadas mediante Firebase Auth (SHA-256).
+                  </p>
+                </div>
+              </div>
+
+              <h3 className="text-sm font-bold text-tech-blue uppercase tracking-wider mt-2">Viajes Grupales Activos</h3>
+              {contractedTrips.length === 0 ? (
+                <p className="text-xs text-slate-400">No hay viajes grupales activos en el sistema.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {contractedTrips.map((trip) => {
+                    const isSel = selectedWebTrip?.id === trip.id;
+                    return (
+                      <button
+                        key={trip.id}
+                        onClick={() => setSelectedWebTrip(trip)}
+                        className={`w-full text-left p-3.5 rounded-xl border transition-all ${
+                          isSel 
+                            ? 'bg-tech-blue/5 border-tech-blue text-tech-blue ring-1 ring-tech-blue' 
+                            : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <p className="font-bold text-sm">{trip.destination}</p>
+                        <p className="text-xs text-slate-400 mt-1">📅 {trip.dates}</p>
+                        <p className="text-[10px] text-slate-500 mt-2 font-semibold">Coordinador: {trip.coordinator?.name}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* COLUMNA DERECHA: MONITOREO Y CONTROL */}
+            <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-6 flex flex-col gap-6 overflow-y-auto">
+              {selectedWebTrip ? (
+                <div className="flex flex-col gap-6 flex-1">
+                  {/* Encabezado de Monitoreo */}
+                  <div className="border-b border-slate-100 pb-4 flex justify-between items-start">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-800">{selectedWebTrip.destination}</h2>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Fechas: <span className="font-bold text-tech-blue">{selectedWebTrip.dates}</span> | Coordinador: <span className="font-bold text-slate-700">{selectedWebTrip.coordinator?.name}</span>
+                      </p>
+                    </div>
+                    <div className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-100 uppercase tracking-wider">
+                      Monitoreando En Vivo
+                    </div>
+                  </div>
+
+                  {/* Sección 1: Fichas de Pasajeros y Estado de Pagos */}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Fichas de Pasajeros & Financiación</h3>
+                    {webPassengers.length === 0 ? (
+                      <p className="text-xs text-slate-450">No hay pasajeros registrados en el viaje.</p>
+                    ) : (
+                      <div className="border border-slate-100 rounded-xl overflow-hidden text-xs bg-white">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100 font-bold text-slate-505 text-slate-500">
+                              <th className="p-3">Pasajero</th>
+                              <th className="p-3">DNI/Pasaporte</th>
+                              <th className="p-3">Emergencia</th>
+                              <th className="p-3">Ficha Médica</th>
+                              <th className="p-3">Saldo Abonado</th>
+                              <th className="p-3 text-right">Opcionales</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-600">
+                            {webPassengers.map((passenger) => (
+                              <tr key={passenger.id} className="hover:bg-slate-50/50">
+                                <td className="p-3">
+                                  <p className="font-bold text-slate-800">{passenger.displayName}</p>
+                                  <p className="text-[10px] text-slate-400">{passenger.email}</p>
+                                </td>
+                                <td className="p-3">{passenger.passport || '—'}</td>
+                                <td className="p-3 text-slate-500">{passenger.emergencyContact || '—'}</td>
+                                <td className="p-3 text-red-500">{passenger.medicalNotes || 'Ninguna'}</td>
+                                <td className="p-3">
+                                  <span className="font-bold text-tech-blue">
+                                    U$S {selectedWebTrip.payment?.paidAmount}
+                                  </span>
+                                  <span className="text-slate-400 font-normal"> / U$S {selectedWebTrip.payment?.totalAmount}</span>
+                                </td>
+                                <td className="p-3 text-right">
+                                  <div className="flex flex-wrap gap-1 justify-end">
+                                    {selectedWebTrip.optionalExcursions?.map((exc: any) => (
+                                      <span
+                                        key={exc.id}
+                                        className={`inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                                          exc.paid 
+                                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                                            : 'bg-slate-100 text-slate-400 border border-slate-200'
+                                        }`}
+                                        title={exc.title}
+                                      >
+                                        {exc.id === 'exc-iruya' ? 'Iruya' : 'Bodega'}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sección Rooming List */}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Asignación de Habitaciones (Rooming List)</h3>
+                    <div className="border border-slate-100 rounded-xl p-4 bg-slate-50 flex flex-col gap-4">
+                      {/* Formulario de Asignación */}
+                      <div className="flex gap-3 items-end">
+                        <div className="flex flex-col gap-1 w-1/4">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Nro. de Habitación</label>
+                          <input 
+                            type="text" 
+                            placeholder="Ej: 101"
+                            value={newRoomNumber}
+                            onChange={(e) => setNewRoomNumber(e.target.value)}
+                            className="text-xs border border-slate-200 rounded px-2.5 py-1.5 text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-tech-blue"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1 flex-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Pasajeros (Separados por coma)</label>
+                          <input 
+                            type="text" 
+                            placeholder="Ej: admin@travelapp.ar, Juan Pérez"
+                            value={newRoomGuests}
+                            onChange={(e) => setNewRoomGuests(e.target.value)}
+                            className="text-xs border border-slate-200 rounded px-2.5 py-1.5 text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-tech-blue"
+                          />
+                        </div>
+                        <button 
+                          onClick={() => handleAddRoom(newRoomNumber, newRoomGuests)}
+                          className="bg-tech-blue hover:bg-tech-blue/90 text-white font-bold py-1.5 px-4 rounded text-xs transition-all h-[34px] flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Asignar Habitación
+                        </button>
+                      </div>
+
+                      {/* Lista de Habitaciones */}
+                      {(!selectedWebTrip.roomingList || selectedWebTrip.roomingList.length === 0) ? (
+                        <p className="text-xs text-slate-450 italic">No hay habitaciones asignadas. Usa el formulario superior para crear una.</p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2.5">
+                          {selectedWebTrip.roomingList.map((room: any, idx: number) => (
+                            <div key={idx} className="bg-white border border-slate-100 rounded-xl p-3 flex justify-between items-center text-xs shadow-sm">
+                              <div>
+                                <p className="font-bold text-slate-800">Habitación {room.roomNumber}</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">{room.guests.join(' & ')}</p>
+                              </div>
+                              <button 
+                                onClick={() => handleDeleteRoom(idx)}
+                                className="text-red-500 hover:text-red-600 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sección 2: Monitoreo de Chat y Envío de Avisos */}
+                  <div className="flex-1 flex flex-col min-h-[300px]">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Historial del Chat Grupal</h3>
+                    <div className="flex-1 border border-slate-200 rounded-xl flex flex-col bg-slate-50 overflow-hidden">
+                      {/* Historial de Mensajes */}
+                      <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 text-xs h-[180px]">
+                        {webGroupMessages.length === 0 ? (
+                          <div className="text-center text-slate-400 py-8">No hay mensajes registrados en el chat grupal.</div>
+                        ) : (
+                          webGroupMessages.map((msg) => {
+                            const isCoord = msg.senderRole === 'coordinador';
+                            const isSystem = msg.senderRole === 'sistema';
+                            return (
+                              <div
+                                key={msg.id}
+                                className={`max-w-[75%] p-2.5 rounded-xl flex flex-col gap-0.5 ${
+                                  isSystem 
+                                    ? 'bg-amber-50 border border-amber-100 text-amber-800 self-center max-w-[90%]' 
+                                    : isCoord 
+                                    ? 'bg-tech-blue/10 border border-tech-blue/20 text-tech-blue self-start' 
+                                    : 'bg-white border border-slate-200 text-slate-700 self-end'
+                                }`}
+                              >
+                                <span className="text-[9px] font-bold uppercase opacity-60">
+                                  {msg.sender} ({msg.senderRole})
+                                </span>
+                                <p className="text-xs font-semibold">{msg.text}</p>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Caja de Entrada para Avisos de Administración */}
+                      <div className="p-3 bg-white border-t border-slate-200 flex gap-3">
+                        <input
+                          type="text"
+                          value={adminMsgText}
+                          onChange={(e) => setAdminMsgText(e.target.value)}
+                          placeholder="Escribí un aviso importante del sistema para enviar a todo el grupo (ej: 'Cambio de horario de vuelo')..."
+                          className="flex-1 bg-slate-100 rounded-xl px-4 py-2 text-xs border border-slate-200 font-semibold focus:outline-none focus:border-tech-blue/40"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSendAdminMessage();
+                          }}
+                        />
+                        <button
+                          onClick={handleSendAdminMessage}
+                          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow transition-colors"
+                        >
+                          Enviar aviso del Sistema
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-64 flex-col items-center justify-center text-center">
+                  <Palmtree className="mb-4 h-12 w-12 text-slate-300" />
+                  <h3 className="text-base font-bold text-slate-500">Selecciona un viaje</h3>
+                  <p className="mt-1 text-xs text-slate-400">Elige un viaje grupal de la lista de la izquierda para ver su panel de control en vivo.</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

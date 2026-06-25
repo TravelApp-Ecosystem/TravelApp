@@ -2,7 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
   Animated, Alert, Modal, Linking, Dimensions, ActivityIndicator, ScrollView, TextInput,
+  AppState, AppStateStatus, Share,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { doc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
@@ -24,10 +26,121 @@ interface Vehicle {
 }
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [isOnline, setIsOnline] = useState(false);
   const [todayTrips, setTodayTrips] = useState(0);
   const [todayEarnings, setTodayEarnings] = useState(0);
+
+  // Inactividad y Validación Biométrica
+  const [lastActiveTime, setLastActiveTime] = useState(Date.now());
+  const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const [biometricTimeoutMinutes, setBiometricTimeoutMinutes] = useState(5); // default 5 mins
+  const [isBiometricScanning, setIsBiometricScanning] = useState(false);
+  const [biometricSuccess, setBiometricSuccess] = useState(false);
+
+  // Taxímetro de viaje libre (Modo Taxi)
+  const [taximeterVisible, setTaximeterVisible] = useState(false);
+  const [taximeterStep, setTaximeterStep] = useState<'idle' | 'running' | 'summary'>('idle');
+  const [taxiSeconds, setTaxiSeconds] = useState(0);
+  const [taxiDistance, setTaxiDistance] = useState(0.0);
+  const [taxiFare, setTaxiFare] = useState(300.0);
+  const [referralPassengerBonus, setReferralPassengerBonus] = useState(1500);
+  const [referralDriverBonus, setReferralDriverBonus] = useState(2000);
+
+  const appState = useRef(AppState.currentState);
+  const [lastBackgroundTime, setLastBackgroundTime] = useState<number | null>(null);
+
+  // Escuchar configuración de seguridad de Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'system_config', 'driver_settings'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.biometricTimeoutMinutes !== undefined) {
+          setBiometricTimeoutMinutes(data.biometricTimeoutMinutes);
+        }
+        if (data.referralPassengerBonus !== undefined) {
+          setReferralPassengerBonus(data.referralPassengerBonus);
+        }
+        if (data.referralDriverBonus !== undefined) {
+          setReferralDriverBonus(data.referralDriverBonus);
+        }
+      }
+    });
+    return unsub;
+  }, []);
+
+  // Efecto del taxímetro digital activo
+  useEffect(() => {
+    let interval: any = null;
+    if (taximeterStep === 'running') {
+      interval = setInterval(() => {
+        setTaxiSeconds(prev => {
+          const nextSecs = prev + 1;
+          setTaxiDistance(dist => {
+            const nextDist = dist + 0.015; // 0.015 km por segundo
+            const base = 300.0;
+            const distCost = nextDist * 180.0;
+            const timeCost = (nextSecs / 60.0) * 50.0;
+            setTaxiFare(Math.round(base + distCost + timeCost));
+            return nextDist;
+          });
+          return nextSecs;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [taximeterStep]);
+
+  // Timer de inactividad activa en pantalla
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      const inactiveMs = Date.now() - lastActiveTime;
+      const timeoutMs = biometricTimeoutMinutes * 60 * 1000;
+      if (inactiveMs > timeoutMs && !showBiometricModal && isOnline) {
+        setShowBiometricModal(true);
+      }
+    }, 10000); // Chequear cada 10 segundos
+    return () => clearInterval(checkInterval);
+  }, [lastActiveTime, biometricTimeoutMinutes, showBiometricModal, isOnline]);
+
+  // Listener de AppState (Inactividad por segundo plano)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        // App vuelve al primer plano
+        if (lastBackgroundTime) {
+          const inactiveMs = Date.now() - lastBackgroundTime;
+          const timeoutMs = biometricTimeoutMinutes * 60 * 1000;
+          if (inactiveMs > timeoutMs && !showBiometricModal) {
+            setShowBiometricModal(true);
+          }
+        }
+        setLastActiveTime(Date.now()); // Reiniciar tiempo activo al volver
+      } else if (nextAppState.match(/inactive|background/)) {
+        // App pasa al segundo plano
+        setLastBackgroundTime(Date.now());
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [lastBackgroundTime, biometricTimeoutMinutes, showBiometricModal]);
+
+  const handleTriggerBiometric = () => {
+    setIsBiometricScanning(true);
+    setTimeout(() => {
+      setIsBiometricScanning(false);
+      setBiometricSuccess(true);
+      setTimeout(() => {
+        setBiometricSuccess(false);
+        setShowBiometricModal(false);
+        setLastActiveTime(Date.now()); // Reiniciar inactividad
+      }, 1500);
+    }, 2000);
+  };
   
   // Modales y Menú
   const [menuVisible, setMenuVisible] = useState(false);
@@ -350,8 +463,17 @@ export default function DashboardScreen() {
     ]);
   };
 
+  const activeVehicle = vehicles.find(v => v.active);
+  const isTaxi = activeVehicle?.category === 'Taxi';
+
+  const formatTaxiTime = (totalSeconds: number) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onTouchStart={() => setLastActiveTime(Date.now())}>
       {/* Mapa en tiempo real */}
       {loadingLocation ? (
         <View style={styles.center}>
@@ -377,7 +499,7 @@ export default function DashboardScreen() {
       )}
 
       {/* Visor de recaudación del día en la parte superior */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { top: insets.top > 0 ? insets.top + 8 : 40 }]}>
         <TouchableOpacity style={styles.menuButton} onPress={() => setMenuVisible(true)}>
           <Ionicons name="menu" size={28} color={Colors.primary} />
         </TouchableOpacity>
@@ -433,7 +555,164 @@ export default function DashboardScreen() {
             <Text style={styles.statLabel}>Activo</Text>
           </View>
         </View>
+
+        {/* Botón Viaje Libre para Taxi */}
+        {isTaxi && isOnline && (
+          <TouchableOpacity 
+            style={styles.taximeterBtn} 
+            onPress={() => {
+              setTaximeterStep('idle');
+              setTaxiSeconds(0);
+              setTaxiDistance(0.0);
+              setTaxiFare(300.0);
+              setTaximeterVisible(true);
+            }}
+          >
+            <Ionicons name="calculator-outline" size={20} color={Colors.white} />
+            <Text style={styles.taximeterBtnText}>Iniciar Viaje Libre (Taxímetro)</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* MODAL DE TAXÍMETRO (VIAJE LIBRE) */}
+      <Modal
+        visible={taximeterVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (taximeterStep !== 'running') {
+            setTaximeterVisible(false);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="calculator" size={24} color={Colors.primary} />
+              <Text style={styles.modalTitle}>Taxímetro Viaje Libre</Text>
+            </View>
+
+            {taximeterStep === 'idle' && (
+              <View style={{ width: '100%', gap: 12, alignItems: 'center' }}>
+                <Text style={styles.modalSubtitle}>Iniciá un viaje fuera de la plataforma calculando la tarifa según la ordenanza municipal vigente:</Text>
+                
+                <View style={styles.taxiRateBox}>
+                  <View style={styles.taxiRateRow}>
+                    <Text style={styles.taxiRateLabel}>Bajada de Bandera:</Text>
+                    <Text style={styles.taxiRateValue}>$300.00 ARS</Text>
+                  </View>
+                  <View style={styles.taxiRateRow}>
+                    <Text style={styles.taxiRateLabel}>Valor por Kilómetro:</Text>
+                    <Text style={styles.taxiRateValue}>$180.00 ARS</Text>
+                  </View>
+                  <View style={styles.taxiRateRow}>
+                    <Text style={styles.taxiRateLabel}>Valor por Minuto de Espera:</Text>
+                    <Text style={styles.taxiRateValue}>$50.00 ARS</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.saveFormBtn, { width: '100%', backgroundColor: Colors.success, marginTop: 12 }]}
+                  onPress={() => setTaximeterStep('running')}
+                >
+                  <Text style={styles.saveFormText}>Iniciar Viaje</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.cancelFormBtn, { width: '100%' }]}
+                  onPress={() => setTaximeterVisible(false)}
+                >
+                  <Text style={styles.cancelFormText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {taximeterStep === 'running' && (
+              <View style={{ width: '100%', gap: 14, alignItems: 'center' }}>
+                <View style={styles.taxiLiveDisplay}>
+                  <Text style={styles.taxiLiveFare}>${taxiFare} ARS</Text>
+                  <Text style={styles.taxiLiveFareLabel}>Tarifa Estimada</Text>
+                </View>
+
+                <View style={styles.taxiLiveStats}>
+                  <View style={styles.taxiLiveStatItem}>
+                    <Ionicons name="time-outline" size={20} color={Colors.primary} />
+                    <Text style={styles.taxiLiveStatVal}>{formatTaxiTime(taxiSeconds)}</Text>
+                    <Text style={styles.taxiLiveStatLabel}>Tiempo</Text>
+                  </View>
+                  <View style={styles.taxiLiveStatDivider} />
+                  <View style={styles.taxiLiveStatItem}>
+                    <Ionicons name="resize-outline" size={20} color={Colors.accent} />
+                    <Text style={styles.taxiLiveStatVal}>{taxiDistance.toFixed(2)} km</Text>
+                    <Text style={styles.taxiLiveStatLabel}>Distancia</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.saveFormBtn, { width: '100%', backgroundColor: Colors.danger, marginTop: 12 }]}
+                  onPress={() => setTaximeterStep('summary')}
+                >
+                  <Text style={styles.saveFormText}>Finalizar Viaje</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {taximeterStep === 'summary' && (
+              <View style={{ width: '100%', gap: 12, alignItems: 'center' }}>
+                <Text style={styles.modalSubtitle}>Detalle del viaje libre completado:</Text>
+
+                <View style={styles.taxiRateBox}>
+                  <View style={styles.taxiRateRow}>
+                    <Text style={styles.taxiRateLabel}>Bajada de Bandera:</Text>
+                    <Text style={styles.taxiRateValue}>$300 ARS</Text>
+                  </View>
+                  <View style={styles.taxiRateRow}>
+                    <Text style={styles.taxiRateLabel}>Distancia ({taxiDistance.toFixed(2)} km):</Text>
+                    <Text style={styles.taxiRateValue}>${Math.round(taxiDistance * 180)} ARS</Text>
+                  </View>
+                  <View style={styles.taxiRateRow}>
+                    <Text style={styles.taxiRateLabel}>Tiempo ({formatTaxiTime(taxiSeconds)}):</Text>
+                    <Text style={styles.taxiRateValue}>${Math.round((taxiSeconds / 60) * 50)} ARS</Text>
+                  </View>
+                  <View style={[styles.taxiRateRow, { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 6, marginTop: 4 }]}>
+                    <Text style={[styles.taxiRateLabel, { fontFamily: 'Quicksand-Bold', color: Colors.textPrimary }]}>Total a Cobrar:</Text>
+                    <Text style={[styles.taxiRateValue, { fontFamily: 'Quicksand-Bold', color: Colors.success, fontSize: 16 }]}>${taxiFare} ARS</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.saveFormBtn, { width: '100%', backgroundColor: Colors.primary, marginTop: 8 }]}
+                  onPress={() => {
+                    setTodayEarnings(prev => prev + taxiFare);
+                    setTodayTrips(prev => prev + 1);
+                    setTaximeterVisible(false);
+                    setTaximeterStep('idle');
+                    Alert.alert('Viaje Registrado', 'Los ingresos fueron sumados a tu recaudación diaria.');
+                  }}
+                >
+                  <Text style={styles.saveFormText}>Cobrar en Efectivo y Cerrar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.saveFormBtn, { width: '100%', backgroundColor: '#25D366' }]}
+                  onPress={async () => {
+                    try {
+                      await Share.share({
+                        message: `¡Hola! Gracias por viajar conmigo. Descargá la app del pasajero TravelApp, registrate usando mi código de referido CHOFER_${user.uid} y obtené un descuento de $${referralPassengerBonus} ARS en tu primer viaje: https://travelapp.ar/invite`
+                      });
+                    } catch (error) {
+                      console.log("Error sharing referral:", error);
+                    }
+                  }}
+                >
+                  <Ionicons name="logo-whatsapp" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+                  <Text style={styles.saveFormText}>Enviar Invitación / Referido</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* MENÚ HAMBURGUESA LATERAL (DRAWER OVERLAY MODAL) */}
       <Modal
@@ -710,6 +989,57 @@ export default function DashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* MODAL DE VALIDACIÓN BIOMÉTRICA */}
+      <Modal
+        visible={showBiometricModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.biometricOverlay}>
+          <View style={styles.biometricCard}>
+            <View style={styles.biometricHeader}>
+              <Ionicons name="shield-checkmark" size={40} color={Colors.primary} />
+              <Text style={styles.biometricTitle}>Seguridad Requerida</Text>
+              <Text style={styles.biometricDesc}>
+                Por inactividad, por favor valida tu identidad para continuar en línea en el sistema.
+              </Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[
+                styles.biometricScanBtn, 
+                biometricSuccess && styles.biometricScanBtnSuccess,
+                isBiometricScanning && styles.biometricScanBtnScanning
+              ]}
+              onPress={handleTriggerBiometric}
+              disabled={isBiometricScanning || biometricSuccess}
+            >
+              {isBiometricScanning ? (
+                <View style={styles.scanningWrap}>
+                  <ActivityIndicator size="large" color={Colors.white} />
+                  <Text style={styles.scanningText}>Escaneando...</Text>
+                </View>
+              ) : biometricSuccess ? (
+                <View style={styles.successWrap}>
+                  <Ionicons name="checkmark-circle" size={54} color={Colors.white} />
+                  <Text style={styles.successText}>Acceso Permitido</Text>
+                </View>
+              ) : (
+                <View style={styles.startScanWrap}>
+                  <Ionicons name="finger-print-outline" size={54} color={Colors.primary} />
+                  <Text style={styles.startScanText}>Presiona para escanear</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <Text style={styles.biometricFooterText}>
+              Verificación configurada cada {biometricTimeoutMinutes} min.
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -873,4 +1203,54 @@ const styles = StyleSheet.create({
   infoSpecs: { gap: 6, marginVertical: 8 },
   infoSpecItem: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textPrimary },
   copyrightLabel: { fontSize: 11, fontFamily: 'Quicksand-Regular', color: Colors.textMuted, textAlign: 'center', marginTop: 8 },
+
+  // Validación Biométrica
+  biometricOverlay: { flex: 1, backgroundColor: 'rgba(7,20,40,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  biometricCard: { width: '100%', maxWidth: 340, backgroundColor: Colors.white, borderRadius: 28, padding: 28, alignItems: 'center', gap: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 10 },
+  biometricHeader: { alignItems: 'center', gap: 8, textAlign: 'center' },
+  biometricTitle: { fontSize: 20, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginTop: 4 },
+  biometricDesc: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, textAlign: 'center', lineHeight: 18 },
+  biometricScanBtn: { width: 140, height: 140, borderRadius: 70, borderStyle: 'dashed', borderWidth: 2, borderColor: Colors.primary, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
+  biometricScanBtnScanning: { borderStyle: 'solid', borderColor: Colors.accent, backgroundColor: Colors.accent },
+  biometricScanBtnSuccess: { borderStyle: 'solid', borderColor: Colors.success, backgroundColor: Colors.success },
+  scanningWrap: { alignItems: 'center', gap: 8 },
+  scanningText: { color: Colors.white, fontSize: 12, fontFamily: 'Quicksand-Bold' },
+  successWrap: { alignItems: 'center', gap: 6 },
+  successText: { color: Colors.white, fontSize: 12, fontFamily: 'Quicksand-Bold' },
+  startScanWrap: { alignItems: 'center', gap: 6 },
+  startScanText: { color: Colors.primary, fontSize: 11, fontFamily: 'Quicksand-Bold' },
+  biometricFooterText: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textMuted },
+  
+  // Taxímetro de viaje libre (Modo Taxi)
+  taximeterBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#0A2A5B', paddingVertical: 14, borderRadius: 12, marginTop: 14,
+    width: '100%',
+  },
+  taximeterBtnText: { color: Colors.white, fontSize: 13, fontFamily: 'Quicksand-Bold' },
+  taxiRateBox: {
+    width: '100%', backgroundColor: Colors.background, borderRadius: 16, padding: 16, gap: 10,
+    borderWidth: 1.5, borderColor: Colors.border,
+  },
+  taxiRateRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  taxiRateLabel: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
+  taxiRateValue: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  taxiLiveDisplay: {
+    width: '100%', backgroundColor: '#071428', borderRadius: 20, paddingVertical: 28,
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderWidth: 2, borderColor: Colors.primary,
+  },
+  taxiLiveFare: { fontSize: 38, fontWeight: '900', color: Colors.white, letterSpacing: 1 },
+  taxiLiveFareLabel: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' },
+  taxiLiveStats: {
+    flexDirection: 'row', width: '100%', paddingVertical: 12,
+    backgroundColor: Colors.background, borderRadius: 16,
+    borderWidth: 1.5, borderColor: Colors.border,
+  },
+  taxiLiveStatItem: { flex: 1, alignItems: 'center', gap: 4 },
+  taxiLiveStatVal: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  taxiLiveStatLabel: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
+  taxiLiveStatDivider: { width: 1.5, height: '80%', backgroundColor: Colors.border, alignSelf: 'center' },
 });

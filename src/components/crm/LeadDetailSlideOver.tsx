@@ -128,7 +128,7 @@ export const LeadDetailSlideOver: React.FC<LeadDetailSlideOverProps> = ({ lead, 
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tech-blue/20">
                           <Bot className="h-4 w-4 text-tech-blue" />
                         </div>
-                        <div className="rounded-2xl rounded-tl-none bg-tech-blue/10 border border-blue-500/20 p-3 text-sm text-gray-200">
+                        <div className="rounded-2xl rounded-tl-none bg-tech-blue/10 border border-blue-500/20 p-3 text-sm text-slate-800">
                           {msg.message}
                         </div>
                       </div>
@@ -136,7 +136,7 @@ export const LeadDetailSlideOver: React.FC<LeadDetailSlideOverProps> = ({ lead, 
                   } else {
                     return (
                       <div key={idx} className="flex items-start space-x-3 justify-end">
-                        <div className="rounded-2xl rounded-tr-none bg-slate-100 border border-slate-300 p-3 text-sm text-gray-200">
+                        <div className="rounded-2xl rounded-tr-none bg-slate-100 border border-slate-300 p-3 text-sm text-slate-800">
                           {msg.message}
                         </div>
                       </div>
@@ -169,7 +169,7 @@ export const LeadDetailSlideOver: React.FC<LeadDetailSlideOverProps> = ({ lead, 
                 href={lead.meetingLink} 
                 target="_blank" 
                 rel="noreferrer"
-                className="rounded-md bg-tech-blue px-3 py-1.5 text-xs font-bold text-tech-blue hover:bg-tech-blue shadow-lg shadow-blue-900/20 transition-all"
+                className="rounded-md bg-tech-blue px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 shadow-lg shadow-blue-900/20 transition-all"
               >
                 Unirse a Meet
               </a>
@@ -177,7 +177,7 @@ export const LeadDetailSlideOver: React.FC<LeadDetailSlideOverProps> = ({ lead, 
           )}
 
           {!lead.meetingLink && (
-            <button className="flex w-full items-center justify-center space-x-2 rounded-xl bg-tech-blue px-4 py-3 text-sm font-bold text-tech-blue hover:bg-blue-700 shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02]">
+            <button className="flex w-full items-center justify-center space-x-2 rounded-xl bg-tech-blue px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02]">
               <Video className="h-5 w-5" />
               <span>Agendar Videollamada (Meet)</span>
             </button>

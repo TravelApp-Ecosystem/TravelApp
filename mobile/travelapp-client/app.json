@@ -31,7 +31,9 @@
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -44,6 +46,11 @@
           "locationAlwaysAndWhenInUsePermission": "TravelApp necesita tu ubicación para mostrarte conductores cercanos y calcular rutas."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f76c3983-e69f-4eec-9ff2-f6de5d2a4fe3"
+      }
+    }
   }
 }

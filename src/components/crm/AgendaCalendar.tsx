@@ -33,6 +33,21 @@ export const AgendaCalendar = () => {
   // Filtramos los eventos a mostrar (en una app real se filtraría por fecha específica seleccionada)
   const todayEvents = events; 
 
+  const getEventColors = (color: string) => {
+    if (!color || color === 'bg-tech-blue') {
+      return {
+        bg: 'bg-blue-50 border-blue-200',
+        text: 'text-blue-700'
+      };
+    }
+    // Handle standard tailwind bg-name-500 strings safely
+    const name = color.replace('bg-', '').split('-')[0];
+    return {
+      bg: `bg-${name}-50 border-${name}-200`,
+      text: `text-${name}-700`
+    };
+  };
+
   return (
     <div className="flex h-full flex-col lg:flex-row gap-6">
       {/* Columna Izquierda: Minicalendario y Filtros */}
@@ -52,18 +67,21 @@ export const AgendaCalendar = () => {
             <p className="text-sm text-slate-500">No hay reuniones programadas.</p>
           ) : (
             <div className="space-y-3">
-              {todayEvents.map(event => (
-                <div key={event.id} className="flex items-start space-x-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <div className={`mt-1 h-2 w-2 rounded-full ${event.color || 'bg-tech-blue'}`}></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-tech-blue">{event.title}</p>
-                    <div className="mt-1 flex items-center text-xs text-slate-500 space-x-3">
-                      <span className="flex items-center"><Clock className="mr-1 h-3 w-3" /> {event.time}</span>
-                      <span className="flex items-center"><Users className="mr-1 h-3 w-3" /> {event.type || 'Meet'}</span>
+              {todayEvents.map(event => {
+                const colors = getEventColors(event.color);
+                return (
+                  <div key={event.id} className="flex items-start space-x-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div className={`mt-1 h-2 w-2 rounded-full ${event.color || 'bg-tech-blue'}`}></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-tech-blue">{event.title}</p>
+                      <div className="mt-1 flex items-center text-xs text-slate-500 space-x-3">
+                        <span className="flex items-center"><Clock className="mr-1 h-3 w-3" /> {event.time}</span>
+                        <span className="flex items-center"><Users className="mr-1 h-3 w-3" /> {event.type || 'Meet'}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -82,6 +100,7 @@ export const AgendaCalendar = () => {
         <div className="relative">
           {timeSlots.map((slot) => {
             const event = todayEvents.find(e => e.time === slot);
+            const colors = event ? getEventColors(event.color) : { bg: '', text: '' };
             
             return (
               <div key={slot} className="flex group min-h-[80px]">
@@ -90,8 +109,8 @@ export const AgendaCalendar = () => {
                 </div>
                 <div className="flex-1 border-t border-slate-200 relative group-hover:bg-slate-100/30 transition-colors p-2">
                   {event && (
-                    <div className={`absolute inset-x-2 top-2 rounded-md ${(event.color || 'bg-tech-blue').replace('bg-', 'bg-').replace('500', '500/20')} border ${(event.color || 'bg-tech-blue').replace('bg-', 'border-').replace('500', '500/30')} p-3 shadow-sm`}>
-                      <p className={`text-sm font-semibold ${(event.color || 'bg-tech-blue').replace('bg-', 'text-')}`}>{event.title}</p>
+                    <div className={`absolute inset-x-2 top-2 rounded-md ${colors.bg} border p-3 shadow-sm`}>
+                      <p className={`text-sm font-semibold ${colors.text}`}>{event.title}</p>
                       <p className="text-xs text-slate-500 mt-1 flex items-center">
                         <Video className="mr-1 h-3 w-3 inline" /> {event.type || 'Google Meet'} • {event.duration}
                       </p>

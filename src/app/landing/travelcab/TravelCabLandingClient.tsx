@@ -345,6 +345,76 @@ const DEFAULT_MU_TARIFFS_FALLBACK: MUTariff[] = [
   }
 ];
 
+const DEFAULT_ARC_TARIFFS_FALLBACK: any[] = [
+  {
+    id: 'arc-standard-fallback',
+    name: 'Auto Rural Compartido Standard',
+    category: 'estandar',
+    iva: 21,
+    iibb: 3.5,
+    taxMunicipal: 1.5,
+    electronicPaymentFee: 5,
+    commissionRate: 15,
+    weeklyMembership: 5000,
+    isActive: true,
+    type: 'arc',
+    routes: [
+      {
+        id: 'fallback-route-1',
+        mainOrigin: 'Tucumán',
+        mainDestination: 'Concepción',
+        pricePerSeat: 4500
+      },
+      {
+        id: 'fallback-route-2',
+        mainOrigin: 'Tucumán',
+        mainDestination: 'Famaillá',
+        pricePerSeat: 3000
+      },
+      {
+        id: 'fallback-route-3',
+        mainOrigin: 'Tucumán',
+        mainDestination: 'Monteros',
+        pricePerSeat: 3800
+      }
+    ]
+  },
+  {
+    id: 'arc-premium-fallback',
+    name: 'Auto Rural Compartido Premium',
+    category: 'premium',
+    iva: 21,
+    iibb: 3.5,
+    taxMunicipal: 1.5,
+    electronicPaymentFee: 5,
+    commissionRate: 15,
+    weeklyMembership: 5000,
+    isActive: true,
+    type: 'arc',
+    routes: [
+      {
+        id: 'fallback-route-p1',
+        mainOrigin: 'Tucumán',
+        mainDestination: 'Concepción',
+        pricePerSeat: 6000
+      },
+      {
+        id: 'fallback-route-p2',
+        mainOrigin: 'Tucumán',
+        mainDestination: 'Famaillá',
+        pricePerSeat: 4000
+      },
+      {
+        id: 'fallback-route-p3',
+        mainOrigin: 'Tucumán',
+        mainDestination: 'Monteros',
+        pricePerSeat: 5000
+      }
+    ]
+  }
+];
+
+
 const RenderLegalSeal = ({ content, alt }: { content?: string; alt: string }) => {
   if (!content) return null;
   const trimmed = content.trim();
@@ -441,7 +511,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
 
   // Firestore dynamic state (Intacto)
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
-  const [activeTariffs, setActiveTariffs] = useState<MUTariff[]>([]);
+  const [activeTariffs, setActiveTariffs] = useState<any[]>([]);
   const [isLoadingTariffs, setIsLoadingTariffs] = useState(true);
 
   // --- ESTADOS DE CMS Y REGISTRO ---
@@ -503,27 +573,34 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
       console.log('Error loading categories on landing page:', error.message);
     });
 
-    // 3. Tarifarios MU Activos
-    const qMu = query(collection(db, 'tariffs'), where('type', '==', 'mu'), where('isActive', '==', true));
-    const unsubMu = onSnapshot(qMu, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as MUTariff);
+    // 3. Tarifarios Activos (tanto MU como ARC)
+    const qTariffs = query(collection(db, 'tariffs'), where('isActive', '==', true));
+    const unsubTariffs = onSnapshot(qTariffs, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
       setActiveTariffs(list);
       setIsLoadingTariffs(false);
     }, (error) => {
-      console.log('Error loading active MU tariffs on landing:', error.message);
+      console.log('Error loading active tariffs on landing:', error.message);
       setIsLoadingTariffs(false);
     });
 
     return () => {
       unsubCms();
       unsubCats();
-      unsubMu();
+      unsubTariffs();
     };
   }, []);
 
+  const currentTariffs = useMemo(() => {
+    const typeFilter = modality === 'ARC' ? 'arc' : 'mu';
+    const filtered = activeTariffs.filter((t: any) => t.type === typeFilter);
+    if (filtered.length > 0) return filtered;
+    return modality === 'ARC' ? DEFAULT_ARC_TARIFFS_FALLBACK : DEFAULT_MU_TARIFFS_FALLBACK;
+  }, [activeTariffs, modality]);
+
   // Lista de vehículos dinámica basada en tarifarios de Firestore (Intacta)
   const vehiclesList = useMemo(() => {
-    const list = activeTariffs.length > 0 ? activeTariffs : DEFAULT_MU_TARIFFS_FALLBACK;
+    const list = currentTariffs;
     
     return list.map((tariff) => {
       const categoryObj = categories.find(c => c.id === tariff.category);
@@ -538,16 +615,22 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         eta = categoryObj.eta;
       } else {
         if (tariff.category === 'vip') {
-          name = 'TravelCab VIP';
-          description = 'Vehículo de alta gama con chofer profesional y máximo confort corporativo.';
+          name = modality === 'ARC' ? 'Auto Compartido VIP' : 'TravelCab VIP';
+          description = modality === 'ARC'
+            ? 'Servicio de auto rural compartido de alta gama con chofer profesional.'
+            : 'Vehículo de alta gama con chofer profesional y máximo confort corporativo.';
           eta = '3 - 5 min';
         } else if (tariff.category === 'premium') {
-          name = 'TravelCab Premium';
-          description = 'Auto de gama alta, máximo confort, espacio extra y chofer bilingüe.';
+          name = modality === 'ARC' ? 'Auto Compartido Premium' : 'TravelCab Premium';
+          description = modality === 'ARC'
+            ? 'Auto de gama alta compartido, máximo confort y espacio extra.'
+            : 'Auto de gama alta, máximo confort, espacio extra y chofer bilingüe.';
           eta = '2 - 4 min';
         } else {
-          name = 'TravelCab Standard';
-          description = 'Sedán moderno, climatizado, ideal para tus traslados diarios de forma rápida.';
+          name = modality === 'ARC' ? 'Auto Compartido Standard' : 'TravelCab Standard';
+          description = modality === 'ARC'
+            ? 'El clásico servicio rural de auto compartido, cómodo y súper económico.'
+            : 'Sedán moderno, climatizado, ideal para tus traslados diarios de forma rápida.';
           eta = '4 - 6 min';
         }
       }
@@ -562,7 +645,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         tariff: tariff
       };
     });
-  }, [activeTariffs, categories]);
+  }, [currentTariffs, categories, modality]);
 
   // Calcular ruta mediante Google Maps Directions API (Intacta)
   useEffect(() => {
@@ -613,28 +696,70 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
       duration = Math.round(distance * 1.5);
     }
 
-    const tariff = vehicle.tariff || DEFAULT_MU_TARIFFS_FALLBACK[0];
-    const baseFare = tariff.baseFare || vehicle.baseRate || 580;
-    const pricePerKm = tariff.pricePerKm || (vehicle.id === 'premium' ? 680 : 480);
-    const travelMinutePrice = tariff.travelMinutePrice || (vehicle.id === 'premium' ? 160 : 120);
-    const minimumFare = tariff.minimumFare || (vehicle.id === 'premium' ? 3800 : 2800);
+    const tariff = vehicle.tariff || (modality === 'ARC' ? DEFAULT_ARC_TARIFFS_FALLBACK[0] : DEFAULT_MU_TARIFFS_FALLBACK[0]);
     
-    const basePrice = baseFare + (distance * pricePerKm) + (duration * travelMinutePrice);
+    let basePricePerSeat = 0;
+    
+    if (modality === 'ARC') {
+      // Intentar buscar una ruta que coincida en el tarifario de ARC
+      let arcRoutePrice: number | null = null;
+      if (tariff.routes && Array.isArray(tariff.routes)) {
+        const originLower = pickupLocation.toLowerCase();
+        const destLower = dropoffLocation.toLowerCase();
+        
+        const matchedRoute = tariff.routes.find((r: any) => {
+          const routeOrigin = (r.mainOrigin || '').toLowerCase().trim();
+          const routeDest = (r.mainDestination || '').toLowerCase().trim();
+          
+          return (
+            routeOrigin && routeDest &&
+            (originLower.includes(routeOrigin) || routeOrigin.includes(originLower)) &&
+            (destLower.includes(routeDest) || routeDest.includes(destLower))
+          );
+        });
+        
+        if (matchedRoute) {
+          arcRoutePrice = matchedRoute.pricePerSeat;
+        }
+      }
+      
+      if (arcRoutePrice !== null) {
+        basePricePerSeat = arcRoutePrice;
+      } else {
+        // Fallback a cálculo basado en distancia si no hay coincidencia exacta de ruta
+        const baseFare = 400;
+        const pricePerKm = 320;
+        const travelMinutePrice = 80;
+        basePricePerSeat = baseFare + (distance * pricePerKm) + (duration * travelMinutePrice);
+      }
+    } else {
+      // Modo MU
+      const baseFare = tariff.baseFare || vehicle.baseRate || 580;
+      const pricePerKm = tariff.pricePerKm || (vehicle.id === 'premium' ? 680 : 480);
+      const travelMinutePrice = tariff.travelMinutePrice || (vehicle.id === 'premium' ? 160 : 120);
+      basePricePerSeat = baseFare + (distance * pricePerKm) + (duration * travelMinutePrice);
+    }
     
     const iva = tariff.iva !== undefined ? tariff.iva : 21;
     const iibb = tariff.iibb !== undefined ? tariff.iibb : 3.5;
     const taxMunicipal = tariff.taxMunicipal !== undefined ? tariff.taxMunicipal : 1.5;
     const totalTaxesPct = iva + iibb + taxMunicipal;
     
-    let taxedPrice = basePrice * (1 + totalTaxesPct / 100);
+    let taxedPrice = basePricePerSeat * (1 + totalTaxesPct / 100);
     
     if (paymentMethod === 'Tarjeta' || paymentMethod === 'Billetera Virtual') {
       const cardFeePct = tariff.electronicPaymentFee !== undefined ? tariff.electronicPaymentFee : 5;
       taxedPrice = taxedPrice * (1 + cardFeePct / 100);
     }
     
-    const modalityFactor = modality === 'ARC' ? 0.65 : 1.0;
-    const finalPrice = Math.max(minimumFare, Math.round(taxedPrice * modalityFactor));
+    let finalPrice = Math.round(taxedPrice);
+    const minimumFare = tariff.minimumFare || (vehicle.id === 'premium' ? (modality === 'ARC' ? 2500 : 3800) : (modality === 'ARC' ? 1800 : 2800));
+    finalPrice = Math.max(minimumFare, finalPrice);
+    
+    if (modality === 'ARC') {
+      finalPrice = finalPrice * selectedSeats;
+    }
+    
     return finalPrice;
   };
 

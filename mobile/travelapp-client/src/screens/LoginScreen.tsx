@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView, Image,
 } from 'react-native';
 import { auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
@@ -79,7 +79,7 @@ export default function LoginScreen() {
           {/* Tarjeta de Travis AI */}
           <View style={styles.travisCard}>
             <View style={styles.travisAvatar}>
-              <Ionicons name="chatbubbles" size={24} color={Colors.white} />
+              <Image source={require('../../assets/travis_casual.png')} style={styles.travisAvatarImg} />
             </View>
             <View style={styles.travisBubble}>
               <Text style={styles.travisText}>
@@ -211,6 +211,9 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.accent,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, elevation: 3,
+  },
+  travisAvatarImg: {
+    width: 44, height: 44, borderRadius: 22,
   },
   travisBubble: {
     flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16,

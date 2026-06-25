@@ -194,6 +194,7 @@ export interface TravisConfig {
   workingHours?: { start: string; end: string; timezone: string };
   outOfHoursMessage: string;
   updatedAt: number;
+  isAiDispatchForcedEnabled?: boolean;
 }
 
 export const DEFAULT_TRAVIS_CONFIG: Omit<TravisConfig, 'updatedAt'> = {
