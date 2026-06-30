@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeFirestore, getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, memoryLocalCache } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -17,9 +17,10 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // REST / HTTP Config:
 // Forzamos al SDK a usar conexiones puras HTTP en lugar de gRPC (WebSockets de larga duración / fetch)
-// Esto funciona perfectamente en Vercel Serverless sin necesitar claves de cuentas de servicio.
+// Y forzamos una caché en memoria para evitar errores de cliente offline en entornos serverless.
 const db = initializeFirestore(app, {
   experimentalForceLongPolling: true, // Fuerza HTTP Long Polling en lugar de gRPC WebSockets
+  localCache: memoryLocalCache(),      // Evita intentar persistir en el disco/IndexedDB
 });
 
 const auth = getAuth(app);
