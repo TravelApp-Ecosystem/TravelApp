@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { signInAnonymously } from 'firebase/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const results: any = {
     timestamp: new Date().toISOString(),
+    auth: { status: 'pending', error: null },
     firebase: { status: 'pending', durationMs: 0, error: null },
     gemini: { status: 'pending', durationMs: 0, error: null }
   };
 
-  // 1. Test Firebase Configuration and Connection
+  // 1. Test Firebase Configuration
   const startFirebase = Date.now();
   const firebaseConf = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? `${process.env.NEXT_PUBLIC_FIREBASE_API_KEY.substring(0, 8)}...` : 'undefined',
@@ -21,6 +23,17 @@ export async function GET(req: NextRequest) {
   };
   results.firebaseConfigRead = firebaseConf;
 
+  // 2. Try Anonymous Auth
+  try {
+    const authResult = await signInAnonymously(auth);
+    results.auth.status = 'success';
+    results.auth.uid = authResult.user.uid;
+  } catch (err: any) {
+    results.auth.status = 'failed';
+    results.auth.error = err.message || err.toString();
+  }
+
+  // 3. Try Firestore Read
   try {
     const docRef = doc(db, 'experiences', 'TOUR-001');
     const docSnap = await getDoc(docRef);
