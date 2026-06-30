@@ -11,8 +11,16 @@ export async function GET(req: NextRequest) {
     gemini: { status: 'pending', durationMs: 0, error: null }
   };
 
-  // 1. Test Firebase
+  // 1. Test Firebase Configuration and Connection
   const startFirebase = Date.now();
+  const firebaseConf = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? `${process.env.NEXT_PUBLIC_FIREBASE_API_KEY.substring(0, 8)}...` : 'undefined',
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'undefined',
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'undefined',
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ? `${process.env.NEXT_PUBLIC_FIREBASE_APP_ID.substring(0, 10)}...` : 'undefined',
+  };
+  results.firebaseConfigRead = firebaseConf;
+
   try {
     const docRef = doc(db, 'travisConfig', 'main');
     const docSnap = await getDoc(docRef);
