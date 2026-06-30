@@ -22,10 +22,11 @@ export async function GET(req: NextRequest) {
   results.firebaseConfigRead = firebaseConf;
 
   try {
-    const docRef = doc(db, 'travisConfig', 'main');
+    const docRef = doc(db, 'experiences', 'TOUR-001');
     const docSnap = await getDoc(docRef);
     results.firebase.status = docSnap.exists() ? 'success' : 'not_found';
     results.firebase.durationMs = Date.now() - startFirebase;
+    results.firebase.data = docSnap.exists() ? docSnap.data() : null;
   } catch (err: any) {
     results.firebase.status = 'failed';
     results.firebase.error = err.message || err.toString();
