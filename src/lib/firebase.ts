@@ -16,11 +16,11 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // REST / HTTP Config:
-// Forzamos al SDK a usar conexiones puras HTTP en el cliente (para evitar bloqueos)
-// pero en el servidor (Vercel) usamos la conexión estándar de Firestore.
-const db = typeof window !== 'undefined'
-  ? initializeFirestore(app, { experimentalForceLongPolling: true })
-  : getFirestore(app);
+// Forzamos al SDK a usar conexiones puras HTTP en lugar de gRPC (WebSockets de larga duración / fetch)
+// Esto funciona perfectamente en Vercel Serverless sin necesitar claves de cuentas de servicio.
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true, // Fuerza HTTP Long Polling en lugar de gRPC WebSockets
+});
 
 const auth = getAuth(app);
 const storage = getStorage(app);
