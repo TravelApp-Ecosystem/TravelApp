@@ -52,7 +52,11 @@ async function getEcosystemCatalogs(): Promise<string> {
 // -----------------------------------------------------------------------------
 // HELPER: Google Maps API Distance & Travel Cab Pricing Calculator
 // -----------------------------------------------------------------------------
-async function estimateTravelCabFare(origin: string, destination: string): Promise<{
+async function estimateTravelCabFare(
+  origin: string,
+  destination: string,
+  categoryName: string = 'Estandar'
+): Promise<{
   cost: number;
   distanceKm: number;
   durationMin: number;
@@ -81,28 +85,71 @@ async function estimateTravelCabFare(origin: string, destination: string): Promi
     }
   }
 
-  // Tarifa TravelCab Estándar Base (Cargada dinámicamente)
-  let baseFare = 1200;
-  let pricePerKm = 480;
-  let travelMinutePrice = 120;
-  let minimumFare = 2800;
-
-  try {
-    const activeTariffSnap = await getDoc(doc(db, 'tariffs', 'mu_active'));
-    if (activeTariffSnap.exists()) {
-      const t = activeTariffSnap.data();
-      baseFare = t.baseFare || baseFare;
-      pricePerKm = t.pricePerKm || pricePerKm;
-      travelMinutePrice = t.travelMinutePrice || travelMinutePrice;
-      minimumFare = t.minimumFare || minimumFare;
-      status += '_with_db_tariffs';
-    }
-  } catch (err) {
-    console.warn('[Travis Pricing] Error loading dynamic active tariffs, using default fallbacks:', err);
+  // 1. Obtener la categoría de la base de datos para mapear id/nombre (o usar fallback de la app)
+  let categoryId = 'cat-1';
+  if (categoryName.toLowerCase() === 'premium') {
+    categoryId = 'cat-2';
+  } else if (categoryName.toLowerCase() === 'taxi') {
+    categoryId = 'cat-3';
   }
 
-  const calculated = baseFare + (pricePerKm * distanceKm) + (travelMinutePrice * durationMin);
-  const cost = Math.max(minimumFare, Math.round(calculated));
+  try {
+    const catSnap = await getDocs(collection(db, 'categories'));
+    if (!catSnap.empty) {
+      const matchedCat = catSnap.docs.find(d => {
+        const name = (d.data().name || '').toLowerCase();
+        return name === categoryName.toLowerCase() || d.id === categoryName.toLowerCase();
+      });
+      if (matchedCat) {
+        categoryId = matchedCat.id;
+      }
+    }
+  } catch (err) {
+    console.warn('[Travis Pricing] Error fetching categories:', err);
+  }
+
+  // 2. Buscar si hay una tarifa activa de Firestore para esta categoría
+  let baseFare = 0;
+  let pricePerKm = 0;
+  let travelMinutePrice = 0;
+  let minimumFare = 0;
+  let hasActiveTariff = false;
+
+  try {
+    const q = query(collection(db, 'tariffs'), where('isActive', '==', true));
+    const activeTariffSnap = await getDocs(q);
+    if (!activeTariffSnap.empty) {
+      const matchedTariffDoc = activeTariffSnap.docs.find(d => {
+        const cat = (d.data().category || '').toLowerCase();
+        return cat === categoryId.toLowerCase() || cat === categoryName.toLowerCase();
+      });
+
+      if (matchedTariffDoc) {
+        const t = matchedTariffDoc.data();
+        baseFare = t.baseFare !== undefined ? t.baseFare : 300;
+        pricePerKm = t.pricePerKm !== undefined ? t.pricePerKm : 180;
+        travelMinutePrice = t.travelMinutePrice !== undefined ? t.travelMinutePrice : 50;
+        minimumFare = t.minimumFare !== undefined ? t.minimumFare : 450;
+        hasActiveTariff = true;
+        status += `_with_db_tariff_${matchedTariffDoc.id}`;
+      }
+    }
+  } catch (err) {
+    console.warn('[Travis Pricing] Error loading active tariffs from DB:', err);
+  }
+
+  let cost = 0;
+  if (!hasActiveTariff) {
+    // Si no hay tarifa activa en la BD, calcular en base al fallback de la app y la distancia estimada
+    const normalizedCat = categoryName.toLowerCase();
+    pricePerKm = normalizedCat === 'premium' ? 550 : normalizedCat === 'taxi' ? 450 : 350;
+    baseFare = normalizedCat === 'premium' ? 600 : normalizedCat === 'taxi' ? 450 : 350;
+    cost = Math.round(baseFare + pricePerKm * distanceKm);
+  } else {
+    // Si hay tarifa activa en la BD, usar sus valores reales
+    const calculated = baseFare + (pricePerKm * distanceKm) + (travelMinutePrice * durationMin);
+    cost = Math.max(minimumFare, Math.round(calculated));
+  }
 
   return { cost, distanceKm, durationMin, status };
 }
@@ -137,10 +184,11 @@ export async function processTravisMessage(message: string, history: any[], busi
 \nINSTRUCCIONES CRÍTICAS DE SISTEMA (OCULTAS AL USUARIO):
 1. **Cotización de Viajes (TravelCab)**: Si el usuario te pide cotizar o saber el precio de un traslado de TravelCab entre dos puntos, responde normalmente PERO incluye obligatoriamente en tu respuesta la siguiente etiqueta exacta: [QUOTE: ORIGEN TO DESTINO] reemplazando ORIGEN y DESTINO por las direcciones indicadas. Ejemplo: [QUOTE: Yerba Buena TO Plaza Independencia]. El sistema calculará el precio exacto y reemplazará esta etiqueta.
    * REGLA DE CAPTURA: Para poder cotizar, es obligatorio contar con: Nombre, Teléfono, Origen, Destino y Forma de Pago (Efectivo, Billetera Virtual o Puntos Rewards). Si falta alguno de estos datos, pídelo educadamente y NO generes la cotización hasta tenerlos todos.
-2. **Despacho de Viajes**: Si el cliente confirma de manera explícita que desea reservar/pedir el traslado cotizado (ej: "sí, pedilo", "confirmar traslado"), responde de manera entusiasta e incluye la etiqueta invisible: [DISPATCH: TIPO_SERVICIO | ORIGEN TO DESTINO | PASAJERO | TELEFONO | ASIENTOS | PAGO] usando los datos capturados.
+2. **Despacho de Viajes**: Si el cliente confirma de manera explícita que desea reservar/pedir el traslado cotizado (ej: "sí, pedilo", "confirmar traslado"), responde de manera entusiasta e incluye la etiqueta invisible: [DISPATCH: TIPO_SERVICIO | ORIGEN TO DESTINO | PASAJERO | TELEFONO | ASIENTOS | PAGO | CATEGORIA] usando los datos capturados.
    * TIPO_SERVICIO: Debe ser "MU" (Movilidad Urbana) o "ARC" (Auto Rural Compartido) según lo que solicite el usuario.
    * ASIENTOS: Cantidad de asientos solicitados (ej: 1, 2, 3, 4). Default 1.
    * PAGO: "Efectivo", "Billetera Virtual" o "Puntos Rewards".
+   * CATEGORIA: La categoría del viaje cotizado (ej: "Estandar", "Premium" o "Taxi"). Default "Estandar".
    * REGLA DE DISPOSITIVO MÓVIL: Si el usuario te escribe por WhatsApp desde un celular (o si te pide pedir un viaje desde su celular), indícale amablemente que debe utilizar la aplicación móvil de TravelApp. Bajo ningún concepto le cotices o asignes el viaje por chat en este caso. En su lugar, genera la etiqueta: [REDIRECT: APP_MOVIL].
    * REGLA DE HORARIO OPERATIVO: Actualmente la hora en Tucumán es: ${currentHour}:00 hs. ¿El despacho por IA está habilitado?: ${isDispatchAllowed ? 'SÍ' : 'NO'}. Si está deshabilitado ("NO"), debes explicar amablemente al cliente que en este horario (de 08:00 a 22:00) la asignación la realiza el despachador humano de nuestras sucursales y que aguarde o se contacte allí. NO generes la etiqueta [DISPATCH: ...] bajo ningún concepto si el despacho por IA está deshabilitado.
 3. **Captura de Leads y Datos**: Si el cliente te menciona datos personales suyos (nombre, teléfono, email) o si te solicita cotizar/comprar y ya cuentas con estos datos, debes añadir al final de tu respuesta de forma invisible el siguiente bloque: [DATA: {"name": "...", "phone": "...", "email": "...", "handoff": true/false}].
@@ -232,7 +280,16 @@ export async function processTravisMessage(message: string, history: any[], busi
 
   // Fallback Mock local si la API de Gemini no responde o no está configurada la Key
   if (isMock) {
-    if (message.toLowerCase().includes('cotiz') || message.toLowerCase().includes('cuanto sale') || message.toLowerCase().includes('precio de')) {
+    const queryTerm = message.toLowerCase();
+    const matchedArticle = config.knowledgeBase?.find(k => 
+      queryTerm.includes(k.title.toLowerCase()) || 
+      k.title.toLowerCase().split(/\s+/).some(word => word.length > 3 && queryTerm.includes(word)) ||
+      k.content.toLowerCase().includes(queryTerm)
+    );
+
+    if (matchedArticle) {
+      aiResponse = matchedArticle.content;
+    } else if (message.toLowerCase().includes('cotiz') || message.toLowerCase().includes('cuanto sale') || message.toLowerCase().includes('precio de')) {
       aiResponse = `Por supuesto, puedo darte un estimado. [QUOTE: Yerba Buena TO Plaza Independencia tucuman]. Si deseas confirmarlo, facilitame tu Nombre y Teléfono.`;
     } else if (message.toLowerCase().includes('tour') || message.toLowerCase().includes('mendoza')) {
       aiResponse = `¡Excelente elección! Mendoza Wine Tour Premium (USD 350) incluye visitas guiadas a bodegas boutique del Valle de Uco con almuerzo maridado. ¿Querés que agende tus datos para reservar? [PDF_GENERATE: Experiencia | Mendoza Tour Premium]`;
@@ -248,28 +305,54 @@ export async function processTravisMessage(message: string, history: any[], busi
     const origin = quoteMatch[1].trim();
     const destination = quoteMatch[2].trim();
     
-    // Calcular cotización real con API de Google Maps o mock de respaldo
-    const estimation = await estimateTravelCabFare(origin, destination);
-    
+    // Obtener las categorías de la base de datos o fallbacks
+    let categoriesList: { id: string; name: string }[] = [];
+    try {
+      const catSnap = await getDocs(collection(db, 'categories'));
+      if (!catSnap.empty) {
+        categoriesList = catSnap.docs.map(d => ({ id: d.id, name: d.data().name || d.id }));
+      }
+    } catch (err) {
+      console.warn('[Travis Pricing] Error fetching categories:', err);
+    }
+    if (categoriesList.length === 0) {
+      categoriesList = [
+        { id: 'cat-1', name: 'Estandar' },
+        { id: 'cat-2', name: 'Premium' },
+        { id: 'cat-3', name: 'Taxi' }
+      ];
+    }
+
+    let pricingDetailsText = '';
+    let primaryEstimation: any = null;
+    for (const cat of categoriesList) {
+      const estimation = await estimateTravelCabFare(origin, destination, cat.name);
+      if (!primaryEstimation) {
+        primaryEstimation = estimation;
+      }
+      pricingDetailsText += `• **${cat.name}:** $${estimation.cost.toLocaleString('es-AR')} ARS\n`;
+    }
+
     const pricingText = `\n\n📌 **COTIZACIÓN ESTIMADA DE TRASLADO (TravelCab):**\n` +
                         `• **Desde:** ${origin}\n` +
                         `• **Hasta:** ${destination}\n` +
-                        `• **Distancia aprox:** ${estimation.distanceKm} km (${estimation.durationMin} mins)\n` +
-                        `• **Tarifa Estimada:** $${estimation.cost.toLocaleString('es-AR')} ARS (Pago Efectivo/Billetera virtual)\n` +
+                        `• **Distancia aprox:** ${primaryEstimation.distanceKm} km (${primaryEstimation.durationMin} mins)\n\n` +
+                        `🚕 **Opciones de viaje disponibles:**\n` +
+                        pricingDetailsText +
                         `*(El costo final puede variar por tráfico o paradas intermedias)*`;
     
     aiResponse = aiResponse.replace(quoteRegex, pricingText);
 
-    // Trigger Zapier Webhook para Nueva Cotización en segundo plano
-    if (process.env.ZAPIER_WEBHOOK_NEW_BOOKING) {
+    // Trigger Zapier Webhook para Nueva Cotización en segundo plano con la estimación principal
+    if (process.env.ZAPIER_WEBHOOK_NEW_BOOKING && primaryEstimation) {
       fetch(process.env.ZAPIER_WEBHOOK_NEW_BOOKING, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           origin,
           destination,
-          distanceKm: estimation.distanceKm,
-          cost: estimation.cost,
+          distanceKm: primaryEstimation.distanceKm,
+          cost: primaryEstimation.cost,
           conversationId,
           timestamp: Date.now()
         })
@@ -291,9 +374,10 @@ export async function processTravisMessage(message: string, history: any[], busi
       const passengerPhone = rawParams[3] || 'No provisto';
       const seats = rawParams[4] ? parseInt(rawParams[4], 10) || 1 : 1;
       const paymentMethod = rawParams[5] || 'Efectivo';
+      const categoryName = rawParams[6] || 'Estandar';
 
       try {
-        const estimation = await estimateTravelCabFare(origin, destination);
+        const estimation = await estimateTravelCabFare(origin, destination, categoryName);
         let finalPrice = estimation.cost;
         if (serviceType === 'ARC') {
           finalPrice = estimation.cost * seats;
@@ -312,7 +396,7 @@ export async function processTravisMessage(message: string, history: any[], busi
           seats,
           paymentMethod,
           paymentStatus: paymentMethod === 'Efectivo' ? 'pending' : 'awaiting_payment',
-          category: 'estandar',
+          category: categoryName.toLowerCase(),
           createdAt: Date.now(),
           source: 'travis_ai_dispatch'
         });
@@ -328,6 +412,7 @@ export async function processTravisMessage(message: string, history: any[], busi
         const confirmationText = `\n\n🚕 **TRASLADO PROGRAMADO Y DESPACHADO:**\n` +
                                  `• **Código de Viaje:** ${tripRef.id}\n` +
                                  `• **Servicio:** ${serviceLabel}${seatLabel}\n` +
+                                 `• **Categoría:** ${categoryName}\n` +
                                  `• **Origen:** ${origin}\n` +
                                  `• **Destino:** ${destination}\n` +
                                  `• **Forma de Pago:** ${paymentLabel}\n` +

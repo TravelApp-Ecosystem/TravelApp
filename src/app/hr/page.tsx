@@ -141,12 +141,81 @@ export default function HRPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
+  const [partners, setPartners] = useState<DriverPartner[]>([]);
+  const [partnersLoading, setPartnersLoading] = useState(true);
+
   // Job applications state
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
   const [appSearch, setAppSearch] = useState('');
   const [appFilterStatus, setAppFilterStatus] = useState<string>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Real-time listener for drivers
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, 'drivers'),
+      (snapshot) => {
+        if (snapshot.empty) {
+          setPartners(MOCK_PARTNERS);
+        } else {
+          const list: DriverPartner[] = snapshot.docs.map((d) => {
+            const data = d.data();
+            const fullName = data.name || data.displayName || 'Conductor';
+            const parts = fullName.split(' ');
+            const fName = data.firstName || parts[0] || 'Conductor';
+            const lName = data.lastName || parts.slice(1).join(' ') || '';
+            const statusVal = data.status || (data.isOnline ? 'Activo' : 'En Revisión');
+
+            return {
+              id: d.id,
+              createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || Date.now()),
+              updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : (data.updatedAt || Date.now()),
+              firstName: fName,
+              lastName: lName,
+              dob: data.dob || '1990-01-01',
+              email: data.email || 'correo@travelapp.ar',
+              phone: data.phone || '+54 381 000-0000',
+              address: data.address || { street: 'Sin Domicilio', number: '', city: '', province: 'Tucumán', postalCode: '' },
+              taxInfo: data.taxInfo || { taxIdType: 'CUIL', taxIdNumber: data.taxIdNumber || '' },
+              bankInfo: data.bankInfo || { cbuCvu: data.cbuCvu || '', alias: data.alias || '', accountHolder: fullName },
+              vehicle: data.activeVehicle ? {
+                id: data.activeVehicle.id || 'VH-active',
+                make: data.activeVehicle.brand?.split(' ')[0] || 'Vehículo',
+                model: data.activeVehicle.brand?.split(' ').slice(1).join(' ') || '',
+                year: Number(data.activeVehicle.year) || 2020,
+                color: data.activeVehicle.color || '',
+                licensePlate: data.activeVehicle.plate || '',
+                sutrappa: data.activeVehicle.sutrappa || { isActive: false }
+              } : {
+                id: 'VH-none',
+                make: 'Sin Vehículo',
+                model: '',
+                year: 2020,
+                color: '',
+                licensePlate: '',
+                sutrappa: { isActive: false }
+              },
+              status: statusVal,
+              wallet: data.wallet || {
+                cashBalance: data.walletBalance || 0,
+                pointsBalance: data.rewardsPoints || 0,
+                transactions: []
+              }
+            } as DriverPartner;
+          });
+          setPartners(list);
+        }
+        setPartnersLoading(false);
+      },
+      (err) => {
+        console.error('Error loading drivers:', err);
+        setPartners(MOCK_PARTNERS);
+        setPartnersLoading(false);
+      }
+    );
+    return () => unsub();
+  }, []);
 
   // Real-time listener for job_applications
   useEffect(() => {
@@ -177,17 +246,17 @@ export default function HRPage() {
     }
   };
 
-  const filtered = MOCK_PARTNERS.filter(p => {
+  const filtered = partners.filter(p => {
     const matchName = `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || p.status === filterStatus;
     return matchName && matchStatus;
   });
 
   const counts = {
-    total: MOCK_PARTNERS.length,
-    active: MOCK_PARTNERS.filter(p => p.status === 'Activo').length,
-    pending: MOCK_PARTNERS.filter(p => p.status === 'Pendiente Documentación').length,
-    suspended: MOCK_PARTNERS.filter(p => p.status === 'Suspendido').length,
+    total: partners.length,
+    active: partners.filter(p => p.status === 'Activo').length,
+    pending: partners.filter(p => p.status === 'Pendiente Documentación').length,
+    suspended: partners.filter(p => p.status === 'Suspendido').length,
   };
 
   const filteredApps = applications.filter(a => {
@@ -365,7 +434,7 @@ export default function HRPage() {
               </table>
             </div>
             <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
-              <p className="text-xs text-slate-400">Mostrando {filtered.length} de {MOCK_PARTNERS.length} socios registrados</p>
+               <p className="text-xs text-slate-400">Mostrando {filtered.length} de {partners.length} socios registrados</p>
             </div>
           </div>
         </>

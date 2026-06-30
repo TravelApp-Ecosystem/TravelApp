@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, User, Car, FileText, Wallet,
@@ -8,6 +8,8 @@ import {
   Phone, Mail, MapPin, CreditCard, Shield, Star
 } from 'lucide-react';
 import { DriverPartner, PartnerStatus } from '@/types/partners';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // ── Mock Partner Data ─────────────────────────────────────────
 const MOCK_PARTNER: DriverPartner = {
@@ -105,8 +107,69 @@ const TABS = [
 // ── Main Component ────────────────────────────────────────────
 export default function PartnerProfilePage({ params }: { params: { partnerId: string } }) {
   const [activeTab, setActiveTab] = useState('personal');
-  const partner = MOCK_PARTNER; // In production: fetch by params.partnerId
-  const statusCfg = statusConfig[partner.status];
+  const [partner, setPartner] = useState<DriverPartner>(MOCK_PARTNER);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'drivers', params.partnerId), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const fullName = data.name || data.displayName || 'Conductor';
+        const parts = fullName.split(' ');
+        const fName = data.firstName || parts[0] || 'Conductor';
+        const lName = data.lastName || parts.slice(1).join(' ') || '';
+        const statusVal = data.status || (data.isOnline ? 'Activo' : 'En Revisión');
+
+        setPartner({
+          id: snap.id,
+          createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || Date.now()),
+          updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : (data.updatedAt || Date.now()),
+          firstName: fName,
+          lastName: lName,
+          dob: data.dob || '1990-01-01',
+          email: data.email || 'correo@travelapp.ar',
+          phone: data.phone || '+54 381 000-0000',
+          address: data.address || { street: 'Sin Domicilio', number: '', city: '', province: 'Tucumán', postalCode: '' },
+          taxInfo: data.taxInfo || { taxIdType: 'CUIL', taxIdNumber: data.taxIdNumber || '' },
+          bankInfo: data.bankInfo || { cbuCvu: data.cbuCvu || '', alias: data.alias || '', accountHolder: fullName },
+          vehicle: data.activeVehicle ? {
+            id: data.activeVehicle.id || 'VH-active',
+            make: data.activeVehicle.brand?.split(' ')[0] || 'Vehículo',
+            model: data.activeVehicle.brand?.split(' ').slice(1).join(' ') || '',
+            year: Number(data.activeVehicle.year) || 2020,
+            color: data.activeVehicle.color || '',
+            licensePlate: data.activeVehicle.plate || '',
+            sutrappa: data.activeVehicle.sutrappa || { isActive: false }
+          } : {
+            id: 'VH-none',
+            make: 'Sin Vehículo',
+            model: '',
+            year: 2020,
+            color: '',
+            licensePlate: '',
+            sutrappa: { isActive: false }
+          },
+          status: statusVal,
+          wallet: data.wallet || {
+            cashBalance: data.walletBalance || 0,
+            pointsBalance: data.rewardsPoints || 0,
+            transactions: []
+          }
+        } as DriverPartner);
+      } else {
+        if (params.partnerId === 'DRV-001' || params.partnerId === 'carlos-mamani') {
+          setPartner(MOCK_PARTNER);
+        }
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error loading partner detail:", error);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [params.partnerId]);
+
+  const statusCfg = statusConfig[partner.status] ?? { color: 'bg-slate-100 text-slate-700', icon: <AlertCircle className="h-4 w-4" /> };
 
   return (
     <div className="flex h-full w-full flex-col bg-slate-50 p-6 gap-6">

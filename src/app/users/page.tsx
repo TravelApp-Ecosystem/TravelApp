@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users, Search, Eye, Star, ChevronRight,
   Phone, Mail, Shield, Crown, Filter
 } from 'lucide-react';
 import { Lead, CustomerLevel } from '@/types/crm';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // ── Mock Customers ────────────────────────────────────────────
 const MOCK_CUSTOMERS: Lead[] = [
@@ -191,16 +193,62 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [selected, setSelected] = useState<Lead | null>(null);
+  const [users, setUsers] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_CUSTOMERS.filter(c => {
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
+      if (snapshot.empty) {
+        setUsers(MOCK_CUSTOMERS);
+      } else {
+        const list: Lead[] = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            customerName: data.customerName || data.displayName || 'Pasajero Sin Nombre',
+            phone: data.phone || '',
+            email: data.email || '',
+            status: data.status || 'Ganados/Perdidos',
+            customerStatus: data.customerStatus || 'Cliente',
+            customerLevel: data.customerLevel || 1,
+            origin: data.origin || 'App Móvil',
+            businessUnit: data.businessUnit || 'TravelCab',
+            chatHistory: data.chatHistory || [],
+            loyaltyPoints: data.rewardsPoints || data.loyaltyPoints || 0,
+            wallet: data.wallet || {
+              pointsBalance: data.rewardsPoints || 0,
+              cashCredit: data.walletBalance || 0,
+              transactions: []
+            },
+            dob: data.dob || '',
+            occupation: data.occupation || '',
+            document: data.document || undefined,
+            address: data.address || undefined,
+            emergencyContact: data.emergencyContact || undefined,
+            allergies: data.allergies || '',
+            dietaryRestrictions: data.dietaryRestrictions || '',
+          } as Lead;
+        });
+        setUsers(list);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching real users:", error);
+      setUsers(MOCK_CUSTOMERS);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const filtered = users.filter(c => {
     const matchName = c.customerName.toLowerCase().includes(search.toLowerCase());
     const matchLevel = filterLevel === 'all' || String(c.customerLevel) === filterLevel;
     return matchName && matchLevel;
   });
 
-  const vipCount = MOCK_CUSTOMERS.filter(c => c.customerLevel === 2).length;
-  const clientCount = MOCK_CUSTOMERS.filter(c => c.customerStatus === 'Cliente').length;
-  const totalPoints = MOCK_CUSTOMERS.reduce((a, c) => a + (c.loyaltyPoints || 0), 0);
+  const vipCount = users.filter(c => c.customerLevel === 2).length;
+  const clientCount = users.filter(c => c.customerStatus === 'Cliente').length;
+  const totalPoints = users.reduce((a, c) => a + (c.loyaltyPoints || 0), 0);
 
   return (
     <div className="flex h-full w-full flex-col bg-slate-50 p-6 gap-6">
@@ -216,7 +264,7 @@ export default function UsersPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: 'Total Usuarios', value: MOCK_CUSTOMERS.length, color: 'text-tech-blue' },
+          { label: 'Total Usuarios', value: users.length, color: 'text-tech-blue' },
           { label: 'Clientes Activos', value: clientCount, color: 'text-emerald-600' },
           { label: 'VIP Nivel 2', value: vipCount, color: 'text-amber-600' },
           { label: 'Puntos Totales', value: totalPoints.toLocaleString(), color: 'text-blue-600' },
@@ -305,7 +353,7 @@ export default function UsersPage() {
           </table>
         </div>
         <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
-          <p className="text-xs text-slate-400">Mostrando {filtered.length} de {MOCK_CUSTOMERS.length} usuarios</p>
+          <p className="text-xs text-slate-400">Mostrando {filtered.length} de {users.length} usuarios</p>
         </div>
       </div>
 

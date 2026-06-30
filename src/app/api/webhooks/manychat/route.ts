@@ -118,7 +118,6 @@ export async function POST(req: NextRequest) {
       subscriber_id: subscriberId,
       first_name: firstName,
       last_name: lastName,
-      channel: rawChannel,
       message: userMessage,
       phone,
       email,
@@ -126,6 +125,20 @@ export async function POST(req: NextRequest) {
 
     if (!subscriberId || !userMessage) {
       return NextResponse.json({ error: 'Missing subscriber_id or message' }, { status: 400 });
+    }
+
+    // Auto-detect channel based on payload fields
+    let rawChannel = body.channel;
+    if (!rawChannel || rawChannel.trim() === '') {
+      if (body.whatsapp_id || body.phone) {
+        rawChannel = 'whatsapp';
+      } else if (body.instagram_username || body.instagram_id) {
+        rawChannel = 'instagram';
+      } else if (body.facebook_id || body.messenger_id) {
+        rawChannel = 'messenger';
+      } else {
+        rawChannel = 'web';
+      }
     }
 
     const customerName = [firstName, lastName].filter(Boolean).join(' ') || 'Usuario';
@@ -206,6 +219,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    let travisReply = '';
+
     // 2. Guardar el mensaje del cliente en Firestore
     const messageData: Omit<Message, 'id'> = {
       conversationId,
@@ -236,9 +251,10 @@ export async function POST(req: NextRequest) {
             content: m.content,
           }));
 
-        const travisReply = await callTravis(userMessage, history, businessUnit, conversationId);
+        const reply = await callTravis(userMessage, history, businessUnit, conversationId);
         
-        if (travisReply) {
+        if (reply) {
+          travisReply = reply;
           // Guardar respuesta de Travis en Firestore
           await addDoc(collection(db, `conversations/${conversationId}/messages`), {
             conversationId,
@@ -263,6 +279,7 @@ export async function POST(req: NextRequest) {
       conversationId,
       isNewConversation,
       businessUnit,
+      response: travisReply,
     });
 
   } catch (error: any) {

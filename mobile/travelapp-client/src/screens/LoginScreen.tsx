@@ -3,7 +3,8 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView, Image,
 } from 'react-native';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo } from '../components/BrandLogos';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,10 +50,23 @@ export default function LoginScreen() {
           return Alert.alert('Campos requeridos', 'Completá tu nombre y teléfono.');
         }
         const cred = await auth.createUserWithEmailAndPassword(email, password);
-        await cred.user?.updateProfile({
-          displayName: name,
-        });
-        // Podríamos guardar el teléfono en Firestore en la colección de pasajeros, pero auth es suficiente para el demo
+        if (cred.user) {
+          await cred.user.updateProfile({
+            displayName: name,
+          });
+          // Guardamos el documento del usuario en Firestore para sincronización con el Dashboard
+          await setDoc(doc(db, 'users', cred.user.uid), {
+            customerName: name,
+            email: email,
+            phone: phone,
+            customerLevel: 1,
+            customerStatus: 'Cliente',
+            rewardsPoints: 0,
+            walletBalance: 0,
+            hasPurchasedOrganizedTrip: false,
+            createdAt: Timestamp.now()
+          });
+        }
       }
     } catch (err: any) {
       const msg = err.code === 'auth/invalid-credential' ? 'Email o contraseña incorrectos.'

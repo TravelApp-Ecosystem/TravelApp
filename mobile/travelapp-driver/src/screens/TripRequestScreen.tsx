@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, Alert, ActivityIndicator, Vibration,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -36,12 +36,11 @@ export default function TripRequestScreen() {
         if (snap.exists()) {
           const soundUrl = snap.data()?.notificationSoundUrl;
           if (soundUrl) {
-            const { sound } = await Audio.Sound.createAsync(
-              { uri: soundUrl },
-              { shouldPlay: true, isLooping: true }
-            );
-            soundObj = sound;
-            soundRef.current = sound;
+            const player = createAudioPlayer(soundUrl);
+            player.loop = true;
+            player.play();
+            soundObj = player;
+            soundRef.current = player;
           }
         }
       } catch (err) {
@@ -55,8 +54,8 @@ export default function TripRequestScreen() {
       isSubscribed = false;
       Vibration.cancel();
       if (soundObj) {
-        soundObj.stopAsync().catch(() => {});
-        soundObj.unloadAsync().catch(() => {});
+        soundObj.pause();
+        soundObj.release();
       }
     };
   }, []);

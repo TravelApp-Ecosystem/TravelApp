@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Check, User, DollarSign, Car, FileText, Camera, Upload, AlertTriangle } from 'lucide-react';
 import { ARGENTINA_PROVINCES } from '@/types/partners';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // ── Types ─────────────────────────────────────────────────────
 type TaxType = 'CUIL' | 'CUIT';
@@ -312,11 +314,70 @@ export default function NewPartnerPage() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormData>(INITIAL);
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const set = (k: keyof FormData, v: string) => setData(prev => ({ ...prev, [k]: v }));
   const setB = (k: keyof FormData, v: boolean) => setData(prev => ({ ...prev, [k]: v }));
 
-  const handleNext = () => { if (step < 3) setStep(s => s + 1); else setSubmitted(true); };
+  const handleNext = async () => {
+    if (step < 3) {
+      setStep(s => s + 1);
+    } else {
+      setSaving(true);
+      try {
+        await addDoc(collection(db, 'drivers'), {
+          name: `${data.firstName} ${data.lastName}`,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          dob: data.dob,
+          address: {
+            street: data.street,
+            number: data.streetNumber,
+            floor: data.floor || '',
+            apartment: data.apartment || '',
+            city: data.city,
+            province: data.province,
+            postalCode: data.postalCode
+          },
+          taxInfo: {
+            taxIdType: data.taxType,
+            taxIdNumber: data.taxIdNumber,
+            registrationType: data.registrationType
+          },
+          bankInfo: {
+            cbuCvu: data.cbuCvu,
+            alias: data.alias,
+            accountHolder: data.accountHolder
+          },
+          activeVehicle: {
+            brand: `${data.make} ${data.model}`,
+            year: Number(data.year) || 2020,
+            color: data.color,
+            plate: data.licensePlate.toUpperCase(),
+            sutrappa: {
+              isActive: data.hasSutrappa,
+              licenseNumber: data.sutrappaLicense || '',
+              holder: data.sutrappaHolder || ''
+            }
+          },
+          status: 'En Revisión',
+          walletBalance: 0,
+          rewardsPoints: 0,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        });
+        setSubmitted(true);
+      } catch (err) {
+        console.error("Error saving manual driver partner:", err);
+        alert("Ocurrió un error al guardar el socio. Por favor intente de nuevo.");
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
+
   const handleBack = () => { if (step > 0) setStep(s => s - 1); };
 
   if (submitted) {
@@ -377,7 +438,7 @@ export default function NewPartnerPage() {
           <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
             <button
               onClick={handleBack}
-              disabled={step === 0}
+              disabled={step === 0 || saving}
               className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm disabled:opacity-30 hover:bg-slate-50 transition-all"
             >
               <ArrowLeft className="h-4 w-4" /> Anterior
@@ -387,10 +448,11 @@ export default function NewPartnerPage() {
 
             <button
               onClick={handleNext}
-              className="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-bold text-white shadow-md transition-all hover:brightness-110 active:scale-95"
+              disabled={saving}
+              className="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-bold text-white shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
               style={{ backgroundColor: step === 3 ? '#059669' : '#ff6b00' }}
             >
-              {step === 3 ? (<><Check className="h-4 w-4" /> Guardar Conductor</>) : (<>Siguiente <ArrowRight className="h-4 w-4" /></>)}
+              {saving ? 'Guardando...' : step === 3 ? (<><Check className="h-4 w-4" /> Guardar Conductor</>) : (<>Siguiente <ArrowRight className="h-4 w-4" /></>)}
             </button>
           </div>
         </div>
