@@ -23,33 +23,17 @@ service cloud.firestore {
 
     // Colección: Usuarios (Pasajeros y Cuentas Generales)
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // Colección: Choferes / Socios Conductores
     match /drivers/{driverId} {
-      // Cualquier usuario autenticado puede ver choferes activos (necesario para el mapa)
-      allow read: if isAuthenticated();
-      // Solo el chofer propietario o un admin puede editar su perfil/estado
-      allow write: if isOwner(driverId) || isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // Colección: Viajes / Traslados (Trips)
     match /trips/{tripId} {
-      // Permitir creación a cualquier pasajero autenticado
-      allow create: if isAuthenticated();
-      // Permitir lectura a los involucrados en el viaje (pasajero, chofer asignado) o administradores
-      allow read: if isAuthenticated() && (
-        resource.data.passengerId == request.auth.uid ||
-        resource.data.driverId == request.auth.uid ||
-        isAdmin()
-      );
-      // Permitir actualizar campos si eres el pasajero o el chofer del viaje
-      allow update, delete: if isAuthenticated() && (
-        resource.data.passengerId == request.auth.uid ||
-        resource.data.driverId == request.auth.uid ||
-        isAdmin()
-      );
+      allow read, write: if isAuthenticated();
     }
 
     // Colección: Tarifas y Sucursales
@@ -88,18 +72,16 @@ service cloud.firestore {
 
     // Colección: Leads de CRM capturados por Travis
     match /leads/{leadId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // Colección: Conversaciones de Chat (Travis y Omnicanal)
     match /conversations/{convId} {
-      allow read: if isAuthenticated() && (resource.data.customerId == request.auth.uid || isAdmin());
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated();
     }
     
     match /conversations/{convId}/messages/{msgId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated();
     }
   }
 }
