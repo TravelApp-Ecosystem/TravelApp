@@ -4,8 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { collection, doc, getDoc, getDocs, query, where, limit, addDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { serverGetDoc, serverGetDocs, serverAddDoc, serverUpdateDoc } from '@/lib/firestore-server';
 import { TravisConfig, DEFAULT_TRAVIS_CONFIG } from '@/types/messaging';
 
 // -----------------------------------------------------------------------------
@@ -13,8 +12,8 @@ import { TravisConfig, DEFAULT_TRAVIS_CONFIG } from '@/types/messaging';
 // -----------------------------------------------------------------------------
 async function getTravisConfig(): Promise<TravisConfig> {
   try {
-    const configDoc = await getDoc(doc(db, 'travisConfig', 'main'));
-    if (configDoc.exists()) {
+    const configDoc = await serverGetDoc('travisConfig', 'main');
+    if (configDoc.exists) {
       return configDoc.data() as TravisConfig;
     }
   } catch { /* fallback */ }
@@ -25,7 +24,7 @@ async function getEcosystemCatalogs(): Promise<string> {
   let catalogContext = '';
   try {
     // 1. Experiences (Tours)
-    const expSnap = await getDocs(query(collection(db, 'experiences')));
+    const expSnap = await serverGetDocs('experiences');
     if (!expSnap.empty) {
       catalogContext += '\n### CATÁLOGO DE EXPERIENCIAS (TOURS) ACTIVAS:\n';
       expSnap.docs.forEach(d => {
@@ -35,7 +34,7 @@ async function getEcosystemCatalogs(): Promise<string> {
     }
 
     // 2. Rewards (Loyalty items)
-    const rewardsSnap = await getDocs(query(collection(db, 'reward_items')));
+    const rewardsSnap = await serverGetDocs('reward_items');
     if (!rewardsSnap.empty) {
       catalogContext += '\n### PROGRAMA DE PREMIOS Y BENEFICIOS REWARDS:\n';
       rewardsSnap.docs.forEach(d => {
@@ -94,7 +93,7 @@ async function estimateTravelCabFare(
   }
 
   try {
-    const catSnap = await getDocs(collection(db, 'categories'));
+    const catSnap = await serverGetDocs('categories');
     if (!catSnap.empty) {
       const matchedCat = catSnap.docs.find(d => {
         const name = (d.data().name || '').toLowerCase();
@@ -116,8 +115,9 @@ async function estimateTravelCabFare(
   let hasActiveTariff = false;
 
   try {
-    const q = query(collection(db, 'tariffs'), where('isActive', '==', true));
-    const activeTariffSnap = await getDocs(q);
+    const activeTariffSnap = await serverGetDocs('tariffs', {
+      where: [['isActive', '==', true]]
+    });
     if (!activeTariffSnap.empty) {
       const matchedTariffDoc = activeTariffSnap.docs.find(d => {
         const cat = (d.data().category || '').toLowerCase();
@@ -204,7 +204,7 @@ export async function processTravisMessage(message: string, history: any[], busi
 
   if (needsHandoffDirect && conversationId) {
     // Registrar handoff en la conversación
-    await updateDoc(doc(db, 'conversations', conversationId), {
+    await serverUpdateDoc('conversations', conversationId, {
       status: 'pending',
       lastMessage: 'Handoff escalado por trigger de texto',
       lastMessageAt: Date.now()
@@ -308,7 +308,7 @@ export async function processTravisMessage(message: string, history: any[], busi
     // Obtener las categorías de la base de datos o fallbacks
     let categoriesList: { id: string; name: string }[] = [];
     try {
-      const catSnap = await getDocs(collection(db, 'categories'));
+      const catSnap = await serverGetDocs('categories');
       if (!catSnap.empty) {
         categoriesList = catSnap.docs.map(d => ({ id: d.id, name: d.data().name || d.id }));
       }
@@ -383,7 +383,7 @@ export async function processTravisMessage(message: string, history: any[], busi
           finalPrice = estimation.cost * seats;
         }
         
-        const tripRef = await addDoc(collection(db, 'trips'), {
+        const tripRef = await serverAddDoc('trips', {
           passengerName,
           passengerPhone,
           origin,
@@ -467,7 +467,6 @@ export async function processTravisMessage(message: string, history: any[], busi
 
   if (hasLeadData || executionHandoff) {
     try {
-      const leadsRef = collection(db, 'leads');
       let leadId = null;
 
       const leadPayload = {
@@ -485,17 +484,19 @@ export async function processTravisMessage(message: string, history: any[], busi
 
       // Buscar duplicados por teléfono
       if (parsedData.phone) {
-        const q = query(leadsRef, where('phone', '==', parsedData.phone), limit(1));
-        const snap = await getDocs(q);
+        const snap = await serverGetDocs('leads', {
+          where: [['phone', '==', parsedData.phone]],
+          limit: 1
+        });
         if (!snap.empty) {
           leadId = snap.docs[0].id;
-          await updateDoc(doc(db, 'leads', leadId), { ...leadPayload, updatedAt: Date.now() });
+          await serverUpdateDoc('leads', leadId, { ...leadPayload, updatedAt: Date.now() });
         }
       }
 
       // Si no existe, crear uno nuevo
       if (!leadId) {
-        const newDoc = await addDoc(leadsRef, {
+        const newDoc = await serverAddDoc('leads', {
           ...leadPayload,
           createdAt: Date.now(),
           updatedAt: Date.now()
@@ -514,7 +515,7 @@ export async function processTravisMessage(message: string, history: any[], busi
 
       // Si es handoff, actualizar estado de la conversación en Firestore
       if (executionHandoff && conversationId) {
-        await updateDoc(doc(db, 'conversations', conversationId), {
+        await serverUpdateDoc('conversations', conversationId, {
           status: 'pending',
           lastMessage: 'Handoff activado por IA',
           lastMessageAt: Date.now()

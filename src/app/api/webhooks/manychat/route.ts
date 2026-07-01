@@ -5,8 +5,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { collection, addDoc, query, where, getDocs, doc, updateDoc, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { serverGetDoc, serverGetDocs, serverAddDoc, serverUpdateDoc } from '@/lib/firestore-server';
 import { Conversation, Message, MessageChannel, ConversationStatus } from '@/types/messaging';
 import { processTravisMessage } from '../../travis/chat/route';
 
@@ -146,14 +145,13 @@ export async function POST(req: NextRequest) {
     const businessUnit = detectBusinessUnit(userMessage);
 
     // 1. Buscar conversación existente para este suscriptor de ManyChat
-    const convsRef = collection(db, 'conversations');
-    const existingQuery = query(
-      convsRef,
-      where('manyChatSubscriberId', '==', subscriberId),
-      where('status', '!=', 'closed'),
-      limit(1)
-    );
-    const existingSnap = await getDocs(existingQuery);
+    const existingSnap = await serverGetDocs('conversations', {
+      where: [
+        ['manyChatSubscriberId', '==', subscriberId],
+        ['status', '!=', 'closed']
+      ],
+      limit: 1
+    });
 
     let conversationId: string;
     let conversationStatus: ConversationStatus;
@@ -166,7 +164,7 @@ export async function POST(req: NextRequest) {
       conversationStatus = existingDoc.data().status as ConversationStatus;
       
       // Actualizar lastMessage y timestamp
-      await updateDoc(doc(db, 'conversations', conversationId), {
+      await serverUpdateDoc('conversations', conversationId, {
         lastMessage: userMessage.substring(0, 100),
         lastMessageAt: Date.now(),
         unreadCount: (existingDoc.data().unreadCount || 0) + 1,
@@ -195,27 +193,30 @@ export async function POST(req: NextRequest) {
         },
         createdAt: Date.now(),
       };
-      const newDoc = await addDoc(convsRef, newConversation);
+      const newDoc = await serverAddDoc('conversations', newConversation);
       conversationId = newDoc.id;
 
       // También crear/actualizar lead en CRM
-      const leadsRef = collection(db, 'leads');
-      const existingLeadQuery = query(leadsRef, where('phone', '==', phone || ''), limit(1));
-      const existingLeadSnap = await getDocs(existingLeadQuery);
-      if (existingLeadSnap.empty && (phone || email)) {
-        await addDoc(leadsRef, {
-          customerName,
-          phone: phone || '',
-          email: email || '',
-          origin: channel === 'whatsapp' ? 'WhatsApp' : channel === 'instagram' ? 'IG' : channel === 'messenger' ? 'Messenger' : 'Web',
-          status: 'Nuevos',
-          customerStatus: 'Prospecto',
-          customerLevel: 1,
-          businessUnit,
-          chatHistory: [{ sender: 'Client', message: userMessage, timestamp: Date.now() }],
-          manyChatSubscriberId: subscriberId,
-          conversationId,
+      if (phone) {
+        const existingLeadSnap = await serverGetDocs('leads', {
+          where: [['phone', '==', phone]],
+          limit: 1
         });
+        if (existingLeadSnap.empty) {
+          await serverAddDoc('leads', {
+            customerName,
+            phone: phone || '',
+            email: email || '',
+            origin: channel === 'whatsapp' ? 'WhatsApp' : channel === 'instagram' ? 'IG' : channel === 'messenger' ? 'Messenger' : 'Web',
+            status: 'Nuevos',
+            customerStatus: 'Prospecto',
+            customerLevel: 1,
+            businessUnit,
+            chatHistory: [{ sender: 'Client', message: userMessage, timestamp: Date.now() }],
+            manyChatSubscriberId: subscriberId,
+            conversationId,
+          });
+        }
       }
     }
 
@@ -230,19 +231,16 @@ export async function POST(req: NextRequest) {
       type: 'text',
       channel,
     };
-    await addDoc(collection(db, `conversations/${conversationId}/messages`), messageData);
+    await serverAddDoc(`conversations/${conversationId}/messages`, messageData);
 
     // 3. Si el bot está activo y no hay operador, llamar a Travis (protegido contra fallos)
     if (conversationStatus === 'bot') {
       try {
         // Obtener historial reciente para dar contexto a Travis
-        const historySnap = await getDocs(
-          query(
-            collection(db, `conversations/${conversationId}/messages`),
-            orderBy('timestamp', 'desc'),
-            limit(10)
-          )
-        );
+        const historySnap = await serverGetDocs(`conversations/${conversationId}/messages`, {
+          orderBy: [['timestamp', 'desc']],
+          limit: 10
+        });
         const history = historySnap.docs
           .map(d => d.data())
           .reverse()
@@ -256,7 +254,7 @@ export async function POST(req: NextRequest) {
         if (reply) {
           travisReply = reply;
           // Guardar respuesta de Travis en Firestore
-          await addDoc(collection(db, `conversations/${conversationId}/messages`), {
+          await serverAddDoc(`conversations/${conversationId}/messages`, {
             conversationId,
             sender: { id: 'travis', name: 'Travis', role: 'travis' },
             content: travisReply,
@@ -265,8 +263,8 @@ export async function POST(req: NextRequest) {
             channel,
           });
 
-          // Enviar via ManyChat
-          await sendManyChatReply(subscriberId, travisReply);
+          // Enviar via ManyChat (deshabilitado para evitar loops/timeouts, ManyChat lee el JSON de respuesta directamente)
+          // await sendManyChatReply(subscriberId, travisReply);
         }
       } catch (travisError) {
         console.error('[ManyChat Webhook] Error al llamar a Travis:', travisError);
