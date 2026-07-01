@@ -1,201 +1,324 @@
-import { db as clientDb } from './firebase';
-import { 
-  collection as clientCollection, 
-  doc as clientDoc, 
-  getDoc as clientGetDoc, 
-  getDocs as clientGetDocs, 
-  addDoc as clientAddDoc, 
-  updateDoc as clientUpdateDoc, 
-  setDoc as clientSetDoc,
-  query as clientQuery,
-  where as clientWhere,
-  orderBy as clientOrderBy,
-  limit as clientLimit,
-  QueryConstraint
-} from 'firebase/firestore';
+// =============================================================================
+// FIRESTORE SERVER — Lightweight Serverless-Safe REST Client
+// Bypasses Client Web SDK connection bugs (gRPC timeouts, offline caches)
+// and Google Cloud Service Account restrictions on Vercel.
+// =============================================================================
 
-import { signInAnonymously, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from './firebase';
+let cachedToken: string | null = null;
+let tokenExpiry: number = 0;
 
-let adminDb: any = null;
-let authPromise: Promise<any> | null = null;
-
-const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
-if (serviceAccountVar && typeof window === 'undefined') {
-  try {
-    const admin = require('firebase-admin');
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(JSON.parse(serviceAccountVar))
-      });
-    }
-    adminDb = admin.firestore();
-  } catch (error) {
-    console.error('Error initializing firebase-admin:', error);
+// 1. Get Firebase Auth ID Token via Auth REST API (Anonymous Login)
+async function getAuthToken(): Promise<string> {
+  const now = Date.now();
+  if (cachedToken && now < tokenExpiry) {
+    return cachedToken;
   }
+
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('NEXT_PUBLIC_FIREBASE_API_KEY is not defined in environment variables');
+  }
+
+  const authUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
+  const res = await fetch(authUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ returnSecureToken: true }),
+    signal: AbortSignal.timeout(5000),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Firebase REST Auth failed: ${res.status} ${await res.text()}`);
+  }
+
+  const data = await res.json();
+  cachedToken = data.idToken;
+  // Expire 2 minutes early to avoid edge cases
+  tokenExpiry = now + (parseInt(data.expiresIn, 10) * 1000) - 120000;
+  return cachedToken!;
 }
 
-async function ensureAuthenticated() {
-  if (typeof window !== 'undefined') return; // Solo en el servidor
-  if (adminDb) return; // Si el SDK Admin está activo, no necesitamos autenticación de cliente
-  if (auth.currentUser) return; // Ya está autenticado
-  
-  if (authPromise) return authPromise;
-
-  authPromise = (async () => {
-    // 1. Intentar iniciar sesión con usuario bot si las credenciales están configuradas
-    const botEmail = process.env.TRAVIS_BOT_EMAIL;
-    const botPassword = process.env.TRAVIS_BOT_PASSWORD;
-    if (botEmail && botPassword) {
-      try {
-        await signInWithEmailAndPassword(auth, botEmail, botPassword);
-        console.log('[Auth] Servidor autenticado exitosamente como bot');
-        return;
-      } catch (err) {
-        console.error('[Auth] Error al iniciar sesión como bot:', err);
-      }
-    }
-
-    // 2. Fallback: Intentar inicio de sesión anónimo
-    try {
-      await signInAnonymously(auth);
-      console.log('[Auth] Servidor autenticado anónimamente');
-    } catch (err) {
-      console.error('[Auth] Error de inicio de sesión anónimo en el servidor:', err);
-    }
-  })();
-
-  return authPromise;
+// 2. Map Firestore REST Value Types to Normal JSON
+function mapRestValue(valObj: any): any {
+  if (!valObj) return null;
+  if ('stringValue' in valObj) return valObj.stringValue;
+  if ('integerValue' in valObj) return parseInt(valObj.integerValue, 10);
+  if ('doubleValue' in valObj) return parseFloat(valObj.doubleValue);
+  if ('booleanValue' in valObj) return valObj.booleanValue;
+  if ('nullValue' in valObj) return null;
+  if ('arrayValue' in valObj) {
+    const values = valObj.arrayValue.values || [];
+    return values.map(mapRestValue);
+  }
+  if ('mapValue' in valObj) {
+    return mapFirestoreFields(valObj.mapValue.fields);
+  }
+  return valObj;
 }
 
-export async function serverGetDoc(collectionName: string, docId: string): Promise<{ exists: boolean; data: () => any; id: string }> {
-  if (adminDb) {
-    try {
-      const snap = await adminDb.collection(collectionName).doc(docId).get();
-      return {
-        exists: snap.exists,
-        data: () => snap.data(),
-        id: snap.id
-      };
-    } catch (err) {
-      console.error(`Firebase Admin serverGetDoc error for ${collectionName}/${docId}:`, err);
-      throw err;
-    }
-  } else {
-    await ensureAuthenticated();
-    const docSnap = await clientGetDoc(clientDoc(clientDb, collectionName, docId));
+function mapFirestoreFields(fields: any): any {
+  if (!fields) return {};
+  const obj: any = {};
+  for (const [key, value] of Object.entries(fields)) {
+    obj[key] = mapRestValue(value);
+  }
+  return obj;
+}
+
+// 3. Map Normal JSON to Firestore REST Value Types
+function convertToRestValue(val: any): any {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === 'string') return { stringValue: val };
+  if (typeof val === 'number') {
+    return Number.isInteger(val) ? { integerValue: val.toString() } : { doubleValue: val };
+  }
+  if (typeof val === 'boolean') return { booleanValue: val };
+  if (Array.isArray(val)) {
     return {
-      exists: docSnap.exists(),
-      data: () => docSnap.data(),
-      id: docSnap.id
+      arrayValue: {
+        values: val.map(convertToRestValue)
+      }
     };
+  }
+  if (typeof val === 'object') {
+    return {
+      mapValue: {
+        fields: convertToRestFields(val)
+      }
+    };
+  }
+  return { stringValue: String(val) };
+}
+
+function convertToRestFields(obj: any): any {
+  const fields: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) continue;
+    fields[key] = convertToRestValue(value);
+  }
+  return fields;
+}
+
+// 4. CRUD Wrapper functions
+export async function serverGetDoc(collectionName: string, docId: string): Promise<{ exists: boolean; data: () => any; id: string }> {
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID is not defined');
+  
+  const token = await getAuthToken();
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${docId}`;
+  
+  try {
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (res.status === 404) {
+      return { exists: false, data: () => null, id: docId };
+    }
+
+    if (!res.ok) {
+      throw new Error(`Firestore REST getDoc error: ${res.status} ${await res.text()}`);
+    }
+
+    const data = await res.json();
+    return {
+      exists: true,
+      data: () => mapFirestoreFields(data.fields),
+      id: docId
+    };
+  } catch (err) {
+    console.error(`serverGetDoc error for ${collectionName}/${docId}:`, err);
+    throw err;
   }
 }
 
 export async function serverGetDocs(
-  collectionName: string, 
+  collectionName: string,
   constraints: { where?: [string, any, any][]; orderBy?: [string, any][]; limit?: number } = {}
 ): Promise<{ empty: boolean; docs: any[] }> {
-  if (adminDb) {
-    try {
-      let query = adminDb.collection(collectionName);
-      if (constraints.where) {
-        for (const [field, op, val] of constraints.where) {
-          query = query.where(field, op === '==' ? '==' : op, val);
-        }
-      }
-      if (constraints.orderBy) {
-        for (const [field, dir] of constraints.orderBy) {
-          query = query.orderBy(field, dir);
-        }
-      }
-      if (constraints.limit) {
-        query = query.limit(constraints.limit);
-      }
-      const snap = await query.get();
-      const docs = snap.docs.map((d: any) => ({
-        id: d.id,
-        data: () => d.data()
-      }));
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID is not defined');
+  
+  const token = await getAuthToken();
+  
+  // Se usa runQuery para soportar filtros, ordenamientos y límites
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+  
+  // Obtener el nombre de la colección final de la ruta (soporta subcolecciones como 'conversations/123/messages')
+  const collectionId = collectionName.split('/').pop() || collectionName;
+  
+  const from = [{ collectionId, allDescendants: false }];
+  const structuredQuery: any = { from };
+
+  if (constraints.where && constraints.where.length > 0) {
+    const filters = constraints.where.map(([field, op, val]) => {
+      let filterOp = 'EQUAL';
+      if (op === '!=') filterOp = 'NOT_EQUAL';
+      else if (op === '>') filterOp = 'GREATER_THAN';
+      else if (op === '>=') filterOp = 'GREATER_THAN_OR_EQUAL';
+      else if (op === '<') filterOp = 'LESS_THAN';
+      else if (op === '<=') filterOp = 'LESS_THAN_OR_EQUAL';
+
       return {
-        empty: snap.empty,
-        docs
+        fieldFilter: {
+          field: { fieldPath: field },
+          op: filterOp,
+          value: convertToRestValue(val),
+        }
       };
-    } catch (err) {
-      console.error(`Firebase Admin serverGetDocs error for ${collectionName}:`, err);
-      throw err;
+    });
+
+    if (filters.length === 1) {
+      structuredQuery.where = filters[0];
+    } else {
+      structuredQuery.where = {
+        compositeFilter: {
+          op: 'AND',
+          filters,
+        }
+      };
     }
-  } else {
-    // Client SDK
-    await ensureAuthenticated();
-    let clientRef: any = clientCollection(clientDb, collectionName);
-    const clientConstraints: QueryConstraint[] = [];
-    if (constraints.where) {
-      for (const [field, op, val] of constraints.where) {
-        clientConstraints.push(clientWhere(field, op as any, val));
-      }
+  }
+
+  if (constraints.orderBy && constraints.orderBy.length > 0) {
+    structuredQuery.orderBy = constraints.orderBy.map(([field, dir]) => ({
+      field: { fieldPath: field },
+      direction: dir.toUpperCase() === 'DESC' ? 'DESCENDING' : 'ASCENDING',
+    }));
+  }
+
+  if (constraints.limit) {
+    structuredQuery.limit = constraints.limit;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ structuredQuery }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Firestore REST runQuery error: ${res.status} ${await res.text()}`);
     }
-    if (constraints.orderBy) {
-      for (const [field, dir] of constraints.orderBy) {
-        clientConstraints.push(clientOrderBy(field, dir));
-      }
-    }
-    if (constraints.limit) {
-      clientConstraints.push(clientLimit(constraints.limit));
-    }
-    
-    const clientQueryInstance = clientQuery(clientRef, ...clientConstraints);
-    const snap = await clientGetDocs(clientQueryInstance);
+
+    const data = await res.json();
+    // runQuery devuelve un array de objetos con la estructura { document, readTime }
+    // Si no hay resultados, puede venir vacío o con un array con un único elemento vacío
+    const docs = (data || [])
+      .filter((item: any) => item.document)
+      .map((item: any) => {
+        const docNameParts = item.document.name.split('/');
+        const id = docNameParts[docNameParts.length - 1];
+        return {
+          id,
+          data: () => mapFirestoreFields(item.document.fields),
+        };
+      });
+
     return {
-      empty: snap.empty,
-      docs: snap.docs.map(d => ({
-        id: d.id,
-        data: () => d.data()
-      }))
+      empty: docs.length === 0,
+      docs
     };
+  } catch (err) {
+    console.error(`serverGetDocs error for ${collectionName}:`, err);
+    throw err;
   }
 }
 
 export async function serverAddDoc(collectionName: string, data: any): Promise<{ id: string }> {
-  if (adminDb) {
-    try {
-      const ref = await adminDb.collection(collectionName).add(data);
-      return { id: ref.id };
-    } catch (err) {
-      console.error(`Firebase Admin serverAddDoc error for ${collectionName}:`, err);
-      throw err;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID is not defined');
+  
+  const token = await getAuthToken();
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: convertToRestFields(data) }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Firestore REST addDoc error: ${res.status} ${await res.text()}`);
     }
-  } else {
-    await ensureAuthenticated();
-    const ref = await clientAddDoc(clientCollection(clientDb, collectionName), data);
-    return { id: ref.id };
+
+    const resData = await res.json();
+    const nameParts = resData.name.split('/');
+    const id = nameParts[nameParts.length - 1];
+    return { id };
+  } catch (err) {
+    console.error(`serverAddDoc error for ${collectionName}:`, err);
+    throw err;
   }
 }
 
 export async function serverUpdateDoc(collectionName: string, docId: string, data: any): Promise<void> {
-  if (adminDb) {
-    try {
-      await adminDb.collection(collectionName).doc(docId).update(data);
-    } catch (err) {
-      console.error(`Firebase Admin serverUpdateDoc error for ${collectionName}/${docId}:`, err);
-      throw err;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID is not defined');
+  
+  const token = await getAuthToken();
+  
+  // En la API REST de Firestore, update se hace con PATCH y especificando updateMask
+  const updateMask = Object.keys(data).map(key => `updateMask.fieldPaths=${key}`).join('&');
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${docId}?${updateMask}`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: convertToRestFields(data) }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Firestore REST updateDoc error: ${res.status} ${await res.text()}`);
     }
-  } else {
-    await ensureAuthenticated();
-    await clientUpdateDoc(clientDoc(clientDb, collectionName, docId), data);
+  } catch (err) {
+    console.error(`serverUpdateDoc error for ${collectionName}/${docId}:`, err);
+    throw err;
   }
 }
 
 export async function serverSetDoc(collectionName: string, docId: string, data: any): Promise<void> {
-  if (adminDb) {
-    try {
-      await adminDb.collection(collectionName).doc(docId).set(data, { merge: true });
-    } catch (err) {
-      console.error(`Firebase Admin serverSetDoc error for ${collectionName}/${docId}:`, err);
-      throw err;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID is not defined');
+  
+  const token = await getAuthToken();
+  
+  // setDoc escribe un documento completo o hace merge. En la API REST, PATCH sin updateMask reemplaza todo
+  // pero si usamos currentDocument.exists=true podemos condicionarlo. Para simplificar, hacemos PATCH de todos los campos.
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${docId}`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: convertToRestFields(data) }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Firestore REST setDoc error: ${res.status} ${await res.text()}`);
     }
-  } else {
-    await ensureAuthenticated();
-    await clientSetDoc(clientDoc(clientDb, collectionName, docId), data, { merge: true });
+  } catch (err) {
+    console.error(`serverSetDoc error for ${collectionName}/${docId}:`, err);
+    throw err;
   }
 }
