@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverGetDoc } from '@/lib/firestore-server';
-import { signInAnonymously } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const results: any = {
     timestamp: new Date().toISOString(),
-    adminSdkActive: !!process.env.FIREBASE_SERVICE_ACCOUNT,
-    auth: { status: 'pending', error: null },
     firebaseExperiences: { status: 'pending', durationMs: 0, error: null },
     firebaseConfig: { status: 'pending', durationMs: 0, error: null },
     gemini: { status: 'pending', durationMs: 0, error: null }
@@ -18,23 +14,11 @@ export async function GET(req: NextRequest) {
   // 1. Test Firebase Configuration
   const firebaseConf = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? `${process.env.NEXT_PUBLIC_FIREBASE_API_KEY.substring(0, 8)}...` : 'undefined',
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'undefined',
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'undefined',
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ? `${process.env.NEXT_PUBLIC_FIREBASE_APP_ID.substring(0, 10)}...` : 'undefined',
   };
   results.firebaseConfigRead = firebaseConf;
 
-  // 2. Try Anonymous Auth (just for checking status)
-  try {
-    const authResult = await signInAnonymously(auth);
-    results.auth.status = 'success';
-    results.auth.uid = authResult.user.uid;
-  } catch (err: any) {
-    results.auth.status = 'failed';
-    results.auth.error = err.message || err.toString();
-  }
-
-  // 3. Try serverGetDoc for experiences/TOUR-001
+  // 2. Try serverGetDoc for experiences/TOUR-001
   const startExp = Date.now();
   try {
     const docSnap = await serverGetDoc('experiences', 'TOUR-001');
@@ -47,7 +31,7 @@ export async function GET(req: NextRequest) {
     results.firebaseExperiences.durationMs = Date.now() - startExp;
   }
 
-  // 4. Try serverGetDoc for travisConfig/main
+  // 3. Try serverGetDoc for travisConfig/main
   const startConfig = Date.now();
   try {
     const docSnap = await serverGetDoc('travisConfig', 'main');
@@ -59,6 +43,7 @@ export async function GET(req: NextRequest) {
     results.firebaseConfig.error = err.message || err.toString();
     results.firebaseConfig.durationMs = Date.now() - startConfig;
   }
+
 
 
   // 2. Test Gemini API
