@@ -341,7 +341,7 @@ export async function processTravisMessage(message: string, history: any[], busi
                         pricingDetailsText +
                         `*(El costo final puede variar por tráfico o paradas intermedias)*`;
     
-    aiResponse = aiResponse.replace(quoteRegex, pricingText);
+    aiResponse = aiResponse.replace(quoteRegex, () => pricingText);
 
     // Trigger Zapier Webhook para Nueva Cotización en segundo plano con la estimación principal
     if (process.env.ZAPIER_WEBHOOK_NEW_BOOKING && primaryEstimation) {
@@ -419,7 +419,7 @@ export async function processTravisMessage(message: string, history: any[], busi
                                  `• **Tarifa Total Estimada:** $${finalPrice.toLocaleString('es-AR')} ARS\n` +
                                  `Estamos buscando tu conductor. Te notificaremos al instante en que acepte el viaje. 🙌`;
 
-        aiResponse = aiResponse.replace(dispatchRegex, confirmationText);
+        aiResponse = aiResponse.replace(dispatchRegex, () => confirmationText);
       } catch (dispatchErr) {
         console.error('[Travis Dispatch] Error creating trip from chat:', dispatchErr);
         aiResponse = aiResponse.replace(dispatchRegex, '\n*(Error interno al procesar el despacho del viaje)*');
@@ -444,7 +444,7 @@ export async function processTravisMessage(message: string, history: any[], busi
     const pdfText = `\n\n📄 **PROPUESTA EN PDF GENERADA:**\n` +
                     `• **Tour:** ${tourName}\n` +
                     `• Podés descargar tu itinerario y propuesta en PDF haciendo clic aquí: [Descargar Propuesta PDF](${pdfUrl})`;
-    aiResponse = aiResponse.replace(pdfRegex, pdfText);
+    aiResponse = aiResponse.replace(pdfRegex, () => pdfText);
   }
 
   // 5. Interceptar y procesar etiqueta [DATA: JSON_BLOCK]
