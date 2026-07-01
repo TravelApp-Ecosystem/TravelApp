@@ -126,15 +126,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing subscriber_id or message' }, { status: 400 });
     }
 
-    // Auto-detect channel based on payload fields
+    // Auto-detect channel based on payload fields, ignoring unrendered template placeholders
     let rawChannel = body.channel;
     if (!rawChannel || rawChannel.trim() === '') {
-      if (body.whatsapp_id || body.phone) {
+      const hasWhatsapp = body.whatsapp_id && body.whatsapp_id !== '{{whatsapp_id}}';
+      const hasPhone = body.phone && body.phone !== '{{phone}}' && body.phone.trim() !== '';
+      const hasInstagram = (body.instagram_username && body.instagram_username !== '{{instagram_username}}') || (body.instagram_id && body.instagram_id !== '{{instagram_id}}');
+      const hasFacebook = (body.facebook_id && body.facebook_id !== '{{facebook_id}}') || (body.messenger_id && body.messenger_id !== '{{messenger_id}}');
+
+      if (hasWhatsapp) {
         rawChannel = 'whatsapp';
-      } else if (body.instagram_username || body.instagram_id) {
+      } else if (hasInstagram) {
         rawChannel = 'instagram';
-      } else if (body.facebook_id || body.messenger_id) {
+      } else if (hasFacebook) {
         rawChannel = 'messenger';
+      } else if (hasPhone) {
+        rawChannel = 'whatsapp';
       } else {
         rawChannel = 'web';
       }
