@@ -107,6 +107,9 @@ function ConversationList({
   setSearch: (s: string) => void;
 }) {
   const filtered = conversations.filter(c => {
+    // Excluir conversaciones cerradas de la vista de chats activos
+    if (c.status === 'closed') return false;
+
     const matchSearch = !search || c.participants.some(p => p.name.toLowerCase().includes(search.toLowerCase()));
     if (filter === 'all') return matchSearch;
     if (filter === 'bot') return c.status === 'bot' && matchSearch;
@@ -1009,12 +1012,14 @@ function BroadcastPanel() {
     </div>
   );
 }
-function ContactPanel({ 
+function ContactPanel({
   conversation,
   onViewCRM,
-}: { 
+  onClose,
+}: {
   conversation: Conversation | null;
   onViewCRM: () => void;
+  onClose: () => void;
 }) {
   if (!conversation) return (
     <div className="p-4 text-center text-slate-400 text-sm mt-8">
@@ -1022,7 +1027,6 @@ function ContactPanel({
       Seleccioná una conversación
     </div>
   );
-
   const main = conversation.participants.find(p => p.role === 'customer' || p.role === 'driver');
 
   const handleUpdateBusinessUnit = async (unit: 'TravelCab' | 'Experiences' | 'Rewards' | 'General') => {
@@ -1149,7 +1153,20 @@ function ContactPanel({
         >
           <Users className="h-4 w-4 text-tech-blue" /> Ver en CRM
         </button>
-        <button className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-sm text-red-600 hover:bg-red-50 transition-colors">
+        <button 
+          onClick={async () => {
+            if (!confirm("¿Estás seguro de que deseas cerrar esta conversación?")) return;
+            try {
+              await updateDoc(doc(db, 'conversations', conversation.id), {
+                status: 'closed'
+              });
+              onClose();
+            } catch (err) {
+              console.error("Error al cerrar conversación:", err);
+            }
+          }}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-sm text-red-600 hover:bg-red-50 transition-colors"
+        >
           <X className="h-4 w-4" /> Cerrar Conversación
         </button>
       </div>
@@ -1315,7 +1332,7 @@ export default function MessagesPage() {
             <h3 className="text-sm font-bold text-slate-700">Información del Contacto</h3>
           </div>
           <div className="flex-1 overflow-y-auto">
-            <ContactPanel conversation={activeConversation} onViewCRM={handleViewCRM} />
+            <ContactPanel conversation={activeConversation} onViewCRM={handleViewCRM} onClose={() => setActiveConversation(null)} />
           </div>
         </div>
       )}
