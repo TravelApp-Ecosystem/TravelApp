@@ -147,27 +147,26 @@ export async function POST(req: NextRequest) {
     // 1. Buscar conversación existente para este suscriptor de ManyChat
     const existingSnap = await serverGetDocs('conversations', {
       where: [
-        ['manyChatSubscriberId', '==', subscriberId],
-        ['status', '!=', 'closed']
-      ],
-      limit: 1
+        ['manyChatSubscriberId', '==', subscriberId]
+      ]
     });
 
     let conversationId: string;
     let conversationStatus: ConversationStatus;
     let isNewConversation = false;
 
-    if (!existingSnap.empty) {
+    const activeDoc = existingSnap.docs.find(d => d.data().status !== 'closed');
+
+    if (activeDoc) {
       // Conversación existente
-      const existingDoc = existingSnap.docs[0];
-      conversationId = existingDoc.id;
-      conversationStatus = existingDoc.data().status as ConversationStatus;
+      conversationId = activeDoc.id;
+      conversationStatus = activeDoc.data().status as ConversationStatus;
       
       // Actualizar lastMessage y timestamp
       await serverUpdateDoc('conversations', conversationId, {
         lastMessage: userMessage.substring(0, 100),
         lastMessageAt: Date.now(),
-        unreadCount: (existingDoc.data().unreadCount || 0) + 1,
+        unreadCount: (activeDoc.data().unreadCount || 0) + 1,
         'metadata.businessUnit': businessUnit,
       });
     } else {
