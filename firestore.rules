@@ -13,11 +13,12 @@ service cloud.firestore {
     }
 
     // Helper: Verifica si el usuario es un administrador u operador del sistema
-    // (Podemos verificarlo si tiene un campo isAdmin en su documento de usuario)
     function isAdmin() {
       return isAuthenticated() && 
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.rol == 'admin_global' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.is_owner == true);
     }
 
     // Colección: Usuarios (Pasajeros y Cuentas Generales)
