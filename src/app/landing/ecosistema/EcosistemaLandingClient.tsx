@@ -989,12 +989,12 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
 
                     {/* Card body */}
                     <div className="p-7 flex flex-col flex-1">
-                      {/* Brand Logo replacing the text title */}
-                      <div className="h-10 flex items-center mb-4">
+                      {/* Brand Logo replacing the text title (larger and centered) */}
+                      <div className="h-16 flex items-center justify-center mb-5">
                         <img
                           src={cfg.logo}
                           alt={unit.nombre}
-                          className="h-8 w-auto object-contain"
+                          className="h-11 w-auto object-contain transition-transform duration-350 group-hover:scale-105"
                         />
                       </div>
                       <p className="text-slate-500 text-sm leading-relaxed flex-1 mb-7">
