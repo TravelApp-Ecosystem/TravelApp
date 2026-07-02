@@ -21,66 +21,52 @@ service cloud.firestore {
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.is_owner == true);
     }
 
-    // Colección: Usuarios (Pasajeros y Cuentas Generales)
-    match /users/{userId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    // Colección: Choferes / Socios Conductores
-    match /drivers/{driverId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    // Colección: Viajes / Traslados (Trips)
-    match /trips/{tripId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    // Colección: Tarifas y Sucursales
-    match /tariffs/{tariffId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
+    // --- REGLAS PÚBLICAS (Para visitantes de la Landing Page sin iniciar sesión) ---
     
-    match /branches/{branchId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+    // CMS y Bloques: Textos de las Landing Pages, Legales (términos y condiciones), imágenes, etc.
+    match /cms/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /cms_blocks/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
-    // Colección: Categorías de vehículos
-    match /categories/{catId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+    // Catálogo de Excursiones y Experiencias
+    match /experiences/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
-    // Colección: Bloques CMS promocionales
-    match /cms_blocks/{blockId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    // Colección: Catálogo de Canjes de Rewards
-    match /rewards_catalog/{itemId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    // Colección: Transacciones de auditoría contable (Ledger)
-    match /transactions/{txId} {
-      allow read, write: if isAdmin();
-    }
-
-    // Colección: Leads de CRM capturados por Travis
-    match /leads/{leadId} {
+    // Reservas de Excursiones (los clientes pueden crear reservas públicas)
+    match /experience_reservations/{document=**} {
       allow read, write: if isAuthenticated();
+      allow create: if true;
     }
 
-    // Colección: Conversaciones de Chat (Travis y Omnicanal)
-    match /conversations/{convId} {
-      allow read, write: if isAuthenticated();
+    // Tarifas, Sucursales y Categorías (requerido para cotizadores y listados públicos)
+    match /tariffs/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
-    
-    match /conversations/{convId}/messages/{msgId} {
+    match /categories/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /branches/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /rewards_catalog/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // --- REGLAS GENERALES OPERATIVAS (Para Webhooks, CRM, App y Administradores) ---
+
+    // Permite lectura y escritura de cualquier documento a usuarios autenticados (Vercel, CRM, app móvil)
+    match /{document=**} {
       allow read, write: if isAuthenticated();
     }
   }
