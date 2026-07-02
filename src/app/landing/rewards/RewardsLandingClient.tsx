@@ -176,26 +176,26 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
     <div className="min-h-screen bg-white text-slate-900 font-sans overflow-x-hidden">
 
       {/* ══ HEADER ══ */}
-      <header className="sticky top-0 z-50 w-full border-b border-violet-100 bg-white/95 backdrop-blur-md shadow-sm">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/95 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 md:px-8">
           <a href="/" className="flex items-center gap-2">
             <img src="/assets/rewards_original.svg" alt="TravelApp Rewards" className="h-9 w-auto object-contain" />
           </a>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600">
-            <a href="#como-sumar" className="hover:text-violet-600 transition-colors">¿Cómo sumar?</a>
-            <a href="#beneficios" className="hover:text-violet-600 transition-colors">Beneficios</a>
-            <a href="/canjes" className="hover:text-violet-600 transition-colors">Catálogo de Canjes</a>
-            <a href="#negocios" className="hover:text-violet-600 transition-colors">Sumá tu Negocio</a>
+            <a href="#como-sumar" className="hover:text-[#ff6b00] transition-colors">¿Cómo sumar?</a>
+            <a href="#beneficios" className="hover:text-[#ff6b00] transition-colors">Beneficios</a>
+            <a href="/canjes" className="hover:text-[#ff6b00] transition-colors">Catálogo de Canjes</a>
+            <a href="#negocios" className="hover:text-[#ff6b00] transition-colors">Sumá tu Negocio</a>
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            <a href="/login" className="text-sm font-bold text-slate-600 hover:text-violet-600 transition-colors">
+            <a href="/login" className="text-sm font-bold text-slate-600 hover:text-[#ff6b00] transition-colors">
               Mi Wallet
             </a>
             <a
               href={ctaBlock?.buttonUrl || "/login"}
-              className="inline-flex items-center gap-2 rounded-xl bg-violet-600 hover:bg-fuchsia-600 px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-violet-200 transition-all duration-300 hover:shadow-fuchsia-200"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#ff6b00] hover:bg-[#e05e00] px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-orange-200 transition-all duration-300 hover:shadow-orange-300"
             >
               Activar Cuenta
               <ArrowRight className="h-4 w-4" />
@@ -220,7 +220,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
             <a href="/login" className="text-sm font-semibold text-slate-700 py-2">Mi Wallet Rewards</a>
             <a
               href={ctaBlock?.buttonUrl || "/login"}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-black text-white"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ff6b00] px-5 py-3 text-sm font-black text-white"
             >
               Activar mi Cuenta <ArrowRight className="h-4 w-4" />
             </a>
@@ -229,7 +229,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
       </header>
 
       {/* ══ HERO SLIDER ══ */}
-      <section className="relative h-[65vh] min-h-[500px] w-full overflow-hidden bg-slate-900">
+      <section className="relative h-[65vh] min-h-[500px] w-full overflow-hidden bg-[#0a2a5b]">
         {slides.map((slide: any, idx: number) => {
           const opacity = (slide.overlayOpacity ?? 65) / 100;
           return (
@@ -244,30 +244,30 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
                 backgroundPosition: "center",
               }}
             >
-              {/* Overlay con opacidad controlable */}
+              {/* Overlay con opacidad controlable (Azul Marino #0a2a5b) */}
               <div
                 className="absolute inset-0"
-                style={{ backgroundColor: `rgba(60, 7, 102, ${opacity})` }}
+                style={{ backgroundColor: `rgba(10, 42, 91, ${opacity})` }}
               />
               <div className="relative z-10 mx-auto max-w-5xl px-6 text-center text-white space-y-6">
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-fuchsia-300 backdrop-blur-sm">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-amber-400 backdrop-blur-sm">
                   <Sparkles className="h-3.5 w-3.5" /> PROGRAMA DE LEALTAD TRAVELAPP
                 </span>
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
                   {slide.title}
                 </h1>
-                <p className="text-lg sm:text-xl text-violet-100 max-w-3xl mx-auto font-medium leading-relaxed">
+                <p className="text-lg sm:text-xl text-slate-200 max-w-3xl mx-auto font-medium leading-relaxed">
                   {slide.subtitle}
                 </p>
                 {slide.text && (
-                  <p className="text-sm text-violet-200/90 max-w-2xl mx-auto">
+                  <p className="text-sm text-slate-350/90 max-w-2xl mx-auto">
                     {slide.text}
                   </p>
                 )}
                 <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
                   <a
                     href={slide.ctaUrl || "/canjes"}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 hover:bg-fuchsia-600 px-8 py-4 text-base font-black text-white transition-all duration-300 hover:-translate-y-1 shadow-2xl shadow-violet-900/50"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-[#ff6b00] hover:bg-[#e05e00] px-8 py-4 text-base font-black text-white transition-all duration-300 hover:-translate-y-1 shadow-2xl shadow-orange-950/50"
                   >
                     {slide.ctaText || "Ver Catálogo de Canjes"}
                     <ArrowRight className="h-5 w-5" />
@@ -305,7 +305,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
                   key={idx}
                   onClick={() => setCurrentSlide(idx)}
                   className={`h-2.5 rounded-full transition-all ${
-                    currentSlide === idx ? "w-8 bg-violet-500" : "w-2.5 bg-white/40"
+                    currentSlide === idx ? "w-8 bg-[#ff6b00]" : "w-2.5 bg-white/40"
                   }`}
                 />
               ))}
@@ -315,7 +315,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
       </section>
 
       {/* ══ STATS BAR ══ */}
-      <div className="bg-gradient-to-r from-violet-900 to-fuchsia-900 text-white py-5 px-6">
+      <div className="bg-gradient-to-r from-[#0a2a5b] to-[#123e72] text-white py-5 px-6 border-b border-orange-500/10">
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-16 text-center">
           {[
             { value: "1 Km", label: "= 10 Puntos Travel" },
@@ -324,7 +324,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
           ].map((stat, i) => (
             <div key={i} className="space-y-0.5">
               <p className="text-2xl font-black text-white">{stat.value}</p>
-              <p className="text-xs font-semibold text-violet-200 uppercase tracking-wider">{stat.label}</p>
+              <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -334,7 +334,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
       <section id="como-sumar" className="py-24 px-4 bg-slate-50">
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
-            <span className="inline-flex items-center rounded-full bg-violet-100 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-violet-700 ring-1 ring-violet-200 mb-4">
+            <span className="inline-flex items-center rounded-full bg-orange-50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-[#ff6b00] ring-1 ring-orange-100 mb-4">
               Simple y automático
             </span>
             <h2 className="text-4xl font-black text-slate-900">¿Cómo sumar puntos?</h2>
@@ -342,10 +342,10 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            <div className="hidden md:block absolute top-8 left-1/6 right-1/6 h-0.5 bg-gradient-to-r from-violet-200 via-fuchsia-300 to-violet-200 z-0" />
+            <div className="hidden md:block absolute top-8 left-1/6 right-1/6 h-0.5 bg-gradient-to-r from-orange-100 via-amber-200 to-orange-100 z-0" />
             {howItWorks.map((step: any, i: number) => (
               <div key={i} className="relative z-10 bg-white rounded-3xl p-8 border border-slate-200/60 shadow-lg shadow-slate-200/50 text-center hover:-translate-y-1 transition-transform duration-300">
-                <span className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white font-black text-xl items-center justify-center shadow-lg shadow-violet-200 mb-6">
+                <span className="inline-flex w-16 h-16 rounded-2xl bg-[#f59e0b] text-[#0a2a5b] font-black text-xl items-center justify-center shadow-lg shadow-amber-100 mb-6">
                   {step.step}
                 </span>
                 <h3 className="text-xl font-black text-slate-900 mb-3">{step.title}</h3>
@@ -358,14 +358,14 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
 
       {/* ══ CATÁLOGO DE CANJES CTA ══ */}
       <section className="py-20 bg-white border-t border-b border-slate-100 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(circle_at_bottom_right,_var(--tw-gradient-stops))] from-violet-600 via-white to-white" />
+        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(circle_at_bottom_right,_var(--tw-gradient-stops))] from-orange-500 via-white to-white" />
         <div className="mx-auto max-w-5xl px-6 text-center space-y-8 relative z-10">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-xs text-violet-600 font-black tracking-wide">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ff6b00]/10 border border-[#ff6b00]/20 text-xs text-[#ff6b00] font-black tracking-wide">
             <Gift className="h-3.5 w-3.5" /> CANJEÁ TUS PUNTOS
           </span>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
             Explorá el Catálogo de <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-500">Beneficios y Premios</span>
+            <span className="text-[#f59e0b]">Beneficios y Premios</span>
           </h2>
           <p className="text-base text-slate-500 max-w-2xl mx-auto leading-relaxed font-semibold">
             Viajes gratis con TravelCab, descuentos en gastronomía, retail y mucho más. Filtrá por categoría, puntos disponibles y canjeá en segundos.
@@ -373,7 +373,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href="/canjes"
-              className="group inline-flex w-full sm:w-auto items-center justify-center gap-3 rounded-2xl bg-slate-900 hover:bg-violet-600 px-8 py-4 text-sm font-black text-white transition-all duration-300 shadow-xl hover:-translate-y-1"
+              className="group inline-flex w-full sm:w-auto items-center justify-center gap-3 rounded-2xl bg-slate-900 hover:bg-[#ff6b00] px-8 py-4 text-sm font-black text-white transition-all duration-300 shadow-xl hover:-translate-y-1"
             >
               Ver Catálogo Completo de Canjes
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -386,7 +386,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
       <section id="beneficios" className="py-24 px-4 bg-slate-50">
         <div className="mx-auto max-w-7xl">
           <div className="text-center mb-16">
-            <span className="inline-flex items-center rounded-full bg-fuchsia-100 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-fuchsia-700 ring-1 ring-fuchsia-200 mb-4">
+            <span className="inline-flex items-center rounded-full bg-orange-50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-[#ff6b00] ring-1 ring-orange-100 mb-4">
               Para cada estilo de vida
             </span>
             <h2 className="text-4xl font-black text-slate-900">Catálogo de Beneficios</h2>
@@ -395,9 +395,9 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
             {benefits.map((b: any, i: number) => {
               const Icon = IconMap[b.icon] || Gift;
               return (
-                <div key={i} className="group p-6 rounded-3xl bg-white border border-slate-100 hover:border-violet-200 hover:bg-violet-50/50 transition-all duration-300 shadow-sm hover:shadow-lg">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-100 to-fuchsia-100 shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <Icon className="h-6 w-6 text-violet-600" />
+                <div key={i} className="group p-6 rounded-3xl bg-white border border-slate-100 hover:border-orange-200 hover:bg-orange-50/20 transition-all duration-300 shadow-sm hover:shadow-lg">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#0a2a5b]/10 to-[#0a2a5b]/5 shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Icon className="h-6 w-6 text-[#ff6b00]" />
                   </div>
                   <h3 className="font-black text-slate-900 text-lg mb-2">{b.title}</h3>
                   <p className="text-slate-500 text-sm leading-relaxed">{b.description}</p>
@@ -409,28 +409,28 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
       </section>
 
       {/* ══ SECCIÓN NEGOCIO AL ECOSISTEMA ══ */}
-      <section id="negocios" className="py-20 px-4 bg-gradient-to-br from-violet-900 via-slate-900 to-fuchsia-950 text-white relative overflow-hidden">
+      <section id="negocios" className="py-20 px-4 bg-[#0a2a5b] text-white relative overflow-hidden border-t border-[#ff6b00]/10">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 right-0 h-80 w-80 rounded-full bg-fuchsia-600/20 blur-3xl" />
-          <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-violet-600/20 blur-3xl" />
+          <div className="absolute top-0 right-0 h-80 w-80 rounded-full bg-orange-500/10 blur-3xl" />
+          <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-slate-700/10 blur-3xl" />
         </div>
         <div className="mx-auto max-w-7xl relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Texto */}
             <div className="lg:col-span-7 space-y-6">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-fuchsia-300">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-amber-400">
                 <Building2 className="h-3.5 w-3.5" /> PARA EMPRESAS Y COMERCIOS
               </span>
               <h2 className="text-3xl sm:text-4xl font-black leading-tight">
                 {businessSection?.title || "¿Tenés un negocio?"}
               </h2>
-              <p className="text-lg text-violet-200 leading-relaxed">
+              <p className="text-lg text-slate-350 leading-relaxed">
                 {businessSection?.subtitle || "Sumate al ecosistema TravelApp y ofrecé beneficios Rewards a tus clientes."}
               </p>
               <ul className="space-y-3">
                 {(businessSection?.features || DEFAULT_REWARDS_CMS_DATA.businessSection.features).map((f: string, i: number) => (
-                  <li key={i} className="flex items-center gap-3 text-sm font-semibold text-violet-100">
-                    <CheckCircle className="h-5 w-5 text-fuchsia-400 flex-shrink-0" />
+                  <li key={i} className="flex items-center gap-3 text-sm font-semibold text-slate-200">
+                    <CheckCircle className="h-5 w-5 text-[#ff6b00] flex-shrink-0" />
                     {f}
                   </li>
                 ))}
@@ -438,7 +438,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
               <div className="pt-2">
                 <a
                   href={businessSection?.buttonUrl || "mailto:partners@travelapp.ar"}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-white hover:bg-violet-100 px-8 py-4 text-sm font-black text-violet-900 shadow-xl transition-all hover:-translate-y-1"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-white hover:bg-orange-50 px-8 py-4 text-sm font-black text-[#0a2a5b] shadow-xl transition-all hover:-translate-y-1"
                 >
                   {businessSection?.buttonText || "Quiero ser Partner"}
                   <ArrowRight className="h-4 w-4" />
@@ -450,12 +450,12 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
             <div className="lg:col-span-5">
               <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-8 space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#ff6b00] to-[#e05e00] flex items-center justify-center">
                     <Building2 className="h-6 w-6 text-white" />
                   </div>
                   <div>
                     <p className="font-black text-white">Partner TravelApp</p>
-                    <p className="text-xs text-violet-300">Ecosistema conectado</p>
+                    <p className="text-xs text-slate-400">Ecosistema conectado</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -466,14 +466,14 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
                     { icon: Star, label: "Soporte comercial" },
                   ].map((item, i) => (
                     <div key={i} className="bg-white/10 rounded-2xl p-3 flex items-center gap-2">
-                      <item.icon className="h-4 w-4 text-fuchsia-300 flex-shrink-0" />
-                      <span className="text-xs font-semibold text-violet-100 leading-tight">{item.label}</span>
+                      <item.icon className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                      <span className="text-xs font-semibold text-slate-200 leading-tight">{item.label}</span>
                     </div>
                   ))}
                 </div>
-                <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-2xl p-4 text-center">
+                <div className="bg-[#ff6b00] rounded-2xl p-4 text-center">
                   <p className="text-xs font-black text-white uppercase tracking-widest">Contacto Comercial</p>
-                  <p className="text-sm font-bold text-violet-100 mt-1">partners@travelapp.ar</p>
+                  <p className="text-sm font-bold text-white mt-1">partners@travelapp.ar</p>
                 </div>
               </div>
             </div>
@@ -484,8 +484,8 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
       {/* ══ CTA FINAL ══ */}
       <section className="py-24 px-4 bg-white text-center">
         <div className="mx-auto max-w-3xl space-y-8">
-          <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-fuchsia-100 mb-4 border border-violet-200 shadow-lg shadow-violet-100">
-            <Gift className="h-10 w-10 text-violet-600" />
+          <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-br from-orange-50 to-amber-50 mb-4 border border-orange-200 shadow-lg shadow-orange-100/50">
+            <Gift className="h-10 w-10 text-[#ff6b00]" />
           </div>
           <h2 className="text-4xl lg:text-5xl font-black text-slate-900 leading-tight">
             {ctaBlock?.title}
@@ -496,7 +496,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
           <div className="pt-4">
             <a
               href={ctaBlock?.buttonUrl || "/login"}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 px-10 py-5 text-lg font-black text-white transition-all duration-300 hover:-translate-y-1 shadow-2xl shadow-violet-200"
+              className="inline-flex items-center gap-2 rounded-2xl bg-[#ff6b00] hover:bg-[#e05e00] px-10 py-5 text-lg font-black text-white transition-all duration-300 hover:-translate-y-1 shadow-2xl shadow-orange-200"
             >
               {ctaBlock?.buttonText} <ArrowRight className="h-6 w-6" />
             </a>
@@ -530,25 +530,25 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
             <div className="flex flex-wrap gap-2.5">
               {cmsData.redesSociales?.facebook && (
                 <a href={cmsData.redesSociales.facebook} target="_blank" rel="noreferrer"
-                  className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400">
+                  className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-[#ff6b00] hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400">
                   <FacebookIcon className="h-4 w-4" />
                 </a>
               )}
               {cmsData.redesSociales?.instagram && (
                 <a href={cmsData.redesSociales.instagram} target="_blank" rel="noreferrer"
-                  className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400">
+                  className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-[#ff6b00] hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400">
                   <InstagramIcon className="h-4 w-4" />
                 </a>
               )}
               {cmsData.redesSociales?.youtube && (
                 <a href={cmsData.redesSociales.youtube} target="_blank" rel="noreferrer"
-                  className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400">
+                  className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-[#ff6b00] hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400">
                   <YoutubeIcon className="h-4 w-4" />
                 </a>
               )}
               {cmsData.redesSociales?.tiktok && (
                 <a href={cmsData.redesSociales.tiktok} target="_blank" rel="noreferrer"
-                  className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400">
+                  className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-[#ff6b00] hover:text-white flex items-center justify-center transition-colors border border-slate-800 text-slate-400">
                   <TiktokIcon className="h-4 w-4" />
                 </a>
               )}
@@ -560,7 +560,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
             <ul className="space-y-2 text-xs">
               <li>
                 <a href={cmsData.redesSociales?.whatsapp || "#"} target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-violet-400 hover:underline">
+                  className="inline-flex items-center gap-1 text-orange-400 hover:underline">
                   <Phone className="h-3 w-3" /> Contactar por WhatsApp
                 </a>
               </li>
@@ -586,13 +586,13 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
         </div>
       </footer>
 
-      {/* 🤖 Travis Chat Web Widget (Flotante Omnicanal) */}
+      {/* 🤖 Travis Chat Web Widget (Flotante Omnicanal - Navy Blue style) */}
       <TravisOmnichannelWidget 
         businessUnit="Rewards" 
         whatsappUrl={cmsData.redesSociales?.whatsapp || "https://wa.me/5493814188106"}
         messengerUrl={cmsData.redesSociales?.messenger || "https://m.me/travelapp"}
         instagramUrl={cmsData.redesSociales?.instagram || "https://instagram.com/travelapp.ar"}
-        primaryColor="#8b5cf6" // Violet for Rewards branding
+        primaryColor="#0a2a5b" // Navy Blue for brand coherence
         brandName="Rewards"
       />
     </div>
