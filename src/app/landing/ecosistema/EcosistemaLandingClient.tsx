@@ -142,7 +142,7 @@ const DEFAULT_CMS: any = {
       descripcionExtendida:
         "TravelApp Experience es nuestra unidad de turismo premium. Diseñamos circuitos exclusivos, experiencias gastronómicas, aventura y cultura. Cada itinerario es curado por expertos locales e incluye seguros, traslados y soporte 24/7. Acumulás puntos Rewards en cada reserva.",
       imagenUrl:
-        "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1200&q=80",
     },
     {
       id: "rewards",
@@ -152,7 +152,7 @@ const DEFAULT_CMS: any = {
       descripcionExtendida:
         "TravelApp Rewards es el corazón del ecosistema. Un programa de fidelización cruzado que conecta todas las unidades. Viajás en TravelCab → ganás puntos. Reservás una experiencia → ganás puntos. Y los podés canjear en cualquier producto del ecosistema sin restricciones.",
       imagenUrl:
-        "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=1200&q=80",
     },
     {
       id: "travelcab",
@@ -162,7 +162,7 @@ const DEFAULT_CMS: any = {
       descripcionExtendida:
         "TravelCab es nuestra unidad de transporte premium. Una flota de vehículos certificados, choferes con antecedentes verificados y un modelo único: elegís entre comisión por viaje o membresía fija mensual. Tecnología de geolocalización, seguridad y confort en cada kilómetro.",
       imagenUrl:
-        "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1200&q=80",
     },
   ],
   quienesSomos: {
@@ -972,36 +972,31 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                     key={unit.id}
                     className="card-lift group rounded-3xl overflow-hidden border border-slate-200/80 bg-white/70 backdrop-blur-md shadow-xl flex flex-col hover:border-orange-500/40 transition-all"
                   >
-                    {/* Image + logo overlay */}
+                    {/* Image space (completely clean) */}
                     <div className="relative h-60 overflow-hidden">
                       <img
                         src={unitImg}
                         alt={unit.nombre}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        style={{ imageRendering: 'auto' }}
                       />
-                      {/* White transparency overlay */}
-                      <div className="absolute inset-0 bg-white/20 backdrop-blur-[1px] transition-all group-hover:bg-white/10" />
-                      {/* Centered logo (original colored logo in a semi-transparent white box) */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="bg-white/80 backdrop-blur-md rounded-2xl px-6 py-4 border border-white/40 shadow-lg transition-transform duration-300 group-hover:scale-105">
-                           <img
-                             src={cfg.logo}
-                             alt={unit.nombre}
-                             className="h-12 w-auto object-contain"
-                           />
-                        </div>
-                      </div>
                       {/* Index badge */}
-                      <span className="absolute top-4 left-4 text-[10px] font-black text-slate-500/70 uppercase tracking-widest">
+                      <span className="absolute top-4 left-4 text-[10px] font-black text-slate-600/90 bg-white/90 backdrop-blur-md rounded-lg px-2.5 py-1 uppercase tracking-widest shadow-sm">
                         0{idx + 1}
                       </span>
                     </div>
 
                     {/* Card body */}
                     <div className="p-7 flex flex-col flex-1">
-                      <h3 className="text-xl font-black text-tech-blue mb-3">
-                        {unit.nombre}
-                      </h3>
+                      {/* Brand Logo replacing the text title */}
+                      <div className="h-10 flex items-center mb-4">
+                        <img
+                          src={cfg.logo}
+                          alt={unit.nombre}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
                       <p className="text-slate-500 text-sm leading-relaxed flex-1 mb-7">
                         {unit.descripcionBreve}
                       </p>
