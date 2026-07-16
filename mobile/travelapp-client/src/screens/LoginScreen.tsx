@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView, Image,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView, Image, Linking,
 } from 'react-native';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
@@ -93,7 +93,7 @@ export default function LoginScreen() {
           {/* Tarjeta de Travis AI */}
           <View style={styles.travisCard}>
             <View style={styles.travisAvatar}>
-              <Image source={require('../../assets/travis_casual.png')} style={styles.travisAvatarImg} />
+              <Image source={require('../../assets/travis_perfil.png')} style={styles.travisAvatarImg} />
             </View>
             <View style={styles.travisBubble}>
               <Text style={styles.travisText}>
@@ -206,6 +206,16 @@ export default function LoginScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Soporte Técnico */}
+          <View style={styles.supportContainer}>
+            <Text style={styles.supportText}>
+              ¿Tenés algún inconveniente? Contactate con{' '}
+              <Text style={styles.supportEmail} onPress={() => Linking.openURL('mailto:soporte@travelapp.ar')}>
+                soporte@travelapp.ar
+              </Text>
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -260,4 +270,7 @@ const styles = StyleSheet.create({
   footerLinks: { alignItems: 'center', marginTop: 16 },
   footerLinkText: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: 'Quicksand-Medium' },
   footerLinkBold: { color: Colors.accent, fontFamily: 'Quicksand-Bold', textDecorationLine: 'underline' },
+  supportContainer: { alignItems: 'center', marginTop: 24, paddingHorizontal: 16 },
+  supportText: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontFamily: 'Quicksand-Medium', textAlign: 'center' },
+  supportEmail: { color: Colors.white, fontFamily: 'Quicksand-Bold', textDecorationLine: 'underline' },
 });

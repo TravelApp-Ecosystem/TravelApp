@@ -4,7 +4,7 @@ import {
   TextInput, ActivityIndicator, Animated, ScrollView, Dimensions, Alert, Modal, Image, Linking, Platform, Vibration,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -33,6 +33,50 @@ interface RewardItem {
   points: number;
   description: string;
   imageUrl: string;
+}
+
+function getNext10Days() {
+  const days = [];
+  for (let i = 0; i < 10; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    days.push(d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }));
+  }
+  return days;
+}
+
+function decodePolyline(encoded: string) {
+  if (!encoded) return [];
+  const poly = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+
+    poly.push({
+      latitude: lat / 1e5,
+      longitude: lng / 1e5
+    });
+  }
+  return poly;
 }
 
 export default function HomeScreen() {
@@ -90,10 +134,16 @@ export default function HomeScreen() {
 
   // Datos del CMS y Rewards
   const [cmsBlocks, setCmsBlocks] = useState<CMSBlock[]>([]);
+  const [rewardsBlocks, setRewardsBlocks] = useState<any[]>([]);
   const [rewardsList, setRewardsList] = useState<RewardItem[]>([]);
   const [experiences, setExperiences] = useState<any[]>([]);
   const [passengerTrips, setPassengerTrips] = useState<any[]>([]);
   const [rewardsPoints, setRewardsPoints] = useState(1450); // Puntos por defecto
+  const [activeSubMode, setActiveSubMode] = useState<'urbana' | 'interurbano' | 'traslados'>('urbana');
+  const [scheduleCity, setScheduleCity] = useState('');
+  const [schedulePassengers, setSchedulePassengers] = useState('1');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Datos de TravelApp Experience - Viajes Contratados
   const [hasPurchasedOrganizedTrip, setHasPurchasedOrganizedTrip] = useState(false);
@@ -122,6 +172,11 @@ export default function HomeScreen() {
   const [isDossierModalVisible, setIsDossierModalVisible] = useState(false);
   const [mpLinked, setMpLinked] = useState(false);
   const [mpLinkedEmail, setMpLinkedEmail] = useState('');
+  const [tripCompletedModalVisible, setTripCompletedModalVisible] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState(0);
+  const [isEcosystemExpanded, setIsEcosystemExpanded] = useState(false);
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const mapRef = useRef<MapView | null>(null);
 
   // Animación de paneles
   const panelSlideAnim = useRef(new Animated.Value(0)).current;
@@ -129,6 +184,26 @@ export default function HomeScreen() {
   useEffect(() => {
     Animated.spring(panelSlideAnim, { toValue: 1, useNativeDriver: true }).start();
   }, [activeTab]);
+
+  useEffect(() => {
+    if (requestFlowStep === 'active') {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(bounceAnim, { toValue: -6, duration: 800, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [requestFlowStep]);
+
+  useEffect(() => {
+    if (originCoords && destinationCoords && mapRef.current) {
+      mapRef.current.fitToCoordinates([originCoords, destinationCoords], {
+        edgePadding: { top: 80, right: 80, bottom: 80, left: 80 },
+        animated: true,
+      });
+    }
+  }, [originCoords, destinationCoords, routePolyline]);
 
   // Escuchar perfil en tiempo real para Mercado Pago y datos extendidos
   useEffect(() => {
@@ -462,7 +537,21 @@ export default function HomeScreen() {
     // 3. Bloques CMS para carrusel promocional
     const unsubCMS = onSnapshot(collection(db, 'cms_blocks'), (snap) => {
       if (!snap.empty) {
-        setCmsBlocks(snap.docs.map(d => ({ id: d.id, ...d.data() } as CMSBlock)));
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        const block1 = list.find(b => b.id === 'block-1');
+        const block2 = list.find(b => b.id === 'block-2');
+        
+        if (block1) {
+          setCmsBlocks([block1]);
+        } else {
+          setCmsBlocks([]);
+        }
+        
+        if (block2) {
+          setRewardsBlocks(block2.cards || []);
+        } else {
+          setRewardsBlocks([]);
+        }
       } else {
         // Fallback CMS Blocks
         setCmsBlocks([
@@ -483,6 +572,20 @@ export default function HomeScreen() {
                 url: 'https://travelapp.ar/experiences',
               }
             ]
+          }
+        ]);
+        setRewardsBlocks([
+          {
+            title: 'Descuento Gastronómico',
+            description: 'Obtené un 20% de descuento en restaurantes adheridos presentando tu código QR.',
+            imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80',
+            url: 'https://travelapp.ar/rewards/food'
+          },
+          {
+            title: 'Descuento Hotelería',
+            description: 'Ahorrá hasta un 15% en estadías seleccionadas de TravelApp Experiences.',
+            imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80',
+            url: 'https://travelapp.ar/rewards/hotel'
           }
         ]);
       }
@@ -1062,21 +1165,19 @@ export default function HomeScreen() {
 
       const data = await response.json();
       if (data.success) {
-        Alert.alert(
-          '¡Viaje Completado!',
-          `Cobro debitado de forma automática por Wallet Connect.\n\nMonto cobrado: $${data.amount} ARS\nComisión TravelApp: $${data.applicationFee} ARS (Split 1:1)\nPuntos Sumados: +${data.pointsEarned} Pts\nOperación MP N°: ${data.paymentId}`,
-          [{ text: 'Entendido', onPress: () => setRequestFlowStep('idle') }]
-        );
+        setEarnedPoints(data.pointsEarned || 150);
+        setTripCompletedModalVisible(true);
+        setRequestFlowStep('idle');
+        setActiveTrip(null);
       } else {
         Alert.alert('Error en Pago', data.error || 'No se pudo debitar el saldo de Mercado Pago.');
       }
     } catch (err) {
       console.warn(err);
-      Alert.alert(
-        '¡Viaje Completado (Simulado local)!',
-        `Se procesó el cobro de $${activeTrip.estimatedPrice || calculateFare(selectedCategory)} ARS de forma local.\nSe sumaron puntos en Rewards.`,
-        [{ text: 'Entendido', onPress: () => setRequestFlowStep('idle') }]
-      );
+      setEarnedPoints(150); // Fallback local points
+      setTripCompletedModalVisible(true);
+      setRequestFlowStep('idle');
+      setActiveTrip(null);
     } finally {
       setSavingProfile(false);
     }
@@ -1101,9 +1202,306 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* MAPA DE FONDO EN INICIO */}
-      {activeTab === 'home' && (
+    <View style={[styles.container, activeTab === 'home' && requestFlowStep !== 'active' && { backgroundColor: '#0A2A5B' }]}>
+      {activeTab === 'home' && requestFlowStep === 'active' && driverDetails ? (
+        <View style={styles.activeTripScreenContainer}>
+          {/* 50% Superior: Mapa de Seguimiento */}
+          <View style={styles.topHalfMapContainer}>
+            {Platform.OS === 'web' ? (
+              <View style={styles.webMapPlaceholder}>
+                <View style={styles.webMapGrid}>
+                  <View style={[styles.gridLine, { top: '50%', left: 0, right: 0 }]} />
+                  <View style={[styles.gridLine, { left: '50%', top: 0, bottom: 0 }]} />
+                  <View style={[styles.simulatedCar, { top: '45%', left: '45%' }]}>
+                    <Ionicons name="car" size={20} color={Colors.accent} />
+                  </View>
+                </View>
+                <Text style={styles.webMapText}>Seguimiento en Vivo (Simulación)</Text>
+              </View>
+            ) : (
+              <MapView
+                ref={mapRef}
+                style={styles.map}
+                initialRegion={currentLocation}
+                showsUserLocation
+              >
+                {originCoords && (
+                  <Marker coordinate={originCoords} title="Origen">
+                    <View style={[styles.markerPin, { backgroundColor: Colors.success }]}>
+                      <Ionicons name="pin" size={16} color={Colors.white} />
+                    </View>
+                  </Marker>
+                )}
+                {destinationCoords && (
+                  <Marker coordinate={destinationCoords} title="Destino">
+                    <View style={[styles.markerPin, { backgroundColor: Colors.danger }]}>
+                      <Ionicons name="flag" size={16} color={Colors.white} />
+                    </View>
+                  </Marker>
+                )}
+                {routePolyline ? (
+                  <Polyline
+                    coordinates={decodePolyline(routePolyline)}
+                    strokeColor={Colors.accent}
+                    strokeWidth={4}
+                  />
+                ) : null}
+              </MapView>
+            )}
+          </View>
+
+          {/* 50% Inferior: Panel de información y deslizable */}
+          <View style={[styles.bottomHalfContainer, { paddingBottom: insets.bottom }]}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.bottomHalfScrollContent}>
+              {/* Tarjeta del Chofer Asignado y Vehículo */}
+              <View style={styles.driverTrackingCard}>
+                <View style={styles.driverPanelHeader}>
+                  <Image source={{ uri: driverDetails.avatar }} style={styles.driverAvatarImg} />
+                  <View style={styles.driverInfoCol}>
+                    <Text style={styles.driverNameLabel}>{driverDetails.name}</Text>
+                    <Text style={styles.driverCarPlate}>{driverDetails.model} · <Text style={{ fontFamily: 'Quicksand-Bold' }}>{driverDetails.plate}</Text></Text>
+                    <Text style={styles.driverRatingText}>⭐ {driverDetails.rating} · Conductor Verificado</Text>
+                  </View>
+                </View>
+                
+                {driverDetails.carPhoto && (
+                  <Image source={{ uri: driverDetails.carPhoto }} style={styles.carPhotoTrackingImg} />
+                )}
+              </View>
+
+              {/* Controles de Viaje (Fila Horizontal) */}
+              <View style={styles.tripControlsRow}>
+                <TouchableOpacity 
+                  style={[styles.controlBtnSquare, isRecording && styles.controlBtnRecording]}
+                  onPress={() => setIsRecording(prev => !prev)}
+                >
+                  <Ionicons name={isRecording ? "mic" : "mic-outline"} size={20} color={Colors.white} />
+                  <Text style={styles.controlBtnLabel}>{isRecording ? "Grabando" : "Grabar"}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.controlBtnSquare, { backgroundColor: '#25D366' }]}
+                  onPress={() => Linking.openURL('https://wa.me/?text=Hola!%20Estoy%20viajando%20en%20TravelCab,%20seguí%20mi%20recorrido%20en%20tiempo%20real.')}
+                >
+                  <Ionicons name="logo-whatsapp" size={20} color={Colors.white} />
+                  <Text style={styles.controlBtnLabel}>Compartir</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.controlBtnSquare, { backgroundColor: Colors.danger }]}
+                  onPress={() => Linking.openURL('tel:911')}
+                >
+                  <Ionicons name="alert-circle" size={20} color={Colors.white} />
+                  <Text style={styles.controlBtnLabel}>SOS 911</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.controlBtnSquare, { backgroundColor: Colors.primary }]}
+                  onPress={() => navigation.navigate('Chat')}
+                >
+                  <Ionicons name="chatbubbles-outline" size={20} color={Colors.white} />
+                  <Text style={styles.controlBtnLabel}>Chat Chofer</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Sección de Novedades del Ecosistema Desplegable */}
+              <View style={styles.ecosystemDrawerContainer}>
+                <TouchableOpacity 
+                  style={styles.ecosystemDrawerHeader} 
+                  onPress={() => setIsEcosystemExpanded(prev => !prev)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="compass-outline" size={20} color={Colors.primary} />
+                    <Text style={styles.ecosystemDrawerTitle}>Novedades del Ecosistema</Text>
+                  </View>
+                  
+                  {!isEcosystemExpanded ? (
+                    <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
+                      <Ionicons name="chevron-up" size={20} color={Colors.accent} />
+                    </Animated.View>
+                  ) : (
+                    <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
+                  )}
+                </TouchableOpacity>
+
+                {!isEcosystemExpanded && (
+                  <TouchableOpacity onPress={() => setIsEcosystemExpanded(true)} style={styles.drawerHintBanner}>
+                    <Text style={styles.drawerHintText}>Tocá para desplegar los beneficios y novedades 🔼</Text>
+                  </TouchableOpacity>
+                )}
+
+                {isEcosystemExpanded && (
+                  <View style={styles.ecosystemDrawerBody}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cmsCarousel}>
+                      {cmsBlocks.length > 0 ? (
+                        cmsBlocks.flatMap(block => block.cards).map((card, idx) => (
+                          <TouchableOpacity key={idx} style={styles.cmsCard} onPress={() => Linking.openURL(card.url)}>
+                            <Image source={{ uri: card.imageUrl }} style={styles.cmsCardImg} />
+                            <View style={styles.cmsCardBody}>
+                              <Text style={styles.cmsCardTitle} numberOfLines={1}>{card.title}</Text>
+                              <Text style={styles.cmsCardDesc} numberOfLines={2}>{card.description}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))
+                      ) : (
+                        <View style={styles.promoCard}>
+                          <Text style={styles.promoCardTitle}>Info Ecosistema TravelApp</Text>
+                          <Text style={styles.promoCardDesc}>
+                            ¿Sabías que al completar este viaje acumulás **150 puntos** en tu perfil de Rewards? Canjealos por beneficios en TravelApp Experiences.
+                          </Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+
+              {/* Botones Finales */}
+              <View style={{ gap: 10, marginTop: 12 }}>
+                <TouchableOpacity 
+                  style={[styles.cancelTripBtn, { borderColor: Colors.success, paddingVertical: 12 }]} 
+                  onPress={handleCompleteTrip}
+                >
+                  <Text style={[styles.cancelTripBtnText, { color: Colors.success }]}>
+                    Finalizar Viaje (Simular Pago 1-Clic)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[styles.cancelTripBtn, { paddingVertical: 12 }]} onPress={handleCancelTrip}>
+                  <Text style={styles.cancelTripBtnText}>Cancelar Viaje</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      ) : activeTab === 'home' && requestFlowStep === 'pricing' ? (
+        <View style={styles.activeTripScreenContainer}>
+          {/* 50% Superior: Mapa de Seguimiento */}
+          <View style={styles.topHalfMapContainer}>
+            {Platform.OS === 'web' ? (
+              <View style={styles.webMapPlaceholder}>
+                <View style={styles.webMapGrid}>
+                  <View style={[styles.gridLine, { top: '50%', left: 0, right: 0 }]} />
+                  <View style={[styles.gridLine, { left: '50%', top: 0, bottom: 0 }]} />
+                  {onlineDrivers.slice(0, 3).map((d: any, index: number) => {
+                    const topVal = 40 + (index * 12) % 40;
+                    const leftVal = 30 + (index * 19) % 50;
+                    return (
+                      <View key={d.id || index} style={[styles.simulatedCar, { top: `${topVal}%`, left: `${leftVal}%` }]}>
+                        <Ionicons name="car" size={18} color={Colors.accent} />
+                      </View>
+                    );
+                  })}
+                </View>
+                <Text style={styles.webMapText}>Mapa de Tarifas (Simulación)</Text>
+              </View>
+            ) : (
+              <MapView
+                ref={mapRef}
+                style={styles.map}
+                initialRegion={currentLocation}
+                showsUserLocation
+              >
+                {onlineDrivers.map((d: any) => d.location && (
+                  <Marker
+                    key={d.id}
+                    coordinate={d.location}
+                    title={d.name}
+                  >
+                    <View style={[styles.markerPin, { backgroundColor: Colors.primary, width: 26, height: 26, borderRadius: 13 }]}>
+                      <Ionicons name="car" size={14} color={Colors.white} />
+                    </View>
+                  </Marker>
+                ))}
+                {originCoords && (
+                  <Marker coordinate={originCoords} title="Origen">
+                    <View style={[styles.markerPin, { backgroundColor: Colors.success }]}>
+                      <Ionicons name="pin" size={16} color={Colors.white} />
+                    </View>
+                  </Marker>
+                )}
+                {destinationCoords && (
+                  <Marker coordinate={destinationCoords} title="Destino">
+                    <View style={[styles.markerPin, { backgroundColor: Colors.danger }]}>
+                      <Ionicons name="flag" size={16} color={Colors.white} />
+                    </View>
+                  </Marker>
+                )}
+                {routePolyline ? (
+                  <Polyline
+                    coordinates={decodePolyline(routePolyline)}
+                    strokeColor={Colors.accent}
+                    strokeWidth={4}
+                  />
+                ) : null}
+              </MapView>
+            )}
+          </View>
+
+          {/* 50% Inferior: Tarifas y Selección (Estilo Canva) */}
+          <View style={[styles.bottomHalfContainer, { paddingBottom: insets.bottom }]}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.bottomHalfScrollContent}>
+              <Text style={styles.canvaPricingTitle}>Tarifa aproximada</Text>
+              
+              <View style={{ gap: 10 }}>
+                {categories.length > 0 ? (
+                  categories.slice(0, 4).map(cat => {
+                    const isSelected = selectedCategory === cat.name;
+                    const fare = calculateFare(cat.name);
+                    return (
+                      <TouchableOpacity 
+                        key={cat.id} 
+                        style={[styles.canvaCategoryBtn, isSelected && styles.canvaCategoryBtnActive]}
+                        onPress={() => setSelectedCategory(cat.name)}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          <View style={styles.categoryIconCircle}>
+                            <Ionicons 
+                              name={cat.icon || "car-outline"} 
+                              size={20} 
+                              color={Colors.accent} 
+                            />
+                          </View>
+                          <Text style={styles.canvaCategoryName}>{cat.name}</Text>
+                        </View>
+                        <Text style={styles.canvaCategoryPrice}>${fare}</Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                ) : (
+                  <Text style={{ textAlign: 'center', color: Colors.textSecondary, fontFamily: 'Quicksand-Medium', marginVertical: 10 }}>
+                    No hay categorías disponibles
+                  </Text>
+                )}
+              </View>
+
+              {/* Botón de Agenda tu viaje */}
+              <TouchableOpacity 
+                style={styles.canvaAgendaBtn}
+                onPress={() => {
+                  setScheduleModalVisible(true);
+                }}
+              >
+                <Ionicons name="calendar-outline" size={20} color={Colors.accent} style={{ marginRight: 8 }} />
+                <Text style={styles.canvaAgendaBtnText}>Agenda tu viaje</Text>
+              </TouchableOpacity>
+
+              {/* Botones de acción */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                <TouchableOpacity style={styles.canvaBackBtn} onPress={() => setRequestFlowStep('idle')}>
+                  <Text style={styles.canvaBackBtnText}>Volver</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.canvaConfirmBtn} onPress={startSearchDriver}>
+                  <Text style={styles.canvaConfirmBtnText}>Solicitar viaje</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      ) : (
+        <>
+          {/* MAPA DE FONDO EN INICIO */}
+      {activeTab === 'home' && requestFlowStep === 'searching' && (
         <View style={styles.mapContainer}>
           {loadingLocation ? (
             <ActivityIndicator size="large" color={Colors.primary} style={StyleSheet.absoluteFill} />
@@ -1115,18 +1513,42 @@ export default function HomeScreen() {
                 <View style={[styles.gridLine, { left: '33%', top: 0, bottom: 0 }]} />
                 <View style={[styles.gridLine, { left: '66%', top: 0, bottom: 0 }]} />
                 
-                {/* Choferes simulados */}
-                <View style={[styles.simulatedCar, { top: '40%', left: '25%' }]}>
-                  <Ionicons name="car" size={18} color={Colors.accent} />
-                </View>
-                <View style={[styles.simulatedCar, { top: '55%', left: '70%' }]}>
-                  <Ionicons name="car" size={18} color={Colors.white} />
-                </View>
+                {/* Choferes reales desde Firestore (simulados en web en posiciones relativas) */}
+                {onlineDrivers.map((d: any, index: number) => {
+                  const topVal = 30 + (index * 17) % 50;
+                  const leftVal = 20 + (index * 23) % 65;
+                  return (
+                    <View key={d.id} style={[styles.simulatedCar, { top: `${topVal}%`, left: `${leftVal}%` }]}>
+                      <Ionicons name="car" size={18} color={index === 0 ? Colors.accent : Colors.white} />
+                      <Text style={{ color: Colors.white, fontSize: 8, fontFamily: 'Quicksand-Bold', marginTop: 2 }}>
+                        {d.name || d.driverName || 'Chofer'}
+                      </Text>
+                    </View>
+                  );
+                })}
+
+                {/* Ruta simulada en Web */}
+                {originCoords && destinationCoords && (
+                  <View style={styles.webSimulatedRouteContainer}>
+                    <View style={[styles.simulatedMarker, { backgroundColor: Colors.success }]}>
+                      <Text style={styles.simulatedMarkerText}>O</Text>
+                    </View>
+                    <View style={styles.simulatedRouteLine} />
+                    <View style={[styles.simulatedMarker, { backgroundColor: Colors.danger }]}>
+                      <Text style={styles.simulatedMarkerText}>D</Text>
+                    </View>
+                  </View>
+                )}
               </View>
-              <Text style={styles.webMapText}>Mapa en Vivo (Simulación Ecosistema)</Text>
+              <Text style={styles.webMapText}>
+                {originCoords && destinationCoords 
+                  ? `Ruta: ${origin.split(',')[0]} ➔ ${destination.split(',')[0]}` 
+                  : "Mapa en Vivo (Simulación Ecosistema)"}
+              </Text>
             </View>
           ) : (
             <MapView
+              ref={mapRef}
               style={styles.map}
               initialRegion={currentLocation}
               showsUserLocation
@@ -1144,32 +1566,53 @@ export default function HomeScreen() {
                   </View>
                 </Marker>
               ))}
+
+              {/* Ruta activa y marcadores de origen/destino */}
+              {originCoords && (
+                <Marker coordinate={originCoords} title="Origen">
+                  <View style={[styles.markerPin, { backgroundColor: Colors.success }]}>
+                    <Ionicons name="pin" size={16} color={Colors.white} />
+                  </View>
+                </Marker>
+              )}
+              {destinationCoords && (
+                <Marker coordinate={destinationCoords} title="Destino">
+                  <View style={[styles.markerPin, { backgroundColor: Colors.danger }]}>
+                    <Ionicons name="flag" size={16} color={Colors.white} />
+                  </View>
+                </Marker>
+              )}
+              {routePolyline ? (
+                <Polyline
+                  coordinates={decodePolyline(routePolyline)}
+                  strokeColor={Colors.accent}
+                  strokeWidth={4}
+                />
+              ) : null}
             </MapView>
           )}
         </View>
       )}
 
-      {/* HEADER DE INICIO */}
+      {/* HEADER DE INICIO (ESTILO CANVA) */}
       {activeTab === 'home' && requestFlowStep === 'idle' && (
-        <View style={[styles.topBar, { top: insets.top > 0 ? insets.top + 8 : 40 }]}>
-          <View style={styles.brandingRow}>
-            <TravelCabLogo size={34} textColor={Colors.primary} />
+        <View style={[styles.canvaHeader, { paddingTop: insets.top > 0 ? insets.top + 16 : 40 }]}>
+          <View style={styles.canvaLogoRow}>
+            <TravelCabLogo size={32} textColor={Colors.white} isAccentColor={true} />
           </View>
           
-          {/* Selector de servicio */}
-          <View style={styles.serviceSelector}>
-            <TouchableOpacity 
-              style={[styles.selectorOpt, serviceMode === 'urbana' && styles.selectorOptActive]}
-              onPress={() => setServiceMode('urbana')}
-            >
-              <Text style={[styles.selectorOptText, serviceMode === 'urbana' && styles.selectorOptTextActive]}>Urbano</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.selectorOpt, serviceMode === 'aci' && styles.selectorOptActive]}
-              onPress={() => setServiceMode('aci')}
-            >
-              <Text style={[styles.selectorOptText, serviceMode === 'aci' && styles.selectorOptTextActive]}>ACI (Interurbano)</Text>
-            </TouchableOpacity>
+          <View style={styles.canvaUserGreetingRow}>
+            <View style={styles.canvaUserAvatarCircle}>
+              <Ionicons name="person" size={18} color="#0A2A5B" />
+            </View>
+            <Text style={styles.canvaGreetingText}>
+              Hola {user?.displayName ? user.displayName.split(' ')[0] : 'Fernando'} ¿Adonde vamos hoy?
+            </Text>
+          </View>
+          
+          <View style={styles.canvaPointsRow}>
+            <Text style={styles.canvaPointsVal}>{rewardsPoints}</Text>
+            <Text style={styles.canvaPointsLabel}> Puntos Rewards</Text>
           </View>
         </View>
       )}
@@ -1179,296 +1622,337 @@ export default function HomeScreen() {
         style={styles.mainScroll}
         contentContainerStyle={[
           styles.mainScrollContent,
-          activeTab === 'home' && requestFlowStep === 'idle' && styles.mainScrollContentHomeMap
+          activeTab === 'home' && requestFlowStep === 'idle' && [
+            styles.mainScrollContentHomeMap,
+            { paddingBottom: 82 + insets.bottom }
+          ]
         ]}
         showsVerticalScrollIndicator={false}
       >
         
         {/* TABS 1: INICIO (HOME) */}
         {activeTab === 'home' && (
-          <View style={[styles.tabContentContainer, requestFlowStep !== 'idle' && { paddingTop: insets.top > 0 ? insets.top + 10 : 20 }]}>
+          <View style={[styles.tabContentContainer, { paddingTop: 20 }]}>
             
             {/* Flujo: Formulario inicial de búsqueda */}
             {requestFlowStep === 'idle' && (
               <Animated.View style={styles.bookingCard}>
-                <Text style={styles.bookingCardTitle}>¿A dónde viajamos?</Text>
-                
-                <View style={styles.inputsBox}>
-                  <View>
-                    <View style={styles.inputField}>
-                      <Ionicons name="ellipse" size={12} color={Colors.success} />
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="Origen (Ubicación actual)"
-                        placeholderTextColor={Colors.textMuted}
-                        value={origin}
-                        onChangeText={(text) => fetchPlaceSuggestions(text, 'origin')}
-                        onFocus={() => setActiveSearchField('origin')}
-                      />
-                      {origin.length > 0 && (
-                        <TouchableOpacity onPress={() => { setOrigin(''); setOriginSuggestions([]); }}>
-                          <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {activeSearchField === 'origin' && originSuggestions.length > 0 && (
-                      <View style={styles.suggestionsContainer}>
-                        {originSuggestions.map((item) => (
-                          <TouchableOpacity
-                            key={item.place_id}
-                            style={styles.suggestionItem}
-                            onPress={() => handleSelectSuggestion(item, 'origin')}
-                          >
-                            <Ionicons name="location-outline" size={16} color={Colors.textMuted} style={{ marginRight: 6 }} />
-                            <Text style={styles.suggestionText} numberOfLines={1}>
-                              {item.description}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.inputDivider} />
-                  <View>
-                    <View style={styles.inputField}>
-                      <Ionicons name="location" size={14} color={Colors.danger} />
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="¿A dónde querés ir?"
-                        placeholderTextColor={Colors.textMuted}
-                        value={destination}
-                        onChangeText={(text) => fetchPlaceSuggestions(text, 'destination')}
-                        onFocus={() => setActiveSearchField('destination')}
-                      />
-                      {destination.length > 0 && (
-                        <TouchableOpacity onPress={() => { setDestination(''); setDestSuggestions([]); }}>
-                          <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {activeSearchField === 'destination' && destSuggestions.length > 0 && (
-                      <View style={styles.suggestionsContainer}>
-                        {destSuggestions.map((item) => (
-                          <TouchableOpacity
-                            key={item.place_id}
-                            style={styles.suggestionItem}
-                            onPress={() => handleSelectSuggestion(item, 'destination')}
-                          >
-                            <Ionicons name="location-outline" size={16} color={Colors.textMuted} style={{ marginRight: 6 }} />
-                            <Text style={styles.suggestionText} numberOfLines={1}>
-                              {item.description}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                </View>
-
-                {/* Selector de Método de Pago */}
-                <Text style={[styles.payLabel, { marginTop: 12, marginBottom: 4 }]}>Forma de pago</Text>
-                <View style={[styles.paymentBox, { marginBottom: 12 }]}>
-                  {['Efectivo', 'Mercado Pago', 'Rewards'].map(m => (
-                    <TouchableOpacity 
-                      key={m} 
-                      style={[styles.paymentOpt, selectedPayment === m && styles.paymentOptActive]}
-                      onPress={() => setSelectedPayment(m)}
-                    >
-                      <Text style={[styles.paymentOptText, selectedPayment === m && styles.paymentOptTextActive]}>{m}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Fila de Acciones Rápidas */}
-                <View style={styles.actionRow}>
+                {/* Tabs de Selección de Servicio */}
+                <View style={styles.canvaTabsRow}>
                   <TouchableOpacity 
-                    style={[styles.scheduleBtn, isScheduled && styles.scheduledBtnActive]}
-                    onPress={() => setScheduleModalVisible(true)}
-                  >
-                    <Ionicons name="time-outline" size={18} color={isScheduled ? Colors.white : Colors.accent} />
-                    <Text style={[styles.scheduleBtnText, isScheduled && styles.scheduledTextActive]}>
-                      {isScheduled ? `Agendado: ${scheduleTime}` : 'Agendar viaje'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.requestBtn}
+                    style={[styles.canvaTabOpt, activeSubMode === 'urbana' && styles.canvaTabOptActive]}
                     onPress={() => {
-                      if (!origin || !destination) return Alert.alert('Ruta incompleta', 'Ingresá origen y destino.');
-                      setRequestFlowStep('pricing');
+                      setActiveSubMode('urbana');
+                      setServiceMode('urbana');
                     }}
                   >
-                    <Text style={styles.requestBtnText}>Buscar tarifas</Text>
-                    <Ionicons name="arrow-forward" size={18} color={Colors.white} />
+                    <Text style={[styles.canvaTabOptText, activeSubMode === 'urbana' && styles.canvaTabOptTextActive]}>Urbano</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.canvaTabOpt, activeSubMode === 'interurbano' && styles.canvaTabOptActive]}
+                    onPress={() => {
+                      setActiveSubMode('interurbano');
+                      setServiceMode('aci');
+                    }}
+                  >
+                    <Text style={[styles.canvaTabOptText, activeSubMode === 'interurbano' && styles.canvaTabOptTextActive]}>Interurbano</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.canvaTabOpt, activeSubMode === 'traslados' && styles.canvaTabOptActive]}
+                    onPress={() => setActiveSubMode('traslados')}
+                  >
+                    <Text style={[styles.canvaTabOptText, activeSubMode === 'traslados' && styles.canvaTabOptTextActive]}>Traslados</Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* CMS Promotional blocks scroll */}
-                <View style={styles.cmsContainer}>
-                  {cmsBlocks.map(block => (
-                    <View key={block.id} style={styles.cmsBlock}>
-                      <Text style={styles.cmsBlockTitle}>{block.blockTitle}</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cmsCarousel}>
-                        {block.cards.map((card, idx) => (
-                          <TouchableOpacity key={idx} style={styles.cmsCard} onPress={() => Linking.openURL(card.url)}>
-                            <Image source={{ uri: card.imageUrl }} style={styles.cmsCardImg} />
-                            <View style={styles.cmsCardBody}>
-                              <Text style={styles.cmsCardTitle} numberOfLines={1}>{card.title}</Text>
-                              <Text style={styles.cmsCardDesc} numberOfLines={2}>{card.description}</Text>
-                            </View>
+                {/* Título de Tarjeta dinámico */}
+                <Text style={[
+                  styles.canvaCardTitle,
+                  activeSubMode === 'interurbano' && { color: Colors.accent },
+                  activeSubMode === 'traslados' && { color: Colors.danger }
+                ]}>
+                  {activeSubMode === 'urbana' ? 'Movilidad Urbana' : activeSubMode === 'interurbano' ? 'Interurbano' : 'Traslados'}
+                </Text>
+
+                {/* Formularios según modo */}
+                {activeSubMode !== 'traslados' ? (
+                  <View style={{ gap: 8 }}>
+                    {/* Origen */}
+                    <View>
+                      <Text style={styles.canvaInputLabel}>Origen</Text>
+                      <View style={styles.canvaInputField}>
+                        <Ionicons name="ellipse" size={10} color={Colors.success} style={{ marginRight: 8 }} />
+                        <TextInput
+                          style={styles.canvaTextInput}
+                          placeholder="Origen (Ubicación actual)"
+                          placeholderTextColor="#A0AEC0"
+                          value={origin}
+                          onChangeText={(text) => fetchPlaceSuggestions(text, 'origin')}
+                          onFocus={() => setActiveSearchField('origin')}
+                        />
+                        {origin.length > 0 && (
+                          <TouchableOpacity onPress={() => { setOrigin(''); setOriginSuggestions([]); }}>
+                            <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
                           </TouchableOpacity>
-                        ))}
-                      </ScrollView>
+                        )}
+                      </View>
+                      {activeSearchField === 'origin' && originSuggestions.length > 0 && (
+                        <View style={styles.suggestionsContainer}>
+                          {originSuggestions.map((item) => (
+                            <TouchableOpacity
+                              key={item.place_id}
+                              style={styles.suggestionItem}
+                              onPress={() => handleSelectSuggestion(item, 'origin')}
+                            >
+                              <Ionicons name="location-outline" size={16} color={Colors.textMuted} style={{ marginRight: 6 }} />
+                              <Text style={styles.suggestionText} numberOfLines={1}>
+                                {item.description}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
                     </View>
-                  ))}
+
+                    {/* Destino */}
+                    <View>
+                      <Text style={styles.canvaInputLabel}>Destino</Text>
+                      <View style={styles.canvaInputField}>
+                        <Ionicons name="location" size={14} color={Colors.danger} style={{ marginRight: 8 }} />
+                        <TextInput
+                          style={styles.canvaTextInput}
+                          placeholder="¿A dónde querés ir?"
+                          placeholderTextColor="#A0AEC0"
+                          value={destination}
+                          onChangeText={(text) => fetchPlaceSuggestions(text, 'destination')}
+                          onFocus={() => setActiveSearchField('destination')}
+                        />
+                        {destination.length > 0 && (
+                          <TouchableOpacity onPress={() => { setDestination(''); setDestSuggestions([]); }}>
+                            <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      {activeSearchField === 'destination' && destSuggestions.length > 0 && (
+                        <View style={styles.suggestionsContainer}>
+                          {destSuggestions.map((item) => (
+                            <TouchableOpacity
+                              key={item.place_id}
+                              style={styles.suggestionItem}
+                              onPress={() => handleSelectSuggestion(item, 'destination')}
+                            >
+                              <Ionicons name="location-outline" size={16} color={Colors.textMuted} style={{ marginRight: 6 }} />
+                              <Text style={styles.suggestionText} numberOfLines={1}>
+                                {item.description}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    {/* Fila 1: Fecha y Hora */}
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.canvaInputLabel}>Fecha</Text>
+                        <TouchableOpacity 
+                          style={styles.canvaInputField}
+                          onPress={() => setShowDatePicker(true)}
+                        >
+                          <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
+                          <Text style={[styles.canvaTextInput, !scheduleDate && { color: '#A0AEC0' }]}>
+                            {scheduleDate || "Elegir fecha"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.canvaInputLabel}>Hora</Text>
+                        <TouchableOpacity 
+                          style={styles.canvaInputField}
+                          onPress={() => setShowTimePicker(true)}
+                        >
+                          <Ionicons name="time-outline" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
+                          <Text style={[styles.canvaTextInput, !scheduleTime && { color: '#A0AEC0' }]}>
+                            {scheduleTime ? `${scheduleTime} hs` : "Elegir hora"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Fila 2: Ciudad y Cantidad de pasajeros */}
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <View style={{ flex: 1.5 }}>
+                        <Text style={styles.canvaInputLabel}>Ciudad</Text>
+                        <View style={styles.canvaInputField}>
+                          <Ionicons name="business-outline" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
+                          <TextInput 
+                            style={styles.canvaTextInput}
+                            placeholder="Ej. Tucumán"
+                            placeholderTextColor="#A0AEC0"
+                            value={scheduleCity}
+                            onChangeText={setScheduleCity}
+                          />
+                        </View>
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.canvaInputLabel}>Pasajeros</Text>
+                        <View style={styles.canvaInputField}>
+                          <Ionicons name="people-outline" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
+                          <TextInput 
+                            style={styles.canvaTextInput}
+                            placeholder="Cantidad"
+                            placeholderTextColor="#A0AEC0"
+                            keyboardType="numeric"
+                            value={schedulePassengers}
+                            onChangeText={setSchedulePassengers}
+                          />
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Origen */}
+                    <View>
+                      <Text style={styles.canvaInputLabel}>Origen</Text>
+                      <View style={styles.canvaInputField}>
+                        <Ionicons name="ellipse" size={10} color={Colors.success} style={{ marginRight: 8 }} />
+                        <TextInput 
+                          style={styles.canvaTextInput}
+                          placeholder="Origen (Ubicación actual)"
+                          placeholderTextColor="#A0AEC0"
+                          value={origin}
+                          onChangeText={(text) => fetchPlaceSuggestions(text, 'origin')}
+                          onFocus={() => setActiveSearchField('origin')}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Destino */}
+                    <View>
+                      <Text style={styles.canvaInputLabel}>Destino</Text>
+                      <View style={styles.canvaInputField}>
+                        <Ionicons name="location" size={14} color={Colors.danger} style={{ marginRight: 8 }} />
+                        <TextInput 
+                          style={styles.canvaTextInput}
+                          placeholder="¿A dónde querés ir?"
+                          placeholderTextColor="#A0AEC0"
+                          value={destination}
+                          onChangeText={(text) => fetchPlaceSuggestions(text, 'destination')}
+                          onFocus={() => setActiveSearchField('destination')}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Selector de Método de Pago */}
+                <Text style={styles.canvaPaymentTitle}>Forma de pago</Text>
+                <View style={styles.canvaPaymentBox}>
+                  {[
+                    { id: 'Efectivo', label: 'Efectivo', activeColor: '#00A86B', idleColor: '#4BB5E6' },
+                    { id: 'Mercado Pago', label: 'Mercado Pago', activeColor: '#009EE3', idleColor: '#4BB5E6' },
+                    { id: 'Rewards', label: 'Puntos Rewards', activeColor: '#F59E0B', idleColor: '#4BB5E6' }
+                  ].map(m => {
+                    const isSelected = selectedPayment === m.id;
+                    return (
+                      <View key={m.id} style={styles.canvaPaymentCol}>
+                        <Text style={styles.canvaPaymentColLabel}>{m.label}</Text>
+                        <TouchableOpacity 
+                          style={[
+                            styles.canvaPaymentBlock, 
+                            { backgroundColor: isSelected ? m.activeColor : m.idleColor }
+                          ]}
+                          onPress={() => setSelectedPayment(m.id)}
+                        >
+                          {m.id === 'Efectivo' && (
+                            <Ionicons name="cash" size={18} color={Colors.white} />
+                          )}
+                          {m.id === 'Mercado Pago' && (
+                            <Ionicons name="card" size={18} color={Colors.white} />
+                          )}
+                          {m.id === 'Rewards' && (
+                            <Ionicons name="gift" size={18} color={Colors.white} />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
                 </View>
+
+                {/* Botón Calcular Viaje Naranja Redondeado */}
+                <TouchableOpacity 
+                  style={styles.canvaCalcularBtn}
+                  onPress={() => {
+                    if (!origin || !destination) {
+                      return Alert.alert('Ruta incompleta', 'Ingresá origen y destino.');
+                    }
+                    setRequestFlowStep('pricing');
+                  }}
+                >
+                  <Text style={styles.canvaCalcularBtnText}>Calcular viaje</Text>
+                </TouchableOpacity>
               </Animated.View>
             )}
 
-            {/* Flujo: Selección de categorías y cotización */}
-            {requestFlowStep === 'pricing' && (
-              <View style={styles.pricingOverlay}>
-                <View style={styles.pricingCard}>
-                  <Text style={styles.pricingTitle}>Categorías y Tarifas</Text>
-                  
-                  {/* Listado de Categorías Dinámicas */}
-                  <View style={styles.categoriesBox}>
-                    {categories.map(cat => {
-                      const isSelected = selectedCategory === cat.name;
-                      const fare = calculateFare(cat.name);
-                      return (
-                        <TouchableOpacity 
-                          key={cat.id} 
-                          style={[styles.categoryOption, isSelected && styles.categoryOptionActive]}
-                          onPress={() => setSelectedCategory(cat.name)}
-                        >
-                          <Ionicons name="car-outline" size={24} color={isSelected ? Colors.accent : Colors.primary} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.categoryName}>{cat.name}</Text>
-                            <Text style={styles.categoryMeta}>Tarifa Base · Split Habilitado</Text>
-                          </View>
-                          <Text style={styles.categoryFare}>${fare} ARS</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+            {/* Carruseles CMS de Novedades del Ecosistema y Beneficios Rewards */}
+            {requestFlowStep === 'idle' && (
+              <View style={{ gap: 16, marginTop: 12 }}>
+                {/* CMS: Novedades del Ecosistema */}
+                <View>
+                  <View style={styles.canvaSectionHeader}>
+                    <Text style={styles.canvaSectionTitle}>Novedades del Ecosistema</Text>
+                    <TouchableOpacity onPress={() => setActiveTab('experience')}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.canvaSectionVerMas}>Ver más</Text>
+                        <Ionicons name="arrow-forward" size={12} color={Colors.danger} style={{ marginLeft: 2 }} />
+                      </View>
+                    </TouchableOpacity>
                   </View>
-
-                  {/* Selector de Método de Pago */}
-                  <Text style={styles.payLabel}>Forma de pago</Text>
-                  <View style={styles.paymentBox}>
-                    {['Efectivo', 'Mercado Pago', 'Rewards'].map(m => (
-                      <TouchableOpacity 
-                        key={m} 
-                        style={[styles.paymentOpt, selectedPayment === m && styles.paymentOptActive]}
-                        onPress={() => setSelectedPayment(m)}
-                      >
-                        <Text style={[styles.paymentOptText, selectedPayment === m && styles.paymentOptTextActive]}>{m}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.canvaCarouselContent}>
+                    {cmsBlocks.flatMap(block => block.cards).map((card, idx) => (
+                      <TouchableOpacity key={idx} style={styles.canvaCarouselCard} onPress={() => Linking.openURL(card.url)}>
+                        <Image source={{ uri: card.imageUrl }} style={styles.canvaCarouselCardImg} />
+                        <View style={styles.canvaCarouselCardBody}>
+                          <Text style={styles.canvaCarouselCardTitle} numberOfLines={1}>{card.title}</Text>
+                          <Text style={styles.canvaCarouselCardDesc} numberOfLines={2}>{card.description}</Text>
+                        </View>
                       </TouchableOpacity>
                     ))}
-                  </View>
-
-                  {/* Botones de acción */}
-                  <View style={styles.pricingActions}>
-                    <TouchableOpacity style={styles.backBtn} onPress={() => setRequestFlowStep('idle')}>
-                      <Text style={styles.backBtnText}>Volver</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.confirmTripBtn} onPress={startSearchDriver}>
-                      <Text style={styles.confirmTripText}>Confirmar Viaje</Text>
-                    </TouchableOpacity>
-                  </View>
+                  </ScrollView>
                 </View>
-              </View>
-            )}
 
-            {/* Flujo: Viaje Aceptado (Chofer asignado) */}
-            {requestFlowStep === 'active' && driverDetails && (
-              <View style={styles.activeTripContainer}>
-                {/* Mapa a media pantalla */}
-                <View style={styles.halfMap}>
-                  {Platform.OS === 'web' ? (
-                    <View style={styles.webMapPlaceholder}>
-                      <View style={styles.webMapGrid}>
-                        <View style={[styles.gridLine, { top: '50%', left: 0, right: 0 }]} />
-                        <View style={[styles.gridLine, { left: '50%', top: 0, bottom: 0 }]} />
-                        <View style={[styles.simulatedCar, { top: '45%', left: '45%' }]}>
-                          <Ionicons name="car" size={20} color={Colors.accent} />
-                        </View>
+                {/* CMS: Beneficios Rewards */}
+                <View>
+                  <View style={styles.canvaSectionHeader}>
+                    <Text style={styles.canvaSectionTitle}>Beneficios Rewards</Text>
+                    <TouchableOpacity onPress={() => setActiveTab('rewards')}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[styles.canvaSectionVerMas, { color: '#F59E0B' }]}>Ver más</Text>
+                        <Ionicons name="arrow-forward" size={12} color="#F59E0B" style={{ marginLeft: 2 }} />
                       </View>
-                      <Text style={styles.webMapText}>Seguimiento en Vivo (Simulación)</Text>
-                    </View>
-                  ) : (
-                    <MapView
-                      style={styles.map}
-                      initialRegion={currentLocation}
-                      showsUserLocation
-                    >
-                      <Marker coordinate={currentLocation} title="Tu ubicación" />
-                    </MapView>
-                  )}
-                </View>
-
-                {/* Tarjeta del Chofer Asignado en el centro */}
-                <View style={styles.driverPanel}>
-                  <Image source={{ uri: driverDetails.avatar }} style={styles.driverAvatarImg} />
-                  <View style={styles.driverInfoCol}>
-                    <Text style={styles.driverNameLabel}>{driverDetails.name}</Text>
-                    <Text style={styles.driverCarPlate}>Patente: {driverDetails.plate} · {driverDetails.model}</Text>
-                    <Text style={styles.driverRatingText}>⭐ {driverDetails.rating} Calificación Conductor</Text>
+                    </TouchableOpacity>
                   </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.canvaCarouselContent}>
+                    {rewardsBlocks.length > 0 ? (
+                      rewardsBlocks.map((card, idx) => (
+                        <TouchableOpacity key={idx} style={styles.canvaCarouselCard} onPress={() => Linking.openURL(card.url || 'https://travelapp.ar/rewards')}>
+                          <Image source={{ uri: card.imageUrl }} style={styles.canvaCarouselCardImg} />
+                          <View style={styles.canvaCarouselCardBody}>
+                            <Text style={styles.canvaCarouselCardTitle} numberOfLines={1}>{card.title}</Text>
+                            <Text style={styles.canvaCarouselCardDesc} numberOfLines={2}>{card.description}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View style={styles.canvaCarouselCardPlaceholder}>
+                        <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary }}>Info Beneficios</Text>
+                      </View>
+                    )}
+                  </ScrollView>
                 </View>
-
-                {/* Tarjeta del Vehículo */}
-                <Image source={{ uri: driverDetails.carPhoto }} style={styles.carPhotoImg} />
-
-                {/* Bloque de Información Promocional del Ecosistema */}
-                <View style={styles.promoCard}>
-                  <Text style={styles.promoCardTitle}>Info Ecosistema TravelApp</Text>
-                  <Text style={styles.promoCardDesc}>
-                    ¿Sabías que al completar este viaje acumulás **150 puntos** en tu perfil de Rewards? Canjealos por beneficios en TravelApp Experiences.
-                  </Text>
-                </View>
-
-                {/* Controles de Viaje */}
-                <View style={styles.tripControls}>
-                  <TouchableOpacity 
-                    style={[styles.controlBtn, isRecording && styles.controlBtnRecording]}
-                    onPress={() => setIsRecording(prev => !prev)}
-                  >
-                    <Ionicons name={isRecording ? "mic" : "mic-outline"} size={22} color={Colors.white} />
-                    <Text style={styles.controlBtnText}>{isRecording ? "Grabando..." : "Grabar Audio"}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={[styles.controlBtn, { backgroundColor: '#25D366' }]}
-                    onPress={() => Linking.openURL('https://wa.me/?text=Hola!%20Estoy%20viajando%20en%20TravelCab,%20seguí%20mi%20recorrido%20en%20tiempo%20real.')}
-                  >
-                    <Ionicons name="logo-whatsapp" size={22} color={Colors.white} />
-                    <Text style={styles.controlBtnText}>Compartir viaje</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={[styles.controlBtn, { backgroundColor: Colors.danger }]}
-                    onPress={() => Linking.openURL('tel:911')}
-                  >
-                    <Ionicons name="alert-circle" size={22} color={Colors.white} />
-                    <Text style={styles.controlBtnText}>Pánico (911)</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Botón de Finalizar Viaje (para testing de Cobro Automático) */}
-                <TouchableOpacity 
-                  style={[styles.cancelTripBtn, { borderColor: Colors.success, marginTop: 4 }]} 
-                  onPress={handleCompleteTrip}
-                >
-                  <Text style={[styles.cancelTripBtnText, { color: Colors.success }]}>
-                    Finalizar Viaje (Simular Pago 1-Clic)
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Botón de Cancelar */}
-                <TouchableOpacity style={styles.cancelTripBtn} onPress={handleCancelTrip}>
-                  <Text style={styles.cancelTripBtnText}>Cancelar Viaje</Text>
-                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -2272,7 +2756,7 @@ export default function HomeScreen() {
 
       {/* FOOTER NAVIGATION BAR */}
       {requestFlowStep !== 'active' && (
-        <View style={styles.footerTabs}>
+        <View style={[styles.footerTabs, { height: 64 + insets.bottom, paddingBottom: insets.bottom > 0 ? insets.bottom : 8 }]}>
           {[
             { id: 'home', label: 'Inicio', icon: 'map-outline' },
             { id: 'experience', label: 'Experiences', icon: 'compass-outline' },
@@ -2297,6 +2781,66 @@ export default function HomeScreen() {
           })}
         </View>
       )}
+    </>
+  )}
+
+      {/* Date Selector Modal */}
+      <Modal visible={showDatePicker} transparent animationType="fade" onRequestClose={() => setShowDatePicker(false)}>
+        <View style={styles.canvaModalOverlay}>
+          <View style={styles.canvaPickerCard}>
+            <Text style={styles.canvaPickerTitle}>Seleccionar Fecha</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              {getNext10Days().map((day, idx) => (
+                <TouchableOpacity 
+                  key={idx} 
+                  style={styles.canvaPickerOption}
+                  onPress={() => {
+                    setScheduleDate(day);
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <Text style={styles.canvaPickerOptionText}>{day}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={styles.canvaPickerCloseBtn} onPress={() => setShowDatePicker(false)}>
+              <Text style={styles.canvaPickerCloseText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Time Selector Modal */}
+      <Modal visible={showTimePicker} transparent animationType="fade" onRequestClose={() => setShowTimePicker(false)}>
+        <View style={styles.canvaModalOverlay}>
+          <View style={styles.canvaPickerCard}>
+            <Text style={styles.canvaPickerTitle}>Seleccionar Hora</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              {Array.from({ length: 24 }).map((_, hour) => {
+                const hh = hour.toString().padStart(2, '0');
+                return ['00', '15', '30', '45'].map(minute => {
+                  const timeString = `${hh}:${minute}`;
+                  return (
+                    <TouchableOpacity 
+                      key={timeString} 
+                      style={styles.canvaPickerOption}
+                      onPress={() => {
+                        setScheduleTime(timeString);
+                        setShowTimePicker(false);
+                      }}
+                    >
+                      <Text style={styles.canvaPickerOptionText}>{timeString} hs</Text>
+                    </TouchableOpacity>
+                  );
+                });
+              })}
+            </ScrollView>
+            <TouchableOpacity style={styles.canvaPickerCloseBtn} onPress={() => setShowTimePicker(false)}>
+              <Text style={styles.canvaPickerCloseText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* MODAL DE FICHA DE RESERVA */}
       <Modal
@@ -2381,6 +2925,42 @@ export default function HomeScreen() {
             <Text style={styles.searchingDesc}>Analizando choferes y tarifas activas en tu zona. Aguarda un momento.</Text>
             <TouchableOpacity style={styles.cancelSearchBtn} onPress={cancelSearch}>
               <Text style={styles.cancelSearchText}>Cancelar Búsqueda</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE VIAJE FINALIZADO Y PUNTOS ACUMULADOS */}
+      <Modal
+        visible={tripCompletedModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTripCompletedModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center', padding: 30 }]}>
+            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(245, 158, 11, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <Ionicons name="gift" size={45} color="#F59E0B" />
+            </View>
+            
+            <Text style={[styles.modalTitle, { textAlign: 'center', fontSize: 24, marginBottom: 8 }]}>¡Viaje Finalizado!</Text>
+            <Text style={{ fontSize: 14, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, textAlign: 'center', marginBottom: 20 }}>
+              Tu pago fue procesado con éxito. ¡Gracias por confiar en TravelCab!
+            </Text>
+
+            <View style={{ backgroundColor: Colors.background, borderRadius: 16, padding: 16, width: '100%', alignItems: 'center', marginBottom: 24, borderWidth: 1.5, borderColor: '#FFE082' }}>
+              <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>PUNTOS ACUMULADOS</Text>
+              <Text style={{ fontSize: 32, fontFamily: 'Quicksand-Bold', color: '#F59E0B' }}>+{earnedPoints} PTS</Text>
+              <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textMuted, marginTop: 4, textAlign: 'center' }}>
+                Sumados automáticamente a tu billetera Rewards
+              </Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.confirmBtn, { width: '100%', marginTop: 0 }]} 
+              onPress={() => setTripCompletedModalVisible(false)}
+            >
+              <Text style={styles.confirmBtnText}>¡Excelente!</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2560,6 +3140,7 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { color: Colors.textSecondary, fontSize: 14, fontFamily: 'Quicksand-Medium' },
+  markerPin: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
   
   // Header principal flotante
   topBar: {
@@ -2587,13 +3168,81 @@ const styles = StyleSheet.create({
   webMapPlaceholder: { flex: 1, backgroundColor: '#071A3C', justifyContent: 'center', alignItems: 'center', minHeight: 250 },
   webMapGrid: { ...StyleSheet.absoluteFill },
   gridLine: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.15)' },
-  simulatedCar: { position: 'absolute', width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
+  simulatedCar: { position: 'absolute', width: 50, height: 35, justifyContent: 'center', alignItems: 'center' },
   webMapText: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: 'rgba(255,255,255,0.4)', zIndex: 5 },
+  webSimulatedRouteContainer: { position: 'absolute', top: '50%', left: '15%', right: '15%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  simulatedMarker: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  simulatedMarkerText: { color: Colors.white, fontSize: 9, fontFamily: 'Quicksand-Bold' },
+  simulatedRouteLine: { flex: 1, height: 2, borderStyle: 'dashed', borderWidth: 1, borderColor: Colors.accent },
 
   // Contenido de cada pestaña
   tabContentContainer: { padding: 20, gap: 20 },
   tabHeaderTitle: { fontSize: 22, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
   tabHeaderDesc: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, lineHeight: 18 },
+
+  // Estilos Canva Redesign
+  canvaHeader: { paddingHorizontal: 20, paddingBottom: 24, gap: 14 },
+  canvaLogoRow: { alignItems: 'center', justifyContent: 'center' },
+  canvaUserGreetingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  canvaUserAvatarCircle: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
+  canvaGreetingText: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.white, flex: 1 },
+  canvaPointsRow: { flexDirection: 'row', alignItems: 'center' },
+  canvaPointsVal: { fontSize: 26, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  canvaPointsLabel: { fontSize: 26, fontFamily: 'Quicksand-Bold', color: '#F59E0B' },
+  
+  canvaTabsRow: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 20, padding: 3, marginBottom: 8 },
+  canvaTabOpt: { flex: 1, paddingVertical: 6, alignItems: 'center', borderRadius: 18 },
+  canvaTabOptActive: { backgroundColor: Colors.white, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 },
+  canvaTabOptText: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: '#718096' },
+  canvaTabOptTextActive: { color: '#0A2A5B' },
+  
+  canvaCardTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: '#0A2A5B', marginBottom: 12, textAlign: 'center' },
+  canvaInputLabel: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: '#718096', marginLeft: 4 },
+  canvaInputField: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 24, paddingHorizontal: 16, height: 44, marginTop: 4, marginBottom: 8 },
+  canvaTextInput: { flex: 1, fontSize: 13, fontFamily: 'Quicksand-Bold', color: '#0A2A5B', padding: 0 },
+  
+  canvaPaymentTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: '#718096', marginTop: 12, marginBottom: 8, textAlign: 'center' },
+  canvaPaymentBox: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 16 },
+  canvaPaymentCol: { flex: 1, alignItems: 'center', gap: 4 },
+  canvaPaymentColLabel: { fontSize: 10, fontFamily: 'Quicksand-Bold', color: '#718096', textAlign: 'center' },
+  canvaPaymentBlock: { width: '100%', height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, elevation: 1 },
+  
+  canvaCalcularBtn: { backgroundColor: '#FF7A00', borderRadius: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8, shadowColor: '#FF7A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
+  canvaCalcularBtnText: { color: Colors.white, fontSize: 16, fontFamily: 'Quicksand-Bold' },
+  
+  canvaSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 12, marginBottom: 8 },
+  canvaSectionTitle: { fontSize: 15, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  canvaSectionVerMas: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: '#FF7A00' },
+  canvaCarouselContent: { gap: 12, paddingHorizontal: 20, paddingRight: 30 },
+  canvaCarouselCard: { width: 140, backgroundColor: '#071A3C', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#1E293B' },
+  canvaCarouselCardImg: { width: '100%', height: 80, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+  canvaCarouselCardBody: { padding: 8, gap: 2 },
+  canvaCarouselCardTitle: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  canvaCarouselCardDesc: { fontSize: 9, fontFamily: 'Quicksand-Regular', color: '#94A3B8', lineHeight: 12 },
+  canvaCarouselCardPlaceholder: { width: 140, height: 130, backgroundColor: '#071A3C', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1E293B' },
+  
+  canvaPricingTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: '#0A2A5B', marginBottom: 14, textAlign: 'center' },
+  canvaCategoryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FF7A00', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
+  canvaCategoryBtnActive: { borderWidth: 2, borderColor: '#0A2A5B' },
+  categoryIconCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
+  canvaCategoryName: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  canvaCategoryPrice: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  
+  canvaAgendaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FF7A00', borderRadius: 12, paddingVertical: 10, marginTop: 12 },
+  canvaAgendaBtnText: { color: '#FF7A00', fontSize: 13, fontFamily: 'Quicksand-Bold' },
+  
+  canvaBackBtn: { flex: 1, borderWidth: 1.5, borderColor: '#CBD5E1', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  canvaBackBtnText: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: '#475569' },
+  canvaConfirmBtn: { flex: 2, backgroundColor: '#0A2A5B', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  canvaConfirmBtnText: { color: Colors.white, fontSize: 13, fontFamily: 'Quicksand-Bold' },
+  
+  canvaModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  canvaPickerCard: { width: '100%', maxWidth: 300, backgroundColor: Colors.white, borderRadius: 16, padding: 16, gap: 12 },
+  canvaPickerTitle: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: '#0A2A5B', textAlign: 'center', marginBottom: 4 },
+  canvaPickerOption: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', alignItems: 'center' },
+  canvaPickerOptionText: { fontSize: 14, fontFamily: 'Quicksand-Medium', color: '#334155' },
+  canvaPickerCloseBtn: { paddingVertical: 12, marginTop: 8, alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8 },
+  canvaPickerCloseText: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: '#64748B' },
 
   // Tarjeta de reserva (Inicio)
   bookingCard: {
@@ -2741,10 +3390,10 @@ const styles = StyleSheet.create({
   },
   halfMap: { height: height * 0.22, borderRadius: 18, overflow: 'hidden', borderWidth: 1.5, borderColor: Colors.border },
   driverPanel: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 4 },
-  driverAvatarImg: { width: 50, height: 50, borderRadius: 25 },
+  driverAvatarImg: { width: 52, height: 52, borderRadius: 26 },
   driverInfoCol: { flex: 1, gap: 2 },
   driverNameLabel: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  driverCarPlate: { fontSize: 12, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary },
+  driverCarPlate: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
   driverRatingText: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.accent },
   carPhotoImg: { width: '100%', height: 110, borderRadius: 14 },
   promoCard: { backgroundColor: Colors.primary + '0B', borderLeftWidth: 3, borderLeftColor: Colors.primary, padding: 12, borderRadius: 8 },
@@ -2756,6 +3405,26 @@ const styles = StyleSheet.create({
   controlBtnText: { color: Colors.white, fontSize: 11, fontFamily: 'Quicksand-Bold' },
   cancelTripBtn: { borderWidth: 1.5, borderColor: Colors.danger, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   cancelTripBtnText: { color: Colors.danger, fontSize: 14, fontFamily: 'Quicksand-Bold' },
+
+  // Nuevos estilos de tracking de viaje reestructurado
+  driverTrackingCard: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, gap: 12, borderWidth: 1, borderColor: Colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+  driverPanelHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  carPhotoTrackingImg: { width: '100%', height: 120, borderRadius: 12, resizeMode: 'cover', marginTop: 4 },
+  tripControlsRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between', marginVertical: 12 },
+  controlBtnSquare: { flex: 1, height: 62, borderRadius: 12, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 2 },
+  controlBtnLabel: { color: Colors.white, fontSize: 10, fontFamily: 'Quicksand-Bold' },
+
+  // Estilos de pantalla dividida 50/50 y panel de novedades deslizable
+  activeTripScreenContainer: { flex: 1, backgroundColor: Colors.white },
+  topHalfMapContainer: { height: '50%', width: '100%' },
+  bottomHalfContainer: { height: '50%', width: '100%', backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 },
+  bottomHalfScrollContent: { padding: 16, paddingBottom: 40, gap: 12 },
+  ecosystemDrawerContainer: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 16, padding: 12, backgroundColor: Colors.background, marginTop: 8 },
+  ecosystemDrawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
+  ecosystemDrawerTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.primary },
+  drawerHintBanner: { backgroundColor: Colors.accent + '15', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, marginTop: 8, alignItems: 'center' },
+  drawerHintText: { color: Colors.accent, fontSize: 11, fontFamily: 'Quicksand-Bold' },
+  ecosystemDrawerBody: { marginTop: 12 },
 
   // Barra inferior de Tabs
   footerTabs: {

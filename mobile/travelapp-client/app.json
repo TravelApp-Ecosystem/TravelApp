@@ -35,7 +35,11 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "VIBRATE",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
     "web": {
@@ -54,6 +58,7 @@
       "eas": {
         "projectId": "f76c3983-e69f-4eec-9ff2-f6de5d2a4fe3"
       }
-    }
+    },
+    "owner": "fincola"
   }
 }

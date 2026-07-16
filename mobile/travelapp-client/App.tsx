@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View, StyleSheet, Text, Animated } from 'react-native';
 import { useFonts, Quicksand_400Regular, Quicksand_500Medium, Quicksand_600SemiBold, Quicksand_700Bold } from '@expo-google-fonts/quicksand';
+import { Ionicons } from '@expo/vector-icons';
 import RootNavigator from './src/navigation/RootNavigator';
 import { Colors } from './src/lib/constants';
 import { TravelCabLogo, TravelAppLogo } from './src/components/BrandLogos';
@@ -17,10 +18,19 @@ export default function App() {
 
   const [showSplash, setShowSplash] = useState(true);
   const splashOpacity = useRef(new Animated.Value(1)).current;
+  const [activeIcon, setActiveIcon] = useState<'car' | 'briefcase' | 'airplane' | 'business' | 'gift' | 'logo'>('car');
+  const iconAnim = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
     if (fontsLoaded) {
-      // Mostrar splash durante 3 segundos, luego desvanecer en 500ms
+      // Secuencia animada de iconos (auto, valija, avion, hotel, rewards, logo)
+      const t1 = setTimeout(() => setActiveIcon('briefcase'), 400);
+      const t2 = setTimeout(() => setActiveIcon('airplane'), 800);
+      const t3 = setTimeout(() => setActiveIcon('business'), 1200);
+      const t4 = setTimeout(() => setActiveIcon('gift'), 1600);
+      const t5 = setTimeout(() => setActiveIcon('logo'), 2000);
+
+      // Desvanecer splash a los 3000ms
       const timer = setTimeout(() => {
         Animated.timing(splashOpacity, {
           toValue: 0,
@@ -30,9 +40,28 @@ export default function App() {
           setShowSplash(false);
         });
       }, 3000);
-      return () => clearTimeout(timer);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        clearTimeout(t4);
+        clearTimeout(t5);
+        clearTimeout(timer);
+      };
     }
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    // Animación de pulso/rebote al cambiar de icono
+    iconAnim.setValue(0.3);
+    Animated.spring(iconAnim, {
+      toValue: 1,
+      friction: 6,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [activeIcon]);
 
   if (!fontsLoaded) {
     return (
@@ -50,19 +79,38 @@ export default function App() {
 
         {showSplash && (
           <Animated.View style={[styles.splashContainer, { opacity: splashOpacity }]}>
-            {/* Logo Central en Blanco */}
+            {/* Logo Central o Icono Animado */}
             <View style={styles.centerContainer}>
-              <TravelCabLogo size={90} textColor={Colors.white} isAccentColor={false} />
+              <Animated.View style={{ transform: [{ scale: iconAnim }] }}>
+                {activeIcon === 'car' && (
+                  <Ionicons name="car-outline" size={85} color={Colors.white} />
+                )}
+                {activeIcon === 'briefcase' && (
+                  <Ionicons name="briefcase-outline" size={85} color={Colors.white} />
+                )}
+                {activeIcon === 'airplane' && (
+                  <Ionicons name="airplane-outline" size={85} color={Colors.white} />
+                )}
+                {activeIcon === 'business' && (
+                  <Ionicons name="business-outline" size={85} color={Colors.white} />
+                )}
+                {activeIcon === 'gift' && (
+                  <Ionicons name="gift-outline" size={85} color={Colors.white} />
+                )}
+                {activeIcon === 'logo' && (
+                  <TravelCabLogo size={95} textColor={Colors.white} isAccentColor={false} />
+                )}
+              </Animated.View>
             </View>
 
             {/* Footer en Blanco */}
             <View style={styles.footerContainer}>
-              <Text style={styles.footerTextMuted}>Una empresa del ecosistema</Text>
               <View style={styles.appLogoRow}>
-                <TravelAppLogo size={26} textColor={Colors.white} isAccentColor={false} />
+                <TravelAppLogo size={20} textColor={Colors.white} isAccentColor={false} />
+                <Text style={styles.footerTextMuted}>Miembro del ecosistema TravelApp</Text>
               </View>
               <Text style={styles.copyrightText}>
-                Todos los derechos reservados TravelApp s.a.s. - versión 1.1
+                Todos los derechos reservados TravelApp s.a.s. - 2026 - Versión 1.1
               </Text>
             </View>
           </Animated.View>
@@ -88,7 +136,7 @@ const styles = StyleSheet.create({
   },
   footerContainer: {
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
     width: '100%',
   },
   footerTextMuted: {
@@ -98,6 +146,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   appLogoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginVertical: 4,
   },
   copyrightText: {
@@ -105,6 +156,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand-Regular',
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
 });

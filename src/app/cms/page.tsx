@@ -446,7 +446,26 @@ const DEFAULT_APP_INICIO_CMS_DATA = {
   ]
 };
 
-type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards';
+const DEFAULT_APP_BENEFICIOS_CMS_DATA = {
+  id: "block-2",
+  blockTitle: "Beneficios Rewards",
+  cards: [
+    {
+      title: "Descuento Gastronómico",
+      description: "Obtené un 20% de descuento en restaurantes adheridos presentando tu código QR.",
+      imageUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/rewards/food"
+    },
+    {
+      title: "Descuento Hotelería",
+      description: "Ahorrá hasta un 15% en estadías seleccionadas de TravelApp Experiences.",
+      imageUrl: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/rewards/hotel"
+    }
+  ]
+};
+
+type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards';
 
 export default function CMSPage() {
   const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards' | 'app-inicio'>('travelcab');
@@ -462,16 +481,25 @@ export default function CMSPage() {
       setLoading(true);
       try {
         if (selectedLanding === 'app-inicio') {
-          const docRef = doc(db, 'cms_blocks', 'block-1');
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setData({
+          const docRef1 = doc(db, 'cms_blocks', 'block-1');
+          const docSnap1 = await getDoc(docRef1);
+          
+          const docRef2 = doc(db, 'cms_blocks', 'block-2');
+          const docSnap2 = await getDoc(docRef2);
+          
+          const block1Data = docSnap1.exists() ? docSnap1.data() : DEFAULT_APP_INICIO_CMS_DATA;
+          const block2Data = docSnap2.exists() ? docSnap2.data() : DEFAULT_APP_BENEFICIOS_CMS_DATA;
+
+          setData({
+            block1: {
               ...DEFAULT_APP_INICIO_CMS_DATA,
-              ...docSnap.data()
-            });
-          } else {
-            setData(DEFAULT_APP_INICIO_CMS_DATA);
-          }
+              ...block1Data
+            },
+            block2: {
+              ...DEFAULT_APP_BENEFICIOS_CMS_DATA,
+              ...block2Data
+            }
+          });
         } else {
           const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
           const docRef = doc(db, 'cms', docId);
@@ -497,7 +525,7 @@ export default function CMSPage() {
         }
       } catch (err) {
         console.error("Error al leer CMS de Firestore:", err);
-        const defaultData = selectedLanding === 'app-inicio' ? DEFAULT_APP_INICIO_CMS_DATA : selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
+        const defaultData = selectedLanding === 'app-inicio' ? { block1: DEFAULT_APP_INICIO_CMS_DATA, block2: DEFAULT_APP_BENEFICIOS_CMS_DATA } : selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
         setData(defaultData);
       } finally {
         setLoading(false);
@@ -527,8 +555,10 @@ export default function CMSPage() {
         return value === undefined ? null : value;
       }));
       if (selectedLanding === 'app-inicio') {
-        const docRef = doc(db, 'cms_blocks', 'block-1');
-        await setDoc(docRef, sanitizedData);
+        const docRef1 = doc(db, 'cms_blocks', 'block-1');
+        await setDoc(docRef1, sanitizedData.block1);
+        const docRef2 = doc(db, 'cms_blocks', 'block-2');
+        await setDoc(docRef2, sanitizedData.block2);
       } else {
         const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
         const docRef = doc(db, 'cms', docId);
@@ -785,35 +815,56 @@ export default function CMSPage() {
   };
 
   // Helper functions for App Inicio cards
-  const updateAppCard = (idx: number, field: string, value: any) => {
-    const updated = [...(data.cards || [])];
+  const updateAppCard = (blockKey: 'block1' | 'block2', idx: number, field: string, value: any) => {
+    const updated = [...(data[blockKey]?.cards || [])];
     updated[idx] = { ...updated[idx], [field]: value };
-    setData((prev: any) => ({ ...prev, cards: updated }));
-  };
-
-  const deleteAppCard = (idx: number) => {
-    const updated = (data.cards || []).filter((_: any, i: number) => i !== idx);
-    setData((prev: any) => ({ ...prev, cards: updated }));
-  };
-
-  const addAppCard = () => {
-    const newCard = {
-      title: "Nueva Promoción/Socio",
-      description: "Descripción detallada de la promoción o enlace al socio estratégico.",
-      imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80",
-      url: "https://travelapp.ar/promocion"
-    };
     setData((prev: any) => ({
       ...prev,
-      cards: [...(prev.cards || []), newCard]
+      [blockKey]: {
+        ...prev[blockKey],
+        cards: updated
+      }
     }));
   };
 
-  const updateBlockTitle = (title: string) => {
-    setData((prev: any) => ({ ...prev, blockTitle: title }));
+  const deleteAppCard = (blockKey: 'block1' | 'block2', idx: number) => {
+    const updated = (data[blockKey]?.cards || []).filter((_: any, i: number) => i !== idx);
+    setData((prev: any) => ({
+      ...prev,
+      [blockKey]: {
+        ...prev[blockKey],
+        cards: updated
+      }
+    }));
   };
 
-  const AppCardImageUploader = ({ idx, value }: { idx: number; value: string }) => {
+  const addAppCard = (blockKey: 'block1' | 'block2') => {
+    const newCard = {
+      title: blockKey === 'block1' ? "Nueva Promoción/Socio" : "Nuevo Beneficio/Canje",
+      description: "Descripción detallada.",
+      imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80",
+      url: "https://travelapp.ar/rewards"
+    };
+    setData((prev: any) => ({
+      ...prev,
+      [blockKey]: {
+        ...prev[blockKey],
+        cards: [...(prev[blockKey]?.cards || []), newCard]
+      }
+    }));
+  };
+
+  const updateBlockTitle = (blockKey: 'block1' | 'block2', title: string) => {
+    setData((prev: any) => ({
+      ...prev,
+      [blockKey]: {
+        ...prev[blockKey],
+        blockTitle: title
+      }
+    }));
+  };
+
+  const AppCardImageUploader = ({ blockKey, idx, value }: { blockKey: 'block1' | 'block2'; idx: number; value: string }) => {
     const [localVal, setLocalVal] = useState(value);
     useEffect(() => {
       setLocalVal(value);
@@ -825,7 +876,7 @@ export default function CMSPage() {
           type="text"
           value={localVal || ''}
           onChange={(e) => setLocalVal(e.target.value)}
-          onBlur={() => updateAppCard(idx, 'imageUrl', localVal)}
+          onBlur={() => updateAppCard(blockKey, idx, 'imageUrl', localVal)}
           placeholder="Ingresa la URL de la foto..."
           className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
         />
@@ -841,7 +892,7 @@ export default function CMSPage() {
               if (file) {
                 try {
                   const compressed = await compressImage(file);
-                  updateAppCard(idx, 'imageUrl', compressed);
+                  updateAppCard(blockKey, idx, 'imageUrl', compressed);
                   setLocalVal(compressed);
                 } catch (err) {
                   console.error(err);
@@ -1195,7 +1246,7 @@ export default function CMSPage() {
           : selectedLanding === 'rewards'
           ? ['rew_slider', 'rew_beneficios', 'rew_social', 'rew_negocio', 'rew_legales']
           : selectedLanding === 'app-inicio'
-          ? ['app_cards']
+          ? ['app_cards', 'app_rewards']
           : ['eco_hero', 'eco_unidades', 'eco_quienes', 'eco_stats', 'eco_apps', 'eco_trabaja', 'eco_legales']
         ).map((tab) => (
           <button
@@ -1224,6 +1275,7 @@ export default function CMSPage() {
             {tab === 'eco_trabaja' && '6. Trabaja con Nosotros'}
             {tab === 'eco_legales' && '7. Legal & Redes'}
             {tab === 'app_cards' && '📱 Tarjetas Novedades App'}
+            {tab === 'app_rewards' && '🎁 Beneficios Rewards App'}
           </button>
         ))}
       </div>
@@ -2612,7 +2664,7 @@ export default function CMSPage() {
         )}
 
         {/* APP INICIO - NOVEDADES CARDS */}
-        {selectedLanding === 'app-inicio' && activeTab === 'app_cards' && data && (
+        {selectedLanding === 'app-inicio' && activeTab === 'app_cards' && data?.block1 && (
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <div>
@@ -2620,7 +2672,7 @@ export default function CMSPage() {
                 <p className="text-xs text-slate-400 mt-1">Configura las tarjetas de novedades, promociones y enlaces a socios estratégicos del carrusel en la App Cliente.</p>
               </div>
               <button
-                onClick={addAppCard}
+                onClick={() => addAppCard('block1')}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-amber-600 bg-amber-600/5 px-3.5 py-2 text-xs font-bold text-amber-700 hover:bg-amber-600 hover:text-white transition-all shadow-sm"
               >
                 <Plus className="h-3.5 w-3.5" /> Agregar Tarjeta
@@ -2631,18 +2683,18 @@ export default function CMSPage() {
               <label className="block text-xs font-extrabold text-slate-700 mb-1">Título de la Sección en la App</label>
               <input
                 type="text"
-                value={data.blockTitle || ''}
-                onChange={(e) => updateBlockTitle(e.target.value)}
+                value={data.block1.blockTitle || ''}
+                onChange={(e) => updateBlockTitle('block1', e.target.value)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Ej: Novedades del Ecosistema"
               />
             </div>
 
             <div className="space-y-4">
-              {(data.cards || []).map((card: any, idx: number) => (
+              {(data.block1.cards || []).map((card: any, idx: number) => (
                 <div key={idx} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 shadow-sm relative group space-y-3">
                   <button
-                    onClick={() => deleteAppCard(idx)}
+                    onClick={() => deleteAppCard('block1', idx)}
                     className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
                     title="Eliminar Tarjeta"
                   >
@@ -2657,7 +2709,7 @@ export default function CMSPage() {
                       <input
                         type="text"
                         value={card.title || ''}
-                        onChange={(e) => updateAppCard(idx, 'title', e.target.value)}
+                        onChange={(e) => updateAppCard('block1', idx, 'title', e.target.value)}
                         className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
                       />
                     </div>
@@ -2666,7 +2718,7 @@ export default function CMSPage() {
                       <input
                         type="text"
                         value={card.url || ''}
-                        onChange={(e) => updateAppCard(idx, 'url', e.target.value)}
+                        onChange={(e) => updateAppCard('block1', idx, 'url', e.target.value)}
                         className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
                         placeholder="https://..."
                       />
@@ -2676,13 +2728,13 @@ export default function CMSPage() {
                       <textarea
                         rows={2}
                         value={card.description || ''}
-                        onChange={(e) => updateAppCard(idx, 'description', e.target.value)}
+                        onChange={(e) => updateAppCard('block1', idx, 'description', e.target.value)}
                         className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
                       />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de la Tarjeta (URL o subida)</label>
-                      <AppCardImageUploader idx={idx} value={card.imageUrl || ''} />
+                      <AppCardImageUploader blockKey="block1" idx={idx} value={card.imageUrl || ''} />
                       {card.imageUrl ? (
                         <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border border-slate-200">
                           <img src={card.imageUrl} alt={card.title} className="w-full h-full object-cover" />
@@ -2692,7 +2744,97 @@ export default function CMSPage() {
                   </div>
                 </div>
               ))}
-              {(data.cards || []).length === 0 && (
+              {(data.block1.cards || []).length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  No hay tarjetas agregadas. Haz clic en "Agregar Tarjeta" para crear una.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* APP INICIO - BENEFICIOS REWARDS CARDS */}
+        {selectedLanding === 'app-inicio' && activeTab === 'app_rewards' && data?.block2 && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Tarjetas de Beneficios Rewards (Home)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las tarjetas del carrusel de beneficios directos de Rewards en la página principal de la App.</p>
+              </div>
+              <button
+                onClick={() => addAppCard('block2')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-600 bg-amber-600/5 px-3.5 py-2 text-xs font-bold text-amber-700 hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar Tarjeta
+              </button>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <label className="block text-xs font-extrabold text-slate-700 mb-1">Título de la Sección en la App</label>
+              <input
+                type="text"
+                value={data.block2.blockTitle || ''}
+                onChange={(e) => updateBlockTitle('block2', e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="Ej: Beneficios Rewards"
+              />
+            </div>
+
+            <div className="space-y-4">
+              {(data.block2.cards || []).map((card: any, idx: number) => (
+                <div key={idx} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 shadow-sm relative group space-y-3">
+                  <button
+                    onClick={() => deleteAppCard('block2', idx)}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
+                    title="Eliminar Tarjeta"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="text-xs font-black text-amber-600 uppercase">Tarjeta N° {idx + 1}</div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título de la Tarjeta</label>
+                      <input
+                        type="text"
+                        value={card.title || ''}
+                        onChange={(e) => updateAppCard('block2', idx, 'title', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Enlace / URL de redirección</label>
+                      <input
+                        type="text"
+                        value={card.url || ''}
+                        onChange={(e) => updateAppCard('block2', idx, 'url', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción / Contenido</label>
+                      <textarea
+                        rows={2}
+                        value={card.description || ''}
+                        onChange={(e) => updateAppCard('block2', idx, 'description', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de la Tarjeta (URL o subida)</label>
+                      <AppCardImageUploader blockKey="block2" idx={idx} value={card.imageUrl || ''} />
+                      {card.imageUrl ? (
+                        <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border border-slate-200">
+                          <img src={card.imageUrl} alt={card.title} className="w-full h-full object-cover" />
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(data.block2.cards || []).length === 0 && (
                 <div className="text-center py-8 text-slate-400 text-xs">
                   No hay tarjetas agregadas. Haz clic en "Agregar Tarjeta" para crear una.
                 </div>
