@@ -53,8 +53,8 @@ export default function TravelCabSettingsPage() {
     const unsub = onSnapshot(collection(db, 'tariffs'), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
       // Filtrar localmente por tipo
-      setMuTariffs(list.filter(t => t.type === 'mu'));
-      setArcTariffs(list.filter(t => t.type === 'arc'));
+      setMuTariffs(list.filter(t => t.type === 'mu' && t.id !== 'mu_active'));
+      setArcTariffs(list.filter(t => t.type === 'arc' && t.id !== 'arc_active'));
       setIsLoadingTariffs(false);
     }, (error) => {
       console.error("Error listening to tariffs:", error);
@@ -183,6 +183,8 @@ export default function TravelCabSettingsPage() {
 
       // Desactivar todos los demás del mismo tipo
       querySnap.docs.forEach(docSnap => {
+        if (docSnap.id === 'mu_active' || docSnap.id === 'arc_active') return;
+
         if (docSnap.id === tariff.id) {
           batch.update(doc(db, 'tariffs', docSnap.id), { isActive: true });
         } else {

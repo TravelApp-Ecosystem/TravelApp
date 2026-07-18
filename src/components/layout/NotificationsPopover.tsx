@@ -10,6 +10,40 @@ export const NotificationsPopover = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const prevUnreadCountRef = useRef(0);
+
+  // Play double beep sound using Web Audio API
+  const playAudioAlert = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      
+      // First beep
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, ctx.currentTime);
+      gain1.gain.setValueAtTime(0.08, ctx.currentTime);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start();
+      osc1.stop(ctx.currentTime + 0.15);
+
+      // Second beep
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1200, ctx.currentTime + 0.2);
+      gain2.gain.setValueAtTime(0.08, ctx.currentTime + 0.2);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.2);
+      osc2.stop(ctx.currentTime + 0.35);
+    } catch (err) {
+      console.warn("Web Audio alert sound synthesis failed:", err);
+    }
+  };
 
   useEffect(() => {
     // Listen to real-time notifications
@@ -24,6 +58,15 @@ export const NotificationsPopover = () => {
 
     return () => unsubscribe();
   }, []);
+
+  // Play audio alert on new unread notifications
+  useEffect(() => {
+    const unread = notifications.filter(n => !n.read).length;
+    if (notifications.length > 0 && unread > prevUnreadCountRef.current) {
+      playAudioAlert();
+    }
+    prevUnreadCountRef.current = unread;
+  }, [notifications]);
 
   // Close on outside click
   useEffect(() => {
@@ -61,11 +104,15 @@ export const NotificationsPopover = () => {
     <div className="relative" ref={popoverRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-tech-blue transition-colors"
+        className={`relative rounded-full p-2 transition-all duration-300 ${
+          unreadCount > 0 
+            ? "text-red-500 bg-red-50 hover:bg-red-100 animate-pulse border border-red-200" 
+            : "text-slate-500 hover:bg-slate-100 hover:text-tech-blue"
+        }`}
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-tech-blue shadow-sm ring-2 ring-gray-950">
+          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

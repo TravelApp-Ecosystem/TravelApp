@@ -1,4 +1,4 @@
-import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio } from 'lucide-react';
+import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign } from 'lucide-react';
 
 export const topNavTabs = [
   { id: 'global', label: 'Visión Global', href: '/' },
@@ -89,10 +89,15 @@ export const getSidebarConfig = (pathname: string) => {
     return {
       title: 'Logística TravelCab',
       items: [
-        { id: 'dispatch', label: 'Central de Despacho', href: '/travelcab', icon: Map },
-        { id: 'history', label: 'Historial de Rutas', href: '/travelcab/history', icon: Route },
-        { id: 'fleet', label: 'Estado de Móviles', href: '/travelcab/fleet', icon: Car },
-        { id: 'settings', label: 'Configuración', href: '/travelcab/settings', icon: Settings },
+        { id: 'dashboard', label: 'Principal', href: '/travelcab', icon: LayoutDashboard },
+        { id: 'dispatch', label: 'Central de Despacho', href: '/travelcab/dispatch', icon: Map },
+        { id: 'branches', label: 'Gestión de Sucursal', href: '/travelcab/branches', icon: Building2 },
+        { id: 'drivers', label: 'Gestión de Conductores', href: '/travelcab/drivers', icon: Users },
+        { id: 'fleet', label: 'Gestión de Móviles', href: '/travelcab/fleet', icon: Car },
+        { id: 'create-service', label: 'Crear Servicio', href: '/travelcab/settings?tab=tariffs&action=new', icon: PlusCircle },
+        { id: 'create-category', label: 'Crear Categoría', href: '/travelcab/settings?tab=categories&action=new', icon: PlusCircle },
+        { id: 'settings', label: 'Gestión de Tarifas', href: '/travelcab/settings', icon: DollarSign },
+        { id: 'security', label: 'Seguridad del Ecosistema', href: '/travelcab/security', icon: ShieldAlert },
       ]
     };
   }

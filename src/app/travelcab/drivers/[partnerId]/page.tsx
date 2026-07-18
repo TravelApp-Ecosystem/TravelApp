@@ -8,7 +8,7 @@ import {
   Phone, Mail, MapPin, CreditCard, Shield, Star
 } from 'lucide-react';
 import { DriverPartner, PartnerStatus } from '@/types/partners';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 // ── Mock Partner Data ─────────────────────────────────────────
@@ -52,7 +52,6 @@ const MOCK_PARTNER: DriverPartner = {
   },
 };
 
-// ── Helpers ───────────────────────────────────────────────────
 const statusConfig: Record<PartnerStatus, { color: string; icon: React.ReactNode }> = {
   'Activo': { color: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle className="h-4 w-4" /> },
   'Pendiente Documentación': { color: 'bg-amber-100 text-amber-700', icon: <Clock className="h-4 w-4" /> },
@@ -70,7 +69,6 @@ const txTypeConfig = {
   bonus: { label: 'Bono', color: 'text-blue-600', sign: '+' },
 };
 
-// ── Info Row ──────────────────────────────────────────────────
 const InfoRow = ({ label, value }: { label: string; value?: string | null }) => (
   <div className="flex justify-between py-2 border-b border-slate-50 last:border-0">
     <span className="text-xs text-slate-400 font-medium">{label}</span>
@@ -78,7 +76,6 @@ const InfoRow = ({ label, value }: { label: string; value?: string | null }) => 
   </div>
 );
 
-// ── Doc Item ──────────────────────────────────────────────────
 const DocItem = ({ label, url }: { label: string; url?: string }) => (
   <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
     <div className="flex items-center gap-2.5">
@@ -88,15 +85,13 @@ const DocItem = ({ label, url }: { label: string; url?: string }) => (
       <span className="text-sm font-medium text-slate-700">{label}</span>
     </div>
     {url ? (
-      <a href={url} target="_blank" rel="noreferrer"
-        className="text-xs font-semibold text-tech-blue hover:underline">Ver PDF</a>
+      <a href={url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-tech-blue hover:underline">Ver PDF</a>
     ) : (
       <span className="text-xs text-amber-600 font-semibold">Pendiente</span>
     )}
   </div>
 );
 
-// ── Tabs ──────────────────────────────────────────────────────
 const TABS = [
   { id: 'personal', label: 'Datos Personales', icon: User },
   { id: 'vehicle', label: 'Vehículo', icon: Car },
@@ -104,8 +99,7 @@ const TABS = [
   { id: 'wallet', label: 'Billetera', icon: Wallet },
 ];
 
-// ── Main Component ────────────────────────────────────────────
-export default function PartnerProfilePage({ params }: { params: Promise<{ partnerId: string }> }) {
+export default function TravelCabPartnerProfilePage({ params }: { params: Promise<{ partnerId: string }> }) {
   const unwrappedParams = use(params);
   const partnerId = unwrappedParams.partnerId;
 
@@ -172,14 +166,22 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
     return () => unsub();
   }, [partnerId]);
 
+  const handleUpdateStatus = async (newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'drivers', partnerId), { status: newStatus });
+    } catch (err) {
+      console.error("Error updating status inside profile:", err);
+    }
+  };
+
   const statusCfg = statusConfig[partner.status] ?? { color: 'bg-slate-100 text-slate-700', icon: <AlertCircle className="h-4 w-4" /> };
 
   return (
     <div className="flex h-full w-full flex-col bg-slate-50 p-6 gap-6">
 
       {/* Back */}
-      <Link href="/hr" className="flex w-fit items-center gap-1.5 text-sm text-slate-500 hover:text-tech-blue transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Volver a RRHH
+      <Link href="/travelcab/drivers" className="flex w-fit items-center gap-1.5 text-sm text-slate-500 hover:text-tech-blue transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Volver a Conductores
       </Link>
 
       {/* Profile Header */}
@@ -215,6 +217,25 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
                 </span>
               )}
             </div>
+
+            {/* Quick Actions (Habilitar / Deshabilitar) */}
+            <div className="mt-4 flex gap-2 pt-2 border-t border-slate-100">
+              {partner.status !== 'Activo' ? (
+                <button
+                  onClick={() => handleUpdateStatus('Activo')}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm transition-all"
+                >
+                  Habilitar Conductor
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleUpdateStatus('Suspendido')}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 shadow-sm transition-all"
+                >
+                  Deshabilitar Conductor
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Quick wallet */}
@@ -222,12 +243,12 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
             <div className="rounded-xl bg-tech-blue/5 border border-tech-blue/10 px-4 py-3 text-right">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Saldo</p>
               <p className="text-lg font-bold text-tech-blue">
-                ${partner.wallet.cashBalance.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                ${partner.wallet?.cashBalance.toLocaleString('es-AR', { minimumFractionDigits: 2 }) || '0,00'}
               </p>
             </div>
             <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-right">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Puntos</p>
-              <p className="text-lg font-bold text-slate-700">{partner.wallet.pointsBalance.toLocaleString()}</p>
+              <p className="text-lg font-bold text-slate-700">{partner.wallet?.pointsBalance.toLocaleString() || '0'}</p>
             </div>
           </div>
         </div>
@@ -265,22 +286,21 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
             </div>
             <div>
               <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Domicilio</h3>
-              <InfoRow label="Calle" value={`${partner.address.street} ${partner.address.number}${partner.address.floor ? `, ${partner.address.floor}° ${partner.address.apartment}` : ''}`} />
-              <InfoRow label="Localidad" value={partner.address.city} />
-              <InfoRow label="Provincia" value={partner.address.province} />
-              <InfoRow label="Código Postal" value={partner.address.postalCode} />
+              <InfoRow label="Calle" value={`${partner.address?.street || ''} ${partner.address?.number || ''}`} />
+              <InfoRow label="Localidad" value={partner.address?.city || ''} />
+              <InfoRow label="Provincia" value={partner.address?.province || ''} />
+              <InfoRow label="Código Postal" value={partner.address?.postalCode || ''} />
             </div>
             <div>
               <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" /> Fiscal</h3>
-              <InfoRow label="Tipo ID" value={partner.taxInfo.taxIdType} />
-              <InfoRow label="Número" value={partner.taxInfo.taxIdNumber} />
-              {partner.taxInfo.registrationType && <InfoRow label="Condición ARCA" value={partner.taxInfo.registrationType} />}
+              <InfoRow label="Tipo ID" value={partner.taxInfo?.taxIdType} />
+              <InfoRow label="Número" value={partner.taxInfo?.taxIdNumber} />
             </div>
             <div>
               <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5" /> Bancario</h3>
-              <InfoRow label="CBU/CVU" value={partner.bankInfo.cbuCvu} />
-              <InfoRow label="Alias" value={partner.bankInfo.alias} />
-              <InfoRow label="Titular" value={partner.bankInfo.accountHolder} />
+              <InfoRow label="CBU/CVU" value={partner.bankInfo?.cbuCvu} />
+              <InfoRow label="Alias" value={partner.bankInfo?.alias} />
+              <InfoRow label="Titular" value={partner.bankInfo?.accountHolder} />
             </div>
           </div>
         )}
@@ -298,8 +318,8 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
             </div>
             <div>
               <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5"><Star className="h-3.5 w-3.5" /> Habilitación SUTRAPPA</h3>
-              <InfoRow label="Estado" value={partner.vehicle.sutrappa.isActive ? 'Habilitado' : 'No aplica'} />
-              {partner.vehicle.sutrappa.isActive && (
+              <InfoRow label="Estado" value={partner.vehicle.sutrappa?.isActive ? 'Habilitado' : 'No aplica'} />
+              {partner.vehicle.sutrappa?.isActive && (
                 <>
                   <InfoRow label="N° Licencia" value={partner.vehicle.sutrappa.licenseNumber} />
                   <InfoRow label="Titular" value={partner.vehicle.sutrappa.holder} />
@@ -316,15 +336,11 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
             <DocItem label="Certificado de Reincidencia" url={partner.criminalRecordUrl} />
             <DocItem label="Buena Conducta" url={partner.conductCertificateUrl} />
             <DocItem label="Certificado de Sanidad" url={partner.healthCertificateUrl} />
-            <DocItem label="Cédula Vehículo — Frente" url={partner.vehicle?.cedularFrontUrl} />
-            <DocItem label="Cédula Vehículo — Dorso" url={partner.vehicle?.cedularBackUrl} />
-            <DocItem label="Seguro Comercial" url={partner.vehicle?.insurancePdfUrl} />
-            <DocItem label="RTO" url={partner.vehicle?.rtoUrl} />
           </div>
         )}
 
         {/* Wallet */}
-        {activeTab === 'wallet' && (
+        {activeTab === 'wallet' && partner.wallet && (
           <div className="space-y-6">
             {/* Balances */}
             <div className="grid grid-cols-2 gap-4">
@@ -345,9 +361,9 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
             {/* Transaction history */}
             <div>
               <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Últimas Transacciones</h3>
-              <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
-                {partner.wallet.transactions.map(tx => {
-                  const cfg = txTypeConfig[tx.type];
+              <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden bg-white">
+                {partner.wallet.transactions?.map(tx => {
+                  const cfg = txTypeConfig[tx.type as keyof typeof txTypeConfig] || { label: 'Movimiento', color: 'text-slate-600', sign: '' };
                   return (
                     <div key={tx.id} className="flex items-center justify-between px-4 py-3 bg-white hover:bg-slate-50/50 transition-colors">
                       <div>
@@ -359,7 +375,9 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
                       </p>
                     </div>
                   );
-                })}
+                }) || (
+                  <div className="p-4 text-center text-slate-400">Sin transacciones registradas.</div>
+                )}
               </div>
             </div>
           </div>

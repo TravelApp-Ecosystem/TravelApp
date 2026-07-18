@@ -623,34 +623,9 @@ export default function ExperiencesPage() {
             {/* COLUMNA IZQUIERDA: LISTA DE VIAJES */}
             <div className="w-1/3 rounded-2xl border border-slate-200 bg-white p-4 flex flex-col gap-4 overflow-y-auto">
               
-              {/* Parámetros de Seguridad del Ecosistema */}
+              {/* Parámetros de Referidos y Rewards */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
-                <div className="flex items-center gap-2 text-slate-800">
-                  <ShieldAlert className="w-4 h-4 text-amber-500" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider">Seguridad Ecosistema</h4>
-                </div>
-                <p className="text-[10px] text-slate-500 leading-normal">
-                  Configurá el timeout de inactividad para solicitar verificación biométrica en la app de conductores.
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex gap-1">
-                    {[1, 5, 15, 30].map((mins) => (
-                      <button
-                        key={mins}
-                        onClick={() => handleUpdateSecurity(mins)}
-                        className={`flex-1 text-[10px] font-bold py-1.5 px-1 rounded transition-all ${
-                          biometricTimeout === mins
-                            ? 'bg-tech-blue text-white ring-1 ring-tech-blue'
-                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        {mins} min
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Parámetros de Referidos y Rewards */}
-                <div className="border-t border-slate-200 pt-3 flex flex-col gap-2.5">
+                <div className="flex flex-col gap-2.5">
                   <div className="flex items-center gap-2 text-slate-800">
                     <Award className="w-4 h-4 text-tech-blue" />
                     <h4 className="text-xs font-bold uppercase tracking-wider">Referidos y Rewards</h4>
