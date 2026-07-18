@@ -2,272 +2,217 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Users, Search, Eye, Star, ChevronRight,
-  Phone, Mail, Shield, Crown, Filter
+  Users, Shield, Plus, Search, Trash2, Edit2, Building2, Mail, CheckCircle2
 } from 'lucide-react';
-import { Lead, CustomerLevel } from '@/types/crm';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-// ── Mock Customers ────────────────────────────────────────────
-const MOCK_CUSTOMERS: Lead[] = [
+interface StaffUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'operator' | 'viewer';
+  branchId: string;
+  branchName: string;
+  active: boolean;
+  createdAt: string;
+}
+
+interface Branch {
+  id: string;
+  name: string;
+  location: string;
+}
+
+const MOCK_STAFF: StaffUser[] = [
   {
-    id: 'CUS-001',
-    customerName: 'Ana García',
-    phone: '+54 381 111-2222',
-    email: 'ana.garcia@gmail.com',
-    status: 'Ganados/Perdidos',
-    customerStatus: 'Cliente',
-    customerLevel: 2,
-    origin: 'WhatsApp',
-    businessUnit: 'TravelCab',
-    chatHistory: [],
-    loyaltyPoints: 4800,
-    wallet: { pointsBalance: 4800, cashCredit: 250, transactions: [] },
-    dob: '1990-03-15',
-    occupation: 'Contadora',
-    document: { type: 'DNI', number: '32.441.230' },
-    address: { street: 'Laprida', number: '560', city: 'Tucumán', province: 'Tucumán', postalCode: '4000' },
-    emergencyContact: { name: 'Roberto García', phone: '+54 381 333-4444', relationship: 'Padre' },
-    allergies: 'Mariscos',
+    id: '1',
+    name: 'Fernando Incola',
+    email: 'ferincola@gmail.com',
+    role: 'admin',
+    branchId: '1',
+    branchName: 'Sucursal Retiro',
+    active: true,
+    createdAt: '2026-06-01'
   },
   {
-    id: 'CUS-002',
-    customerName: 'Martín López',
-    phone: '+54 381 555-6666',
-    email: 'martin.l@hotmail.com',
-    status: 'Agendados',
-    customerStatus: 'Prospecto',
-    customerLevel: 1,
-    origin: 'Web',
-    businessUnit: 'Experiencias',
-    chatHistory: [],
-    loyaltyPoints: 0,
+    id: '2',
+    name: 'Operador Tucumán',
+    email: 'operator.tuc@travelapp.ar',
+    role: 'operator',
+    branchId: '3',
+    branchName: 'Sucursal Tucumán',
+    active: true,
+    createdAt: '2026-06-15'
   },
   {
-    id: 'CUS-003',
-    customerName: 'Laura Rodríguez',
-    phone: '+54 381 777-8888',
-    email: 'laurarod@gmail.com',
-    status: 'Ganados/Perdidos',
-    customerStatus: 'Cliente',
-    customerLevel: 2,
-    origin: 'IG',
-    businessUnit: 'Rewards',
-    chatHistory: [],
-    loyaltyPoints: 12500,
-    wallet: { pointsBalance: 12500, cashCredit: 800, transactions: [] },
-    dob: '1985-08-22',
-    occupation: 'Médica',
-    document: { type: 'Pasaporte', number: 'AAB123456', expiryDate: '2028-05-01' },
-    address: { street: 'San Martín', number: '1100', city: 'Yerba Buena', province: 'Tucumán', postalCode: '4107' },
-    emergencyContact: { name: 'Pedro Rodríguez', phone: '+54 381 999-0000', relationship: 'Esposo' },
-    dietaryRestrictions: 'Vegana',
-  },
-  {
-    id: 'CUS-004',
-    customerName: 'Diego Sánchez',
-    phone: '+54 381 221-3344',
-    status: 'Nuevos',
-    customerStatus: 'Prospecto',
-    customerLevel: 1,
-    origin: 'Messenger',
-    businessUnit: 'TravelCab',
-    chatHistory: [],
-  },
+    id: '3',
+    name: 'Auditor Externo',
+    email: 'viewer.audit@travelapp.ar',
+    role: 'viewer',
+    branchId: 'all',
+    branchName: 'Todas las Sucursales',
+    active: true,
+    createdAt: '2026-07-01'
+  }
 ];
 
-// ── Level Badge ───────────────────────────────────────────────
-const LevelBadge = ({ level }: { level: CustomerLevel }) =>
-  level === 2 ? (
-    <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700">
-      <Crown className="h-3 w-3" /> VIP Nivel 2
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-500">
-      Nivel 1
-    </span>
-  );
-
-// ── Customer Modal ────────────────────────────────────────────
-const CustomerModal = ({ customer, onClose }: { customer: Lead; onClose: () => void }) => {
-  const isVIP = customer.customerLevel === 2;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className={`rounded-t-2xl p-5 ${isVIP ? 'bg-gradient-to-r from-amber-50 to-orange-50' : 'bg-slate-50'}`}>
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">{customer.customerName}</h2>
-              <div className="mt-1 flex items-center gap-2">
-                <LevelBadge level={customer.customerLevel} />
-                <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${customer.customerStatus === 'Cliente' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                  {customer.customerStatus}
-                </span>
-              </div>
-            </div>
-            <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all">✕</button>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-          {/* Contact */}
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Contacto</p>
-            {customer.phone && <p className="flex items-center gap-2 text-sm text-slate-700"><Phone className="h-3.5 w-3.5 text-slate-400" />{customer.phone}</p>}
-            {customer.email && <p className="flex items-center gap-2 text-sm text-slate-700"><Mail className="h-3.5 w-3.5 text-slate-400" />{customer.email}</p>}
-          </div>
-
-          {/* Wallet */}
-          {customer.wallet && (
-            <div className="rounded-xl border border-tech-blue/20 bg-tech-blue/5 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-tech-blue mb-2">Billetera</p>
-              <div className="flex gap-4">
-                <div>
-                  <p className="text-[10px] text-slate-400">Puntos</p>
-                  <p className="text-lg font-bold text-tech-blue">{customer.wallet.pointsBalance.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400">Crédito</p>
-                  <p className="text-lg font-bold text-tech-blue">${customer.wallet.cashCredit.toLocaleString('es-AR')}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Level 2 extended */}
-          {isVIP && (
-            <>
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Datos Personales (Nivel 2)</p>
-                {customer.dob && <p className="text-sm text-slate-600"><span className="font-medium">Nacimiento:</span> {customer.dob}</p>}
-                {customer.occupation && <p className="text-sm text-slate-600"><span className="font-medium">Ocupación:</span> {customer.occupation}</p>}
-              </div>
-
-              {customer.document && (
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Documento</p>
-                  <p className="flex items-center gap-2 text-sm text-slate-600">
-                    <Shield className="h-3.5 w-3.5 text-slate-400" />
-                    {customer.document.type}: {customer.document.number}
-                    {customer.document.expiryDate && <span className="text-xs text-slate-400">(vto: {customer.document.expiryDate})</span>}
-                  </p>
-                </div>
-              )}
-
-              {customer.address && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Domicilio</p>
-                  <p className="text-sm text-slate-600 mt-1">
-                    {customer.address.street} {customer.address.number}, {customer.address.city}, {customer.address.province} ({customer.address.postalCode})
-                  </p>
-                </div>
-              )}
-
-              {customer.emergencyContact && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Contacto de Emergencia</p>
-                  <p className="text-sm text-slate-600 mt-1 font-medium">{customer.emergencyContact.name}</p>
-                  <p className="text-sm text-slate-500">{customer.emergencyContact.phone} · {customer.emergencyContact.relationship}</p>
-                </div>
-              )}
-
-              {(customer.allergies || customer.dietaryRestrictions) && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600">Alergias / Dieta</p>
-                  {customer.allergies && <p className="text-sm text-amber-800 mt-1">Alergia: {customer.allergies}</p>}
-                  {customer.dietaryRestrictions && <p className="text-sm text-amber-800">Dieta: {customer.dietaryRestrictions}</p>}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ── Main Component ────────────────────────────────────────────
-export default function UsersPage() {
-  const [search, setSearch] = useState('');
-  const [filterLevel, setFilterLevel] = useState<string>('all');
-  const [selected, setSelected] = useState<Lead | null>(null);
-  const [users, setUsers] = useState<Lead[]>([]);
+export default function StaffUsersPage() {
+  const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filterRole, setFilterRole] = useState('all');
+  
+  // Modal states
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    role: 'operator' as 'admin' | 'operator' | 'viewer',
+    branchId: '1',
+    active: true
+  });
 
+  // Load branches
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
+    const unsub = onSnapshot(collection(db, 'branches'), (snapshot) => {
+      const list: Branch[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name || 'Sucursal',
+        location: doc.data().location || ''
+      }));
+      setBranches(list.length > 0 ? list : [
+        { id: '1', name: 'Sucursal Retiro', location: 'CABA' },
+        { id: '2', name: 'Sucursal Pilar', location: 'GBA Norte' },
+        { id: '3', name: 'Sucursal Tucumán', location: 'Tucumán' }
+      ]);
+    });
+    return () => unsub();
+  }, []);
+
+  // Load staff users
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'staff_users'), (snapshot) => {
       if (snapshot.empty) {
-        setUsers(MOCK_CUSTOMERS);
+        setStaff(MOCK_STAFF);
       } else {
-        const list: Lead[] = snapshot.docs.map(doc => {
+        const list: StaffUser[] = snapshot.docs.map(doc => {
           const data = doc.data();
           return {
             id: doc.id,
-            customerName: data.customerName || data.displayName || 'Pasajero Sin Nombre',
-            phone: data.phone || '',
+            name: data.name || '',
             email: data.email || '',
-            status: data.status || 'Ganados/Perdidos',
-            customerStatus: data.customerStatus || 'Cliente',
-            customerLevel: data.customerLevel || 1,
-            origin: data.origin || 'App Móvil',
-            businessUnit: data.businessUnit || 'TravelCab',
-            chatHistory: data.chatHistory || [],
-            loyaltyPoints: data.rewardsPoints || data.loyaltyPoints || 0,
-            wallet: data.wallet || {
-              pointsBalance: data.rewardsPoints || 0,
-              cashCredit: data.walletBalance || 0,
-              transactions: []
-            },
-            dob: data.dob || '',
-            occupation: data.occupation || '',
-            document: data.document || undefined,
-            address: data.address || undefined,
-            emergencyContact: data.emergencyContact || undefined,
-            allergies: data.allergies || '',
-            dietaryRestrictions: data.dietaryRestrictions || '',
-          } as Lead;
+            role: data.role || 'operator',
+            branchId: data.branchId || '1',
+            branchName: data.branchName || 'Sucursal',
+            active: data.active !== undefined ? data.active : true,
+            createdAt: data.createdAt || new Date().toISOString().split('T')[0]
+          };
         });
-        setUsers(list);
+        setStaff(list);
       }
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching real users:", error);
-      setUsers(MOCK_CUSTOMERS);
+      console.error("Error loading staff users:", error);
+      setStaff(MOCK_STAFF);
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  const filtered = users.filter(c => {
-    const matchName = c.customerName.toLowerCase().includes(search.toLowerCase());
-    const matchLevel = filterLevel === 'all' || String(c.customerLevel) === filterLevel;
-    return matchName && matchLevel;
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.email) return;
+
+    const id = editingId || Math.random().toString(36).substr(2, 9);
+    const selectedBranch = branches.find(b => b.id === form.branchId);
+    const branchName = form.branchId === 'all' ? 'Todas las Sucursales' : (selectedBranch?.name || 'Sucursal');
+
+    const payload = {
+      name: form.name,
+      email: form.email,
+      role: form.role,
+      branchId: form.branchId,
+      branchName,
+      active: form.active,
+      createdAt: editingId ? (staff.find(s => s.id === editingId)?.createdAt || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]
+    };
+
+    try {
+      await setDoc(doc(db, 'staff_users', id), payload);
+      setShowModal(false);
+      setEditingId(null);
+      setForm({ name: '', email: '', role: 'operator', branchId: '1', active: true });
+    } catch (err) {
+      console.error("Error saving staff user:", err);
+    }
+  };
+
+  const handleEdit = (user: StaffUser) => {
+    setEditingId(user.id);
+    setForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      branchId: user.branchId,
+      active: user.active
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('¿Estás seguro de eliminar a este usuario interno?')) {
+      try {
+        await deleteDoc(doc(db, 'staff_users', id));
+      } catch (err) {
+        console.error("Error deleting staff user:", err);
+      }
+    }
+  };
+
+  const filtered = staff.filter(user => {
+    const matchSearch = user.name.toLowerCase().includes(search.toLowerCase()) || user.email.toLowerCase().includes(search.toLowerCase());
+    const matchRole = filterRole === 'all' || user.role === filterRole;
+    return matchSearch && matchRole;
   });
 
-  const vipCount = users.filter(c => c.customerLevel === 2).length;
-  const clientCount = users.filter(c => c.customerStatus === 'Cliente').length;
-  const totalPoints = users.reduce((a, c) => a + (c.loyaltyPoints || 0), 0);
+  const admins = staff.filter(u => u.role === 'admin').length;
+  const operators = staff.filter(u => u.role === 'operator').length;
+  const viewers = staff.filter(u => u.role === 'viewer').length;
 
   return (
     <div className="flex h-full w-full flex-col bg-slate-50 p-6 gap-6">
-
+      
       {/* Header */}
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-tech-blue">
-          <Users className="h-7 w-7" /> Gestión de Usuarios
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">Base de clientes y prospectos del ecosistema TravelApp.</p>
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-tech-blue">
+            <Shield className="h-7 w-7 text-tech-blue" /> Gestión de Usuarios Internos
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">Administración de credenciales, accesos y sucursales del personal de Concorde 360.</p>
+        </div>
+        <button
+          onClick={() => {
+            setEditingId(null);
+            setForm({ name: '', email: '', role: 'operator', branchId: '1', active: true });
+            setShowModal(true);
+          }}
+          className="inline-flex items-center justify-center space-x-2 rounded-xl bg-tech-blue px-4 py-2.5 text-sm font-bold text-white hover:bg-tech-blue/90 shadow-sm transition-all"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Agregar Usuario Interno</span>
+        </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: 'Total Usuarios', value: users.length, color: 'text-tech-blue' },
-          { label: 'Clientes Activos', value: clientCount, color: 'text-emerald-600' },
-          { label: 'VIP Nivel 2', value: vipCount, color: 'text-amber-600' },
-          { label: 'Puntos Totales', value: totalPoints.toLocaleString(), color: 'text-blue-600' },
+          { label: 'Total Personal', value: staff.length, color: 'text-tech-blue' },
+          { label: 'Administradores', value: admins, color: 'text-rose-600' },
+          { label: 'Operadores', value: operators, color: 'text-amber-600' },
+          { label: 'Lectores (Viewer)', value: viewers, color: 'text-blue-600' },
         ].map(s => (
           <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -281,18 +226,23 @@ export default function UsersPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
-            type="text" placeholder="Buscar usuario..."
-            value={search} onChange={e => setSearch(e.target.value)}
+            type="text"
+            placeholder="Buscar por nombre o email..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm text-slate-700 shadow-sm outline-none focus:border-tech-blue/40 focus:ring-2 focus:ring-tech-blue/10 transition-all"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-slate-400" />
-          <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none">
-            <option value="all">Todos los niveles</option>
-            <option value="1">Nivel 1 — Básico</option>
-            <option value="2">Nivel 2 — VIP</option>
+          <select
+            value={filterRole}
+            onChange={e => setFilterRole(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none"
+          >
+            <option value="all">Todos los Roles</option>
+            <option value="admin">Administrador</option>
+            <option value="operator">Operador</option>
+            <option value="viewer">Lector (Viewer)</option>
           </select>
         </div>
       </div>
@@ -303,62 +253,187 @@ export default function UsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80">
-                {['Usuario', 'Contacto', 'Nivel', 'Estado', 'Unidad', 'Puntos', 'Acciones'].map(h => (
+                {['Personal', 'Email / Contacto', 'Rol de Acceso', 'Sucursal Asignada', 'Estado', 'Acciones'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map(c => (
-                <tr key={c.id} className="group hover:bg-slate-50/60 transition-colors">
+              {filtered.map(user => (
+                <tr key={user.id} className="group hover:bg-slate-50/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-tech-blue/10 text-xs font-bold text-tech-blue">
-                        {c.customerName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-800">{c.customerName}</p>
-                        <p className="text-xs font-mono text-slate-400">{c.id}</p>
+                        <p className="font-semibold text-slate-800">{user.name}</p>
+                        <p className="text-xs font-mono text-slate-400">ID: {user.id}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-xs text-slate-600">{c.phone || '—'}</p>
-                    <p className="text-xs text-slate-400">{c.email || '—'}</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-600">
+                      <Mail className="h-3 w-3 text-slate-400" /> {user.email}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Creado: {user.createdAt}</p>
                   </td>
-                  <td className="px-4 py-3"><LevelBadge level={c.customerLevel} /></td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${c.customerStatus === 'Cliente' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                      {c.customerStatus}
+                    {user.role === 'admin' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200 px-2 py-0.5 text-xs font-bold text-rose-700">
+                        Administrador
+                      </span>
+                    ) : user.role === 'operator' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-bold text-amber-700">
+                        Operador
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-bold text-blue-700">
+                        Lector (Viewer)
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
+                      <Building2 className="h-3.5 w-3.5 text-slate-400" /> {user.branchName}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{c.businessUnit}</td>
                   <td className="px-4 py-3">
-                    {c.loyaltyPoints ? (
-                      <div className="flex items-center gap-1 text-xs font-bold text-amber-600">
-                        <Star className="h-3 w-3" />{c.loyaltyPoints.toLocaleString()}
-                      </div>
-                    ) : <span className="text-xs text-slate-400">—</span>}
+                    {user.active ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                        Activo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
+                        Inactivo
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setSelected(c)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:border-tech-blue/30 hover:text-tech-blue transition-all group-hover:shadow-md">
-                      <Eye className="h-3.5 w-3.5" /> Ver
-                      <ChevronRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEdit(user)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 shadow-sm hover:border-tech-blue/30 hover:text-tech-blue transition-all"
+                      >
+                        <Edit2 className="h-3 w-3" /> Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(user.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-100 bg-white px-2 py-1 text-xs font-semibold text-red-600 shadow-sm hover:border-red-300 hover:bg-red-50 transition-all"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-slate-400 text-xs">
+                    No se encontraron usuarios internos para esta búsqueda.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
-          <p className="text-xs text-slate-400">Mostrando {filtered.length} de {users.length} usuarios</p>
-        </div>
       </div>
 
-      {/* Modal */}
-      {selected && <CustomerModal customer={selected} onClose={() => setSelected(null)} />}
+      {/* Editor Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="bg-slate-50 p-5 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-800">
+                {editingId ? 'Editar Usuario Interno' : 'Nuevo Usuario Interno'}
+              </h2>
+            </div>
+            
+            <form onSubmit={handleSave} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Nombre Completo</label>
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-tech-blue"
+                  placeholder="Ej: Fernando Incola"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Correo Electrónico</label>
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-tech-blue"
+                  placeholder="usuario@travelapp.ar"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Rol de Acceso</label>
+                <select
+                  value={form.role}
+                  onChange={e => setForm(p => ({ ...p, role: e.target.value as any }))}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none bg-white focus:border-tech-blue"
+                >
+                  <option value="admin">Administrador (Acceso Total)</option>
+                  <option value="operator">Operador (Gestión Operativa)</option>
+                  <option value="viewer">Lector (Solo Lectura/Consultas)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Sucursal Asignada</label>
+                <select
+                  value={form.branchId}
+                  onChange={e => setForm(p => ({ ...p, branchId: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none bg-white focus:border-tech-blue"
+                >
+                  <option value="all">Todas las Sucursales</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.location})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="user-active-checkbox"
+                  checked={form.active}
+                  onChange={e => setForm(p => ({ ...p, active: e.target.checked }))}
+                  className="h-4 w-4 text-tech-blue"
+                />
+                <label htmlFor="user-active-checkbox" className="text-xs font-bold text-slate-600 cursor-pointer">
+                  Usuario Activo (Permitir inicio de sesión)
+                </label>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-tech-blue px-4 py-2 text-xs font-bold text-white hover:bg-tech-blue/90"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -2,10 +2,9 @@ import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, Me
 
 export const topNavTabs = [
   { id: 'global', label: 'Visión Global', href: '/' },
-  { id: 'messages', label: '💬 Mensajería', href: '/messages' },
   { id: 'crm', label: 'CRM Ventas', href: '/crm' },
   { id: 'travelcab', label: 'TravelCab', href: '/travelcab' },
-  { id: 'experiences', label: 'Experiencias', href: '/experiences' },
+  { id: 'experiences', label: 'Experience', href: '/experiences' },
   { id: 'rewards', label: 'Rewards', href: '/rewards/analytics' },
   { id: 'hr', label: 'RRHH', href: '/hr' },
   { id: 'cms', label: 'CMS Web', href: '/cms' },
@@ -106,6 +105,7 @@ export const getSidebarConfig = (pathname: string) => {
         { id: 'leads', label: 'Tablero de Leads', href: '/crm', icon: LayoutDashboard },
         { id: 'agenda', label: 'Mi Agenda (Meet)', href: '/crm/agenda', icon: Calendar },
         { id: 'history', label: 'Historial de Ventas', href: '/crm/history', icon: History },
+        { id: 'customers', label: 'Lista de Clientes', href: '/crm/customers', icon: Users },
         { id: 'travis', label: 'Travis IA ✦', href: '/crm/travis', icon: Bot },
       ]
     };
@@ -115,10 +115,10 @@ export const getSidebarConfig = (pathname: string) => {
   return {
     title: 'Visión Global',
     items: [
-      { id: 'metrics', label: 'Métricas Ecosistema', href: '/', icon: BarChart3 },
-      { id: 'messages', label: 'Centro de Mensajería', href: '/messages', icon: MessageSquare },
-      { id: 'audit', label: 'Auditoría Contable', href: '/audit', icon: FileText },
+      { id: 'metrics', label: 'Métricas del Sistema', href: '/', icon: BarChart3 },
       { id: 'users', label: 'Gestión de Usuarios', href: '/users', icon: Users },
+      { id: 'branches', label: 'Gestión de Sucursales', href: '/branches', icon: Building2 },
+      { id: 'messages', label: 'Centro de Mensajería', href: '/messages', icon: MessageSquare },
     ]
   };
 };

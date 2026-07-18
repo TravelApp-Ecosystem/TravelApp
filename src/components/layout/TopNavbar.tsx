@@ -39,13 +39,23 @@ export const TopNavbar = () => {
         <ul className="flex space-x-1 rounded-full bg-slate-50 p-1 border border-slate-200">
           {topNavTabs.map((tab) => {
             const active = isTabActive(tab.href);
+            // Custom active background color per specific module tab
+            let activeClass = "bg-tech-blue text-white";
+            if (tab.id === "travelcab") {
+              activeClass = "bg-[#FF7A00] text-white";
+            } else if (tab.id === "experiences") {
+              activeClass = "bg-[#EF4444] text-white";
+            } else if (tab.id === "rewards") {
+              activeClass = "bg-[#F59E0B] text-white";
+            }
+
             return (
               <li key={tab.id}>
                 <Link
                   href={tab.href}
                   className={`block rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                     active
-                      ? "bg-tech-blue text-white"
+                      ? activeClass
                       : "text-slate-500 hover:text-tech-blue hover:bg-slate-100"
                   }`}
                 >

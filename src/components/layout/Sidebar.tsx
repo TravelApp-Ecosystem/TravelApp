@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PlusCircle, Tag } from 'lucide-react';
+import { PlusCircle, Tag, Activity, Cloud, Database, ShieldCheck } from 'lucide-react';
 import { getSidebarConfig } from '@/lib/navigation';
 
 export const Sidebar = () => {
@@ -11,14 +11,17 @@ export const Sidebar = () => {
   const config = getSidebarConfig(pathname);
 
   const isTravelCabModule = pathname.startsWith('/travelcab');
-  const logoSrc = isTravelCabModule ? "/assets/travelcab_original.svg" : "/assets/isologo.png";
 
   return (
-    <aside className="w-64 border-r border-slate-200 bg-slate-50 flex-col hidden lg:flex min-h-[calc(100vh-4rem)]">
-      <div className="p-4">
-        <div className="mb-6 flex justify-center">
-          <img src={logoSrc} alt={isTravelCabModule ? "TravelCab" : "TravelApp"} className={isTravelCabModule ? "h-10 w-auto" : "h-12 w-auto"} />
+    <aside className="w-64 border-r border-slate-200 bg-slate-50 flex flex-col hidden lg:flex min-h-[calc(100vh-4rem)] p-4 justify-between">
+      <div className="flex-1 flex flex-col">
+        {/* LOGO: Concorde 360 styled in Quicksand */}
+        <div className="mb-6 flex items-center justify-center py-2 bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl border border-slate-700 shadow-md">
+          <span className="text-lg font-black tracking-tight text-white font-quicksand">
+            Concorde <span className="text-[#FF7A00]">360</span>
+          </span>
         </div>
+
         <nav className="space-y-1">
           {config.items.map((item) => {
             const Icon = item.icon;
@@ -66,6 +69,36 @@ export const Sidebar = () => {
             </Link>
           </div>
         )}
+      </div>
+
+      {/* MONITOR DE ESTABILIDAD DEL SISTEMA (Firebase & Google Cloud) */}
+      <div className="mt-auto pt-6 border-t border-slate-200">
+        <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase mb-3 flex items-center gap-1.5 px-3">
+          <Activity className="h-3 w-3 text-emerald-500 animate-pulse" /> Estabilidad
+        </p>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 space-y-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Database className="h-3.5 w-3.5 text-tech-blue/60" />
+              <span className="text-[10px] font-bold text-slate-500">Firebase DB</span>
+            </div>
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Cloud className="h-3.5 w-3.5 text-tech-blue/60" />
+              <span className="text-[10px] font-bold text-slate-500">Google Cloud</span>
+            </div>
+            <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-200">12ms</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-3.5 w-3.5 text-tech-blue/60" />
+              <span className="text-[10px] font-bold text-slate-500">Travis AI</span>
+            </div>
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+          </div>
+        </div>
       </div>
     </aside>
   );
