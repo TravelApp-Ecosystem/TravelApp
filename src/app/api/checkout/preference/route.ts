@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 // POST /api/checkout/preference
@@ -15,13 +15,43 @@ export async function POST(req: NextRequest) {
     // 1. Cargar el token general de TravelApp
     const accessToken = process.env.MP_ACCESS_TOKEN;
 
-    // 2. Obtener tarifa activa para calcular comisión dinámica
+    // 2. Obtener tarifa activa para calcular comisión dinámica según categoría del viaje
     let commissionPct = 10;
     try {
-      const tariffDoc = await getDoc(doc(db, 'tariffs', 'mu_active'));
-      if (tariffDoc.exists()) {
-        const tariffData = tariffDoc.data();
-        if (tariffData.commissionRatePct !== undefined) {
+      let tariffData: any = null;
+
+      if (tripId) {
+        const tripDoc = await getDoc(doc(db, 'trips', tripId));
+        if (tripDoc.exists()) {
+          const tripVal = tripDoc.data();
+          const category = tripVal.category || 'estandar';
+          const type = (tripVal.serviceType || 'mu').toLowerCase();
+          
+          const q = query(
+            collection(db, 'tariffs'),
+            where('type', '==', type),
+            where('category', '==', category),
+            where('isActive', '==', true)
+          );
+          const qSnap = await getDocs(q);
+          if (!qSnap.empty) {
+            tariffData = qSnap.docs[0].data();
+          }
+        }
+      }
+
+      // Fallback a mu_active
+      if (!tariffData) {
+        const tariffDoc = await getDoc(doc(db, 'tariffs', 'mu_active'));
+        if (tariffDoc.exists()) {
+          tariffData = tariffDoc.data();
+        }
+      }
+
+      if (tariffData) {
+        if (tariffData.commissionRate !== undefined) {
+          commissionPct = tariffData.commissionRate;
+        } else if (tariffData.commissionRatePct !== undefined) {
           commissionPct = tariffData.commissionRatePct;
         } else if (tariffData.electronicPaymentFee !== undefined) {
           commissionPct = tariffData.electronicPaymentFee;

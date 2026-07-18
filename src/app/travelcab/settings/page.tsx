@@ -178,10 +178,10 @@ export default function TravelCabSettingsPage() {
     try {
       const batch = writeBatch(db);
       const tariffsRef = collection(db, 'tariffs');
-      const q = query(tariffsRef, where('type', '==', tariff.type));
+      const q = query(tariffsRef, where('type', '==', tariff.type), where('category', '==', tariff.category || 'estandar'));
       const querySnap = await getDocs(q);
 
-      // Desactivar todos los demás del mismo tipo
+      // Desactivar todos los demás del mismo tipo y misma categoría
       querySnap.docs.forEach(docSnap => {
         if (docSnap.id === 'mu_active' || docSnap.id === 'arc_active') return;
 
@@ -194,18 +194,39 @@ export default function TravelCabSettingsPage() {
 
       await batch.commit();
 
-      // Guardar copia en el doc de acceso directo rápido
-      const activeDocId = tariff.type === 'mu' ? 'mu_active' : 'arc_active';
-      await setDoc(doc(db, 'tariffs', activeDocId), {
-        ...tariff,
-        isActive: true,
-        updatedAt: Date.now()
-      });
+      // Guardar copia en el doc de acceso directo rápido de fallback si es el estándar
+      const categoryName = (tariff.category || 'estandar').toLowerCase();
+      if (categoryName === 'estandar' || categoryName === 'standard') {
+        const activeDocId = tariff.type === 'mu' ? 'mu_active' : 'arc_active';
+        await setDoc(doc(db, 'tariffs', activeDocId), {
+          ...tariff,
+          isActive: true,
+          updatedAt: Date.now()
+        });
+      }
 
-      alert(`Tarifario "${tariff.name}" activado correctamente.`);
+      alert(`Tarifario "${tariff.name}" para la categoría "${tariff.category || 'estandar'}" activado correctamente.`);
     } catch (err: any) {
       console.error("Error activating tariff:", err);
       alert("Error al activar tarifario: " + err.message);
+    }
+  };
+
+  const handleDeactivateTariff = async (tariff: any) => {
+    try {
+      await updateDoc(doc(db, 'tariffs', tariff.id), { isActive: false });
+
+      // Desactivar también el doc de referencia rápida si corresponde
+      const categoryName = (tariff.category || 'estandar').toLowerCase();
+      if (categoryName === 'estandar' || categoryName === 'standard') {
+        const activeDocId = tariff.type === 'mu' ? 'mu_active' : 'arc_active';
+        await updateDoc(doc(db, 'tariffs', activeDocId), { isActive: false });
+      }
+
+      alert(`Tarifario "${tariff.name}" desactivado correctamente.`);
+    } catch (err: any) {
+      console.error("Error deactivating tariff:", err);
+      alert("Error al desactivar tarifario: " + err.message);
     }
   };
 
@@ -455,9 +476,17 @@ export default function TravelCabSettingsPage() {
                                   Activar Tarifa
                                 </button>
                               ) : (
-                                <span className="text-[10px] font-bold text-green-600 uppercase flex items-center">
-                                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> En Producción
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-green-600 uppercase flex items-center">
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> En Producción
+                                  </span>
+                                  <button 
+                                    onClick={() => handleDeactivateTariff(t)}
+                                    className="text-[11px] font-bold text-rose-500 hover:underline uppercase"
+                                  >
+                                    Desactivar
+                                  </button>
+                                </div>
                               )}
 
                               <div className="flex items-center space-x-2">
@@ -527,9 +556,17 @@ export default function TravelCabSettingsPage() {
                                   Activar Tarifa
                                 </button>
                               ) : (
-                                <span className="text-[10px] font-bold text-vial-orange uppercase flex items-center">
-                                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> En Producción
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-vial-orange uppercase flex items-center">
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> En Producción
+                                  </span>
+                                  <button 
+                                    onClick={() => handleDeactivateTariff(t)}
+                                    className="text-[11px] font-bold text-rose-500 hover:underline uppercase"
+                                  >
+                                    Desactivar
+                                  </button>
+                                </div>
                               )}
 
                               <div className="flex items-center space-x-2">

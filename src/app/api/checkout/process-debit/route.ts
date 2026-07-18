@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 // POST /api/checkout/process-debit
@@ -37,13 +37,43 @@ export async function POST(req: NextRequest) {
       console.warn('[Process Debit] No se pudo obtener access_token del chofer, usando fallback general:', err);
     }
 
-    // 3. Obtener tarifa activa para calcular comisión e impuestos dinámicos
+    // 3. Obtener tarifa activa para calcular comisión e impuestos dinámicos según categoría
     let commissionRatePct = 10; // 10% por defecto
     try {
-      const tariffDoc = await getDoc(doc(db, 'tariffs', 'mu_active'));
-      if (tariffDoc.exists()) {
-        const tariffData = tariffDoc.data();
-        if (tariffData.commissionRatePct !== undefined) {
+      let tariffData: any = null;
+
+      if (tripId) {
+        const tripDoc = await getDoc(doc(db, 'trips', tripId));
+        if (tripDoc.exists()) {
+          const tripVal = tripDoc.data();
+          const category = tripVal.category || 'estandar';
+          const type = (tripVal.serviceType || 'mu').toLowerCase();
+          
+          const q = query(
+            collection(db, 'tariffs'),
+            where('type', '==', type),
+            where('category', '==', category),
+            where('isActive', '==', true)
+          );
+          const qSnap = await getDocs(q);
+          if (!qSnap.empty) {
+            tariffData = qSnap.docs[0].data();
+          }
+        }
+      }
+
+      // Fallback a mu_active
+      if (!tariffData) {
+        const tariffDoc = await getDoc(doc(db, 'tariffs', 'mu_active'));
+        if (tariffDoc.exists()) {
+          tariffData = tariffDoc.data();
+        }
+      }
+
+      if (tariffData) {
+        if (tariffData.commissionRate !== undefined) {
+          commissionRatePct = tariffData.commissionRate;
+        } else if (tariffData.commissionRatePct !== undefined) {
           commissionRatePct = tariffData.commissionRatePct;
         } else if (tariffData.electronicPaymentFee !== undefined) {
           commissionRatePct = tariffData.electronicPaymentFee;
