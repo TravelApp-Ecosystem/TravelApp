@@ -46,6 +46,8 @@ export const getSidebarConfig = (pathname: string) => {
         { id: 'partners', label: 'Lista de Socios', href: '/hr', icon: UserCheck },
         { id: 'new-partner', label: 'Nuevo Conductor', href: '/hr/new-partner', icon: UserPlus },
         { id: 'applications', label: 'Postulaciones', href: '/hr#postulaciones', icon: FileText },
+        { id: 'staff', label: 'Gestión de personal', href: '/hr/staff', icon: Users },
+        { id: 'org-chart', label: 'Organigrama empresarial', href: '/hr/org-chart', icon: Route },
       ]
     };
   }
