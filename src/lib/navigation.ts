@@ -80,6 +80,7 @@ export const getSidebarConfig = (pathname: string) => {
         { id: 'dashboard', label: 'Principal', href: '/experiences', icon: LayoutDashboard },
         { id: 'catalog', label: 'Catálogo de viajes', href: '/experiences/catalog', icon: Palmtree },
         { id: 'create-customer', label: 'Crear Cliente', href: '/experiences/customers/new', icon: UserPlus },
+        { id: 'create-reservation', label: 'Crear Reserva', href: '/experiences/reservations/new', icon: Ticket },
         { id: 'create-group-trip', label: 'Crear Viaje Grupal', href: '/experiences/group-trips/new', icon: PlusCircle },
         { id: 'spots', label: 'Cupos disponibles', href: '/experiences/spots', icon: Users },
         { id: 'coordinators', label: 'Gestión de Coordinadores', href: '/experiences/coordinators', icon: UserCheck },
