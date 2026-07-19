@@ -31,10 +31,10 @@ export const Sidebar = () => {
             'metrics': true, 'branches': false, 'users': false, 'messages': true,
             'leads': true, 'agenda': true, 'history': true, 'customers': true, 'travis': true,
             'dashboard': true, 'dispatch': true, 'drivers': true, 'fleet': true,
-            'create-service': true, 'create-category': true, 'settings': false, 'security': false,
+            'travelcab-create-service': true, 'travelcab-create-category': true, 'settings': false, 'security': false,
             'catalog': true, 'create-customer': true, 'create-reservation': true, 'create-group-trip': true,
             'spots': true, 'coordinators': true, 'coordinator-app': true, 'analytics': true,
-            'create-merchant': true, 'create-rubro': false, 'create-category': false, 'validator': true,
+            'rewards-create-merchant': true, 'rewards-create-rubro': false, 'rewards-create-category': false, 'validator': true,
             'merchants': true, 'partners': true, 'new-partner': true, 'applications': true,
             'staff': false, 'org-chart': true, 'cms': false, 'audit': false
           });
@@ -43,10 +43,10 @@ export const Sidebar = () => {
             'metrics': true, 'branches': true, 'users': false, 'messages': false,
             'leads': true, 'agenda': false, 'history': true, 'customers': true, 'travis': false,
             'dashboard': true, 'dispatch': false, 'drivers': true, 'fleet': false,
-            'create-service': false, 'create-category': false, 'settings': false, 'security': false,
+            'travelcab-create-service': false, 'travelcab-create-category': false, 'settings': false, 'security': false,
             'catalog': true, 'create-customer': false, 'create-reservation': false, 'create-group-trip': false,
             'spots': true, 'coordinators': true, 'coordinator-app': false, 'analytics': true,
-            'create-merchant': false, 'create-rubro': false, 'create-category': false, 'validator': false,
+            'rewards-create-merchant': false, 'rewards-create-rubro': false, 'rewards-create-category': false, 'validator': false,
             'merchants': true, 'partners': true, 'new-partner': false, 'applications': false,
             'staff': false, 'org-chart': true, 'cms': false, 'audit': true
           });
@@ -100,12 +100,12 @@ export const Sidebar = () => {
           })}
         </nav>
 
-        {isTravelCabModule && (permissions['create-service'] || permissions['create-category']) && (
+        {isTravelCabModule && (permissions['travelcab-create-service'] || permissions['travelcab-create-category']) && (
           <div className="mt-8 pt-6 border-t border-slate-200 space-y-3">
             <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase px-3">
               Operaciones Rápidas
             </p>
-            {permissions['create-service'] !== false && (
+            {permissions['travelcab-create-service'] !== false && (
               <Link
                 href="/travelcab/settings?tab=tariffs&action=new"
                 className="flex items-center space-x-2.5 rounded-xl border border-dashed border-vial-orange/40 bg-vial-orange/5 hover:bg-vial-orange/10 hover:border-vial-orange px-3.5 py-2.5 transition-all text-vial-orange group shadow-sm"
@@ -114,7 +114,7 @@ export const Sidebar = () => {
                 <span className="text-xs font-black tracking-tight">Crear Servicio</span>
               </Link>
             )}
-            {permissions['create-category'] !== false && (
+            {permissions['travelcab-create-category'] !== false && (
               <Link
                 href="/travelcab/settings?tab=categories&action=new"
                 className="flex items-center space-x-2.5 rounded-xl border border-slate-200 bg-white hover:border-tech-blue/40 px-3.5 py-2.5 transition-all text-slate-600 hover:text-tech-blue group shadow-sm"

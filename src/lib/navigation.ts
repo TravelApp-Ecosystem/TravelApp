@@ -58,9 +58,9 @@ export const getSidebarConfig = (pathname: string) => {
       title: 'Rewards & Fidelización',
       items: [
         { id: 'analytics', label: 'Principal', href: '/rewards/analytics', icon: PieChart },
-        { id: 'create-merchant', label: 'Comercio Asociado', href: '/rewards/merchants/new', icon: UserPlus },
-        { id: 'create-rubro', label: 'Crear Rubro', href: '/rewards/settings?tab=rubros&action=new', icon: PlusCircle },
-        { id: 'create-category', label: 'Crear Categoría', href: '/rewards/settings?tab=categories&action=new', icon: PlusCircle },
+        { id: 'rewards-create-merchant', label: 'Comercio Asociado', href: '/rewards/merchants/new', icon: UserPlus },
+        { id: 'rewards-create-rubro', label: 'Crear Rubro', href: '/rewards/settings?tab=rubros&action=new', icon: PlusCircle },
+        { id: 'rewards-create-category', label: 'Crear Categoría', href: '/rewards/settings?tab=categories&action=new', icon: PlusCircle },
         { id: 'validator', label: 'Validador de cupones', href: '/rewards/validator', icon: Zap },
         { id: 'merchants', label: 'Gestión de comercios', href: '/rewards/merchants', icon: Building2 },
         { id: 'settings', label: 'Reglas de Recompensa', href: '/rewards/settings', icon: Gift },
@@ -106,8 +106,8 @@ export const getSidebarConfig = (pathname: string) => {
         { id: 'branches', label: 'Gestión de Sucursal', href: '/travelcab/branches', icon: Building2 },
         { id: 'drivers', label: 'Gestión de Conductores', href: '/travelcab/drivers', icon: Users },
         { id: 'fleet', label: 'Gestión de Móviles', href: '/travelcab/fleet', icon: Car },
-        { id: 'create-service', label: 'Crear Servicio', href: '/travelcab/settings?tab=tariffs&action=new', icon: PlusCircle },
-        { id: 'create-category', label: 'Crear Categoría', href: '/travelcab/settings?tab=categories&action=new', icon: PlusCircle },
+        { id: 'travelcab-create-service', label: 'Crear Servicio', href: '/travelcab/settings?tab=tariffs&action=new', icon: PlusCircle },
+        { id: 'travelcab-create-category', label: 'Crear Categoría', href: '/travelcab/settings?tab=categories&action=new', icon: PlusCircle },
         { id: 'settings', label: 'Gestión de Tarifas', href: '/travelcab/settings', icon: DollarSign },
         { id: 'security', label: 'Seguridad del Ecosistema', href: '/travelcab/security', icon: ShieldAlert },
       ]

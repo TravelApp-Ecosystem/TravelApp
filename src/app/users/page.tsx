@@ -86,8 +86,8 @@ const MODULE_FEATURES = [
       { id: 'branches', label: 'Gestión de Sucursal (Caja)' },
       { id: 'drivers', label: 'Gestión de Conductores' },
       { id: 'fleet', label: 'Gestión de Móviles (Flota)' },
-      { id: 'create-service', label: 'Crear Servicio' },
-      { id: 'create-category', label: 'Crear Categoría' },
+      { id: 'travelcab-create-service', label: 'Crear Servicio' },
+      { id: 'travelcab-create-category', label: 'Crear Categoría' },
       { id: 'settings', label: 'Gestión de Tarifas' },
       { id: 'security', label: 'Seguridad del Ecosistema' },
     ]
@@ -109,9 +109,9 @@ const MODULE_FEATURES = [
     module: 'Rewards & Fidelización',
     items: [
       { id: 'analytics', label: 'Principal (Respaldo)' },
-      { id: 'create-merchant', label: 'Comercio Asociado' },
-      { id: 'create-rubro', label: 'Crear Rubro' },
-      { id: 'create-category', label: 'Crear Categoría' },
+      { id: 'rewards-create-merchant', label: 'Comercio Asociado' },
+      { id: 'rewards-create-rubro', label: 'Crear Rubro' },
+      { id: 'rewards-create-category', label: 'Crear Categoría' },
       { id: 'validator', label: 'Validador de Cupones' },
       { id: 'merchants', label: 'Gestión de Comercios' },
       { id: 'settings', label: 'Reglas de Recompensa' },
