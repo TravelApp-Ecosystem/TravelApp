@@ -55,7 +55,12 @@ export const getSidebarConfig = (pathname: string) => {
     return {
       title: 'Rewards & Fidelización',
       items: [
-        { id: 'analytics', label: 'Panel Analítico', href: '/rewards/analytics', icon: PieChart },
+        { id: 'analytics', label: 'Principal', href: '/rewards/analytics', icon: PieChart },
+        { id: 'create-merchant', label: 'Comercio Asociado', href: '/rewards/merchants/new', icon: UserPlus },
+        { id: 'create-rubro', label: 'Crear Rubro', href: '/rewards/settings?tab=rubros&action=new', icon: PlusCircle },
+        { id: 'create-category', label: 'Crear Categoría', href: '/rewards/settings?tab=categories&action=new', icon: PlusCircle },
+        { id: 'validator', label: 'Validador de cupones', href: '/rewards/validator', icon: Zap },
+        { id: 'merchants', label: 'Gestión de comercios', href: '/rewards/merchants', icon: Building2 },
         { id: 'settings', label: 'Reglas de Recompensa', href: '/rewards/settings', icon: Gift },
       ]
     };
