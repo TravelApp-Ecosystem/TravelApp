@@ -320,7 +320,11 @@ export default function StaffUsersPage() {
         
         {activeTab === 'users' && (
           <button
-            onClick={handleOpenAdd}
+            onClick={() => {
+              setEditingId(null);
+              setForm({ name: '', email: '', role: 'operator', branchId: '1', active: true });
+              setShowModal(true);
+            }}
             className="inline-flex items-center justify-center space-x-2 rounded-xl bg-tech-blue px-4 py-2.5 text-sm font-bold text-white hover:bg-tech-blue/90 shadow-sm transition-all"
           >
             <Plus className="h-4 w-4" />
