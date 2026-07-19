@@ -65,6 +65,9 @@ function toAuthUser(firebaseUser: User): AuthUser {
   };
 }
 
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 // ---------------------------------------------------------
 // Context
 // ---------------------------------------------------------
@@ -75,8 +78,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser ? toAuthUser(firebaseUser) : null);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        let role = deriveRole(firebaseUser);
+        let active = true;
+        let displayName = firebaseUser.displayName || 'Usuario';
+        
+        try {
+          const q = query(collection(db, 'staff_users'), where('email', '==', firebaseUser.email));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const data = snap.docs[0].data();
+            role = data.role || role;
+            active = data.active !== undefined ? data.active : true;
+            displayName = data.name || displayName;
+          }
+        } catch (err) {
+          console.error("Error looking up user profile in Firestore:", err);
+        }
+
+        if (!active) {
+          await signOut(auth);
+          setUser(null);
+          document.cookie = "ta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+          alert("Tu cuenta ha sido desactivada por el administrador.");
+        } else {
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName,
+            role,
+          });
+        }
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
     return () => unsubscribe();

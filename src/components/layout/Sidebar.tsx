@@ -4,13 +4,69 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PlusCircle, Tag, Activity, Cloud, Database, ShieldCheck } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useState, useEffect } from 'react';
 import { getSidebarConfig } from '@/lib/navigation';
 
 export const Sidebar = () => {
   const pathname = usePathname();
   const config = getSidebarConfig(pathname);
+  const { user } = useAuth();
+  
+  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!user?.role) return;
+    const unsub = onSnapshot(doc(db, 'role_permissions', user.role), (docSnap) => {
+      if (docSnap.exists()) {
+        setPermissions(docSnap.data().permissions || {});
+      } else {
+        // Fallback defaults
+        if (user.role === 'admin') {
+          setPermissions({});
+        } else if (user.role === 'operator') {
+          setPermissions({
+            'metrics': true, 'branches': false, 'users': false, 'messages': true,
+            'leads': true, 'agenda': true, 'history': true, 'customers': true, 'travis': true,
+            'dashboard': true, 'dispatch': true, 'drivers': true, 'fleet': true,
+            'create-service': true, 'create-category': true, 'settings': false, 'security': false,
+            'catalog': true, 'create-customer': true, 'create-reservation': true, 'create-group-trip': true,
+            'spots': true, 'coordinators': true, 'coordinator-app': true, 'analytics': true,
+            'create-merchant': true, 'create-rubro': false, 'create-category': false, 'validator': true,
+            'merchants': true, 'partners': true, 'new-partner': true, 'applications': true,
+            'staff': false, 'org-chart': true, 'cms': false, 'audit': false
+          });
+        } else {
+          setPermissions({
+            'metrics': true, 'branches': true, 'users': false, 'messages': false,
+            'leads': true, 'agenda': false, 'history': true, 'customers': true, 'travis': false,
+            'dashboard': true, 'dispatch': false, 'drivers': true, 'fleet': false,
+            'create-service': false, 'create-category': false, 'settings': false, 'security': false,
+            'catalog': true, 'create-customer': false, 'create-reservation': false, 'create-group-trip': false,
+            'spots': true, 'coordinators': true, 'coordinator-app': false, 'analytics': true,
+            'create-merchant': false, 'create-rubro': false, 'create-category': false, 'validator': false,
+            'merchants': true, 'partners': true, 'new-partner': false, 'applications': false,
+            'staff': false, 'org-chart': true, 'cms': false, 'audit': true
+          });
+        }
+      }
+    }, (err) => {
+      console.error("Error listening to permissions:", err);
+    });
+    return () => unsub();
+  }, [user?.role]);
 
   const isTravelCabModule = pathname.startsWith('/travelcab');
+
+  const filteredItems = config.items.filter(item => {
+    if (!user) return false;
+    const val = permissions[item.id];
+    if (val !== undefined) return val;
+    if (user.role === 'admin') return true;
+    return false; // secure by default for non-admins
+  });
 
   return (
     <aside className="w-64 border-r border-slate-200 bg-slate-50 flex flex-col hidden lg:flex min-h-[calc(100vh-4rem)] p-4 justify-between">
@@ -23,12 +79,8 @@ export const Sidebar = () => {
         </div>
 
         <nav className="space-y-1">
-          {config.items.map((item) => {
+          {filteredItems.map((item) => {
             const Icon = item.icon;
-            // Strict matching for active state in sidebar
-            const active = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/' && item.href !== '/crm');
-            
-            // Override active state for specific exact matches
             const isReallyActive = pathname === item.href;
 
             return (
@@ -48,25 +100,29 @@ export const Sidebar = () => {
           })}
         </nav>
 
-        {isTravelCabModule && (
+        {isTravelCabModule && (permissions['create-service'] || permissions['create-category']) && (
           <div className="mt-8 pt-6 border-t border-slate-200 space-y-3">
             <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase px-3">
               Operaciones Rápidas
             </p>
-            <Link
-              href="/travelcab/settings?tab=tariffs&action=new"
-              className="flex items-center space-x-2.5 rounded-xl border border-dashed border-vial-orange/40 bg-vial-orange/5 hover:bg-vial-orange/10 hover:border-vial-orange px-3.5 py-2.5 transition-all text-vial-orange group shadow-sm"
-            >
-              <PlusCircle className="h-4 w-4" />
-              <span className="text-xs font-black tracking-tight">Crear Servicio</span>
-            </Link>
-            <Link
-              href="/travelcab/settings?tab=categories&action=new"
-              className="flex items-center space-x-2.5 rounded-xl border border-slate-200 bg-white hover:border-tech-blue/40 px-3.5 py-2.5 transition-all text-slate-600 hover:text-tech-blue group shadow-sm"
-            >
-              <Tag className="h-4 w-4 text-slate-400 group-hover:text-tech-blue transition-colors" />
-              <span className="text-xs font-bold tracking-tight">Crear Categoría</span>
-            </Link>
+            {permissions['create-service'] !== false && (
+              <Link
+                href="/travelcab/settings?tab=tariffs&action=new"
+                className="flex items-center space-x-2.5 rounded-xl border border-dashed border-vial-orange/40 bg-vial-orange/5 hover:bg-vial-orange/10 hover:border-vial-orange px-3.5 py-2.5 transition-all text-vial-orange group shadow-sm"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span className="text-xs font-black tracking-tight">Crear Servicio</span>
+              </Link>
+            )}
+            {permissions['create-category'] !== false && (
+              <Link
+                href="/travelcab/settings?tab=categories&action=new"
+                className="flex items-center space-x-2.5 rounded-xl border border-slate-200 bg-white hover:border-tech-blue/40 px-3.5 py-2.5 transition-all text-slate-600 hover:text-tech-blue group shadow-sm"
+              >
+                <Tag className="h-4 w-4 text-slate-400 group-hover:text-tech-blue transition-colors" />
+                <span className="text-xs font-bold tracking-tight">Crear Categoría</span>
+              </Link>
+            )}
           </div>
         )}
       </div>
