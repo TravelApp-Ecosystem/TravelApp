@@ -77,9 +77,13 @@ export const getSidebarConfig = (pathname: string) => {
     return {
       title: 'Experiencias & Tours',
       items: [
-        { id: 'catalog', label: 'Catálogo de Tours', href: '/experiences', icon: Palmtree },
-        { id: 'reservations', label: 'Reservas Activas', href: '#', icon: Ticket },
-        { id: 'inventory', label: 'Inventario de Cupos', href: '#', icon: Users },
+        { id: 'dashboard', label: 'Principal', href: '/experiences', icon: LayoutDashboard },
+        { id: 'catalog', label: 'Catálogo de viajes', href: '/experiences/catalog', icon: Palmtree },
+        { id: 'create-customer', label: 'Crear Cliente', href: '/experiences/customers/new', icon: UserPlus },
+        { id: 'create-group-trip', label: 'Crear Viaje Grupal', href: '/experiences/group-trips/new', icon: PlusCircle },
+        { id: 'spots', label: 'Cupos disponibles', href: '/experiences/spots', icon: Users },
+        { id: 'coordinators', label: 'Gestión de Coordinadores', href: '/experiences/coordinators', icon: UserCheck },
+        { id: 'coordinator-app', label: 'Gestión de App Coordinador', href: '/experiences/coordinator-app', icon: Radio },
       ]
     };
   }
