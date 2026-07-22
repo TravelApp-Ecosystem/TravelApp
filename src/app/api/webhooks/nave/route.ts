@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverAddDoc, serverGetDocs, serverUpdateDoc } from '@/lib/firestore-server';
 
+import { checkNavePaymentStatus } from '@/lib/nave-client';
+
 const NAVE_STORE_CODE = process.env.NAVE_STORE_CODE || 'S-6A60-0761-P';
 
 export async function POST(req: NextRequest) {
@@ -20,10 +22,20 @@ export async function POST(req: NextRequest) {
       payload: body
     });
 
-    const transactionId = body.transaction_id || body.id || body.payment_id || searchParams.get('id');
-    const externalRef = body.external_reference || body.merchant_order_id || body.reference_id || searchParams.get('file_number');
-    const status = (body.status || body.state || 'APPROVED').toUpperCase();
-    const amount = Number(body.amount || body.total_amount || 0);
+    let transactionId = body.payment_id || body.transaction_id || body.id || searchParams.get('id');
+    let externalRef = body.external_payment_id || body.external_reference || body.merchant_order_id || searchParams.get('file_number');
+    let status = (body.status || body.state || 'APPROVED').toUpperCase();
+    let amount = Number(body.amount || body.total_amount || 0);
+
+    // If payment_check_url is provided, query Nave payment check API per official specification
+    if (body.payment_check_url) {
+      const liveCheck = await checkNavePaymentStatus(body.payment_check_url);
+      if (liveCheck) {
+        status = (liveCheck.status?.name || status).toUpperCase();
+        externalRef = liveCheck.external_payment_id || externalRef;
+        amount = Number(liveCheck.available_balance?.value || liveCheck.transactions?.[0]?.amount?.value || amount);
+      }
+    }
 
     console.log(`[NAVE Galicia Webhook] TxID: ${transactionId}, File/Ref: ${externalRef}, Status: ${status}, Amount: $${amount}`);
 

@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
-import { Quicksand } from "next/font/google";
 import Script from "next/script";
 import { headers } from "next/headers";
 import "./globals.css";
 import { MainLayout } from "@/components/layout/MainLayout";
 
-const quicksand = Quicksand({
-  variable: "--font-quicksand",
-  subsets: ["latin"],
-});
+const quicksand = { variable: "font-sans" };
 
 export const metadata: Metadata = {
   title: "TravelApp Ecosystem",
