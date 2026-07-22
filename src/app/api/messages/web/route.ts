@@ -36,14 +36,14 @@ export async function POST(req: NextRequest) {
         updatedAt: timestamp
       });
     } else {
-      await serverSetDoc('conversations', id, {
+      await serverUpdateDoc('conversations', id, {
         lastMessage: {
           content: userMessage,
           timestamp,
           senderId: 'web_user'
         },
         updatedAt: timestamp
-      }, { merge: true });
+      });
     }
 
     // 2. Save user message in subcollection
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     if (convData?.status === 'bot') {
       // Get last 10 messages for context
       const historySnap = await serverGetDocs(`conversations/${id}/messages`, {
-        orderBy: [{ field: 'timestamp', direction: 'asc' }],
+        orderBy: [['timestamp', 'asc']],
         limit: 10
       });
 
