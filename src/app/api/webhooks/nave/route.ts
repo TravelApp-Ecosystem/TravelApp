@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverAddDoc, serverGetDocs, serverUpdateDoc } from '@/lib/firestore-server';
 
+const NAVE_STORE_CODE = process.env.NAVE_STORE_CODE || 'S-6A60-0761-P';
+
 export async function POST(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -12,6 +14,7 @@ export async function POST(req: NextRequest) {
     // Log raw incoming telemetry for Nave
     await serverAddDoc('payment_webhooks_log', {
       provider: 'nave_galicia',
+      storeCode: NAVE_STORE_CODE,
       receivedAt: timestamp,
       queryParams: Object.fromEntries(searchParams.entries()),
       payload: body
