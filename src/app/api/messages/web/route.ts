@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const convRef = `conversations/${id}`;
     let convDoc = await serverGetDoc('conversations', id);
 
-    if (!convDoc.exists()) {
+    if (!convDoc.exists) {
       await serverSetDoc('conversations', id, {
         channel: 'web',
         status: 'bot',
