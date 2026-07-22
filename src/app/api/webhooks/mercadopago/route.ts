@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     if (status === 'approved' && externalRef) {
       // 1. Search matching reservation by File Number or ID
       const reservationsSnap = await serverGetDocs('experience_reservations', {
-        where: [{ field: 'fileNumber', operator: '==', value: externalRef }]
+        where: [['fileNumber', '==', externalRef]]
       });
 
       if (!reservationsSnap.empty) {
