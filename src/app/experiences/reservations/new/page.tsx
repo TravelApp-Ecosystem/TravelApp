@@ -77,22 +77,34 @@ export default function NewReservationPage() {
     }
   };
 
+  // Custom trip state if not selecting catalog tour
+  const [customTitle, setCustomTitle] = useState('');
+  const [customPrice, setCustomPrice] = useState('100000');
+  const [lastFileNumber, setLastFileNumber] = useState('');
+
+  const isCustom = selectedTourId === 'custom';
   const selectedTour = tours.find(t => t.id === selectedTourId);
-  const tourPrice = selectedTour ? selectedTour.price : 0;
-  const tourCurrency = selectedTour ? selectedTour.currency : 'ARS';
+  const tourPrice = isCustom ? (parseFloat(customPrice) || 0) : (selectedTour ? selectedTour.price : 0);
+  const tourCurrency = isCustom ? 'ARS' : (selectedTour ? selectedTour.currency : 'ARS');
   const totalPrice = tourPrice * Number(quantity);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passengerName || !selectedTourId || !quantity) return;
+    if (isCustom && !customTitle) {
+      alert('Ingresá el título del viaje personalizado.');
+      return;
+    }
 
     setSaving(true);
     try {
+      const fileNum = `FILE-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       const branchName = branchId === '2' ? 'Sucursal Pilar' : branchId === '3' ? 'Sucursal Tucumán' : 'Sucursal Retiro';
 
       const payload = {
+        fileNumber: fileNum,
         tourId: selectedTourId,
-        tourTitle: selectedTour ? selectedTour.title : 'Tour Especial',
+        tourTitle: isCustom ? customTitle : (selectedTour ? selectedTour.title : 'Tour Especial'),
         nombrePasajero: passengerName,
         emailPasajero: passengerEmail,
         telefonoPasajero: passengerPhone,
@@ -101,20 +113,23 @@ export default function NewReservationPage() {
         branchId,
         branchName,
         amount: totalPrice,
+        currency: tourCurrency,
         createdAt: new Date().toISOString()
       };
 
       await addDoc(collection(db, 'experience_reservations'), payload);
 
+      setLastFileNumber(fileNum);
       setSuccess(true);
       setSelectedCustomerId('');
       setPassengerName('');
       setPassengerEmail('');
       setPassengerPhone('');
       setSelectedTourId('');
+      setCustomTitle('');
       setQuantity('1');
       setBranchId('1');
-      setTimeout(() => setSuccess(false), 4000);
+      setTimeout(() => setSuccess(false), 6000);
     } catch (err) {
       console.error("Error creating reservation:", err);
       alert("Error al registrar la reserva.");
@@ -136,10 +151,19 @@ export default function NewReservationPage() {
         <div>
           <h1 className="text-2xl font-black tracking-tight text-tech-blue flex items-center gap-2">
             <Ticket className="h-7 w-7 text-green-500" />
-            Crear Reserva
+            Crear Reserva &amp; Generar File
           </h1>
-          <p className="mt-1.5 text-sm text-slate-500 font-medium">Registrar venta de pasajes o canje de puntos de tours y excursiones de Concorde 360.</p>
+          <p className="mt-1.5 text-sm text-slate-500 font-medium">
+            Registrar expediente de venta con N° de File para paquetes del catálogo o viajes a medida.
+          </p>
         </div>
+        <Link
+          href="/experiences/quoter"
+          className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+        >
+          <Sparkles className="h-4 w-4 text-emerald-400" />
+          Abrir Cotizador Pro
+        </Link>
       </div>
 
       <div className="max-w-2xl">
@@ -151,16 +175,19 @@ export default function NewReservationPage() {
         ) : (
           <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
             {success && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl flex items-center gap-2.5 text-xs font-bold">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                ¡Reserva registrada con éxito! Aparecerá en el panel de control.
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl flex items-center gap-3 text-xs font-bold shadow-sm">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-black text-emerald-900">¡Reserva Creada Exitosamente!</p>
+                  <p className="text-xs text-emerald-700 mt-0.5">Se generó el N° de File Expediente: <span className="font-mono bg-emerald-200/60 text-emerald-900 px-2 py-0.5 rounded font-black text-xs">{lastFileNumber}</span></p>
+                </div>
               </div>
             )}
 
             {/* Selector de Cliente Existente CRM */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1">
-                <User className="h-3.5 w-3.5" /> Buscar Cliente Existente (Opcional)
+                <User className="h-3.5 w-3.5 text-tech-blue" /> Buscar Cliente Existente CRM (Opcional)
               </label>
               <select
                 value={selectedCustomerId}
@@ -218,9 +245,10 @@ export default function NewReservationPage() {
                   required
                   value={selectedTourId}
                   onChange={e => setSelectedTourId(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none bg-white focus:border-tech-blue"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none bg-white focus:border-tech-blue font-medium"
                 >
-                  <option value="">Seleccionar Tour</option>
+                  <option value="">-- Seleccionar Paquete del Catálogo --</option>
+                  <option value="custom">✨ Viaje Ad-Hoc / Cotización Especial</option>
                   {tours.map(t => (
                     <option key={t.id} value={t.id}>{t.title} ({t.location})</option>
                   ))}
@@ -235,16 +263,43 @@ export default function NewReservationPage() {
                   min="1"
                   value={quantity}
                   onChange={e => setQuantity(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-tech-blue"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-tech-blue font-bold text-center"
                 />
               </div>
             </div>
 
-            {/* Sucursal */}
+            {/* Custom Trip Inputs if selected */}
+            {isCustom && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-sky-50/60 p-4 border border-sky-200 rounded-xl">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Título del Viaje Personalizado *</label>
+                  <input
+                    type="text"
+                    required
+                    value={customTitle}
+                    onChange={e => setCustomTitle(e.target.value)}
+                    placeholder="Ej: Tour a Medida Cataratas 4D/3N"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none bg-white focus:border-tech-blue"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Precio Unitario Cotizado ($)</label>
+                  <input
+                    type="number"
+                    required
+                    value={customPrice}
+                    onChange={e => setCustomPrice(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none bg-white focus:border-tech-blue font-mono font-bold"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Sucursal y Total */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1">
-                  <Landmark className="h-3.5 w-3.5" /> Asignar Sucursal Venta
+                  <Landmark className="h-3.5 w-3.5 text-slate-400" /> Asignar Sucursal Venta
                 </label>
                 <select
                   value={branchId}
@@ -258,13 +313,13 @@ export default function NewReservationPage() {
               </div>
 
               {/* Total Calculation */}
-              {selectedTour && (
+              {(selectedTour || isCustom) && (
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col justify-center">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Monto Estimado</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Monto Total Expediente</p>
                   <p className="text-xl font-black text-tech-blue mt-1">
                     {tourCurrency === 'USD' ? 'U$S' : '$'} {totalPrice.toLocaleString('es-AR')}
                   </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Precio base: {tourCurrency === 'USD' ? 'U$S' : '$'} {tourPrice} x {quantity}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Precio base: {tourCurrency === 'USD' ? 'U$S' : '$'} {tourPrice} x {quantity} PAX</p>
                 </div>
               )}
             </div>
@@ -276,7 +331,7 @@ export default function NewReservationPage() {
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-tech-blue px-6 py-2.5 text-xs font-bold text-white hover:bg-tech-blue/90 shadow-md transition-all active:scale-[0.98]"
               >
                 <Save className="h-4 w-4" />
-                {saving ? 'Guardando...' : 'Crear Reserva'}
+                {saving ? 'Generando File...' : 'Crear Reserva (Generar File)'}
               </button>
             </div>
           </form>

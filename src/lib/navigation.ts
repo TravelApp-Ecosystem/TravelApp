@@ -1,4 +1,4 @@
-import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign } from 'lucide-react';
+import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator } from 'lucide-react';
 
 export const topNavTabs = [
   { id: 'global', label: 'Visión Global', href: '/' },
@@ -28,26 +28,33 @@ export const getSidebarConfig = (pathname: string) => {
   // Configuración para Auditoría Contable
   if (pathname.startsWith('/audit')) {
     return {
-      title: 'Control Financiero',
+      title: 'Auditoría & Finanzas',
       items: [
-        { id: 'audit-flow', label: 'Flujo y Bancos', href: '/audit', icon: Vault },
-        { id: 'audit-ledger', label: 'Libro Mayor', href: '/audit#ledger', icon: BookOpen },
-        { id: 'audit-schedule', label: 'Vencimientos', href: '/audit#schedule', icon: AlarmClock },
-        { id: 'audit-directory', label: 'Directorio Comercial', href: '/audit#directory', icon: Building2 },
+        { id: 'audit-overview', label: 'Tablero de Control', href: '/audit', icon: BarChart3 },
       ]
     };
   }
 
-  // Configuración para RRHH / Socios
+  // Configuración para Recursos Humanos (RRHH)
   if (pathname.startsWith('/hr')) {
     return {
-      title: 'RRHH & Socios',
+      title: 'Recursos Humanos',
       items: [
-        { id: 'partners', label: 'Lista de Socios', href: '/hr', icon: UserCheck },
+        { id: 'partners', label: 'Lista de Socios', href: '/hr', icon: Users },
         { id: 'new-partner', label: 'Nuevo Conductor', href: '/hr/new-partner', icon: UserPlus },
         { id: 'applications', label: 'Postulaciones', href: '/hr#postulaciones', icon: FileText },
-        { id: 'staff', label: 'Gestión de personal', href: '/hr/staff', icon: Users },
+        { id: 'staff', label: 'Gestión de Personal', href: '/hr/staff', icon: Users },
         { id: 'org-chart', label: 'Organigrama empresarial', href: '/hr/org-chart', icon: Route },
+      ]
+    };
+  }
+
+  // Configuración para CMS
+  if (pathname.startsWith('/cms')) {
+    return {
+      title: 'CMS & Landing Web',
+      items: [
+        { id: 'cms-editor', label: 'Gestor de Contenido', href: '/cms', icon: FileText },
       ]
     };
   }
@@ -85,6 +92,7 @@ export const getSidebarConfig = (pathname: string) => {
       title: 'Experiencias & Tours',
       items: [
         { id: 'dashboard', label: 'Principal', href: '/experiences', icon: LayoutDashboard },
+        { id: 'quoter', label: 'Cotizador de Viajes', href: '/experiences/quoter', icon: Calculator },
         { id: 'catalog', label: 'Catálogo de viajes', href: '/experiences/catalog', icon: Palmtree },
         { id: 'create-customer', label: 'Crear Cliente', href: '/experiences/customers/new', icon: UserPlus },
         { id: 'create-reservation', label: 'Crear Reserva', href: '/experiences/reservations/new', icon: Ticket },

@@ -23,6 +23,7 @@ import {
 import { collection, onSnapshot, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Tour } from "@/types/experiences";
+import { ChatWidget } from "@/components/messaging/ChatWidget";
 
 const FacebookIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -891,6 +892,8 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
         </div>
       )}
 
+      {/* Floating Web Chat Widget with Travis AI */}
+      <ChatWidget />
     </div>
   );
 }
