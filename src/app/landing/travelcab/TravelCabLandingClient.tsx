@@ -7,6 +7,8 @@ import { collection, onSnapshot, query, where, doc, addDoc, setDoc, updateDoc } 
 import { db } from '@/lib/firebase';
 import { MUTariff, VehicleCategory } from '@/types/logistics';
 import { ARGENTINA_PROVINCES } from '@/types/partners';
+import { useTripAlertSound } from '@/hooks/useTripAlertSound';
+import { stopTripAlert } from '@/lib/soundAlerts';
 import { 
   ShieldCheck, 
   UserCheck, 
@@ -508,6 +510,9 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
     amount: 0,
     paymentUrl: ''
   });
+
+  // Alerta de sonido y vibración controlada (detención automática para no quedar tildado)
+  useTripAlertSound(searchingDriverModal.isOpen && searchingDriverModal.status === 'searching');
 
   // Firestore dynamic state (Intacto)
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
@@ -2199,6 +2204,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
 
                 <button
                   onClick={async () => {
+                    stopTripAlert();
                     // Cancelar viaje en Firestore
                     try {
                       await updateDoc(doc(db, 'trips', searchingDriverModal.tripId), { status: 'cancelled' });
