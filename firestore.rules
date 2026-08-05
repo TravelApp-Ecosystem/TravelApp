@@ -2,17 +2,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: Verifica si el usuario está autenticado
+    // --- FUNCIONES HELPER DE SEGURIDAD ---
+
+    // 1. Verifica si la solicitud viene de un usuario autenticado
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper: Verifica si el usuario es el propietario del documento
+    // 2. Verifica si el ID del usuario coincide con la solicitud
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Helper: Verifica si el usuario es un administrador u operador del sistema
+    // 3. Verifica si el usuario posee rol de Administrador Global u Operador
     function isAdmin() {
       return isAuthenticated() && 
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
@@ -21,53 +23,112 @@ service cloud.firestore {
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.is_owner == true);
     }
 
-    // --- REGLAS PÚBLICAS (Para visitantes de la Landing Page sin iniciar sesión) ---
-    
-    // CMS y Bloques: Textos de las Landing Pages, Legales (términos y condiciones), imágenes, etc.
+    // 4. Previene la modificación de campos sensibles de administración (ej. roles, saldos, comisiones)
+    function notModifyingSensitiveFields(sensitiveFields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(sensitiveFields);
+    }
+
+    // --- REGLAS PÚBLICAS Y CONTENIDO (Landing Page, CMS, Excursiones) ---
+
     match /cms/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
     match /cms_blocks/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
-
-    // Catálogo de Excursiones y Experiencias
     match /experiences/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
-
-    // Reservas de Excursiones (los clientes pueden crear reservas públicas)
     match /experience_reservations/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if true;
       allow create: if true;
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
-
-    // Tarifas, Sucursales y Categorías (requerido para cotizadores y listados públicos)
     match /tariffs/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
     match /categories/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
     match /branches/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
     match /rewards_catalog/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // --- REGLAS GENERALES OPERATIVAS (Para Webhooks, CRM, App y Administradores) ---
+    // --- USUARIOS Y PERFILES DE PASAJEROS ---
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      // El usuario no puede auto-otorgarse el rol de administrador ni alterar sus puntos directamente
+      allow update: if isOwner(userId) && notModifyingSensitiveFields(['isAdmin', 'role', 'rol', 'is_owner', 'rewardsPoints']);
+      allow write: if isAdmin();
 
-    // Permite lectura y escritura de cualquier documento a usuarios autenticados (Vercel, CRM, app móvil)
-    match /{document=**} {
-      allow read, write: if isAuthenticated();
+      // Subcolecciones privadas del usuario (favoritos, billetera, historial)
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // --- CONDUCTORES Y FLOTA (DRIVERS) ---
+    match /drivers/{driverId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == driverId;
+      // Chofer puede actualizar ubicación GPS y estado online, pero NO sus balances de comisión ni modos autorizados
+      allow update: if (isAuthenticated() && request.auth.uid == driverId && 
+                       notModifyingSensitiveFields(['maxNegativeBalance', 'currentCommissionBalance', 'allowedServiceModes', 'rating'])) 
+                    || isAdmin();
+      allow delete: if isAdmin();
+
+      // Subcolecciones del conductor (transacciones, gastos)
+      match /transactions/{txId} {
+        allow read: if isAuthenticated() && request.auth.uid == driverId;
+        allow write: if isAdmin();
+      }
+      match /expenses/{expId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == driverId;
+      }
+    }
+
+    // --- GESTIÓN DE VIAJES Y LOGÍSTICA (TRIPS) ---
+    match /trips/{tripId} {
+      // Lectura: Pasajero del viaje, Chofer asignado o Administrador
+      allow read: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        isAdmin() ||
+        resource.data.status == 'searching' ||
+        resource.data.status == 'requested'
+      );
+      
+      // Creación: Usuario autenticado creando un viaje donde él es el pasajero
+      allow create: if isAuthenticated() && request.resource.data.passengerId == request.auth.uid;
+      
+      // Actualización:
+      // - Pasajero puede cancelar o añadir incentivo
+      // - Conductor asignado puede cambiar el estado del viaje (accepted, arrived, in_progress, completed)
+      // - Administrador puede gestionar cualquier viaje
+      allow update: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        request.resource.data.driverId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // --- CONFIGURACIÓN DEL SISTEMA ---
+    match /system_config/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }
