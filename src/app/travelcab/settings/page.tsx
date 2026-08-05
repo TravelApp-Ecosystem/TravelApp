@@ -462,12 +462,19 @@ export default function TravelCabSettingsPage() {
                             }`}
                           >
                             <div className="flex justify-between items-start mb-2 pr-12">
-                              <div>
+                              <div className="space-y-1">
                                 <h4 className="font-bold text-tech-blue text-sm flex items-center gap-1.5">
                                   ✈️ {t.name}
                                 </h4>
-                                <p className="text-xs text-slate-500">📍 {t.originName || 'Origen'} ➔ 📍 {t.destinationName || 'Destino'}</p>
-                                <p className="text-xs font-extrabold text-indigo-600 mt-1">Precio Fijo: ${t.fixedPrice?.toLocaleString('es-AR')} ARS</p>
+                                <p className="text-[11px] font-bold text-slate-500 uppercase">{t.routes?.length || 0} Rutas Fijas Configuradas:</p>
+                                <div className="space-y-1 mt-1">
+                                  {t.routes?.map(r => (
+                                    <div key={r.id} className="text-xs text-slate-600 bg-white/80 p-1.5 rounded border border-slate-200/50">
+                                      📍 {r.originName || 'Origen'} ➔ 📍 {r.destinationName || 'Destino'}
+                                      <p className="font-extrabold text-indigo-600 mt-0.5">${r.fixedPrice?.toLocaleString('es-AR') || 0} ARS</p>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             </div>
                             <div className="absolute top-4 right-4 flex items-center gap-1">
