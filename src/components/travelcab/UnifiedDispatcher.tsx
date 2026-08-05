@@ -68,11 +68,12 @@ interface UnifiedDispatcherProps {
 }
 
 export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({ onCoordsChange }) => {
-  const [serviceType, setServiceType] = useState<'MU' | 'ARC'>('MU');
+  const [serviceType, setServiceType] = useState<'MU' | 'ARC' | 'TRANSFER'>('MU');
   
   // Dynamic collections from Firestore
   const [activeMuTariffs, setActiveMuTariffs] = useState<MUTariff[]>([]);
   const [activeArcTariffs, setActiveArcTariffs] = useState<ARCTariff[]>([]);
+  const [activeTransferTariffs, setActiveTransferTariffs] = useState<any[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [selectedTariffId, setSelectedTariffId] = useState<string>('');
   
@@ -90,6 +91,9 @@ export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({ onCoordsCh
   const [arcPickupAddress, setArcPickupAddress] = useState('');
   const [arcPickupCoords, setArcPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [seats, setSeats] = useState(1);
+
+  // TRANSFER specific
+  const [selectedTransferId, setSelectedTransferId] = useState<string>('');
   
   // MU specific
   const [muOriginAddress, setMuOriginAddress] = useState('');
@@ -134,10 +138,20 @@ export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({ onCoordsCh
       console.log('Error loading active ARC tariffs:', error.message);
     });
 
+    // 4. Tarifarios TRANSFER Activos
+    const qTransfer = query(collection(db, 'tariffs'), where('type', '==', 'transfers'));
+    const unsubTransfer = onSnapshot(qTransfer, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setActiveTransferTariffs(list);
+    }, (error) => {
+      console.log('Error loading active TRANSFER tariffs:', error.message);
+    });
+
     return () => {
       unsubCats();
       unsubMu();
       unsubArc();
+      unsubTransfer();
     };
   }, []);
 
@@ -347,32 +361,45 @@ export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({ onCoordsCh
       </div>
 
       {/* Tipo de Servicio Switch */}
-      <div className="mb-6 flex rounded-xl bg-white p-1 border border-slate-200 shadow-sm">
+      <div className="mb-6 flex rounded-xl bg-white p-1 border border-slate-200 shadow-sm gap-1">
         <button
           onClick={() => {
             setServiceType('MU');
             setSelectedTariffId('');
           }}
-          className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition-all ${
+          className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-all ${
             serviceType === 'MU' 
               ? 'bg-tech-blue text-white shadow' 
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          Movilidad Urbana (MU)
+          🏙️ Urbana (MU)
         </button>
         <button
           onClick={() => {
             setServiceType('ARC');
             setSelectedTariffId('');
           }}
-          className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition-all ${
+          className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-all ${
             serviceType === 'ARC' 
               ? 'bg-vial-orange text-gray-950 shadow' 
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          Auto Rural Compartido (ARC)
+          🚌 Interurbano (ARC)
+        </button>
+        <button
+          onClick={() => {
+            setServiceType('TRANSFER');
+            setSelectedTariffId('');
+          }}
+          className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-all ${
+            serviceType === 'TRANSFER' 
+              ? 'bg-indigo-600 text-white shadow' 
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          ✈️ Traslados Fijos
         </button>
       </div>
 

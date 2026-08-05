@@ -445,7 +445,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
 
   // Estados del Despachador Web (Travis original e intacto)
   const [dispatcherStep, setDispatcherStep] = useState<1 | 2 | 3>(1);
-  const [modality, setModality] = useState<'MU' | 'ARC'>('MU');
+  const [modality, setModality] = useState<'MU' | 'ARC' | 'TRANSFER'>('MU');
   const [passengerName, setPassengerName] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
   const [pickupLocation, setPickupLocation] = useState('');
@@ -1406,29 +1406,40 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                   </div>
                 </div>
 
-                {/* Selector de Modalidad: MU vs ARC */}
-                <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2 mb-4 border border-slate-200/40">
+                {/* Selector de Modalidad: MU vs ARC vs TRANSFER */}
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1.5 mb-4 border border-slate-200/40">
                   <button
                     type="button"
                     onClick={() => { setModality('MU'); handleResetDispatcher(); }}
-                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                    className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
                       modality === 'MU' 
                         ? 'bg-tech-blue text-white shadow-lg shadow-tech-blue/20' 
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
-                    🚕 Movilidad Urbana
+                    🚕 Urbana (MU)
                   </button>
                   <button
                     type="button"
                     onClick={() => { setModality('ARC'); handleResetDispatcher(); }}
-                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                    className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
                       modality === 'ARC' 
                         ? 'bg-tech-blue text-white shadow-lg shadow-tech-blue/20' 
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
-                    🤝 Auto Compartido (ARC)
+                    🤝 Compartido (ARC)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setModality('TRANSFER'); handleResetDispatcher(); }}
+                    className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                      modality === 'TRANSFER' 
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    ✈️ Traslados Fijos
                   </button>
                 </div>
 

@@ -390,6 +390,17 @@ export default function TravelCabSettingsPage() {
               >
                 Tarifas ARC (Compartido)
               </button>
+              <button
+                onClick={() => {
+                  setTariffSubTab('transfers');
+                  setEditingTransferTariff(null);
+                }}
+                className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
+                  tariffSubTab === 'transfers' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-600'
+                }`}
+              >
+                ✈️ Traslados Punto a Punto (Fijos)
+              </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -399,7 +410,9 @@ export default function TravelCabSettingsPage() {
                   <h2 className="mb-6 text-xl font-bold text-tech-blue">
                     {tariffSubTab === 'mu' 
                       ? (editingMUTariff ? `Editar Tarifario MU: ${editingMUTariff.name}` : 'Crear Tarifario MU') 
-                      : (editingARCTariff ? `Editar Tarifario ARC: ${editingARCTariff.name}` : 'Crear Tarifario ARC')
+                      : tariffSubTab === 'arc'
+                      ? (editingARCTariff ? `Editar Tarifario ARC: ${editingARCTariff.name}` : 'Crear Tarifario ARC')
+                      : (editingTransferTariff ? `Editar Traslado Fijo: ${editingTransferTariff.name}` : 'Crear Traslado Punto a Punto (Fijo)')
                     }
                   </h2>
                   {tariffSubTab === 'mu' ? (
@@ -407,10 +420,15 @@ export default function TravelCabSettingsPage() {
                       editData={editingMUTariff} 
                       onSubmitSuccess={() => setEditingMUTariff(null)} 
                     />
-                  ) : (
+                  ) : tariffSubTab === 'arc' ? (
                     <ARCTariffForm 
                       editData={editingARCTariff} 
                       onSubmitSuccess={() => setEditingARCTariff(null)} 
+                    />
+                  ) : (
+                    <TransferTariffForm
+                      editData={editingTransferTariff}
+                      onSubmitSuccess={() => setEditingTransferTariff(null)}
                     />
                   )}
                 </div>
@@ -430,7 +448,42 @@ export default function TravelCabSettingsPage() {
                         <RefreshCw className="h-5 w-5 animate-spin text-vial-orange" />
                         Cargando tarifarios desde Firestore...
                       </div>
+                    ) : tariffSubTab === 'transfers' ? (
+                      transferTariffs.length === 0 ? (
+                        <p className="text-sm text-slate-400 py-6 text-center">No hay traslados fijos creados aún.</p>
+                      ) : (
+                        transferTariffs.map(t => (
+                          <div
+                            key={t.id}
+                            className={`rounded-lg border p-4 transition-all relative ${
+                              t.isActive 
+                                ? 'border-indigo-500/30 bg-indigo-50/20 shadow-inner' 
+                                : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-2 pr-12">
+                              <div>
+                                <h4 className="font-bold text-tech-blue text-sm flex items-center gap-1.5">
+                                  ✈️ {t.name}
+                                </h4>
+                                <p className="text-xs text-slate-500">📍 {t.originName || 'Origen'} ➔ 📍 {t.destinationName || 'Destino'}</p>
+                                <p className="text-xs font-extrabold text-indigo-600 mt-1">Precio Fijo: ${t.fixedPrice?.toLocaleString('es-AR')} ARS</p>
+                              </div>
+                            </div>
+                            <div className="absolute top-4 right-4 flex items-center gap-1">
+                              <button
+                                onClick={() => setEditingTransferTariff(t)}
+                                className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                                title="Editar Traslado"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )
                     ) : tariffSubTab === 'mu' ? (
+
                       muTariffs.length === 0 ? (
                         <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios MU creados aún.</p>
                       ) : (
