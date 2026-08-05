@@ -47,11 +47,17 @@ export async function POST(req: NextRequest) {
         if (tripDoc.exists()) {
           const tripVal = tripDoc.data();
           const category = tripVal.category || 'estandar';
-          const type = (tripVal.serviceType || 'mu').toLowerCase();
-          
+          const rawType = (tripVal.serviceType || '').toLowerCase();
+          let normalizedType = 'mu';
+          if (rawType.includes('arc') || rawType.includes('interurban') || rawType.includes('compartido')) {
+            normalizedType = 'arc';
+          } else if (rawType.includes('transfer') || rawType.includes('traslado') || rawType.includes('punto')) {
+            normalizedType = 'transfers';
+          }
+
           const q = query(
             collection(db, 'tariffs'),
-            where('type', '==', type),
+            where('type', '==', normalizedType),
             where('category', '==', category),
             where('isActive', '==', true)
           );
