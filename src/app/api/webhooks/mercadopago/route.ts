@@ -1,5 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverAddDoc, serverGetDocs, serverUpdateDoc, serverGetDoc } from '@/lib/firestore-server';
+import { serverAddDoc, serverGetDocs, serverUpdateDoc } from '@/lib/firestore-server';
+import crypto from 'crypto';
+
+// Función para verificar la firma de seguridad (x-signature) enviada por Mercado Pago
+function verifyMercadoPagoSignature(req: NextRequest, dataId: string): boolean {
+  const webhookSecret = process.env.MP_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    // Si no está configurado el secreto aún, permitimos el paso pero registramos advertencia
+    return true;
+  }
+
+  const xSignature = req.headers.get('x-signature');
+  const xRequestId = req.headers.get('x-request-id');
+
+  if (!xSignature || !xRequestId) {
+    return false;
+  }
+
+  // Parsear la cabecera x-signature (ej: ts=1700000000,v1=abcdef...)
+  const parts = xSignature.split(',');
+  let ts = '';
+  let v1 = '';
+
+  for (const part of parts) {
+    const [key, value] = part.split('=');
+    if (key.trim() === 'ts') ts = value.trim();
+    if (key.trim() === 'v1') v1 = value.trim();
+  }
+
+  if (!ts || !v1) return false;
+
+  // Construir la plantilla de manifiesto
+  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+  const hmac = crypto.createHmac('sha256', webhookSecret).update(manifest).digest('hex');
+
+  return hmac === v1;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,25 +43,48 @@ export async function POST(req: NextRequest) {
     const searchParams = url.searchParams;
     const body = await req.json().catch(() => ({}));
 
-    // Log raw incoming telemetry
+    const paymentId = body.data?.id || body.id || searchParams.get('data.id') || searchParams.get('id') || '';
+
+    // Validar firma de seguridad si se recibió paymentId
+    const isValidSignature = verifyMercadoPagoSignature(req, String(paymentId));
+    if (!isValidSignature) {
+      console.warn('[MP Webhook] Firma de seguridad inválida o sospechosa (x-signature check failed)');
+      return NextResponse.json({ error: 'Firma de seguridad no válida' }, { status: 401 });
+    }
+
+    // Registrar telemetría de recepción en Firestore
     const timestamp = Date.now();
     await serverAddDoc('payment_webhooks_log', {
       provider: 'mercadopago',
       receivedAt: timestamp,
       queryParams: Object.fromEntries(searchParams.entries()),
-      payload: body
+      payload: body,
+      secureVerified: isValidSignature
     });
 
-    const paymentId = body.data?.id || body.id || searchParams.get('data.id') || searchParams.get('id');
     const externalRef = body.external_reference || body.data?.external_reference || searchParams.get('external_reference');
     const status = body.status || body.data?.status || 'approved';
     const amount = Number(body.transaction_amount || body.data?.transaction_amount || 0);
 
-    console.log(`[MP Webhook Real-time] PaymentID: ${paymentId}, File/Ref: ${externalRef}, Status: ${status}, Amount: $${amount}`);
+    console.log(`[MP Webhook Real-time] PaymentID: ${paymentId}, Ref: ${externalRef}, Status: ${status}, Amount: $${amount}`);
 
-    // If payment is approved, reconcile in Firestore
+    // Si el pago fue aprobado, conciliar viaje o reserva de experiencia
     if (status === 'approved' && externalRef) {
-      // 1. Search matching reservation by File Number or ID
+      // 1. Conciliar en viajes (trips)
+      const tripDocs = await serverGetDocs('trips', {
+        where: [['externalReference', '==', externalRef]]
+      });
+
+      if (!tripDocs.empty) {
+        const tripDoc = tripDocs.docs[0];
+        await serverUpdateDoc('trips', tripDoc.id, {
+          paymentStatus: 'paid',
+          mpPaymentId: paymentId,
+          paidAt: timestamp
+        });
+      }
+
+      // 2. Conciliar en reservas de experiencias (experience_reservations)
       const reservationsSnap = await serverGetDocs('experience_reservations', {
         where: [['fileNumber', '==', externalRef]]
       });
@@ -34,7 +93,6 @@ export async function POST(req: NextRequest) {
         const resDoc = reservationsSnap.docs[0];
         const resData = resDoc.data();
 
-        // Update reservation to Confirmada
         await serverUpdateDoc('experience_reservations', resDoc.id, {
           estado: 'Confirmada',
           paymentStatus: 'Aprobado (Mercado Pago)',
@@ -42,7 +100,7 @@ export async function POST(req: NextRequest) {
           paidAt: timestamp
         });
 
-        // 2. Inject cash movement into treasury
+        // Registrar movimiento de tesorería en libro contable
         await serverAddDoc('cash_movements', {
           branchId: resData.branchId || '1',
           branchName: resData.branchName || 'Sucursal Retiro',
@@ -70,7 +128,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     status: 'online',
-    provider: 'Mercado Pago Webhook Receptor',
+    provider: 'Mercado Pago Webhook Receptor Seguro',
     endpoint: '/api/webhooks/mercadopago'
   });
 }

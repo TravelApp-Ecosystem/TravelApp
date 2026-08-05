@@ -1,6 +1,6 @@
 "use client";
-import React, { useState } from 'react';
-import { Vault, Building2, Wallet, PiggyBank, Plus, X, RefreshCw, EyeOff, DollarSign, TrendingUp, ChevronDown, CheckCircle2, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Vault, Building2, Wallet, PiggyBank, Plus, X, RefreshCw, EyeOff, DollarSign, TrendingUp, ChevronDown, CheckCircle2, Copy, Check, Radio } from 'lucide-react';
 import { BankAccount, AuditAdjustment, BizUnit, Currency, AccountType, BIZ_COLOR, CUR_SYM, fmt } from './types';
 
 const ic = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue outline-none focus:border-tech-blue focus:ring-2 focus:ring-tech-blue/10";
@@ -16,30 +16,68 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
-function AccountCard({ acc, onAudit, onDisable }: { acc: BankAccount; onAudit: (a: BankAccount) => void; onDisable: (id: string) => void }) {
+function AccountCard({ 
+  acc, 
+  onAudit, 
+  onDisable,
+  onSyncMp,
+  mpLoading
+}: { 
+  acc: BankAccount; 
+  onAudit: (a: BankAccount) => void; 
+  onDisable: (id: string) => void;
+  onSyncMp?: () => void;
+  mpLoading?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [conf, setConf] = useState(false);
   const hasBank = acc.type !== 'caja_chica';
+  const isMp = acc.name.toLowerCase().includes('mercado') || acc.alias?.includes('travelapp');
   const TypeIcon = acc.type === 'banco' ? Building2 : acc.type === 'billetera' ? Wallet : PiggyBank;
+
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all">
+    <div className={`flex flex-col rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all ${isMp ? 'border-[#009EE3]/30 ring-1 ring-[#009EE3]/20' : 'border-slate-200'}`}>
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-tech-blue/8 text-tech-blue">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${isMp ? 'bg-[#009EE3]/10 text-[#009EE3]' : 'bg-tech-blue/8 text-tech-blue'}`}>
               <TypeIcon className="h-6 w-6" />
             </div>
             <div>
-              <p className="font-bold text-tech-blue text-sm">{acc.name}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-bold text-tech-blue text-sm">{acc.name}</p>
+                {isMp && (
+                  <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider bg-[#009EE3]/15 text-[#009EE3] px-2 py-0.5 rounded-full">
+                    <Radio className="h-2.5 w-2.5 animate-pulse text-[#009EE3]" /> Real-time API
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-slate-400 mt-0.5 capitalize">{acc.type.replace('_', ' ')}</p>
             </div>
           </div>
           <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${BIZ_COLOR[acc.businessUnit]}`}>{acc.businessUnit}</span>
         </div>
-        <p className="text-[11px] font-medium text-slate-400 mb-0.5">Saldo Actual</p>
-        <p className="text-3xl font-black text-tech-blue">{fmt(acc.balance, acc.currency)}</p>
-        <span className="inline-block mt-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{acc.currency}</span>
+        
+        <div className="flex items-baseline justify-between">
+          <div>
+            <p className="text-[11px] font-medium text-slate-400 mb-0.5">Saldo Actual {isMp ? '(Sincronizado MP)' : ''}</p>
+            <p className={`text-3xl font-black ${isMp ? 'text-[#009EE3]' : 'text-tech-blue'}`}>{fmt(acc.balance, acc.currency)}</p>
+          </div>
+          {isMp && onSyncMp && (
+            <button
+              onClick={onSyncMp}
+              disabled={mpLoading}
+              title="Sincronizar saldo de Mercado Pago ahora"
+              className="flex items-center gap-1 text-xs bg-[#009EE3]/10 text-[#009EE3] font-bold px-2.5 py-1.5 rounded-xl hover:bg-[#009EE3]/20 transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${mpLoading ? 'animate-spin' : ''}`} />
+              <span>{mpLoading ? 'Sincronizando...' : 'Actualizar'}</span>
+            </button>
+          )}
+        </div>
+        <span className="inline-block mt-2 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{acc.currency}</span>
       </div>
+
       <div className="border-t border-slate-100">
         <button onClick={() => setOpen(o => !o)} className="flex w-full items-center justify-between px-5 py-3 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition-colors">
           Ver detalles bancarios <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -54,6 +92,7 @@ function AccountCard({ acc, onAudit, onDisable }: { acc: BankAccount; onAudit: (
           </div>
         )}
       </div>
+
       <div className="flex gap-2 border-t border-slate-100 px-5 py-3">
         <button onClick={() => onAudit(acc)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-tech-blue/20 bg-tech-blue/5 px-3 py-2 text-xs font-bold text-tech-blue hover:bg-tech-blue/10 transition-colors">
           <RefreshCw className="h-3.5 w-3.5" /> Arqueo
@@ -165,6 +204,38 @@ export function FlowTab({ accounts, adjustments, setAccounts, setAdjustments }: 
   const [showNew, setShowNew] = useState(false);
   const [auditTarget, setAuditTarget] = useState<BankAccount | null>(null);
   const [filter, setFilter] = useState<BizUnit | 'all'>('all');
+  const [mpSyncing, setMpSyncing] = useState(false);
+  const [lastMpSync, setLastMpSync] = useState<string | null>(null);
+
+  // Función para consultar saldo real de Mercado Pago API
+  const syncMpBalance = async () => {
+    setMpSyncing(true);
+    try {
+      const res = await fetch('/api/mercadopago/balance');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.balance) {
+          const realMpBalance = data.balance.total_amount;
+          setAccounts(prev => prev.map(acc => {
+            if (acc.name.toLowerCase().includes('mercado') || acc.alias?.includes('travelapp')) {
+              return { ...acc, balance: realMpBalance };
+            }
+            return acc;
+          }));
+          setLastMpSync(new Date().toLocaleTimeString('es-AR'));
+        }
+      }
+    } catch (e) {
+      console.error('Error syncing Mercado Pago balance:', e);
+    } finally {
+      setMpSyncing(false);
+    }
+  };
+
+  // Sincronizar automáticamente saldo de MP al montar el componente
+  useEffect(() => {
+    syncMpBalance();
+  }, []);
 
   const active = accounts.filter(a => a.status === 'active');
   const totalARS = active.filter(a => a.currency === 'ARS').reduce((s, a) => s + a.balance, 0);
@@ -179,11 +250,27 @@ export function FlowTab({ accounts, adjustments, setAccounts, setAdjustments }: 
 
   return (
     <div className="space-y-6">
-      {/* Top action */}
-      <div className="flex justify-end">
-        <button onClick={() => setShowNew(true)} className="flex items-center gap-2 rounded-xl bg-vial-orange px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all">
-          <Plus className="h-4 w-4" /> Nueva Cuenta
-        </button>
+      {/* Top actions */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+          <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping" />
+          <span>Sincronización de saldos MP activa {lastMpSync ? `(Última: ${lastMpSync})` : ''}</span>
+        </div>
+
+        <div className="flex gap-2">
+          <button 
+            onClick={syncMpBalance} 
+            disabled={mpSyncing}
+            className="flex items-center gap-2 rounded-xl bg-[#009EE3] px-4 py-2 text-sm font-bold text-white shadow-md hover:bg-[#0087c4] active:scale-95 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${mpSyncing ? 'animate-spin' : ''}`} /> 
+            <span>Sincronizar MP API</span>
+          </button>
+
+          <button onClick={() => setShowNew(true)} className="flex items-center gap-2 rounded-xl bg-vial-orange px-5 py-2 text-sm font-bold text-white shadow-md shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all">
+            <Plus className="h-4 w-4" /> Nueva Cuenta
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -216,10 +303,19 @@ export function FlowTab({ accounts, adjustments, setAccounts, setAdjustments }: 
 
       {/* Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {displayed.map(a => (
-          <AccountCard key={a.id} acc={a} onAudit={setAuditTarget}
-            onDisable={id => setAccounts(p => p.map(x => x.id === id ? { ...x, status: 'disabled' } : x))} />
-        ))}
+        {displayed.map(a => {
+          const isMpCard = a.name.toLowerCase().includes('mercado') || a.alias?.includes('travelapp');
+          return (
+            <AccountCard 
+              key={a.id} 
+              acc={a} 
+              onAudit={setAuditTarget}
+              onDisable={id => setAccounts(p => p.map(x => x.id === id ? { ...x, status: 'disabled' } : x))}
+              onSyncMp={isMpCard ? syncMpBalance : undefined}
+              mpLoading={isMpCard ? mpSyncing : undefined}
+            />
+          );
+        })}
         {displayed.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
             <p className="text-slate-400">No hay cuentas activas para esta unidad.</p>
