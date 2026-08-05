@@ -11,8 +11,8 @@ export async function GET(req: NextRequest) {
         success: true,
         isSimulated: true,
         balance: {
-          total_amount: 475320,
-          available_balance: 475320,
+          total_amount: 0,
+          available_balance: 0,
           unavailable_balance: 0,
           currency_id: 'ARS'
         },
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
       userData = await userRes.json();
     }
 
-    const totalAmount = balanceData?.total_amount ?? balanceData?.available_balance ?? 475320;
+    const totalAmount = balanceData?.total_amount ?? balanceData?.available_balance ?? 0;
     const availableBalance = balanceData?.available_balance ?? totalAmount;
     const unavailableBalance = balanceData?.unavailable_balance ?? 0;
     const currencyId = balanceData?.currency_id || 'ARS';
