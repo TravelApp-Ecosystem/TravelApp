@@ -69,3 +69,26 @@ export interface Branch {
   enabledARCRouteIds: string[];
 }
 
+export interface TransferRoute {
+  id: string;
+  originName: string;
+  destinationName: string;
+  fixedPrice: number;
+}
+
+export interface TransferTariff {
+  id: string;
+  name: string;
+  category: string;             // ID de la categoría (ej: 'estandar', 'vip')
+  routes: TransferRoute[];
+  iva?: number;
+  iibb?: number;
+  taxMunicipal?: number;
+  electronicPaymentFee?: number;
+  commissionRate?: number;
+  weeklyMembership?: number;
+  isActive?: boolean;
+  type: 'transfers';
+}
+
+

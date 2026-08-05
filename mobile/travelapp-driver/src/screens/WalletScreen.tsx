@@ -14,140 +14,65 @@ export default function WalletScreen() {
   const user = auth.currentUser!;
 
   const [balance, setBalance] = useState(0);
-  const [totalEarnings, setTotalEarnings] = useState(0);
-  const [mpEmail, setMpEmail] = useState('');
-  const [isLinked, setIsLinked] = useState(false);
+  const [cashEarnings, setCashEarnings] = useState(18500);
+  const [digitalEarnings, setDigitalEarnings] = useState(24000);
+  const [rewardsEarnings, setRewardsEarnings] = useState(3500);
+  const [commissionPaid, setCommissionPaid] = useState(6900); // 15% aprox
+  const [maxNegativeBalance, setMaxNegativeBalance] = useState(-10000);
+  const [currentCommissionBalance, setCurrentCommissionBalance] = useState(-2500);
+  
+  const [expenses, setExpenses] = useState<any[]>([
+    { id: 'exp-1', concept: 'Combustible ⛽', amount: 8500, time: '14:30' },
+    { id: 'exp-2', concept: 'Peaje 🛣️', amount: 1200, time: '16:15' },
+  ]);
+
+  const [expenseModalVisible, setExpenseModalVisible] = useState(false);
+  const [expenseConcept, setExpenseConcept] = useState('Combustible ⛽');
+  const [expenseAmount, setExpenseAmount] = useState('');
+
   const [loadingData, setLoadingData] = useState(true);
 
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [processingWithdraw, setProcessingWithdraw] = useState(false);
-  const [linkingMp, setLinkingMp] = useState(false);
-
   useEffect(() => {
-    // Escuchar balance y datos de Mercado Pago del conductor
-    const unsubDriver = onSnapshot(doc(db, 'drivers', user.uid), (snap) => {
+    // Escuchar datos del conductor
+    const unsubDriver = onSnapshot(doc(db, 'drivers', user?.uid || 'demo'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         setBalance(data.balance ?? 0);
-        setTotalEarnings(data.totalEarnings ?? 0);
-        setMpEmail(data.mercadoPagoEmail ?? '');
-        setIsLinked(!!data.mercadoPagoLinked);
+        if (data.cashEarnings !== undefined) setCashEarnings(data.cashEarnings);
+        if (data.digitalEarnings !== undefined) setDigitalEarnings(data.digitalEarnings);
+        if (data.rewardsEarnings !== undefined) setRewardsEarnings(data.rewardsEarnings);
+        if (data.commissionPaid !== undefined) setCommissionPaid(data.commissionPaid);
+        if (data.maxNegativeBalance !== undefined) setMaxNegativeBalance(data.maxNegativeBalance);
+        if (data.currentCommissionBalance !== undefined) setCurrentCommissionBalance(data.currentCommissionBalance);
       }
       setLoadingData(false);
     });
 
-    // Cargar transacciones
-    const fetchTransactions = async () => {
-      try {
-        const q = query(
-          collection(db, 'drivers', user.uid, 'transactions'),
-          orderBy('createdAt', 'desc')
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        } else {
-          // Si está vacío, creamos unas transacciones de muestra para visualización premium inicial
-          setTransactions([
-            {
-              id: 'mock-1',
-              type: 'trip',
-              amount: 4500,
-              createdAt: Timestamp.fromDate(new Date(Date.now() - 3600000)),
-              description: 'Viaje finalizado - Origen a Destino'
-            },
-            {
-              id: 'mock-2',
-              type: 'withdrawal',
-              amount: -8000,
-              status: 'completed',
-              createdAt: Timestamp.fromDate(new Date(Date.now() - 86400000)),
-              description: 'Retiro enviado a Mercado Pago'
-            },
-            {
-              id: 'mock-3',
-              type: 'trip',
-              amount: 5200,
-              createdAt: Timestamp.fromDate(new Date(Date.now() - 172800000)),
-              description: 'Viaje finalizado - Zona Centro'
-            }
-          ]);
-        }
-      } catch (e) {
-        console.log("Error loading transactions", e);
-      }
-    };
-
-    fetchTransactions();
-
     return unsubDriver;
-  }, [user.uid]);
+  }, [user?.uid]);
 
-  const handleLinkMercadoPago = async () => {
-    if (!mpEmail || !mpEmail.includes('@')) {
-      return Alert.alert('Email inválido', 'Por favor ingresá un email válido de Mercado Pago.');
-    }
-    setLinkingMp(true);
-    try {
-      await updateDoc(doc(db, 'drivers', user.uid), {
-        mercadoPagoEmail: mpEmail,
-        mercadoPagoLinked: true,
-        updatedAt: Timestamp.now()
-      });
-      setIsLinked(true);
-      Alert.alert('¡Cuenta vinculada!', 'Tu cuenta de Mercado Pago está lista para recibir el Split de Pagos.');
-    } catch {
-      Alert.alert('Error', 'No se pudo vincular la cuenta. Intentá más tarde.');
-    } finally {
-      setLinkingMp(false);
-    }
-  };
+  const grossEarnings = cashEarnings + digitalEarnings + rewardsEarnings;
+  const totalExpenses = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const netEarnings = grossEarnings - commissionPaid - totalExpenses;
+  const isOverNegativeLimit = currentCommissionBalance < maxNegativeBalance;
 
-  const handleRequestWithdraw = async () => {
-    const amount = parseFloat(withdrawAmount);
-    if (isNaN(amount) || amount <= 0) {
+  const handleAddExpense = () => {
+    const amt = parseFloat(expenseAmount);
+    if (isNaN(amt) || amt <= 0) {
       return Alert.alert('Monto inválido', 'Por favor ingresá un monto mayor a cero.');
     }
-    if (amount > balance) {
-      return Alert.alert('Saldo insuficiente', 'No tenés suficiente saldo disponible para este retiro.');
-    }
-    if (!isLinked) {
-      return Alert.alert('Mercado Pago requerido', 'Primero debés vincular tu cuenta de Mercado Pago.');
-    }
+    const newExp = {
+      id: Date.now().toString(),
+      concept: expenseConcept,
+      amount: amt,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setExpenses([newExp, ...expenses]);
+    setExpenseModalVisible(false);
+    setExpenseAmount('');
+    Alert.alert('Gasto registrado 📝', `Se descontaron $${amt} ARS de tu control diario.`);
+  };
 
-    setProcessingWithdraw(true);
-    try {
-      const newBalance = balance - amount;
-
-      // 1. Actualizar balance en el documento del conductor
-      await updateDoc(doc(db, 'drivers', user.uid), {
-        balance: newBalance,
-        updatedAt: Timestamp.now()
-      });
-
-      // 2. Registrar la transacción de retiro
-      const txRef = await addDoc(collection(db, 'drivers', user.uid, 'transactions'), {
-        type: 'withdrawal',
-        amount: -amount,
-        status: 'pending',
-        description: 'Retiro de fondos a Mercado Pago',
-        createdAt: Timestamp.now()
-      });
-
-      // Agregar localmente a la lista para feedback visual inmediato
-      setTransactions(prev => [
-        {
-          id: txRef.id,
-          type: 'withdrawal',
-          amount: -amount,
-          status: 'pending',
-          description: 'Retiro de fondos a Mercado Pago',
-          createdAt: Timestamp.now()
-        },
-        ...prev
-      ]);
 
       setWithdrawModalVisible(false);
       setWithdrawAmount('');
@@ -159,15 +84,6 @@ export default function WalletScreen() {
       Alert.alert('Error', 'No se pudo procesar el retiro. Intentá nuevamente.');
     } finally {
       setProcessingWithdraw(false);
-    }
-  };
-
-  const formatDate = (ts: any) => {
-    if (!ts) return '';
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-  };
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -175,157 +91,154 @@ export default function WalletScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mi Billetera</Text>
+        <Text style={styles.headerTitle}>Control Financiero Diario</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {/* Tarjeta de Saldo */}
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Saldo disponible</Text>
-          <Text style={styles.balanceValue}>${balance.toLocaleString('es-AR')} ARS</Text>
-          
-          <View style={styles.divider} />
+        {/* Tarjeta de Ganancia Neta Diaria */}
+        <View style={styles.netBalanceCard}>
+          <Text style={styles.netLabel}>GANANCIA NETA DEL DÍA</Text>
+          <Text style={styles.netValue}>${netEarnings.toLocaleString('es-AR')} ARS</Text>
 
-          <View style={styles.statsRow}>
-            <View style={styles.statCol}>
-              <Text style={styles.statLabel}>Ganancias totales</Text>
-              <Text style={styles.statVal}>${totalEarnings.toLocaleString('es-AR')}</Text>
+          <View style={styles.netMetricsRow}>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>Recaudación Bruta</Text>
+              <Text style={[styles.metricVal, { color: Colors.success }]}>+${grossEarnings.toLocaleString('es-AR')}</Text>
             </View>
-            <TouchableOpacity 
-              style={[styles.withdrawBtn, balance <= 0 && styles.disabledBtn]} 
-              disabled={balance <= 0}
-              onPress={() => setWithdrawModalVisible(true)}
-            >
-              <Text style={styles.withdrawBtnText}>Retirar</Text>
-              <Ionicons name="arrow-forward" size={16} color={Colors.white} />
-            </TouchableOpacity>
+            <View style={styles.metricDivider} />
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>Comisión Plataforma</Text>
+              <Text style={[styles.metricVal, { color: Colors.danger }]}>-${commissionPaid.toLocaleString('es-AR')}</Text>
+            </View>
+            <View style={styles.metricDivider} />
+            <View style={styles.metricItem}>
+              <Text style={styles.metricLabel}>Gastos Cargados</Text>
+              <Text style={[styles.metricVal, { color: '#D97706' }]}>-${totalExpenses.toLocaleString('es-AR')}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Mercado Pago Split */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="logo-usd" size={20} color={Colors.accent} />
-            <Text style={styles.sectionTitle}>Split de Mercado Pago</Text>
+        {/* Alerta de Saldo Negativo de Comisiones */}
+        <View style={[styles.commissionCard, isOverNegativeLimit && styles.commissionCardDanger]}>
+          <View style={styles.commHeader}>
+            <Ionicons name={isOverNegativeLimit ? "alert-circle" : "card"} size={20} color={isOverNegativeLimit ? Colors.danger : Colors.primary} />
+            <Text style={styles.commTitle}>Estado de Saldo de Comisión</Text>
           </View>
-          <Text style={styles.sectionDesc}>
-            Conectá tu cuenta corporativa o personal para que la plataforma procese tus ingresos y comisiones automáticamente.
-          </Text>
+          <View style={styles.commRow}>
+            <View>
+              <Text style={styles.commSub}>Saldo adeudado actual:</Text>
+              <Text style={[styles.commVal, { color: currentCommissionBalance < 0 ? Colors.danger : Colors.success }]}>
+                ${currentCommissionBalance.toLocaleString('es-AR')} ARS
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.commSub}>Límite máximo permitido:</Text>
+              <Text style={styles.commLimit}>${maxNegativeBalance.toLocaleString('es-AR')} ARS</Text>
+            </View>
+          </View>
 
-          {isLinked ? (
-            <View style={styles.linkedContainer}>
-              <View style={styles.linkedInfo}>
-                <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                <View>
-                  <Text style={styles.linkedTitle}>Cuenta vinculada</Text>
-                  <Text style={styles.linkedSub}>{mpEmail}</Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => setIsLinked(false)} style={styles.changeBtn}>
-                <Text style={styles.changeBtnText}>Cambiar</Text>
-              </TouchableOpacity>
+          {isOverNegativeLimit ? (
+            <View style={styles.warningBox}>
+              <Ionicons name="warning" size={16} color={Colors.danger} />
+              <Text style={styles.warningText}>
+                ⚠️ Superaste el límite negativo. El sistema actualmente sólo te ofrece viajes con PAGOS DIGITALES para regularizar tu saldo.
+              </Text>
             </View>
           ) : (
-            <View style={styles.linkForm}>
-              <TextInput
-                style={styles.input}
-                placeholder="Email de Mercado Pago"
-                placeholderTextColor={Colors.textMuted}
-                value={mpEmail}
-                onChangeText={setMpEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <TouchableOpacity 
-                style={styles.linkBtn} 
-                onPress={handleLinkMercadoPago}
-                disabled={linkingMp}
-              >
-                {linkingMp ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
-                ) : (
-                  <Text style={styles.linkBtnText}>Vincular cuenta</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.normalNotice}>
+              ✓ Estás dentro del límite. Tu cuenta puede recibir viajes en efectivo y pagos digitales.
+            </Text>
           )}
         </View>
 
-        {/* Historial de Transacciones */}
-        <Text style={styles.listTitle}>Movimientos recientes</Text>
-        
-        {loadingData ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: 20 }} />
+        {/* Desglose de Recaudación */}
+        <Text style={styles.sectionHeading}>Desglose de Cobros del Día</Text>
+        <View style={styles.breakdownGrid}>
+          <View style={styles.breakdownCard}>
+            <Ionicons name="cash-outline" size={24} color="#15803D" />
+            <Text style={styles.breakdownTitle}>Efectivo</Text>
+            <Text style={styles.breakdownAmount}>${cashEarnings.toLocaleString('es-AR')}</Text>
+          </View>
+
+          <View style={styles.breakdownCard}>
+            <Ionicons name="card-outline" size={24} color="#2563EB" />
+            <Text style={styles.breakdownTitle}>Pagos Digitales</Text>
+            <Text style={styles.breakdownAmount}>${digitalEarnings.toLocaleString('es-AR')}</Text>
+          </View>
+
+          <View style={styles.breakdownCard}>
+            <Ionicons name="gift-outline" size={24} color="#7C3AED" />
+            <Text style={styles.breakdownTitle}>Puntos Rewards</Text>
+            <Text style={styles.breakdownAmount}>${rewardsEarnings.toLocaleString('es-AR')}</Text>
+          </View>
+        </View>
+
+        {/* Gestor de Control de Gastos Diarios */}
+        <View style={styles.expensesHeaderRow}>
+          <Text style={styles.sectionHeading}>Control de Gastos Diarios</Text>
+          <TouchableOpacity style={styles.addExpenseBtn} onPress={() => setExpenseModalVisible(true)}>
+            <Ionicons name="add-circle" size={18} color={Colors.white} />
+            <Text style={styles.addExpenseBtnText}>Cargar Gasto</Text>
+          </TouchableOpacity>
+        </View>
+
+        {expenses.length === 0 ? (
+          <Text style={styles.emptyExpensesText}>No registraste gastos el día de hoy.</Text>
         ) : (
-          <View style={styles.listContainer}>
-            {transactions.map(item => (
-              <View key={item.id} style={styles.txItem}>
-                <View style={[styles.txIcon, { backgroundColor: item.amount < 0 ? Colors.danger + '10' : Colors.success + '10' }]}>
-                  <Ionicons 
-                    name={item.amount < 0 ? 'arrow-up-outline' : 'arrow-down-outline'} 
-                    size={18} 
-                    color={item.amount < 0 ? Colors.danger : Colors.success} 
-                  />
+          <View style={styles.expensesList}>
+            {expenses.map(exp => (
+              <View key={exp.id} style={styles.expenseItem}>
+                <View style={styles.expIconContainer}>
+                  <Ionicons name="receipt-outline" size={18} color="#92400E" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.txDesc}>{item.description}</Text>
-                  <Text style={styles.txDate}>{formatDate(item.createdAt)}</Text>
+                  <Text style={styles.expConcept}>{exp.concept}</Text>
+                  <Text style={styles.expTime}>{exp.time}</Text>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[styles.txAmount, { color: item.amount < 0 ? Colors.danger : Colors.success }]}>
-                    {item.amount < 0 ? '-' : '+'}${Math.abs(item.amount).toLocaleString('es-AR')}
-                  </Text>
-                  {item.status === 'pending' && (
-                    <Text style={styles.pendingBadge}>Pendiente</Text>
-                  )}
-                </View>
+                <Text style={styles.expAmount}>-${exp.amount.toLocaleString('es-AR')}</Text>
               </View>
             ))}
           </View>
         )}
       </ScrollView>
 
-      {/* Modal de Retiro */}
-      <Modal
-        visible={withdrawModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setWithdrawModalVisible(false)}
-      >
+      {/* Modal Cargar Gasto */}
+      <Modal visible={expenseModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Solicitar Retiro</Text>
-            <Text style={styles.modalSubtitle}>Ingresá el monto que deseas retirar a Mercado Pago</Text>
-            <Text style={styles.modalBalance}>Disponible: ${balance.toLocaleString('es-AR')} ARS</Text>
+            <Text style={styles.modalTitle}>Cargar Gasto Diario</Text>
+            <Text style={styles.modalSubtitle}>Seleccioná el concepto e ingresá el monto gastado:</Text>
 
+            <Text style={styles.fieldLabel}>Concepto:</Text>
+            <View style={styles.conceptChipsRow}>
+              {['Combustible ⛽', 'Peaje 🛣️', 'Lavado 🧼', 'Comida 🍔', 'Mantenimiento 🔧'].map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.conceptChip, expenseConcept === cat && styles.conceptChipActive]}
+                  onPress={() => setExpenseConcept(cat)}
+                >
+                  <Text style={[styles.conceptChipText, expenseConcept === cat && styles.conceptChipTextActive]}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.fieldLabel}>Monto ($ ARS):</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="$ Monto a retirar"
+              placeholder="Ej: 5000"
               placeholderTextColor={Colors.textMuted}
               keyboardType="numeric"
-              value={withdrawAmount}
-              onChangeText={setWithdrawAmount}
-              autoFocus
+              value={expenseAmount}
+              onChangeText={setExpenseAmount}
             />
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={styles.cancelModalBtn} 
-                onPress={() => { setWithdrawModalVisible(false); setWithdrawAmount(''); }}
-              >
+              <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setExpenseModalVisible(false)}>
                 <Text style={styles.cancelModalText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.confirmModalBtn} 
-                onPress={handleRequestWithdraw}
-                disabled={processingWithdraw}
-              >
-                {processingWithdraw ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
-                ) : (
-                  <Text style={styles.confirmModalText}>Confirmar</Text>
-                )}
+              <TouchableOpacity style={styles.confirmModalBtn} onPress={handleAddExpense}>
+                <Text style={styles.confirmModalText}>Registrar Gasto</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -343,88 +256,88 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.white },
-  content: { padding: 20, gap: 20, paddingBottom: 40 },
-  balanceCard: {
-    backgroundColor: Colors.primary,
-    borderRadius: 24, padding: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, elevation: 5,
+  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.white },
+  content: { padding: 20, gap: 16, paddingBottom: 40 },
+  
+  netBalanceCard: {
+    backgroundColor: Colors.primary, borderRadius: 24, padding: 20, gap: 10,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, elevation: 6,
   },
-  balanceLabel: { fontSize: 13, fontFamily: 'Quicksand-Medium', color: 'rgba(255,255,255,0.7)' },
-  balanceValue: { fontSize: 32, fontFamily: 'Quicksand-Bold', color: Colors.white, marginTop: 4 },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginVertical: 20 },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statCol: { gap: 4 },
-  statLabel: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: 'rgba(255,255,255,0.6)' },
-  statVal: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.white },
-  withdrawBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12,
+  netLabel: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1 },
+  netValue: { fontSize: 32, fontWeight: '900', color: Colors.white },
+  netMetricsRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)', padding: 12, borderRadius: 14, marginTop: 4,
   },
-  disabledBtn: { backgroundColor: 'rgba(255,255,255,0.2)' },
-  withdrawBtnText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
-  sectionCard: {
-    backgroundColor: Colors.white, borderRadius: 20, padding: 20, gap: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, elevation: 2,
+  metricItem: { flex: 1, alignItems: 'center' },
+  metricLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  metricVal: { fontSize: 13, fontWeight: '800', marginTop: 2 },
+  metricDivider: { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.2)' },
+
+  commissionCard: {
+    backgroundColor: Colors.white, borderRadius: 18, padding: 16, gap: 10,
+    borderWidth: 1, borderColor: '#E2E8F0',
   },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  sectionDesc: { fontSize: 12, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, lineHeight: 18 },
-  linkedContainer: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.background, padding: 14, borderRadius: 12, marginTop: 4,
+  commissionCardDanger: { borderColor: Colors.danger, backgroundColor: '#FEF2F2' },
+  commHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  commTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  commRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  commSub: { fontSize: 11, color: Colors.textSecondary },
+  commVal: { fontSize: 16, fontWeight: '800' },
+  commLimit: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  warningBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEE2E2',
+    padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#FCA5A5',
   },
-  linkedInfo: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  linkedTitle: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  linkedSub: { fontSize: 12, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, marginTop: 2 },
-  changeBtn: { paddingVertical: 6, paddingHorizontal: 12 },
-  changeBtnText: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.accent },
-  linkForm: { gap: 12, marginTop: 4 },
-  input: {
-    backgroundColor: Colors.background, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
-    fontSize: 14, fontFamily: 'Quicksand-Regular', color: Colors.textPrimary,
-    borderWidth: 1.5, borderColor: Colors.border,
+  warningText: { flex: 1, fontSize: 11, color: Colors.danger, fontWeight: '700' },
+  normalNotice: { fontSize: 11, color: Colors.success, fontWeight: '600' },
+
+  sectionHeading: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, marginTop: 4 },
+  breakdownGrid: { flexDirection: 'row', gap: 10 },
+  breakdownCard: {
+    flex: 1, backgroundColor: Colors.white, padding: 14, borderRadius: 16, alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: '#E2E8F0',
   },
-  linkBtn: {
-    backgroundColor: Colors.primary, borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center',
+  breakdownTitle: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
+  breakdownAmount: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+
+  expensesHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  addExpenseBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primary,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
   },
-  linkBtnText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
-  listTitle: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginTop: 8 },
-  listContainer: {
-    backgroundColor: Colors.white, borderRadius: 20, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, elevation: 2,
+  addExpenseBtnText: { color: Colors.white, fontSize: 12, fontWeight: '700' },
+  emptyExpensesText: { fontSize: 12, color: Colors.textSecondary, fontStyle: 'italic', textAlign: 'center', marginVertical: 10 },
+  expensesList: { gap: 8 },
+  expenseItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.white,
+    padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0',
   },
-  txItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  expIconContainer: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' },
+  expConcept: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  expTime: { fontSize: 11, color: Colors.textSecondary },
+  expAmount: { fontSize: 14, fontWeight: '800', color: Colors.danger },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: Colors.white, borderRadius: 24, padding: 20, width: '100%', gap: 12 },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+  modalSubtitle: { fontSize: 12, color: Colors.textSecondary },
+  fieldLabel: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, marginTop: 4 },
+  conceptChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  conceptChip: {
+    backgroundColor: Colors.background, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  txIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  txDesc: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  txDate: { fontSize: 11, fontFamily: 'Quicksand-Regular', color: Colors.textMuted, marginTop: 2 },
-  txAmount: { fontSize: 15, fontFamily: 'Quicksand-Bold' },
-  pendingBadge: { fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.accent, marginTop: 2 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalContent: { backgroundColor: Colors.white, borderRadius: 24, padding: 24, gap: 16 },
-  modalTitle: { fontSize: 20, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  modalSubtitle: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary },
-  modalBalance: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.primary },
+  conceptChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  conceptChipText: { fontSize: 12, color: Colors.textPrimary, fontWeight: '600' },
+  conceptChipTextActive: { color: Colors.white },
   modalInput: {
-    backgroundColor: Colors.background, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
-    fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary,
-    borderWidth: 1.5, borderColor: Colors.accent, textAlign: 'center',
+    backgroundColor: Colors.background, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+    fontSize: 16, fontWeight: '700', color: Colors.textPrimary, borderWidth: 1, borderColor: Colors.border,
   },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelModalBtn: {
-    flex: 1, borderWidth: 1.5, borderColor: Colors.border,
-    paddingVertical: 14, borderRadius: 12, alignItems: 'center',
-  },
-  cancelModalText: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary },
-  confirmModalBtn: {
-    flex: 1, backgroundColor: Colors.accent,
-    paddingVertical: 14, borderRadius: 12, alignItems: 'center',
-  },
-  confirmModalText: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  modalButtons: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  cancelModalBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: Colors.background, alignItems: 'center' },
+  cancelModalText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
+  confirmModalBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: Colors.primary, alignItems: 'center' },
+  confirmModalText: { fontSize: 14, fontWeight: '700', color: Colors.white },
 });

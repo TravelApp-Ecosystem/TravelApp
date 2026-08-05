@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Settings, MapPin, DollarSign, Plus, FileText, CheckCircle2, Trash2, Edit, AlertCircle, Sparkles, Car, Star, Shield, Crown, RefreshCw, Save, Upload, X } from 'lucide-react';
-import { Branch, ARCTariff, MUTariff, VehicleCategory } from '@/types/logistics';
+import { Settings, MapPin, DollarSign, Plus, FileText, CheckCircle2, Trash2, Edit, AlertCircle, Sparkles, Car, Star, Shield, Crown, RefreshCw, Save, Upload, X, Plane } from 'lucide-react';
+import { Branch, ARCTariff, MUTariff, VehicleCategory, TransferTariff } from '@/types/logistics';
 import { MUTariffForm } from '@/components/travelcab/settings/MUTariffForm';
 import { ARCTariffForm } from '@/components/travelcab/settings/ARCTariffForm';
+import { TransferTariffForm } from '@/components/travelcab/settings/TransferTariffForm';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, writeBatch, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -16,7 +17,7 @@ const mockBranches: Branch[] = [
 
 export default function TravelCabSettingsPage() {
   const [activeTab, setActiveTab] = useState<'tariffs' | 'branches' | 'categories' | 'system'>('tariffs');
-  const [tariffSubTab, setTariffSubTab] = useState<'mu' | 'arc'>('mu');
+  const [tariffSubTab, setTariffSubTab] = useState<'mu' | 'arc' | 'transfers'>('mu');
   
   // System Config / Logistics States
   const [notificationSoundUrl, setNotificationSoundUrl] = useState('');
@@ -26,6 +27,7 @@ export default function TravelCabSettingsPage() {
   // Real-Time States
   const [muTariffs, setMuTariffs] = useState<MUTariff[]>([]);
   const [arcTariffs, setArcTariffs] = useState<ARCTariff[]>([]);
+  const [transferTariffs, setTransferTariffs] = useState<TransferTariff[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   
   // Loading states
@@ -35,6 +37,7 @@ export default function TravelCabSettingsPage() {
   // Edit / Form States
   const [editingMUTariff, setEditingMUTariff] = useState<MUTariff | null>(null);
   const [editingARCTariff, setEditingARCTariff] = useState<ARCTariff | null>(null);
+  const [editingTransferTariff, setEditingTransferTariff] = useState<TransferTariff | null>(null);
   
   // Categories form state
   const [editingCategory, setEditingCategory] = useState<VehicleCategory | null>(null);
@@ -52,9 +55,10 @@ export default function TravelCabSettingsPage() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'tariffs'), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
-      // Filtrar localmente por tipo
+      // Filtrar localmente por tipo (ilimitados)
       setMuTariffs(list.filter(t => t.type === 'mu' && t.id !== 'mu_active'));
-      setArcTariffs(list.filter(t => t.type === 'arc' && t.id !== 'arc_active'));
+      setArcTariffs(list.filter(t => (t.type === 'arc' || t.type === 'aci') && t.id !== 'arc_active'));
+      setTransferTariffs(list.filter(t => t.type === 'transfers'));
       setIsLoadingTariffs(false);
     }, (error) => {
       console.error("Error listening to tariffs:", error);
@@ -62,6 +66,7 @@ export default function TravelCabSettingsPage() {
     });
     return unsub;
   }, []);
+
 
   // 2. Escuchar Categorías en tiempo real
   useEffect(() => {

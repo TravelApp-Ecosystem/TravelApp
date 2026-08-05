@@ -18,6 +18,9 @@ interface DriverPartner {
   phone: string;
   photoUrl?: string;
   status: 'Activo' | 'Pendiente Documentación' | 'Suspendido' | 'En Revisión';
+  allowedServiceModes?: string[]; // ['mu', 'aci', 'transfers']
+  maxNegativeBalance?: number; // ej: -10000
+  currentCommissionBalance?: number; // ej: -12000
   vehicle?: {
     make: string;
     model: string;
@@ -35,6 +38,9 @@ const MOCK_DRIVERS: DriverPartner[] = [
     email: 'carlos.mamani@gmail.com',
     phone: '+54 381 456-7890',
     status: 'Activo',
+    allowedServiceModes: ['mu', 'aci', 'transfers'],
+    maxNegativeBalance: -10000,
+    currentCommissionBalance: -2500,
     vehicle: { make: 'Volkswagen', model: 'Gol Trend', licensePlate: 'AB 123 CD', color: 'Blanco', year: 2020 }
   },
   {
@@ -44,6 +50,9 @@ const MOCK_DRIVERS: DriverPartner[] = [
     email: 'romina.h@hotmail.com',
     phone: '+54 381 333-1111',
     status: 'Pendiente Documentación',
+    allowedServiceModes: ['mu'],
+    maxNegativeBalance: -5000,
+    currentCommissionBalance: 0,
     vehicle: { make: 'Chevrolet', model: 'Onix', licensePlate: 'DC 456 EF', color: 'Gris', year: 2022 }
   },
   {
@@ -53,6 +62,9 @@ const MOCK_DRIVERS: DriverPartner[] = [
     email: 'jorge.ruiz@yahoo.com',
     phone: '+54 381 777-2222',
     status: 'Activo',
+    allowedServiceModes: ['mu', 'transfers'],
+    maxNegativeBalance: -10000,
+    currentCommissionBalance: -12500,
     vehicle: { make: 'Toyota', model: 'Corolla', licensePlate: 'GH 789 IJ', color: 'Plata', year: 2019 }
   }
 ];
@@ -72,6 +84,9 @@ export default function TravelCabDriversPage() {
     email: '',
     phone: '',
     status: 'Activo' as any,
+    allowedServiceModes: ['mu'] as string[],
+    maxNegativeBalance: '-10000',
+    currentCommissionBalance: '0',
     make: '',
     model: '',
     licensePlate: '',
@@ -100,6 +115,9 @@ export default function TravelCabDriversPage() {
             phone: data.phone || '+54 381 000-0000',
             status: data.status || 'En Revisión',
             photoUrl: data.photoUrl || undefined,
+            allowedServiceModes: data.allowedServiceModes || ['mu', 'aci', 'transfers'],
+            maxNegativeBalance: data.maxNegativeBalance !== undefined ? Number(data.maxNegativeBalance) : -10000,
+            currentCommissionBalance: data.currentCommissionBalance !== undefined ? Number(data.currentCommissionBalance) : 0,
             vehicle: data.activeVehicle ? {
               make: data.activeVehicle.brand?.split(' ')[0] || 'Vehículo',
               model: data.activeVehicle.brand?.split(' ').slice(1).join(' ') || '',
@@ -136,6 +154,9 @@ export default function TravelCabDriversPage() {
       email: drv.email,
       phone: drv.phone,
       status: drv.status,
+      allowedServiceModes: drv.allowedServiceModes || ['mu', 'aci', 'transfers'],
+      maxNegativeBalance: String(drv.maxNegativeBalance !== undefined ? drv.maxNegativeBalance : -10000),
+      currentCommissionBalance: String(drv.currentCommissionBalance !== undefined ? drv.currentCommissionBalance : 0),
       make: drv.vehicle?.make || '',
       model: drv.vehicle?.model || '',
       licensePlate: drv.vehicle?.licensePlate || '',
@@ -144,6 +165,7 @@ export default function TravelCabDriversPage() {
     });
     setShowEditModal(true);
   };
+
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +179,9 @@ export default function TravelCabDriversPage() {
         email: editForm.email,
         phone: editForm.phone,
         status: editForm.status,
+        allowedServiceModes: editForm.allowedServiceModes,
+        maxNegativeBalance: Number(editForm.maxNegativeBalance) || -10000,
+        currentCommissionBalance: Number(editForm.currentCommissionBalance) || 0,
         activeVehicle: {
           brand: `${editForm.make} ${editForm.model}`.trim(),
           plate: editForm.licensePlate,
@@ -426,6 +451,66 @@ export default function TravelCabDriversPage() {
                   <option value="En Revisión">En Revisión</option>
                   <option value="Suspendido">Suspendido</option>
                 </select>
+              </div>
+
+              {/* Modos de Servicio Habilitados */}
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-xs font-black text-tech-blue uppercase tracking-wide mb-2">Modos de Servicio Habilitados</p>
+                <div className="space-y-2">
+                  {[
+                    { id: 'mu', label: '🏙️ Movilidad Urbana (Taxi/Remis)' },
+                    { id: 'aci', label: '🚌 Interurbano (Auto Compartido / Troncales)' },
+                    { id: 'transfers', label: '✈️ Traslados Punto a Punto (Aeropuerto/Hotel)' },
+                  ].map(mode => {
+                    const isChecked = editForm.allowedServiceModes.includes(mode.id);
+                    return (
+                      <label key={mode.id} className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setEditForm(p => ({ ...p, allowedServiceModes: [...p.allowedServiceModes, mode.id] }));
+                            } else {
+                              setEditForm(p => ({ ...p, allowedServiceModes: p.allowedServiceModes.filter(m => m !== mode.id) }));
+                            }
+                          }}
+                          className="rounded border-slate-300 text-tech-blue focus:ring-tech-blue"
+                        />
+                        {mode.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Control de Comisiones y Saldo Negativo */}
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-xs font-black text-tech-blue uppercase tracking-wide mb-2">💳 Gestión de Saldo Negativo & Comisiones</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Límite Saldo Negativo ($)</label>
+                    <input
+                      type="number"
+                      value={editForm.maxNegativeBalance}
+                      onChange={e => setEditForm(p => ({ ...p, maxNegativeBalance: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-tech-blue font-mono"
+                      placeholder="-10000"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Ej: -10000 ARS</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Saldo Comisión Actual ($)</label>
+                    <input
+                      type="number"
+                      value={editForm.currentCommissionBalance}
+                      onChange={e => setEditForm(p => ({ ...p, currentCommissionBalance: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-tech-blue font-mono"
+                      placeholder="0"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Monto adeudado actual</p>
+                  </div>
+                </div>
               </div>
 
               {/* Datos de Vehículo */}

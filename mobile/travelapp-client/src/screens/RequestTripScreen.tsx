@@ -10,9 +10,36 @@ import { db, auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 
 const SERVICES = [
-  { id: 'travelcab', label: 'TravelCab', icon: 'car', desc: 'Viaje estándar', basePrice: 800 },
-  { id: 'travelcab_plus', label: 'TravelCab Plus', icon: 'car-sport', desc: 'Mayor comodidad', basePrice: 1200 },
-  { id: 'travelcab_xl', label: 'TravelCab XL', icon: 'bus', desc: 'Vehículo grande', basePrice: 1500 },
+  { 
+    id: 'travelcab', 
+    label: 'TravelCab Standard', 
+    icon: 'car', 
+    desc: 'Auto ágil y económico', 
+    basePrice: 800,
+    eta: '3 min',
+    capacity: '4 pers',
+    badge: 'Más rápido'
+  },
+  { 
+    id: 'travelcab_plus', 
+    label: 'TravelCab Plus', 
+    icon: 'car-sport', 
+    desc: 'Mayor confort y modelos recientes', 
+    basePrice: 1200,
+    eta: '5 min',
+    capacity: '4 pers',
+    badge: 'Recomendado'
+  },
+  { 
+    id: 'travelcab_xl', 
+    label: 'TravelCab XL', 
+    icon: 'bus', 
+    desc: 'Espacio para grupos y equipaje', 
+    basePrice: 1500,
+    eta: '8 min',
+    capacity: '6 pers',
+    badge: 'Equipaje Extra'
+  },
 ];
 
 export default function RequestTripScreen() {
@@ -21,6 +48,12 @@ export default function RequestTripScreen() {
   const [destination, setDestination] = useState('');
   const [selectedService, setSelectedService] = useState('travelcab');
   const [loading, setLoading] = useState(false);
+
+  // Preferencias del viaje
+  const [petFriendly, setPetFriendly] = useState(false);
+  const [largeTrunk, setLargeTrunk] = useState(false);
+  const [quietTrip, setQuietTrip] = useState(false);
+  const [ac, setAc] = useState(true);
 
   const selected = SERVICES.find(s => s.id === selectedService)!;
 
@@ -40,6 +73,12 @@ export default function RequestTripScreen() {
         estimatedPrice: selected.basePrice,
         status: 'searching',
         channel: 'app_client',
+        tripPreferences: {
+          petFriendly,
+          largeTrunk,
+          quietTrip,
+          ac,
+        },
         createdAt: Timestamp.now(),
       });
       navigation.navigate('TripTracking', { tripId: docRef.id });
@@ -88,40 +127,108 @@ export default function RequestTripScreen() {
         </View>
 
         {/* Tipo de servicio */}
-        <Text style={styles.sectionTitle}>Tipo de servicio</Text>
-        {SERVICES.map(service => (
-          <TouchableOpacity
-            key={service.id}
-            style={[styles.serviceCard, selectedService === service.id && styles.serviceCardSelected]}
-            onPress={() => setSelectedService(service.id)}>
-            <View style={[styles.serviceIcon, { backgroundColor: selectedService === service.id ? Colors.primary : Colors.background }]}>
-              <Ionicons name={service.icon as any} size={24} color={selectedService === service.id ? Colors.white : Colors.textSecondary} />
-            </View>
-            <View style={styles.serviceInfo}>
-              <Text style={[styles.serviceLabel, selectedService === service.id && styles.serviceTextActive]}>
-                {service.label}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Vehículos disponibles</Text>
+          <Text style={styles.sectionSub}>Precios transparentes con ETA estimado</Text>
+        </View>
+
+        {SERVICES.map(service => {
+          const isSelected = selectedService === service.id;
+          return (
+            <TouchableOpacity
+              key={service.id}
+              style={[styles.serviceCard, isSelected && styles.serviceCardSelected]}
+              onPress={() => setSelectedService(service.id)}>
+              <View style={[styles.serviceIcon, { backgroundColor: isSelected ? Colors.primary : Colors.background }]}>
+                <Ionicons name={service.icon as any} size={24} color={isSelected ? Colors.white : Colors.textSecondary} />
+              </View>
+              <View style={styles.serviceInfo}>
+                <View style={styles.serviceHeaderRow}>
+                  <Text style={[styles.serviceLabel, isSelected && styles.serviceTextActive]}>
+                    {service.label}
+                  </Text>
+                  {service.badge && (
+                    <View style={[styles.badge, isSelected && styles.badgeActive]}>
+                      <Text style={[styles.badgeText, isSelected && styles.badgeTextActive]}>
+                        {service.badge}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.serviceDesc}>{service.desc}</Text>
+                
+                <View style={styles.metaRow}>
+                  <View style={styles.metaChip}>
+                    <Ionicons name="time-outline" size={12} color={Colors.textSecondary} />
+                    <Text style={styles.metaText}>{service.eta}</Text>
+                  </View>
+                  <View style={styles.metaChip}>
+                    <Ionicons name="people-outline" size={12} color={Colors.textSecondary} />
+                    <Text style={styles.metaText}>{service.capacity}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <Text style={[styles.servicePrice, isSelected && styles.serviceTextActive]}>
+                ${service.basePrice}
               </Text>
-              <Text style={styles.serviceDesc}>{service.desc}</Text>
-            </View>
-            <Text style={[styles.servicePrice, selectedService === service.id && styles.serviceTextActive]}>
-              ${service.basePrice}
-            </Text>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Opciones / Preferencias del Viaje */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Preferencias del viaje</Text>
+          <Text style={styles.sectionSub}>Personalizá tu viaje sin costo extra</Text>
+        </View>
+
+        <View style={styles.preferencesGrid}>
+          <TouchableOpacity
+            style={[styles.prefChip, petFriendly && styles.prefChipActive]}
+            onPress={() => setPetFriendly(!petFriendly)}>
+            <Ionicons name="paw" size={16} color={petFriendly ? Colors.white : Colors.textPrimary} />
+            <Text style={[styles.prefChipText, petFriendly && styles.prefChipTextActive]}>Con Mascota</Text>
           </TouchableOpacity>
-        ))}
+
+          <TouchableOpacity
+            style={[styles.prefChip, largeTrunk && styles.prefChipActive]}
+            onPress={() => setLargeTrunk(!largeTrunk)}>
+            <Ionicons name="briefcase" size={16} color={largeTrunk ? Colors.white : Colors.textPrimary} />
+            <Text style={[styles.prefChipText, largeTrunk && styles.prefChipTextActive]}>Baúl Amplio</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.prefChip, quietTrip && styles.prefChipActive]}
+            onPress={() => setQuietTrip(!quietTrip)}>
+            <Ionicons name="volume-mute" size={16} color={quietTrip ? Colors.white : Colors.textPrimary} />
+            <Text style={[styles.prefChipText, quietTrip && styles.prefChipTextActive]}>En Silencio</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.prefChip, ac && styles.prefChipActive]}
+            onPress={() => setAc(!ac)}>
+            <Ionicons name="snow" size={16} color={ac ? Colors.white : Colors.textPrimary} />
+            <Text style={[styles.prefChipText, ac && styles.prefChipTextActive]}>Aire Acond.</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Resumen */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Servicio</Text>
+            <Text style={styles.summaryLabel}>Servicio seleccionado</Text>
             <Text style={styles.summaryValue}>{selected.label}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Precio estimado</Text>
-            <Text style={[styles.summaryValue, { color: Colors.primary, fontWeight: '700' }]}>
+            <Text style={styles.summaryLabel}>Tiempo estimado de llegada</Text>
+            <Text style={[styles.summaryValue, { color: Colors.success, fontWeight: '700' }]}>~ {selected.eta}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Precio total estimado</Text>
+            <Text style={[styles.summaryValue, { color: Colors.primary, fontWeight: '800', fontSize: 16 }]}>
               ${selected.basePrice} ARS
             </Text>
           </View>
-          <Text style={styles.summaryNote}>* El precio puede variar según la distancia y disponibilidad</Text>
+          <Text style={styles.summaryNote}>* El precio puede variar según la distancia y demanda en vivo</Text>
         </View>
 
         {/* Botón */}
@@ -160,30 +267,54 @@ const styles = StyleSheet.create({
   dotRed: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.danger },
   locationInput: { flex: 1, fontSize: 15, color: Colors.textPrimary },
   divider: { height: 1, backgroundColor: Colors.border, marginLeft: 24 },
+  sectionHeader: { marginTop: 4 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  sectionSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   serviceCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: Colors.white, borderRadius: 14, padding: 16,
+    backgroundColor: Colors.white, borderRadius: 16, padding: 16,
     borderWidth: 2, borderColor: Colors.border,
   },
-  serviceCardSelected: { borderColor: Colors.primary },
-  serviceIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  serviceCardSelected: { borderColor: Colors.primary, backgroundColor: '#F4F8FF' },
+  serviceIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   serviceInfo: { flex: 1 },
+  serviceHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   serviceLabel: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   serviceDesc: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  servicePrice: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
+  servicePrice: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   serviceTextActive: { color: Colors.primary },
-  summaryCard: {
-    backgroundColor: Colors.white, borderRadius: 14, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, elevation: 2,
+  badge: {
+    backgroundColor: Colors.background, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6,
   },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  summaryLabel: { color: Colors.textSecondary, fontSize: 14 },
-  summaryValue: { fontSize: 14, color: Colors.textPrimary },
+  badgeActive: { backgroundColor: Colors.primary + '18' },
+  badgeText: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary },
+  badgeTextActive: { color: Colors.primary },
+  metaRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
+  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.background, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  metaText: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
+  preferencesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  prefChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+  },
+  prefChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  prefChipText: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  prefChipTextActive: { color: Colors.white },
+  summaryCard: {
+    backgroundColor: Colors.white, borderRadius: 16, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, elevation: 2,
+    gap: 8,
+  },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  summaryLabel: { color: Colors.textSecondary, fontSize: 13 },
+  summaryValue: { fontSize: 13, color: Colors.textPrimary },
   summaryNote: { fontSize: 11, color: Colors.textMuted, marginTop: 4 },
   button: {
     backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 18,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    marginTop: 8,
   },
   buttonText: { color: Colors.white, fontSize: 17, fontWeight: '700' },
 });
+

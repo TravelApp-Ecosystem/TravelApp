@@ -182,12 +182,28 @@ export default function TripRequestScreen() {
         <View style={styles.panelHeader}>
           <View style={styles.pingDot} />
           <Text style={styles.panelTitle}>Nueva solicitud de viaje</Text>
+          <View style={styles.payBadge}>
+            <Ionicons
+              name={trip.paymentMethod === 'Efectivo' ? 'cash' : 'card'}
+              size={14}
+              color={trip.paymentMethod === 'Efectivo' ? '#15803D' : Colors.primary}
+            />
+            <Text style={[styles.payBadgeText, { color: trip.paymentMethod === 'Efectivo' ? '#15803D' : Colors.primary }]}>
+              {trip.paymentMethod || 'Efectivo'}
+            </Text>
+          </View>
         </View>
 
-        {/* Precio destacado */}
+        {/* Precio destacado e Incentivo Dorado */}
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Ganancia estimada</Text>
-          <Text style={styles.price}>${trip.estimatedPrice} ARS</Text>
+          <Text style={styles.price}>${trip.estimatedPrice || trip.price || 0} ARS</Text>
+          {trip.bonusIncentive ? (
+            <View style={styles.bonusBanner}>
+              <Ionicons name="flash" size={14} color="#92400E" />
+              <Text style={styles.bonusBannerText}>¡Incluye +${trip.bonusIncentive} ARS de incentivo prioritario!</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Ruta */}
@@ -209,12 +225,12 @@ export default function TripRequestScreen() {
           </View>
         </View>
 
-        {/* Info del pasajero */}
+        {/* Info del pasajero y Preferencias de viaje */}
         <View style={styles.passengerCard}>
           <View style={styles.passengerAvatar}>
             <Ionicons name="person" size={22} color={Colors.white} />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.passengerName}>{trip.userName || 'Pasajero'}</Text>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={14} color={Colors.accent} />
@@ -222,6 +238,16 @@ export default function TripRequestScreen() {
             </View>
           </View>
         </View>
+
+        {/* Preferencias del viaje */}
+        {trip.tripPreferences && (
+          <View style={styles.prefRow}>
+            {trip.tripPreferences.petFriendly && <Text style={styles.prefChip}>🐾 Mascota</Text>}
+            {trip.tripPreferences.largeTrunk && <Text style={styles.prefChip}>🧳 Baúl Amplio</Text>}
+            {trip.tripPreferences.quietTrip && <Text style={styles.prefChip}>🤫 Silencio</Text>}
+            {trip.tripPreferences.ac && <Text style={styles.prefChip}>❄️ Aire Acond.</Text>}
+          </View>
+        )}
 
         {/* Botones */}
         <View style={styles.buttonsRow}>
@@ -252,18 +278,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: 24, paddingBottom: 44, gap: 16,
   },
-  panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  panelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   pingDot: {
     width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.success,
   },
-  panelTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  panelTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, flex: 1 },
+  payBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  payBadgeText: { fontSize: 12, fontWeight: '700' },
+
   priceContainer: {
     backgroundColor: Colors.primary + '0F', borderRadius: 16,
-    padding: 20, alignItems: 'center',
+    padding: 16, alignItems: 'center',
     borderWidth: 1.5, borderColor: Colors.primary + '30',
   },
-  priceLabel: { fontSize: 13, fontFamily: 'Quicksand-Medium', color: Colors.primary, marginBottom: 4 },
-  price: { fontSize: 36, fontFamily: 'Quicksand-Bold', color: Colors.primary },
+  priceLabel: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginBottom: 2 },
+  price: { fontSize: 36, fontWeight: '900', color: Colors.primary },
+  bonusBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginTop: 8,
+    borderWidth: 1, borderColor: '#FCD34D',
+  },
+  bonusBannerText: { fontSize: 12, fontWeight: '800', color: '#92400E' },
+
   routeCard: {
     backgroundColor: Colors.background, borderRadius: 16, padding: 16, gap: 4,
   },
@@ -271,8 +310,9 @@ const styles = StyleSheet.create({
   dotGreen: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.success },
   dotRed: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.danger },
   routeDash: { width: 1, height: 16, backgroundColor: Colors.border, marginLeft: 5 },
-  routeLabel: { fontSize: 11, color: Colors.textMuted, fontFamily: 'Quicksand-Bold', textTransform: 'uppercase' },
-  routeText: { fontSize: 14, color: Colors.textPrimary, fontFamily: 'Quicksand-Bold' },
+  routeLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '700', textTransform: 'uppercase' },
+  routeText: { fontSize: 14, color: Colors.textPrimary, fontWeight: '700' },
+  
   passengerCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: Colors.background, borderRadius: 14, padding: 14,
@@ -281,19 +321,27 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
   },
-  passengerName: { fontSize: 15, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  passengerName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  ratingText: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary },
-  buttonsRow: { flexDirection: 'row', gap: 12 },
+  ratingText: { fontSize: 13, color: Colors.textSecondary },
+
+  prefRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  prefChip: {
+    fontSize: 11, fontWeight: '600', color: Colors.textSecondary, backgroundColor: Colors.white,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: Colors.border,
+  },
+
+  buttonsRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
   rejectBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderRadius: 16, paddingVertical: 16,
     borderWidth: 2, borderColor: Colors.danger,
   },
-  rejectText: { color: Colors.danger, fontSize: 16, fontFamily: 'Quicksand-Bold' },
+  rejectText: { color: Colors.danger, fontSize: 16, fontWeight: '700' },
   acceptBtn: {
     flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 16,
   },
-  acceptText: { color: Colors.white, fontSize: 16, fontFamily: 'Quicksand-Bold' },
+  acceptText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
 });
+
