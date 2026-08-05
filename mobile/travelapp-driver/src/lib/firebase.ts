@@ -1,6 +1,8 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -12,15 +14,23 @@ const firebaseConfig = {
   appId: '1:596622732697:web:6765f2beee41420c3db708',
 };
 
-let app;
+let app: any;
 if (!firebase.apps.length) {
-  console.log('Inicializando Firebase Compat (Driver)...');
+  console.log('Inicializando Firebase con Persistencia AsyncStorage (Driver)...');
   app = firebase.initializeApp(firebaseConfig);
 } else {
   app = firebase.app();
 }
 
-export const auth = firebase.auth();
-export const db = getFirestore(app); // Exportar como instancia modular
-export default firebase;
+let authInstance: any;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (e) {
+  authInstance = firebase.auth();
+}
 
+export const auth = authInstance;
+export const db = getFirestore(app);
+export default firebase;

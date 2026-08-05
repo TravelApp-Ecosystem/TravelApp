@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 9.0.0"
+    "version": ">= 10.0.0"
   },
   "build": {
     "development": {
@@ -11,9 +11,6 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U"
       }
     },
     "production": {}
