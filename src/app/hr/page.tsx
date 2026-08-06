@@ -135,9 +135,19 @@ const StatCard = ({ value, label, color }: { value: number | string; label: stri
   </div>
 );
 
+// ── Mock Supervisors ──────────────────────────────────────────
+const MOCK_SUPERVISORS = [
+  { id: 'SUP-001', userId: 'EMP-101', employeeName: 'Fernando Gómez', employeeEmail: 'fernando.g@travelapp.ar', referralCode: 'FERNANDO-CAB', companyFeeCommissionPct: 10.0, totalDriversRecruited: 12, totalCommissionEarned: 148500, status: 'active' },
+  { id: 'SUP-002', userId: 'EMP-102', employeeName: 'Lucía Fernández', employeeEmail: 'lucia.f@travelapp.ar', referralCode: 'LUCIA-CAB', companyFeeCommissionPct: 8.5, totalDriversRecruited: 8, totalCommissionEarned: 92400, status: 'active' },
+  { id: 'SUP-003', userId: 'EMP-103', employeeName: 'Martín Páez', employeeEmail: 'martin.p@travelapp.ar', referralCode: 'MARTIN-CAB', companyFeeCommissionPct: 12.0, totalDriversRecruited: 19, totalCommissionEarned: 245000, status: 'active' },
+];
+
 // ── Main Component ────────────────────────────────────────────
 export default function HRPage() {
-  const [activeHRTab, setActiveHRTab] = useState<'socios' | 'postulaciones'>('socios');
+  const [activeHRTab, setActiveHRTab] = useState<'socios' | 'postulaciones' | 'supervisores'>('socios');
+  const [supervisors, setSupervisors] = useState(MOCK_SUPERVISORS);
+  const [editingSupId, setEditingSupId] = useState<string | null>(null);
+  const [editFeePct, setEditFeePct] = useState<number>(10);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
@@ -331,6 +341,18 @@ export default function HRPage() {
               activeHRTab === 'postulaciones' ? 'bg-lime-400 text-slate-900' : 'bg-red-100 text-red-600'
             }`}>{appCounts.recibida} nueva{appCounts.recibida !== 1 ? 's' : ''}</span>
           )}
+        </button>
+        <button
+          onClick={() => setActiveHRTab('supervisores')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            activeHRTab === 'supervisores' ? 'bg-tech-blue text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <Users className="h-4 w-4 text-amber-500" />
+          Fleet Supervisors
+          <span className={`ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+            activeHRTab === 'supervisores' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+          }`}>{supervisors.length}</span>
         </button>
       </div>
 
@@ -538,6 +560,112 @@ export default function HRPage() {
 
           <div className="text-xs text-slate-400 text-center">
             {filteredApps.length} de {applications.length} postulaciones · Actualizando en tiempo real
+          </div>
+        </>
+      )}
+
+      {/* ════ TAB: SUPERVISORES DE FLOTA ════ */}
+      {activeHRTab === 'supervisores' && (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard value={supervisors.length} label="Fleet Supervisors Activos" color="text-tech-blue" />
+            <StatCard value={supervisors.reduce((acc, s) => acc + s.totalDriversRecruited, 0)} label="Choferes Reclutados Totales" color="text-emerald-600" />
+            <StatCard value={`$${supervisors.reduce((acc, s) => acc + s.totalCommissionEarned, 0).toLocaleString('es-AR')}`} label="Comisiones Liquidadas" color="text-amber-600" />
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div>
+                <h3 className="text-base font-bold text-tech-blue flex items-center gap-2">
+                  <Users className="h-5 w-5 text-amber-500" />
+                  Control de Comisión por Reclutamiento de Choferes
+                </h3>
+                <p className="text-xs text-slate-500">
+                  La comisión se calcula sobre la tarifa cobrada por TravelApp (ej: 10% del 20% de la empresa). Editable en tiempo real.
+                </p>
+              </div>
+              <Link
+                href="/hr/supervisor-portal"
+                className="inline-flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Ir a Portal del Supervisor
+              </Link>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full text-left text-xs text-slate-600">
+                <thead className="bg-slate-50 text-[11px] uppercase font-bold text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Empleado</th>
+                    <th className="px-4 py-3">Código de Invitación</th>
+                    <th className="px-4 py-3 text-center">Choferes Reclutados</th>
+                    <th className="px-4 py-3 text-center">% Comisión (sobre Fee Empresa)</th>
+                    <th className="px-4 py-3 text-right">Comisión Acumulada</th>
+                    <th className="px-4 py-3 text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {supervisors.map((sup) => (
+                    <tr key={sup.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-tech-blue">{sup.employeeName}</div>
+                        <div className="text-[11px] text-slate-400">{sup.employeeEmail}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 font-mono font-bold text-slate-700 border border-slate-200">
+                          {sup.referralCode}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold text-emerald-600 text-sm">
+                        {sup.totalDriversRecruited} choferes
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {editingSupId === sup.id ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={editFeePct}
+                              onChange={(e) => setEditFeePct(parseFloat(e.target.value) || 0)}
+                              className="w-16 rounded border border-amber-300 px-2 py-1 text-center font-bold text-slate-800 outline-none focus:ring-2 focus:ring-amber-500/20"
+                            />
+                            <span className="font-bold text-slate-600">%</span>
+                            <button
+                              onClick={() => {
+                                setSupervisors(supervisors.map(s => s.id === sup.id ? { ...s, companyFeeCommissionPct: editFeePct } : s));
+                                setEditingSupId(null);
+                              }}
+                              className="rounded bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"
+                            >
+                              Guardar
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 font-extrabold text-amber-600 text-sm bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                            {sup.companyFeeCommissionPct}%
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-black text-tech-blue text-sm">
+                        ${sup.totalCommissionEarned.toLocaleString('es-AR')}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => {
+                            setEditingSupId(sup.id);
+                            setEditFeePct(sup.companyFeeCommissionPct);
+                          }}
+                          className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                        >
+                          Editar %
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}

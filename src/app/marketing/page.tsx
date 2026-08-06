@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { Megaphone, DollarSign, Target, Zap, Users, PlayCircle, PauseCircle } from 'lucide-react';
 import { 
   PieChart, 
@@ -51,12 +52,22 @@ export default function MarketingPage() {
     <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-50">
       
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black tracking-tight text-tech-blue flex items-center">
-          <Megaphone className="mr-3 h-8 w-8 text-pink-500" />
-          Growth & Ads
-        </h1>
-        <p className="mt-2 text-slate-500">Control central de campañas, presupuesto y analítica de adquisición.</p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-tech-blue flex items-center">
+            <Megaphone className="mr-3 h-8 w-8 text-pink-500" />
+            Growth & Ads
+          </h1>
+          <p className="mt-2 text-slate-500">Control central de campañas, presupuesto y analítica de adquisición.</p>
+        </div>
+
+        <Link
+          href="/marketing/partners"
+          className="inline-flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-95"
+        >
+          <Users className="h-4 w-4 text-amber-300" />
+          Programa de Embajadores & Afiliados
+        </Link>
       </div>
 
       {/* 4 KPI Cards */}

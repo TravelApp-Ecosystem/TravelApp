@@ -126,6 +126,25 @@ export interface DriverPartner {
   // Status & Wallet
   status: PartnerStatus;
   wallet: PartnerWallet;
+
+  // Fleet Supervisor Linkage
+  fleetSupervisorId?: string;       // Employee ID of the Fleet Supervisor
+  fleetSupervisorName?: string;     // Display name of the supervisor
+  referralCodeUsed?: string;        // Referral code used at driver signup
+}
+
+// ── Fleet Supervisor Configuration ───────────────────────────
+export interface FleetSupervisorConfig {
+  id: string;
+  userId: string;                   // Employee user ID in HR
+  employeeName: string;
+  employeeEmail: string;
+  referralCode: string;             // e.g. "FERNANDO-CAB"
+  companyFeeCommissionPct: number;  // % taken from TravelApp's commission fee (e.g. 10%)
+  totalDriversRecruited: number;
+  totalCommissionEarned: number;    // Accumulated ARS earned
+  status: 'active' | 'inactive';
+  createdAt: number;
 }
 
 // ── Argentina Provinces (enum helper) ────────────────────────

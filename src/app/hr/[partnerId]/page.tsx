@@ -278,9 +278,54 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
             </div>
             <div>
               <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5" /> Bancario</h3>
-              <InfoRow label="CBU/CVU" value={partner.bankInfo.cbuCvu} />
-              <InfoRow label="Alias" value={partner.bankInfo.alias} />
               <InfoRow label="Titular" value={partner.bankInfo.accountHolder} />
+              <InfoRow label="CBU/CVU" value={partner.bankInfo.cbuCvu || 'Sin CBU'} />
+              <InfoRow label="Alias" value={partner.bankInfo.alias || 'Sin Alias'} />
+            </div>
+
+            {/* ── Supervisor de Flota Asignado (Reclutador) ── */}
+            <div className="col-span-1 sm:col-span-2 rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-amber-800 flex items-center gap-1.5">
+                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                    Supervisor de Flota Asignado (Reclutador)
+                  </h3>
+                  <p className="text-xs text-amber-700/80 mt-0.5">
+                    Empleado responsable de la supervisión y reclutamiento de este socio-conductor.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <select
+                    value={partner.fleetSupervisorId || 'SUP-001'}
+                    onChange={(e) => {
+                      const supId = e.target.value;
+                      const supNames: Record<string, string> = {
+                        'SUP-001': 'Fernando Gómez',
+                        'SUP-002': 'Lucía Fernández',
+                        'SUP-003': 'Martín Páez',
+                        'none': ''
+                      };
+                      setPartner({
+                        ...partner,
+                        fleetSupervisorId: supId === 'none' ? undefined : supId,
+                        fleetSupervisorName: supNames[supId] || undefined,
+                      });
+                    }}
+                    className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20 shadow-sm cursor-pointer"
+                  >
+                    <option value="SUP-001">Fernando Gómez (FERNANDO-CAB)</option>
+                    <option value="SUP-002">Lucía Fernández (LUCIA-CAB)</option>
+                    <option value="SUP-003">Martín Páez (MARTIN-CAB)</option>
+                    <option value="none">⚪ Sin Supervisor (Registro Directo)</option>
+                  </select>
+
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-2.5 py-1 text-xs font-black text-white shadow-sm">
+                    {partner.fleetSupervisorName || 'Fernando Gómez'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         )}
