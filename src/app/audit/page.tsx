@@ -28,6 +28,31 @@ export default function AuditPage() {
   const [transactions, setTransactions] = useState<LedgerTransaction[]>(INITIAL_TRANSACTIONS);
   const [scheduled, setScheduled]       = useState<ScheduledTransaction[]>(INITIAL_SCHEDULED);
 
+  // Load persisted accounts & adjustments from localStorage on mount
+  useEffect(() => {
+    const savedAcc = localStorage.getItem('travelapp_audit_accounts');
+    if (savedAcc) {
+      try { setAccounts(JSON.parse(savedAcc)); } catch (e) {}
+    }
+    const savedAdj = localStorage.getItem('travelapp_audit_adjustments');
+    if (savedAdj) {
+      try { setAdjustments(JSON.parse(savedAdj)); } catch (e) {}
+    }
+  }, []);
+
+  // Save changes to localStorage
+  useEffect(() => {
+    if (accounts !== INITIAL_ACCOUNTS) {
+      localStorage.setItem('travelapp_audit_accounts', JSON.stringify(accounts));
+    }
+  }, [accounts]);
+
+  useEffect(() => {
+    if (adjustments.length > 0) {
+      localStorage.setItem('travelapp_audit_adjustments', JSON.stringify(adjustments));
+    }
+  }, [adjustments]);
+
   const settleItem = (id: string) =>
     setScheduled(p => p.map(s => s.id === id ? { ...s, status: 'pagado' } : s));
 

@@ -208,13 +208,14 @@ export function FlowTab({ accounts, adjustments, setAccounts, setAdjustments }: 
   const [lastMpSync, setLastMpSync] = useState<string | null>(null);
 
   // Función para consultar saldo real de Mercado Pago API
-  const syncMpBalance = async () => {
+  const syncMpBalance = async (isManualCall = false) => {
     setMpSyncing(true);
     try {
       const res = await fetch('/api/mercadopago/balance');
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.balance) {
+        // Solo sobrescribir automáticamente si la API es real o si el usuario hizo clic manual en Actualizar
+        if (data.success && data.balance && (data.isReal || isManualCall)) {
           const realMpBalance = data.balance.total_amount;
           setAccounts(prev => prev.map(acc => {
             if (acc.name.toLowerCase().includes('mercado') || acc.alias?.includes('travelapp')) {
@@ -232,9 +233,9 @@ export function FlowTab({ accounts, adjustments, setAccounts, setAdjustments }: 
     }
   };
 
-  // Sincronizar automáticamente saldo de MP al montar el componente
+  // Sincronizar automáticamente saldo de MP al montar el componente (solo si es real)
   useEffect(() => {
-    syncMpBalance();
+    syncMpBalance(false);
   }, []);
 
   const active = accounts.filter(a => a.status === 'active');
@@ -259,7 +260,7 @@ export function FlowTab({ accounts, adjustments, setAccounts, setAdjustments }: 
 
         <div className="flex gap-2">
           <button 
-            onClick={syncMpBalance} 
+            onClick={() => syncMpBalance(true)} 
             disabled={mpSyncing}
             className="flex items-center gap-2 rounded-xl bg-[#009EE3] px-4 py-2 text-sm font-bold text-white shadow-md hover:bg-[#0087c4] active:scale-95 transition-all disabled:opacity-50"
           >
