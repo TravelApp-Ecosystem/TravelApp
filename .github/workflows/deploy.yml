@@ -17,8 +17,8 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Link Vercel Project
-        run: vercel link --project travelapp --yes --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Pull Vercel environment info
+        run: vercel pull --yes --environment=production --scope=fernando-4737s-projects --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
