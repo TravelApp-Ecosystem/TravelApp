@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Vault, Landmark, BookOpen, AlarmClock, Building2, BarChart2 } from 'lucide-react';
 import {
   BankAccount, AuditAdjustment, LedgerTransaction, ScheduledTransaction,
