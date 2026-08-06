@@ -40,10 +40,5 @@ yarn-error.log*
 # .env.example SÍ se versiona (plantilla sin valores reales)
 
 # vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-.vercel
+.vercel/*
+!.vercel/project.json
