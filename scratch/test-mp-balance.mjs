@@ -1,5 +1,4 @@
-import fetch from 'node-[#node-fetch]' || 'node-fetch';
-const accessToken = "APP_USR-3082023901451356-061522-0ec7574c653680e1e473740fc4623a23-3469091946";
+const accessToken = process.env.MP_ACCESS_TOKEN || "";
 
 async function testBalance() {
   console.log("Testing MP Token:", accessToken.slice(0, 15) + "...");
