@@ -4,7 +4,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 
 // GET /api/mercadopago/balance
 // Consulta los datos reales de la cuenta de Mercado Pago y los pagos aprobados acumulados.
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const accessToken = process.env.MP_ACCESS_TOKEN;
 
