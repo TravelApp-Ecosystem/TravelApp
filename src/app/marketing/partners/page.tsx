@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  Megaphone, Plus, Edit2, Save, Trash2, Award, Ticket,
-  TrendingUp, Users, ArrowLeft, Check, Sparkles, DollarSign, ExternalLink
+  Edit2, Save, Award, Ticket,
+  Users, ArrowLeft, Check, Sparkles, ExternalLink
 } from 'lucide-react';
 import { ExperiencePartnerTier, ExperiencePartner } from '@/types/affiliates';
 import { DEFAULT_EXPERIENCE_TIERS } from '@/lib/commissions';

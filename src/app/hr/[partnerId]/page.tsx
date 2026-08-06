@@ -111,7 +111,6 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
 
   const [activeTab, setActiveTab] = useState('personal');
   const [partner, setPartner] = useState<DriverPartner>(MOCK_PARTNER);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'drivers', partnerId), (snap) => {
@@ -164,10 +163,8 @@ export default function PartnerProfilePage({ params }: { params: Promise<{ partn
           setPartner(MOCK_PARTNER);
         }
       }
-      setLoading(false);
     }, (error) => {
       console.error("Error loading partner detail:", error);
-      setLoading(false);
     });
     return () => unsub();
   }, [partnerId]);

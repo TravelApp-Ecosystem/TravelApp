@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  Users, QrCode, Copy, Check, Car, DollarSign,
-  TrendingUp, Award, ArrowLeft, Download, ShieldCheck, Wallet
+  QrCode, Copy, Check, Car,
+  ArrowLeft, ShieldCheck
 } from 'lucide-react';
 
 export default function FleetSupervisorPortalPage() {

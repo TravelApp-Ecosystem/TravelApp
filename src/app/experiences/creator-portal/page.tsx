@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  Sparkles, Award, QrCode, Copy, Check, Ticket,
-  TrendingUp, ArrowLeft, ShieldCheck, Wallet, ChevronRight, Gift
+  Sparkles, Award, Copy, Check, Ticket,
+  TrendingUp, ArrowLeft
 } from 'lucide-react';
 
 export default function ExperienceCreatorPortalPage() {
