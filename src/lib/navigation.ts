@@ -111,6 +111,7 @@ export const getSidebarConfig = (pathname: string) => {
       items: [
         { id: 'dashboard', label: 'Principal', href: '/travelcab', icon: LayoutDashboard },
         { id: 'dispatch', label: 'Central de Despacho', href: '/travelcab/dispatch', icon: Map },
+        { id: 'history', label: 'Trazabilidad & Reportes', href: '/travelcab/history', icon: Route },
         { id: 'branches', label: 'Gestión de Sucursal', href: '/travelcab/branches', icon: Building2 },
         { id: 'drivers', label: 'Gestión de Conductores', href: '/travelcab/drivers', icon: Users },
         { id: 'fleet', label: 'Gestión de Móviles', href: '/travelcab/fleet', icon: Car },
