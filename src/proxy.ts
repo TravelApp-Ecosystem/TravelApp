@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
  * PUBLIC_ROUTES – paths that never require authentication.
  * Everything else in the ecosystem is considered protected.
  */
-const PUBLIC_ROUTES = ["/login", "/landing", "/marketplace", "/canjes", "/rewards"];
+const PUBLIC_ROUTES = ["/login", "/landing", "/marketplace", "/canjes", "/rewards", "/afiliados"];
 
 /**
  * SESSION_COOKIE – lightweight presence signal set by AuthContext on login/logout.
@@ -35,6 +35,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.rewrite(new URL("/landing/rewards", request.url));
   }
 
+  // La landing pública de Afiliados
+  if (cleanPath === "/afiliados") {
+    return NextResponse.rewrite(new URL("/landing/afiliados", request.url));
+  }
+
   // ─── 2. DOMAIN-SPECIFIC PUBLIC REWRITES ────────────────────────────────────
 
   // A) experience.travelapp.ar ➡️ Landing de Experience directamente
@@ -51,15 +56,22 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // C) travelcab.ar / www.travelcab.ar ➡️ Landing de TravelCab directamente
+  // C) afiliados.travelapp.ar ➡️ Landing de Afiliados directamente
+  if (hostname.includes("afiliados.travelapp.ar")) {
+    if (cleanPath === "" || cleanPath === "/home") {
+      return NextResponse.rewrite(new URL("/landing/afiliados", request.url));
+    }
+  }
+
+  // D) travelcab.ar / www.travelcab.ar ➡️ Landing de TravelCab directamente
   if (hostname.includes("travelcab.ar")) {
     if (cleanPath === "" || cleanPath === "/home") {
       return NextResponse.rewrite(new URL("/landing/travelcab", request.url));
     }
   }
 
-  // D) travelapp.ar / www.travelapp.ar ➡️ Landings públicas y Root institucional
-  if (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.") && !hostname.startsWith("experience.") && !hostname.startsWith("rewards.")) {
+  // E) travelapp.ar / www.travelapp.ar ➡️ Landings públicas y Root institucional
+  if (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.") && !hostname.startsWith("experience.") && !hostname.startsWith("rewards.") && !hostname.startsWith("afiliados.")) {
     if (cleanPath === "" || cleanPath === "/home") {
       // travelapp.ar/ ➡️ landing institucional (ecosistema)
       return NextResponse.rewrite(new URL("/landing/ecosistema", request.url));
@@ -69,6 +81,9 @@ export function proxy(request: NextRequest) {
     }
     if (cleanPath === "/rewards") {
       return NextResponse.rewrite(new URL("/landing/rewards", request.url));
+    }
+    if (cleanPath === "/afiliados") {
+      return NextResponse.rewrite(new URL("/landing/afiliados", request.url));
     }
   }
 
