@@ -1,4 +1,4 @@
-import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator } from 'lucide-react';
+import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator, Award } from 'lucide-react';
 
 export const topNavTabs = [
   { id: 'global', label: 'Visión Global', href: '/' },
@@ -8,7 +8,7 @@ export const topNavTabs = [
   { id: 'rewards', label: 'Rewards', href: '/rewards/analytics' },
   { id: 'hr', label: 'RRHH', href: '/hr' },
   { id: 'cms', label: 'CMS Web', href: '/cms' },
-  { id: 'growth', label: 'Crecimiento', href: '/marketing' },
+  { id: 'growth', label: 'Marketing', href: '/marketing' },
   { id: 'audit', label: 'Auditoría', href: '/audit' },
 ];
 
@@ -78,9 +78,10 @@ export const getSidebarConfig = (pathname: string) => {
   // Configuración para Marketing / Crecimiento
   if (pathname.startsWith('/marketing')) {
     return {
-      title: 'Growth & Ads',
+      title: 'Marketing & Ads',
       items: [
         { id: 'marketing', label: 'Marketing & Ads', href: '/marketing', icon: Megaphone },
+        { id: 'partners', label: 'Embajadores & Afiliados', href: '/marketing/partners', icon: Award },
         { id: 'analytics', label: 'Analítica Avanzada', href: '#', icon: TrendingUp },
       ]
     };

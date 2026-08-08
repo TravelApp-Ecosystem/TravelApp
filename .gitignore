@@ -42,3 +42,9 @@ yarn-error.log*
 # vercel
 .vercel/*
 !.vercel/project.json
+
+# mobile node_modules & expo
+mobile/*/node_modules
+mobile/*/.expo
+*.tsbuildinfo
+

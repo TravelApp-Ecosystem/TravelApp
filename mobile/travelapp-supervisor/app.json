@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "TravelApp Supervisor",
+    "slug": "travelapp-supervisor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ar.travelapp.supervisor"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F172A"
+      },
+      "package": "ar.travelapp.supervisor"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

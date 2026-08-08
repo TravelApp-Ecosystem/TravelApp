@@ -465,10 +465,58 @@ const DEFAULT_APP_BENEFICIOS_CMS_DATA = {
   ]
 };
 
-type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards';
+const DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS = {
+  header: {
+    brand: 'TravelApp',
+    product: 'Experience Partners',
+    ctaText: 'Ser Embajador',
+    loginUrl: '/afiliados/login',
+    registerUrl: '/afiliados/register',
+  },
+  hero: {
+    badge: 'PROGRAMA DE AFILIADOS & EMBAJADORES',
+    title: 'Monetizá tu audiencia recomendando experiencias inolvidables',
+    subtitle: 'Ganá hasta un 10% de comisión por cada reserva, regalá cupones de descuento exclusivos a tus seguidores y cobrá al instante vía Mercado Pago o semanalmente por CBU.',
+    primaryCtaText: 'Registrarme Gratis',
+    secondaryCtaText: 'Conocer Niveles',
+    heroImage: 'https://images.unsplash.com/photo-1527631746610-bca00a040d60?auto=format&fit=crop&w=1200&q=80',
+  },
+  payoutMethods: {
+    title: 'Cobrá tus comisiones como vos prefieras',
+    subtitle: 'Garantizamos transparencia total en cada venta realizada con tu código o enlace de referido.',
+    optionMpTitle: 'Split Mercado Pago Instantáneo',
+    optionMpDesc: 'Vincularás tu cuenta de Mercado Pago vía OAuth. Cada vez que un cliente reserve una experiencia con tu enlace, tu comisión se acredita en el acto a tu cuenta de Mercado Pago (Split Inverso).',
+    optionCbuTitle: 'CBU / CVU Liquidación Semanal',
+    optionCbuDesc: 'Si preferís transferencia bancaria tradicional, acumulás todas tus comisiones de la semana y las recibís todos los Lunes directamente en tu cuenta bancaria o billetera virtual.',
+  },
+  faqs: [
+    {
+      q: '¿Tiene algún costo unirme al Programa de Embajadores?',
+      a: 'No, es 100% gratuito y no requiere inversión inicial. Solo necesitás registrarte para obtener tu enlace y tu código de cupón personal.'
+    },
+    {
+      q: '¿Cómo funcionan los niveles de comisión?',
+      a: 'Comenzás en el Nivel 1 (Starter) ganando un 3% de comisión. A medida que concretás reservas pasás a Pro Creator (5%), Master Partner (7%) y VIP Ambassador (10%).'
+    },
+    {
+      q: '¿Cómo reciben el descuento mis seguidores?',
+      a: 'Les entregamos un código de cupón personalizado con tu nombre (ej. FLOR10OFF) para que obtengan descuentos exclusivos en todo el catálogo de turismo y experiencias.'
+    },
+    {
+      q: '¿Cuándo y cómo cobro mis comisiones?',
+      a: 'Podés elegir cobrar al instante a través de Split Inverso en Mercado Pago o recibir transferencias automáticas por CBU/CVU todos los días Lunes.'
+    }
+  ],
+  footer: {
+    brandText: 'TravelApp Experience Partners',
+    copyrightText: '© 2026 TravelApp Ecosistema. Todos los derechos reservados.'
+  }
+};
+
+type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards' | 'afi_hero' | 'afi_cobro' | 'afi_faq' | 'afi_footer';
 
 export default function CMSPage() {
-  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards' | 'app-inicio'>('travelcab');
+  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards' | 'app-inicio' | 'afiliados'>('travelcab');
   const [activeTab, setActiveTab] = useState<ActiveTab>('hero');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -500,6 +548,10 @@ export default function CMSPage() {
               ...block2Data
             }
           });
+        } else if (selectedLanding === 'afiliados') {
+          const docRef = doc(db, 'cms_blocks', 'landing_afiliados');
+          const docSnap = await getDoc(docRef);
+          setData(docSnap.exists() ? { ...DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS, ...docSnap.data() } : DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS);
         } else {
           const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
           const docRef = doc(db, 'cms', docId);
@@ -525,7 +577,7 @@ export default function CMSPage() {
         }
       } catch (err) {
         console.error("Error al leer CMS de Firestore:", err);
-        const defaultData = selectedLanding === 'app-inicio' ? { block1: DEFAULT_APP_INICIO_CMS_DATA, block2: DEFAULT_APP_BENEFICIOS_CMS_DATA } : selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
+        const defaultData = selectedLanding === 'app-inicio' ? { block1: DEFAULT_APP_INICIO_CMS_DATA, block2: DEFAULT_APP_BENEFICIOS_CMS_DATA } : selectedLanding === 'afiliados' ? DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS : selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
         setData(defaultData);
       } finally {
         setLoading(false);
@@ -541,6 +593,8 @@ export default function CMSPage() {
       setActiveTab('rew_slider');
     } else if (selectedLanding === 'app-inicio') {
       setActiveTab('app_cards');
+    } else if (selectedLanding === 'afiliados') {
+      setActiveTab('afi_hero');
     } else {
       setActiveTab('hero');
     }
@@ -559,6 +613,9 @@ export default function CMSPage() {
         await setDoc(docRef1, sanitizedData.block1);
         const docRef2 = doc(db, 'cms_blocks', 'block-2');
         await setDoc(docRef2, sanitizedData.block2);
+      } else if (selectedLanding === 'afiliados') {
+        const docRef = doc(db, 'cms_blocks', 'landing_afiliados');
+        await setDoc(docRef, sanitizedData);
       } else {
         const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
         const docRef = doc(db, 'cms', docId);
@@ -1208,6 +1265,16 @@ export default function CMSPage() {
             🌐 Ecosistema TravelApp
           </button>
           <button
+            onClick={() => setSelectedLanding('afiliados')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+              selectedLanding === 'afiliados' 
+                ? 'bg-purple-600 border-purple-600 text-white shadow-sm' 
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            ⭐ Embajadores & Afiliados
+          </button>
+          <button
             onClick={() => setSelectedLanding('app-inicio')}
             className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
               selectedLanding === 'app-inicio' 
@@ -1247,6 +1314,8 @@ export default function CMSPage() {
           ? ['rew_slider', 'rew_beneficios', 'rew_social', 'rew_negocio', 'rew_legales']
           : selectedLanding === 'app-inicio'
           ? ['app_cards', 'app_rewards']
+          : selectedLanding === 'afiliados'
+          ? ['afi_hero', 'afi_cobro', 'afi_faq', 'afi_footer']
           : ['eco_hero', 'eco_unidades', 'eco_quienes', 'eco_stats', 'eco_apps', 'eco_trabaja', 'eco_legales']
         ).map((tab) => (
           <button
@@ -1276,6 +1345,10 @@ export default function CMSPage() {
             {tab === 'eco_legales' && '7. Legal & Redes'}
             {tab === 'app_cards' && '📱 Tarjetas Novedades App'}
             {tab === 'app_rewards' && '🎁 Beneficios Rewards App'}
+            {tab === 'afi_hero' && '⭐ 1. Hero & Propuesta de Valor'}
+            {tab === 'afi_cobro' && '⚡ 2. Métodos de Cobro (MP / CBU)'}
+            {tab === 'afi_faq' && '❓ 3. Preguntas Frecuentes (FAQ)'}
+            {tab === 'afi_footer' && '🏷️ 4. Marcas & Footer'}
           </button>
         ))}
       </div>
@@ -2839,6 +2912,151 @@ export default function CMSPage() {
                   No hay tarjetas agregadas. Haz clic en "Agregar Tarjeta" para crear una.
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* LANDING AFILIADOS EDITORS */}
+        {selectedLanding === 'afiliados' && activeTab === 'afi_hero' && data?.hero && (
+          <div className="space-y-6">
+            <h3 className="text-base font-extrabold text-purple-700">1. Hero Principal & Propuesta de Valor (Afiliados)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput
+                label="Badge Superior (Etiqueta)"
+                value={data.hero.badge || ''}
+                onChange={(val) => updateField('hero', 'badge', val)}
+                placeholder="PROGRAMA DE AFILIADOS & EMBAJADORES"
+              />
+              <CMSInput
+                label="Título Principal"
+                value={data.hero.title || ''}
+                onChange={(val) => updateField('hero', 'title', val)}
+                placeholder="Monetizá tu audiencia..."
+              />
+              <div className="md:col-span-2">
+                <CMSTextarea
+                  label="Subtítulo / Descripción"
+                  value={data.hero.subtitle || ''}
+                  onChange={(val) => updateField('hero', 'subtitle', val)}
+                  rows={3}
+                />
+              </div>
+              <CMSInput
+                label="Texto Botón Primario"
+                value={data.hero.primaryCtaText || ''}
+                onChange={(val) => updateField('hero', 'primaryCtaText', val)}
+              />
+              <CMSInput
+                label="Texto Botón Secundario"
+                value={data.hero.secondaryCtaText || ''}
+                onChange={(val) => updateField('hero', 'secondaryCtaText', val)}
+              />
+              <div className="md:col-span-2">
+                <ImageUploaderInput
+                  label="Imagen Destacada Hero"
+                  section="hero"
+                  field="heroImage"
+                  value={data.hero.heroImage || ''}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'afiliados' && activeTab === 'afi_cobro' && data?.payoutMethods && (
+          <div className="space-y-6">
+            <h3 className="text-base font-extrabold text-purple-700">2. Explicación Métodos de Cobro (MP / CBU)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput
+                label="Título Sección Cobros"
+                value={data.payoutMethods.title || ''}
+                onChange={(val) => updateField('payoutMethods', 'title', val)}
+              />
+              <CMSInput
+                label="Subtítulo Transparencia"
+                value={data.payoutMethods.subtitle || ''}
+                onChange={(val) => updateField('payoutMethods', 'subtitle', val)}
+              />
+              <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-200 md:col-span-2 space-y-3">
+                <span className="text-xs font-bold text-purple-900">Opción 1: Split Mercado Pago Instantáneo</span>
+                <CMSInput
+                  label="Título Opción MP"
+                  value={data.payoutMethods.optionMpTitle || ''}
+                  onChange={(val) => updateField('payoutMethods', 'optionMpTitle', val)}
+                />
+                <CMSTextarea
+                  label="Descripción Split Inverso MP"
+                  value={data.payoutMethods.optionMpDesc || ''}
+                  onChange={(val) => updateField('payoutMethods', 'optionMpDesc', val)}
+                  rows={2}
+                />
+              </div>
+              <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-200 md:col-span-2 space-y-3">
+                <span className="text-xs font-bold text-amber-900">Opción 2: CBU / CVU Liquidación Semanal</span>
+                <CMSInput
+                  label="Título Opción CBU"
+                  value={data.payoutMethods.optionCbuTitle || ''}
+                  onChange={(val) => updateField('payoutMethods', 'optionCbuTitle', val)}
+                />
+                <CMSTextarea
+                  label="Descripción CBU Semanal"
+                  value={data.payoutMethods.optionCbuDesc || ''}
+                  onChange={(val) => updateField('payoutMethods', 'optionCbuDesc', val)}
+                  rows={2}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'afiliados' && activeTab === 'afi_faq' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-extrabold text-purple-700">3. Preguntas Frecuentes (FAQ)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las preguntas y respuestas para embajadores.</p>
+              </div>
+              <button
+                onClick={() => addFaq()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-600 bg-purple-50 px-3.5 py-2 text-xs font-bold text-purple-700 hover:bg-purple-600 hover:text-white transition-all shadow-sm"
+              >
+                <Plus className="h-3.5 w-3.5" /> Agregar Pregunta
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(data.faqs || []).map((faqItem: any, idx: number) => (
+                <div key={idx} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 shadow-sm relative space-y-3">
+                  <button
+                    onClick={() => deleteFaq(idx)}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 shadow-sm transition-all"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="text-xs font-black text-purple-700">Pregunta N° {idx + 1}</div>
+                  <FaqInput label="Pregunta" value={faqItem.q || ''} idx={idx} field="q" />
+                  <FaqTextarea label="Respuesta" value={faqItem.a || ''} idx={idx} field="a" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'afiliados' && activeTab === 'afi_footer' && data?.footer && (
+          <div className="space-y-6">
+            <h3 className="text-base font-extrabold text-purple-700">4. Footer & Texto Legal</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput
+                label="Nombre de Marca Footer"
+                value={data.footer.brandText || ''}
+                onChange={(val) => updateField('footer', 'brandText', val)}
+              />
+              <CMSInput
+                label="Texto Copyright"
+                value={data.footer.copyrightText || ''}
+                onChange={(val) => updateField('footer', 'copyrightText', val)}
+              />
             </div>
           </div>
         )}

@@ -182,6 +182,81 @@ export default function ExperienceCreatorPortalPage() {
 
       </div>
 
+      {/* PAYOUT METHOD & BANK DATA CONFIGURATION (CBU / CVU & MP SPLIT) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="text-base font-bold text-tech-blue mb-1 flex items-center gap-2">
+          <Award className="h-5 w-5 text-purple-600" />
+          Configuración de Cobro de Comisiones & Datos Bancarios
+        </h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Seleccioná tu método de preferencia para recibir la comisión por venta de experiencias.
+        </p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Opción 1: Split Instantáneo MP */}
+          <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Opción 1: Split Mercado Pago (Pago Instantáneo)
+                </span>
+                <span className="text-[10px] font-extrabold bg-purple-200 text-purple-900 px-2 py-0.5 rounded-full">
+                  INSTANTÁNEO
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mb-3">
+                Tu comisión por venta se acredita inmediatamente en tu cuenta de Mercado Pago vinculada al venderse la experiencia (Split Inverso).
+              </p>
+            </div>
+            <Link
+              href={`/checkout/mp-connect?userId=USR-201&role=partner`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs py-2.5 px-4 shadow-sm transition-all"
+            >
+              Vincular / Estado Mercado Pago OAuth
+            </Link>
+          </div>
+
+          {/* Opción 2: CBU / CVU Semanal */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-800">
+                Opción 2: CBU / CVU (Liquidación Manual Semanal)
+              </span>
+              <span className="text-[10px] font-extrabold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                SEMANAL
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Recibirás el total acumulado en tu billetera todos los lunes por transferencia bancaria.
+            </p>
+            
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="CBU o CVU (22 dígitos)"
+                defaultValue="0000003100084592019482"
+                className="w-full text-xs font-mono rounded-lg border border-slate-300 p-2.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Alias"
+                  defaultValue="FLOR.TRAVEL.MP"
+                  className="w-full text-xs rounded-lg border border-slate-300 p-2.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <input
+                  type="text"
+                  placeholder="Titular de la cuenta"
+                  defaultValue="María Florencia Rossi"
+                  className="w-full text-xs rounded-lg border border-slate-300 p-2.5 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* BOOKINGS TABLE WITH INSTALLMENT SPLIT */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-base font-bold text-tech-blue mb-4 flex items-center gap-2">

@@ -244,14 +244,15 @@ export default function MarketingPartnersPage() {
                 <th className="px-4 py-3">Creador / Embajador</th>
                 <th className="px-4 py-3">Código de Afiliado</th>
                 <th className="px-4 py-3 text-center">Nivel Actual</th>
-                <th className="px-4 py-3 text-center">Reservas Concretadas</th>
-                <th className="px-4 py-3">Cupón Asignado</th>
+                <th className="px-4 py-3 text-center">Modalidad Cobro</th>
+                <th className="px-4 py-3 font-mono">CBU / CVU Registrado</th>
                 <th className="px-4 py-3 text-right">Comisión Acumulada</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
-              {partners.map((p) => {
+              {partners.map((p, idx) => {
                 const partnerTier = tiers.find(t => t.id === p.currentTierId) || tiers[0];
+                const isCbu = idx % 2 === 0;
                 return (
                   <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-4 py-3">
@@ -266,11 +267,15 @@ export default function MarketingPartnersPage() {
                         {partnerTier.name} ({partnerTier.commissionPct}%)
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center font-bold text-slate-800 text-sm">
-                      {p.totalBookingsConcreted}
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        isCbu ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-sky-100 text-sky-900 border border-sky-300'
+                      }`}>
+                        {isCbu ? 'CBU Semanal' : 'Split MP Instantáneo'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-emerald-700 font-bold">
-                      {p.assignedCouponCode} ({p.assignedCouponDiscountPct}% OFF)
+                    <td className="px-4 py-3 font-mono text-slate-700 font-semibold text-[11px]">
+                      {isCbu ? '0000003100084592019482' : 'Vinculado vía MP OAuth'}
                     </td>
                     <td className="px-4 py-3 text-right font-black text-purple-800 text-sm">
                       ${p.totalCommissionEarned.toLocaleString('es-AR')}
@@ -278,6 +283,73 @@ export default function MarketingPartnersPage() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* WEEKLY CBU PAYOUTS REPORT & MANAGEMENT */}
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/30 p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Ticket className="h-5 w-5 text-amber-600" />
+              Liquidaciones Semanales por CBU / CVU (Proceso Manual)
+            </h3>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Listado de comisiones acumuladas para transferir manualmente los días Lunes a los Embajadores sin Split MP activo.
+            </p>
+          </div>
+          <button className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2.5 shadow-sm transition-all">
+            <Save className="h-4 w-4" /> Exportar Planilla CBU (CSV/Excel)
+          </button>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-amber-200 bg-white">
+          <table className="w-full text-left text-xs text-slate-600">
+            <thead className="bg-amber-100/50 text-[11px] uppercase font-bold text-slate-700">
+              <tr>
+                <th className="px-4 py-3">Embajador</th>
+                <th className="px-4 py-3">CBU / CVU de Destino</th>
+                <th className="px-4 py-3">Alias / Titular</th>
+                <th className="px-4 py-3 text-right">Monto a Transferir</th>
+                <th className="px-4 py-3 text-center">Estado</th>
+                <th className="px-4 py-3 text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              <tr className="hover:bg-slate-50">
+                <td className="px-4 py-3 font-bold text-slate-800">María Florencia Travel</td>
+                <td className="px-4 py-3 font-mono font-bold text-purple-900 text-[11px]">0000003100084592019482</td>
+                <td className="px-4 py-3 text-slate-600">FLOR.TRAVEL.MP / María Rossi</td>
+                <td className="px-4 py-3 text-right font-black text-emerald-700 text-sm">$48.000</td>
+                <td className="px-4 py-3 text-center">
+                  <span className="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-2.5 py-0.5 rounded-full text-[10px]">
+                    Pendiente Lunes
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded-lg text-xs transition-all shadow-sm">
+                    Marcar Pagado
+                  </button>
+                </td>
+              </tr>
+              <tr className="hover:bg-slate-50">
+                <td className="px-4 py-3 font-bold text-slate-800">Camila Rutas Tucumán</td>
+                <td className="px-4 py-3 font-mono font-bold text-purple-900 text-[11px]">0000007900011294810293</td>
+                <td className="px-4 py-3 text-slate-600">CAMI.RUTAS.TUC / Camila Paz</td>
+                <td className="px-4 py-3 text-right font-black text-emerald-700 text-sm">$10.800</td>
+                <td className="px-4 py-3 text-center">
+                  <span className="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-2.5 py-0.5 rounded-full text-[10px]">
+                    Pendiente Lunes
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded-lg text-xs transition-all shadow-sm">
+                    Marcar Pagado
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

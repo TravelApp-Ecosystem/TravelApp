@@ -177,6 +177,72 @@ export default function FleetSupervisorPortalPage() {
         </div>
       </div>
 
+      {/* SUPERVISOR PERIODIC SALARY & COMMISSION SETTLEMENT (RRHH LIQUIDACIONES) */}
+      <div className="rounded-2xl border border-tech-blue/20 bg-slate-900 text-white p-6 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-base font-bold flex items-center gap-2 text-amber-400">
+              <ShieldCheck className="h-5 w-5 text-amber-400" />
+              Liquidación Periódica de Haberes & Comisiones (RRHH / Finanzas)
+            </h3>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Registro de liquidaciones semanales y mensuales para personal en relación de dependencia o régimen de supervisión de flota.
+            </p>
+          </div>
+          <span className="bg-tech-blue text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700">
+            Régimen: Personal Empresa / Relación de Dependencia
+          </span>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+          <table className="w-full text-left text-xs text-slate-300">
+            <thead className="bg-slate-800/80 text-[11px] uppercase font-bold text-slate-400">
+              <tr>
+                <th className="px-4 py-3">Período</th>
+                <th className="px-4 py-3">Modalidad Liquidación</th>
+                <th className="px-4 py-3 text-right">Base Recaudación Empresa</th>
+                <th className="px-4 py-3 text-right">Comisión Supervisor (10%)</th>
+                <th className="px-4 py-3 text-center">Estado de Pago</th>
+                <th className="px-4 py-3 text-center">Comprobante / Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              <tr className="hover:bg-slate-800/40">
+                <td className="px-4 py-3 font-bold text-white">Julio 2026 (Mensual)</td>
+                <td className="px-4 py-3 text-slate-300">Liquidación Mensual de Haberes</td>
+                <td className="px-4 py-3 text-right text-slate-300">$297.000</td>
+                <td className="px-4 py-3 text-right font-black text-amber-400 text-sm">$29.700</td>
+                <td className="px-4 py-3 text-center">
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                    Liquidado & Pagado
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <span className="text-[11px] text-slate-400 font-mono">Recibo #REC-2026-07</span>
+                </td>
+              </tr>
+              <tr className="hover:bg-slate-800/40">
+                <td className="px-4 py-3 font-bold text-white">Agosto 2026 (Semana 1)</td>
+                <td className="px-4 py-3 text-slate-300">Anticipo Semanal Flota</td>
+                <td className="px-4 py-3 text-right text-slate-300">$85.000</td>
+                <td className="px-4 py-3 text-right font-black text-amber-400 text-sm">$8.500</td>
+                <td className="px-4 py-3 text-center">
+                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                    Pendiente Liquidación
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <button className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-1 rounded-lg text-xs transition-all shadow-md">
+                    Procesar Liquidación
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }
+

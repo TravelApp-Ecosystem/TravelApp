@@ -29,6 +29,15 @@ export interface ExperiencePartner {
   walletBalance: number;
   assignedCouponCode: string;       // e.g. "MARIA10OFF"
   assignedCouponDiscountPct: number;
+  payoutMethod?: 'mp_instant' | 'cbu_weekly';
+  bankInfo?: {
+    cbuCvu: string;
+    alias: string;
+    accountHolder: string;
+    bankName?: string;
+  };
+  mpLinked?: boolean;
+  mpUserId?: string;
   createdAt: number;
   status: 'active' | 'inactive' | 'pending';
 }
