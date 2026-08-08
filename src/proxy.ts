@@ -15,10 +15,46 @@ const SESSION_COOKIE = "ta_session";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hostname = request.headers.get("host") || "";
+  const hostHeader = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+  const hostname = hostHeader.toLowerCase().split(":")[0];
   const cleanPath = pathname.replace(/\/$/, "");
 
-  // ─── 1. GLOBAL PUBLIC REWRITES ─────────────────────────────────────────────
+  // ─── 1. DOMAIN-SPECIFIC REWRITES (TOP PRIORITY) ────────────────────────────
+
+  // A) afiliados.travelapp.ar ➡️ Landing de Afiliados directamente
+  if (hostname.includes("afiliados")) {
+    if (cleanPath === "" || cleanPath === "/home") {
+      return NextResponse.rewrite(new URL("/landing/afiliados", request.url));
+    }
+  }
+
+  // B) experience.travelapp.ar ➡️ Landing de Experience directamente
+  if (hostname.includes("experience") && !hostname.includes("travelapp.ar")) {
+    if (cleanPath === "" || cleanPath === "/home") {
+      return NextResponse.rewrite(new URL("/landing/experience", request.url));
+    }
+  }
+  if (hostname.startsWith("experience.")) {
+    if (cleanPath === "" || cleanPath === "/home") {
+      return NextResponse.rewrite(new URL("/landing/experience", request.url));
+    }
+  }
+
+  // C) rewards.travelapp.ar ➡️ Landing de Rewards directamente
+  if (hostname.startsWith("rewards.")) {
+    if (cleanPath === "" || cleanPath === "/home") {
+      return NextResponse.rewrite(new URL("/landing/rewards", request.url));
+    }
+  }
+
+  // D) travelcab.ar / www.travelcab.ar ➡️ Landing de TravelCab directamente
+  if (hostname.includes("travelcab")) {
+    if (cleanPath === "" || cleanPath === "/home") {
+      return NextResponse.rewrite(new URL("/landing/travelcab", request.url));
+    }
+  }
+
+  // ─── 2. GLOBAL PUBLIC REWRITES ─────────────────────────────────────────────
   
   // El catálogo de marketplace funciona en cualquier dominio del ecosistema
   if (cleanPath === "/marketplace" || cleanPath === "/marketplaces") {
@@ -40,37 +76,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.rewrite(new URL("/landing/afiliados", request.url));
   }
 
-  // ─── 2. DOMAIN-SPECIFIC PUBLIC REWRITES ────────────────────────────────────
-
-  // A) experience.travelapp.ar ➡️ Landing de Experience directamente
-  if (hostname.includes("experience.travelapp.ar")) {
-    if (cleanPath === "" || cleanPath === "/home") {
-      return NextResponse.rewrite(new URL("/landing/experience", request.url));
-    }
-  }
-
-  // B) rewards.travelapp.ar ➡️ Landing de Rewards directamente
-  if (hostname.includes("rewards.travelapp.ar")) {
-    if (cleanPath === "" || cleanPath === "/home") {
-      return NextResponse.rewrite(new URL("/landing/rewards", request.url));
-    }
-  }
-
-  // C) afiliados.travelapp.ar ➡️ Landing de Afiliados directamente
-  if (hostname.includes("afiliados.travelapp.ar")) {
-    if (cleanPath === "" || cleanPath === "/home") {
-      return NextResponse.rewrite(new URL("/landing/afiliados", request.url));
-    }
-  }
-
-  // D) travelcab.ar / www.travelcab.ar ➡️ Landing de TravelCab directamente
-  if (hostname.includes("travelcab.ar")) {
-    if (cleanPath === "" || cleanPath === "/home") {
-      return NextResponse.rewrite(new URL("/landing/travelcab", request.url));
-    }
-  }
-
-  // E) travelapp.ar / www.travelapp.ar ➡️ Landings públicas y Root institucional
+  // ─── 3. INSTITUTIONAL ROOT REWRITE ──────────────────────────────────────────
   if (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.") && !hostname.startsWith("experience.") && !hostname.startsWith("rewards.") && !hostname.startsWith("afiliados.")) {
     if (cleanPath === "" || cleanPath === "/home") {
       // travelapp.ar/ ➡️ landing institucional (ecosistema)
