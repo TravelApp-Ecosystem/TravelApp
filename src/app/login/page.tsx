@@ -27,14 +27,31 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
+  const isCorporateEmail = (emailStr: string): boolean => {
+    const normalized = emailStr.trim().toLowerCase();
+    if (normalized === "ferincola@gmail.com") return true; // Excepción master dev
+    return normalized.endsWith("@travelapp.ar") || normalized.endsWith("@travelcab.ar");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // 🔒 RESTRICCIÓN ESTRICTA DE DOMINIOS CORPORATIVOS PARA CONCORDE 360
+    if (!isCorporateEmail(trimmedEmail)) {
+      setError(
+        "Acceso Denegado. El Centro de Comando Global Concorde 360 es exclusivo para correos corporativos oficiales (@travelapp.ar o @travelcab.ar). Si sos Embajador o Afiliado, ingresá desde el Portal de Creadores."
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await login(email.trim(), password);
+      await login(trimmedEmail, password);
       router.replace("/");
     } catch (err: unknown) {
       const code =
@@ -291,8 +308,24 @@ export default function LoginPage() {
               </button>
             </form>
 
+            {/* Ambassador link section */}
+            <div className="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center space-y-1">
+              <p className="text-xs font-bold text-[#0a2a5b]">
+                ¿Sos Embajador o Creador de Contenido?
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Los embajadores ingresan con su cuenta personal desde su portal dedicado.
+              </p>
+              <a
+                href="/afiliados/login"
+                className="mt-2 inline-block rounded-xl bg-[#0a2a5b] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#0a2a5b]/90 transition-all"
+              >
+                Ingresar al Portal de Embajador ➔
+              </a>
+            </div>
+
             {/* Support section */}
-            <div className="mt-6 text-center border-t border-slate-100 pt-4">
+            <div className="mt-4 text-center border-t border-slate-100 pt-4">
               <p className="text-xs text-slate-400">
                 ¿Necesitás soporte? Contactanos en{" "}
                 <a
