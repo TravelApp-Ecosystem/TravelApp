@@ -10,6 +10,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { doc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
+import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo } from '../components/BrandLogos';
@@ -758,7 +759,7 @@ export default function DashboardScreen() {
             </ScrollView>
 
             <View style={styles.drawerFooter}>
-              <TouchableOpacity style={styles.logoutBtn} onPress={() => { setMenuVisible(false); auth.signOut(); }}>
+              <TouchableOpacity style={styles.logoutBtn} onPress={() => { setMenuVisible(false); signOut(auth); }}>
                 <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
                 <Text style={styles.logoutText}>Cerrar Sesión</Text>
               </TouchableOpacity>

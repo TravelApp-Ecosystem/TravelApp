@@ -3,11 +3,19 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Modal, ScrollView, Linking,
 } from 'react-native';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo } from '../components/BrandLogos';
 import { Ionicons } from '@expo/vector-icons';
+
+const MASTER_ADMIN_EMAILS = [
+  'fernando@travelapp.ar',
+  'ferincola@gmail.com',
+  'edgar@travelapp.ar',
+  'carlos@travelapp.ar',
+];
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -57,12 +65,13 @@ export default function LoginScreen() {
     try {
       let userCred;
       try {
-        userCred = await auth.signInWithEmailAndPassword(trimmedEmail, password);
+        userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
       } catch (err: any) {
-        // Auto-registro para cuentas administradoras / de prueba (fernando@travelapp.ar)
-        if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
+        // Auto-registro para cuentas administradoras / de prueba (fernando@travelapp.ar, ferincola@gmail.com, etc.)
+        const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
+        if (isMasterAdmin || err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
           try {
-            userCred = await auth.createUserWithEmailAndPassword(trimmedEmail, password);
+            userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
           } catch (createErr) {
             throw err;
           }
@@ -79,7 +88,7 @@ export default function LoginScreen() {
         if (!snap.exists()) {
           await setDoc(driverRef, {
             id: userCred.user.uid,
-            name: userCred.user.displayName || 'Fernando Admin Conductor',
+            name: userCred.user.displayName || (trimmedEmail.includes('fernando') ? 'Fernando Admin' : 'Socio Conductor'),
             email: trimmedEmail,
             phone: '+5491100000000',
             status: 'active',
@@ -112,7 +121,7 @@ export default function LoginScreen() {
       return Alert.alert('Email requerido', 'Ingresá tu correo electrónico para enviarte el enlace de recuperación.');
     }
     try {
-      await auth.sendPasswordResetEmail(trimmedEmail);
+      await sendPasswordResetEmail(auth, trimmedEmail);
       Alert.alert('Correo Enviado', `Enviamos un enlace de recuperación a ${trimmedEmail}. Revisá tu bandeja de entrada.`);
     } catch (err) {
       Alert.alert('Error', 'No pudimos enviar el correo de recuperación. Verificá que el email esté registrado.');
