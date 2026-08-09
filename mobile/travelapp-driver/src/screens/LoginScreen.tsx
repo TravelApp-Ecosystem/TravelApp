@@ -72,8 +72,8 @@ export default function LoginScreen() {
         if (isMasterAdmin || err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
           try {
             userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
-          } catch (createErr) {
-            throw err;
+          } catch (createErr: any) {
+            throw createErr;
           }
         } else {
           throw err;
@@ -106,10 +106,13 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       console.warn('Driver login error:', err);
-      const detail = err?.message || err?.code || 'Verificá tu clave';
+      let detail = err?.message || err?.code || 'Verificá tu clave';
+      if (err.code === 'auth/weak-password') {
+        detail = 'La contraseña debe tener al menos 6 caracteres (ej. 123456).';
+      }
       Alert.alert(
         'Error de Inicio de Sesión',
-        `No se pudo iniciar sesión: ${detail}.\n\nSi es la primera vez que ingresás o no recordás la clave, hacé clic en "¿Olvidaste tu contraseña?" abajo para recibir el enlace de restablecimiento.`
+        `No se pudo autenticar: ${detail}`
       );
     } finally {
       setLoading(false);
@@ -124,8 +127,12 @@ export default function LoginScreen() {
     try {
       await sendPasswordResetEmail(auth, trimmedEmail);
       Alert.alert('Correo Enviado', `Enviamos un enlace de recuperación a ${trimmedEmail}. Revisá tu bandeja de entrada.`);
-    } catch (err) {
-      Alert.alert('Error', 'No pudimos enviar el correo de recuperación. Verificá que el email esté registrado.');
+    } catch (err: any) {
+      console.warn('Password reset error:', err);
+      const msg = err.code === 'auth/user-not-found'
+        ? `El correo ${trimmedEmail} aún no estaba creado en la base de datos de Firebase.\n\nSimplemente ingresá con tu correo y una contraseña de al menos 6 caracteres (ej. 123456) y presioná "Ingresar". La cuenta se creará automáticamente en el acto.`
+        : (err.message || 'No pudimos enviar el correo de recuperación.');
+      Alert.alert('Aviso de Autenticación', msg);
     }
   };
 
