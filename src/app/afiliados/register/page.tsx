@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles, ArrowRight, Check, Award, Shield, User, Mail, Phone,
-  CreditCard, MapPin, Plus, Trash2, Calendar, FileText, CheckCircle2, AlertCircle, X
+  CreditCard, MapPin, Plus, Trash2, Calendar, FileText, CheckCircle2, AlertCircle, X, ScrollText, Lock
 } from 'lucide-react';
 import { ARGENTINA_PROVINCES } from '@/types/partners';
 
@@ -14,6 +14,11 @@ export default function AfiliadosRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [ageError, setAgeError] = useState<string | null>(null);
+
+  // Scroll lock for Rules & Terms contract
+  const [hasScrolledTerms, setHasScrolledTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const termsScrollRef = useRef<HTMLDivElement>(null);
 
   // Dynamic publication links (up to 5)
   const [publicationLinks, setPublicationLinks] = useState<string[]>(['']);
@@ -34,6 +39,16 @@ export default function AfiliadosRegisterPage() {
     alias: '',
     accountHolder: '',
   });
+
+  const handleScrollTerms = () => {
+    if (termsScrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = termsScrollRef.current;
+      // Allow 15px threshold to ensure end of scroll is registered easily across devices
+      if (scrollHeight - scrollTop <= clientHeight + 20) {
+        setHasScrolledTerms(true);
+      }
+    }
+  };
 
   const handleAddPublicationLink = () => {
     if (publicationLinks.length < 5) {
@@ -76,9 +91,13 @@ export default function AfiliadosRegisterPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check 18+ age validation
     if (!validateAge(formData.dob)) {
       setAgeError('Debes tener al menos 18 años para operar en el programa de afiliados.');
+      return;
+    }
+
+    if (!acceptedTerms) {
+      alert('Debes leer el reglamento completo y aceptar el contrato para enviar tu postulación.');
       return;
     }
 
@@ -91,14 +110,14 @@ export default function AfiliadosRegisterPage() {
 
   const handleCloseModalAndProceed = () => {
     setShowConfirmationModal(false);
-    router.push('/experiences/creator-portal');
+    router.push('/afiliados/login');
   };
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center p-4 sm:p-6 font-sans">
       <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden my-8">
         
-        {/* Brand Header Con Logo Real de TravelApp Experience sobre fondo claro */}
+        {/* Brand Header */}
         <div className="text-center space-y-3">
           <Link href="/afiliados" className="inline-flex items-center gap-3 group">
             <img
@@ -111,7 +130,7 @@ export default function AfiliadosRegisterPage() {
             </span>
           </Link>
           <h1 className="text-2xl sm:text-3xl font-black text-[#0A2A5B]">Postulación & Registro de Embajadores</h1>
-          <p className="text-xs text-slate-500 font-medium">Completá tus datos personales, canales de difusión y cuenta de cobro para solicitar tu código exclusivo.</p>
+          <p className="text-xs text-slate-500 font-medium">Completá tus datos personales, canales de difusión y leé el reglamento para solicitar tu habilitación.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 text-xs font-sans">
@@ -317,7 +336,7 @@ export default function AfiliadosRegisterPage() {
             </div>
           </div>
 
-          {/* SECCIÓN 4: DATOS DE COBRO (MERCADO PAGO O CBU/CVU) */}
+          {/* SECCIÓN 4: DATOS DE COBRO */}
           <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-4">
             <h3 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-[#EF4444]" /> 4. Configuración Inicial de Cuenta de Cobro
@@ -395,11 +414,66 @@ export default function AfiliadosRegisterPage() {
             )}
           </div>
 
+          {/* SECCIÓN 5: REGLAMENTO OFICIAL & CONTRATO (CON SCROLL OBLIGATORIO) */}
+          <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider flex items-center gap-2">
+                <ScrollText className="w-4 h-4 text-[#EF4444]" /> 5. Reglamento & Contrato Oficial del Programa
+              </h3>
+              {!hasScrolledTerms && (
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 animate-pulse">
+                  Desplazá hasta el final para habilitar la firma ⬇️
+                </span>
+              )}
+            </div>
+
+            {/* Caja del Reglamento con scroll-lock */}
+            <div
+              ref={termsScrollRef}
+              onScroll={handleScrollTerms}
+              className="h-44 overflow-y-auto bg-white border border-slate-200 rounded-xl p-4 text-[11px] text-slate-600 leading-relaxed space-y-2 shadow-inner font-sans"
+            >
+              <h4 className="font-bold text-[#0A2A5B]">REGLAMENTO Y TÉRMINOS DEL CONTRATO DE EMBAJADORES TRAVELAPP EXPERIENCE</h4>
+              <p>1. <strong>ALCANCE DEL PROGRAMA:</strong> El presente contrato regula la relación entre TravelApp s.a.s. y el Embajador postulante para la promoción de experiencias, excursiones y traslados turísticos en todo el territorio de la República Argentina.</p>
+              <p>2. <strong>PORCENTAJES DE COMISIÓN:</strong> La liquidación de comisiones se realiza en base a la Matriz de Niveles vigente. starter (3%), Pro Creator (5%), Master Partner (7%) y VIP Ambassador (10%), calculados sobre la cuota neta o el valor de la reserva efectuada por los referidos.</p>
+              <p>3. <strong>MODALIDADES DE PAGO:</strong> En caso de Split Mercado Pago Instantáneo, la comisión se acredita inmediatamente al concretarse el cobro. Para CBU o CVU, la liquidación se ejecuta todos los días Lunes del calendario bancario.</p>
+              <p>4. <strong>CÓDIGO DE ÉTICA Y CALIDAD:</strong> El Embajador se compromete a promocionar los servicios con veracidad, respetando la imagen institucional de TravelApp s.a.s. y cuidando la reputación de la comunidad.</p>
+              <p>5. <strong>APROBACIÓN DE CUENTA:</strong> El registro quedará en estado de revisión. La cuenta en el Portal Web y en la App Móvil de Afiliados se habilitará únicamente una vez que el equipo de auditoría apruebe la postulación.</p>
+              <p>6. <strong>DERECHOS DE SUSPENSIÓN:</strong> TravelApp s.a.s. se reserva la facultad de suspender o revocar el acceso en caso de detectarse uso fraudulento o incumplimiento de las políticas corporativas.</p>
+              <div className="pt-2 font-bold text-[#0A2A5B] text-center border-t border-slate-100">
+                FIN DEL DOCUMENTO OFICIAL — GRACIAS POR LEER EL REGLAMENTO COMPLETO
+              </div>
+            </div>
+
+            {/* Checkbox de Aceptación */}
+            <label className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${
+              !hasScrolledTerms
+                ? 'bg-slate-100 border-slate-200 cursor-not-allowed opacity-75'
+                : acceptedTerms
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                : 'bg-white border-slate-300 cursor-pointer'
+            }`}>
+              <input
+                type="checkbox"
+                disabled={!hasScrolledTerms}
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#EF4444] focus:ring-[#EF4444] disabled:opacity-50"
+              />
+              <div className="text-xs">
+                <span className="font-bold">
+                  {!hasScrolledTerms ? '🔒 Primero leé el reglamento completo deslizando en la casilla superior' : 'Acepto el Contrato, Reglamento y Términos del Programa de Embajadores'}
+                </span>
+                <p className="text-[11px] text-slate-500 mt-0.5">Declaro ser mayor de 18 años y que todos los datos ingresados son veraces.</p>
+              </div>
+            </label>
+          </div>
+
           {/* BOTÓN POSTULARSE CON ROJO CORAL CORPORATIVO */}
           <button
             type="submit"
-            disabled={loading || !!ageError}
-            className="w-full py-4 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-sm shadow-xl shadow-[#EF4444]/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            disabled={loading || !!ageError || !acceptedTerms}
+            className="w-full py-4 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-sm shadow-xl shadow-[#EF4444]/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Enviando Postulación...' : 'Postularme como Embajador / Creator'}
             <ArrowRight className="w-4 h-4 text-amber-300" />
@@ -419,8 +493,8 @@ export default function AfiliadosRegisterPage() {
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="w-16 h-16 rounded-full bg-[#EF4444] p-0.5 mx-auto shadow-lg flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 rounded-full bg-[#EF4444] p-0.5 mx-auto shadow-lg flex items-center justify-center font-black text-white text-2xl">
+                ✦
               </div>
 
               <h3 className="text-xl font-black text-[#0A2A5B]">¡Postulación Recibida con Éxito!</h3>
@@ -432,9 +506,9 @@ export default function AfiliadosRegisterPage() {
 
               <button
                 onClick={handleCloseModalAndProceed}
-                className="w-full py-3.5 rounded-xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-xs shadow-md transition-all"
+                className="w-full py-3.5 rounded-xl bg-[#0A2A5B] hover:bg-[#0A2A5B]/90 text-white font-black text-xs shadow-md transition-all"
               >
-                Entrar a mi Portal de Creador
+                Ir a Iniciar Sesión en el Portal
               </button>
 
             </div>
