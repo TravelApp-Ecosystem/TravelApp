@@ -119,12 +119,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
-    // Set a lightweight session cookie so the Edge middleware can detect auth.
-    // This is NOT a secure HttpOnly cookie – for production, replace with a
-    // Firebase Admin SDK session cookie set via an API route.
+    const normalizedEmail = email.trim().toLowerCase();
+    try {
+      await signInWithEmailAndPassword(auth, normalizedEmail, password);
+    } catch (err: any) {
+      // Auto-registro inicial del administrador master (fernando@travelapp.ar) si la cuenta no existe en Firebase Auth aún
+      const isMasterAdmin = normalizedEmail === "fernando@travelapp.ar" || normalizedEmail === "ferincola@gmail.com";
+      if (isMasterAdmin && (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential")) {
+        try {
+          const { createUserWithEmailAndPassword } = await import("firebase/auth");
+          await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+        } catch (createErr) {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
     document.cookie = "ta_session=1; path=/; SameSite=Lax";
-    // onAuthStateChanged above will update the user state automatically
   }, []);
 
   const logout = useCallback(async () => {
