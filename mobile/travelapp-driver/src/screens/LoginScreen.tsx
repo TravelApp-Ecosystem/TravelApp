@@ -106,10 +106,11 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       console.warn('Driver login error:', err);
-      const msg = err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password'
-        ? 'Credenciales incorrectas. Verificá tu contraseña o presioná "¿Olvidaste tu contraseña?" abajo.'
-        : 'Error al iniciar sesión. Intentá nuevamente.';
-      Alert.alert('Error de Inicio de Sesión', msg);
+      const detail = err?.message || err?.code || 'Verificá tu clave';
+      Alert.alert(
+        'Error de Inicio de Sesión',
+        `No se pudo iniciar sesión: ${detail}.\n\nSi es la primera vez que ingresás o no recordás la clave, hacé clic en "¿Olvidaste tu contraseña?" abajo para recibir el enlace de restablecimiento.`
+      );
     } finally {
       setLoading(false);
     }
