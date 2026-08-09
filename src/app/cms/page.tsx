@@ -3043,18 +3043,118 @@ export default function CMSPage() {
           </div>
         )}
 
-        {selectedLanding === 'afiliados' && activeTab === 'afi_footer' && data?.footer && (
+        {selectedLanding === 'afiliados' && activeTab === 'afi_footer' && (
           <div className="space-y-6">
-            <h3 className="text-base font-extrabold text-purple-700">4. Footer & Texto Legal</h3>
+            <h3 className="text-base font-extrabold text-[#0A2A5B]">4. Pie de Página (Footer) & Datos Legales Institucionales</h3>
+            
+            {/* Información Legal Corporativa */}
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <h4 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider">Información Legal & Razón Social</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <CMSInput
+                  label="Razón Social"
+                  value={data.legales?.razonSocial || ''}
+                  onChange={(val) => updateField('legales', 'razonSocial', val)}
+                  placeholder="TravelApp s.a.s."
+                />
+                <CMSInput
+                  label="CUIT"
+                  value={data.legales?.cuit || ''}
+                  onChange={(val) => updateField('legales', 'cuit', val)}
+                  placeholder="30-71829340-9"
+                />
+                <CMSInput
+                  label="Domicilio Legal"
+                  value={data.legales?.domicilio || ''}
+                  onChange={(val) => updateField('legales', 'domicilio', val)}
+                  placeholder="San Miguel de Tucumán, Argentina"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSTextarea
+                  label="Términos y Condiciones"
+                  value={data.legales?.terminos || ''}
+                  onChange={(val) => updateField('legales', 'terminos', val)}
+                  rows={3}
+                />
+                <CMSTextarea
+                  label="Política de Privacidad"
+                  value={data.legales?.privacidad || ''}
+                  onChange={(val) => updateField('legales', 'privacidad', val)}
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            {/* Redes Sociales & Contacto */}
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <h4 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider">Redes Sociales & Canales de Contacto</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <CMSInput
+                  label="WhatsApp Oficial"
+                  value={data.redesSociales?.whatsapp || ''}
+                  onChange={(val) => updateField('redesSociales', 'whatsapp', val)}
+                  placeholder="https://wa.me/5493814188106"
+                />
+                <CMSInput
+                  label="Instagram URL"
+                  value={data.redesSociales?.instagram || ''}
+                  onChange={(val) => updateField('redesSociales', 'instagram', val)}
+                  placeholder="https://instagram.com/travelapp.ar"
+                />
+                <CMSInput
+                  label="Facebook URL"
+                  value={data.redesSociales?.facebook || ''}
+                  onChange={(val) => updateField('redesSociales', 'facebook', val)}
+                  placeholder="https://facebook.com/travelapp.ar"
+                />
+                <CMSInput
+                  label="YouTube URL"
+                  value={data.redesSociales?.youtube || ''}
+                  onChange={(val) => updateField('redesSociales', 'youtube', val)}
+                />
+                <CMSInput
+                  label="TikTok URL"
+                  value={data.redesSociales?.tiktok || ''}
+                  onChange={(val) => updateField('redesSociales', 'tiktok', val)}
+                />
+                <CMSInput
+                  label="LinkedIn URL"
+                  value={data.redesSociales?.linkedin || ''}
+                  onChange={(val) => updateField('redesSociales', 'linkedin', val)}
+                />
+              </div>
+            </div>
+
+            {/* Sellos Legales & Fiscales */}
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <h4 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider">Sellos Fiscales & Registros (ARCA / Base de Datos)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSTextarea
+                  label="Sello ARCA / AFIP (Código QR o Script)"
+                  value={data.sellosLegales?.arcaQr || ''}
+                  onChange={(val) => updateField('sellosLegales', 'arcaQr', val)}
+                  rows={2}
+                />
+                <CMSTextarea
+                  label="Sello Protección de Datos Personales"
+                  value={data.sellosLegales?.baseDatosSello || ''}
+                  onChange={(val) => updateField('sellosLegales', 'baseDatosSello', val)}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* Copyright & Marca */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CMSInput
                 label="Nombre de Marca Footer"
-                value={data.footer.brandText || ''}
+                value={data.footer?.brandText || ''}
                 onChange={(val) => updateField('footer', 'brandText', val)}
               />
               <CMSInput
                 label="Texto Copyright"
-                value={data.footer.copyrightText || ''}
+                value={data.footer?.copyrightText || ''}
                 onChange={(val) => updateField('footer', 'copyrightText', val)}
               />
             </div>

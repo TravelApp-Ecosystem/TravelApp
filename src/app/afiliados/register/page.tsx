@@ -95,104 +95,103 @@ export default function AfiliadosRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-3xl bg-[#0A2A5B]/80 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden my-8 backdrop-blur-xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#EF4444]/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Brand Header Con Logo Real de TravelApp Experience */}
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center p-4 sm:p-6 font-sans">
+      <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden my-8">
+        
+        {/* Brand Header Con Logo Real de TravelApp Experience sobre fondo claro */}
         <div className="text-center space-y-3">
           <Link href="/afiliados" className="inline-flex items-center gap-3 group">
             <img
-              src="/assets/experience_blanco.svg"
+              src="/assets/experience_original.svg"
               alt="TravelApp Experience"
               className="h-10 w-auto group-hover:scale-105 transition-transform"
             />
-            <span className="text-[10px] uppercase font-black tracking-widest px-2.5 py-0.5 rounded-full bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40">
+            <span className="text-[10px] uppercase font-black tracking-widest px-2.5 py-0.5 rounded-full bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/30">
               Partners
             </span>
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-black text-white">Postulación & Registro de Embajadores</h1>
-          <p className="text-xs text-slate-300 font-medium">Completá tus datos personales, canales de difusión y cuenta de cobro para solicitar tu código exclusivo.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-[#0A2A5B]">Postulación & Registro de Embajadores</h1>
+          <p className="text-xs text-slate-500 font-medium">Completá tus datos personales, canales de difusión y cuenta de cobro para solicitar tu código exclusivo.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 text-xs font-sans">
           
           {/* SECCIÓN 1: DATOS PERSONALES & FISCALES */}
-          <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-black text-[#EF4444] uppercase tracking-wider flex items-center gap-2">
+          <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-4">
+            <h3 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider flex items-center gap-2">
               <User className="w-4 h-4 text-[#EF4444]" /> 1. Datos Personales & Identificación
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Nombre Completo</label>
+                <label className="block font-bold text-slate-700 mb-1">Nombre Completo</label>
                 <input
                   type="text"
                   required
                   placeholder="Ej. María Florencia Rossi"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] font-medium"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444] font-medium"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-300 mb-1">DNI / CUIT</label>
+                <label className="block font-bold text-slate-700 mb-1">DNI / CUIT</label>
                 <input
                   type="text"
                   required
                   placeholder="Ej. 34567890 o 20-34567890-9"
                   value={formData.dniCuit}
                   onChange={(e) => setFormData({ ...formData, dniCuit: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] font-mono"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444] font-mono"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Fecha de Nacimiento (+18 años)</label>
+                <label className="block font-bold text-slate-700 mb-1">Fecha de Nacimiento (+18 años)</label>
                 <div className="relative">
-                  <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
                     type="date"
                     required
                     value={formData.dob}
                     onChange={(e) => handleDobChange(e.target.value)}
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444]"
                   />
                 </div>
                 {ageError && (
-                  <p className="text-[11px] text-red-400 font-bold mt-1.5 flex items-center gap-1">
+                  <p className="text-[11px] text-red-600 font-bold mt-1.5 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" /> {ageError}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block font-bold text-slate-300 mb-1">WhatsApp de Contacto</label>
+                <label className="block font-bold text-slate-700 mb-1">WhatsApp de Contacto</label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
                     type="tel"
                     required
                     placeholder="+54 9 381 1234567"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444]"
                   />
                 </div>
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-300 mb-1">Correo Electrónico</label>
+                <label className="block font-bold text-slate-700 mb-1">Correo Electrónico</label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
                     type="email"
                     required
                     placeholder="tu@email.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444]"
                   />
                 </div>
               </div>
@@ -200,18 +199,18 @@ export default function AfiliadosRegisterPage() {
           </div>
 
           {/* SECCIÓN 2: UBICACIÓN & PERFIL DE CONTENIDO */}
-          <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-black text-[#EF4444] uppercase tracking-wider flex items-center gap-2">
+          <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-4">
+            <h3 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider flex items-center gap-2">
               <MapPin className="w-4 h-4 text-[#EF4444]" /> 2. Ubicación & Categoría Principal
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Provincia</label>
+                <label className="block font-bold text-slate-700 mb-1">Provincia</label>
                 <select
                   value={formData.province}
                   onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] font-semibold"
+                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444] font-semibold"
                 >
                   {ARGENTINA_PROVINCES.map((prov) => (
                     <option key={prov} value={prov}>{prov}</option>
@@ -220,23 +219,23 @@ export default function AfiliadosRegisterPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Localidad / Ciudad</label>
+                <label className="block font-bold text-slate-700 mb-1">Localidad / Ciudad</label>
                 <input
                   type="text"
                   required
                   placeholder="Ej. San Miguel de Tucumán"
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Categoría Principal</label>
+                <label className="block font-bold text-slate-700 mb-1">Categoría Principal</label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] font-semibold"
+                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444] font-semibold"
                 >
                   <option value="Aventura & Turismo">Aventura & Turismo</option>
                   <option value="Lujo & Bodegas">Lujo & Bodegas</option>
@@ -249,27 +248,27 @@ export default function AfiliadosRegisterPage() {
           </div>
 
           {/* SECCIÓN 3: CANALES DE DIFUSIÓN & PUBLICACIONES (HASTA 5) */}
-          <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-black text-[#EF4444] uppercase tracking-wider flex items-center gap-2">
+          <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-4">
+            <h3 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider flex items-center gap-2">
               <Award className="w-4 h-4 text-[#EF4444]" /> 3. Redes Sociales & Portafolio (Hasta 5 enlaces)
             </h3>
 
             <div>
-              <label className="block font-bold text-slate-300 mb-1">Link directo a cuenta/s de promoción (Instagram / TikTok / YouTube / Blog / FB)</label>
+              <label className="block font-bold text-slate-700 mb-1">Link directo a cuenta/s de promoción (Instagram / TikTok / YouTube / Blog / FB)</label>
               <input
                 type="text"
                 required
                 placeholder="https://instagram.com/tu_usuario, https://tiktok.com/@tu_usuario"
                 value={formData.socialChannels}
                 onChange={(e) => setFormData({ ...formData, socialChannels: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444]"
               />
             </div>
 
             {/* Links de mejores publicaciones (Carga dinámica hasta 5) */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="block font-bold text-slate-300">Link/s de tus mejores publicaciones (Máximo 5)</label>
+                <label className="block font-bold text-slate-700">Link/s de tus mejores publicaciones (Máximo 5)</label>
                 <span className="text-[11px] font-bold text-[#EF4444]">{publicationLinks.length} / 5</span>
               </div>
 
@@ -280,13 +279,13 @@ export default function AfiliadosRegisterPage() {
                     placeholder={`Link de publicación ${idx + 1} (ej. Reel, Video o Post de viajes)`}
                     value={link}
                     onChange={(e) => handlePublicationLinkChange(idx, e.target.value)}
-                    className="flex-1 px-3.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] text-xs"
+                    className="flex-1 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444] text-xs"
                   />
                   {publicationLinks.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemovePublicationLink(idx)}
-                      className="p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
+                      className="p-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -298,7 +297,7 @@ export default function AfiliadosRegisterPage() {
                 <button
                   type="button"
                   onClick={handleAddPublicationLink}
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#EF4444] hover:text-red-300 bg-[#EF4444]/10 px-3 py-1.5 rounded-lg border border-[#EF4444]/20"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#EF4444] hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200"
                 >
                   <Plus className="w-3.5 h-3.5" /> Agregar otro link de publicación
                 </button>
@@ -306,21 +305,21 @@ export default function AfiliadosRegisterPage() {
             </div>
 
             <div>
-              <label className="block font-bold text-slate-300 mb-1">¿Por qué te gustaría ser la voz de TravelApp Experience?</label>
+              <label className="block font-bold text-slate-700 mb-1">¿Por qué te gustaría ser la voz de TravelApp Experience?</label>
               <textarea
                 rows={3}
                 required
                 placeholder="Contanos brevemente sobre tu contenido, tu audiencia y por qué querés recomendar nuestros viajes..."
                 value={formData.motivationText}
                 onChange={(e) => setFormData({ ...formData, motivationText: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#EF4444]"
               />
             </div>
           </div>
 
           {/* SECCIÓN 4: DATOS DE COBRO (MERCADO PAGO O CBU/CVU) */}
-          <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-black text-[#EF4444] uppercase tracking-wider flex items-center gap-2">
+          <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-4">
+            <h3 className="text-xs font-black text-[#0A2A5B] uppercase tracking-wider flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-[#EF4444]" /> 4. Configuración Inicial de Cuenta de Cobro
             </h3>
 
@@ -330,15 +329,15 @@ export default function AfiliadosRegisterPage() {
                 onClick={() => setFormData({ ...formData, payoutMethod: 'mp_instant' })}
                 className={`p-3.5 rounded-xl border text-left transition-all ${
                   formData.payoutMethod === 'mp_instant'
-                    ? 'border-[#EF4444] bg-[#EF4444]/15 text-white ring-1 ring-[#EF4444]/50'
-                    : 'border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800'
+                    ? 'border-sky-500 bg-sky-50 text-[#0A2A5B] ring-1 ring-sky-400'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <p className="font-bold text-xs flex items-center justify-between">
                   ⚡ Split Mercado Pago
-                  {formData.payoutMethod === 'mp_instant' && <Check className="w-4 h-4 text-[#EF4444]" />}
+                  {formData.payoutMethod === 'mp_instant' && <Check className="w-4 h-4 text-sky-600" />}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-1">Cobro automático al venderse la reserva (OAuth MP).</p>
+                <p className="text-[10px] text-slate-500 mt-1">Cobro automático al venderse la reserva (OAuth MP).</p>
               </button>
 
               <button
@@ -346,49 +345,49 @@ export default function AfiliadosRegisterPage() {
                 onClick={() => setFormData({ ...formData, payoutMethod: 'cbu_weekly' })}
                 className={`p-3.5 rounded-xl border text-left transition-all ${
                   formData.payoutMethod === 'cbu_weekly'
-                    ? 'border-amber-500 bg-amber-500/15 text-white ring-1 ring-amber-500/50'
-                    : 'border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800'
+                    ? 'border-amber-500 bg-amber-50 text-[#0A2A5B] ring-1 ring-amber-400'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <p className="font-bold text-xs flex items-center justify-between">
                   🗓️ CBU / CVU Semanal
-                  {formData.payoutMethod === 'cbu_weekly' && <Check className="w-4 h-4 text-amber-400" />}
+                  {formData.payoutMethod === 'cbu_weekly' && <Check className="w-4 h-4 text-amber-600" />}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-1">Transferencia bancaria todos los Lunes.</p>
+                <p className="text-[10px] text-slate-500 mt-1">Transferencia bancaria todos los Lunes.</p>
               </button>
             </div>
 
             {formData.payoutMethod === 'cbu_weekly' && (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-400 mb-1">CBU o CVU (22 dígitos)</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">CBU o CVU (22 dígitos)</label>
                   <input
                     type="text"
                     placeholder="0000003100084592019482"
                     value={formData.cbuCvu}
                     onChange={(e) => setFormData({ ...formData, cbuCvu: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white font-mono text-xs"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-mono text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 mb-1">Alias CBU</label>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Alias CBU</label>
                     <input
                       type="text"
                       placeholder="FLOR.TRAVEL.MP"
                       value={formData.alias}
                       onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white text-xs"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 mb-1">Titular de la Cuenta</label>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Titular de la Cuenta</label>
                     <input
                       type="text"
                       placeholder="María Florencia Rossi"
                       value={formData.accountHolder}
                       onChange={(e) => setFormData({ ...formData, accountHolder: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white text-xs"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-xs"
                     />
                   </div>
                 </div>
@@ -400,7 +399,7 @@ export default function AfiliadosRegisterPage() {
           <button
             type="submit"
             disabled={loading || !!ageError}
-            className="w-full py-4 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-sm shadow-xl shadow-[#EF4444]/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            className="w-full py-4 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-sm shadow-xl shadow-[#EF4444]/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
           >
             {loading ? 'Enviando Postulación...' : 'Postularme como Embajador / Creator'}
             <ArrowRight className="w-4 h-4 text-amber-300" />
@@ -410,12 +409,12 @@ export default function AfiliadosRegisterPage() {
 
         {/* MODAL DE CONFIRMACIÓN CON LEYENDA OFICIAL */}
         {showConfirmationModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fadeIn font-sans">
-            <div className="bg-slate-900 border border-[#EF4444]/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-5 shadow-2xl relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-md p-4 animate-fadeIn font-sans">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-5 shadow-2xl relative">
               
               <button
                 onClick={handleCloseModalAndProceed}
-                className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800"
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-1 rounded-full hover:bg-slate-100"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -424,10 +423,10 @@ export default function AfiliadosRegisterPage() {
                 <Sparkles className="w-8 h-8 text-white" />
               </div>
 
-              <h3 className="text-xl font-black text-white">¡Postulación Recibida con Éxito!</h3>
+              <h3 className="text-xl font-black text-[#0A2A5B]">¡Postulación Recibida con Éxito!</h3>
 
               {/* LEYENDA OFICIAL SOLICITADA POR EL USUARIO */}
-              <div className="bg-[#0A2A5B]/80 border border-[#EF4444]/30 rounded-2xl p-4 text-xs text-slate-200 leading-relaxed font-medium shadow-inner">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-700 leading-relaxed font-medium shadow-inner">
                 "¡Buenísimo! Ya recibimos tus datos y tu cuenta de cobro quedó registrada. Nuestro equipo va a revisar tu perfil para cuidar la calidad de la comunidad. Te avisamos por acá o por WhatsApp en menos de 48 hs. ¡Ojalá te sumes pronto a la familia TravelApp!"
               </div>
 

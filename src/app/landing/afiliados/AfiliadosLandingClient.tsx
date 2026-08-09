@@ -5,12 +5,55 @@ import Link from 'next/link';
 import {
   Sparkles, Award, ArrowRight, CheckCircle2, Shield, Ticket,
   TrendingUp, Users, DollarSign, Wallet, HelpCircle, ChevronRight,
-  Zap, Copy, Check, Menu, X, ArrowUpRight, Phone, Mail, MapPin, Briefcase
+  Zap, Copy, Check, Menu, X, ArrowUpRight, Phone, Mail, MapPin, Briefcase,
+  Upload, Send, Loader2
 } from 'lucide-react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { doc, onSnapshot, collection, addDoc } from 'firebase/firestore';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
 import { DEFAULT_EXPERIENCE_TIERS } from '@/lib/commissions';
 import { TravisOmnichannelWidget } from '@/components/shared/TravisOmnichannelWidget';
+
+// Inline SVGs for social media
+const InstagramIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+    <circle cx="12" cy="12" r="4"/>
+    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+  </svg>
+);
+
+const FacebookIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+  </svg>
+);
+
+const LinkedinIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+  </svg>
+);
+
+const YoutubeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.5 12 3.5 12 3.5s-7.518 0-9.388.503a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11C4.482 20.5 12 20.5 12 20.5s7.518 0 9.388-.503a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+);
+
+const TiktokIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.525.02c1.31-.032 2.61-.019 3.91-.006.03 1.56.7 2.92 1.94 3.79.79.56 1.7.93 2.65 1.11.01 1.41-.01 2.82.003 4.23-.88-.13-1.74-.46-2.52-.94-.85-.52-1.55-1.24-2.02-2.11v6.92c-.01 1.43-.37 2.85-1.07 4.09-.76 1.34-1.92 2.4-3.32 2.99-1.57.66-3.37.76-5.02.26-1.5-.45-2.83-1.46-3.69-2.82-1-1.58-1.28-3.56-.78-5.38.48-1.76 1.7-3.26 3.34-4.08 1.15-.58 2.44-.81 3.72-.66v4.3c-.76-.23-1.61-.13-2.3.29-.63.39-1.05 1.05-1.16 1.79-.17.99.31 2.05 1.17 2.53.69.39 1.54.43 2.26.11.83-.37 1.39-1.19 1.44-2.1.03-3.64.01-7.28.02-10.93.01-.13.01-.26.01-.39z"/>
+  </svg>
+);
+
+const RenderLegalSeal = ({ content, alt }: { content?: string; alt: string }) => {
+  if (!content) return null;
+  if (content.startsWith('http') || content.startsWith('/assets')) {
+    return <img src={content} alt={alt} className="h-10 w-auto opacity-75 hover:opacity-100 transition-opacity" />;
+  }
+  return <div dangerouslySetInnerHTML={{ __html: content }} className="opacity-75 hover:opacity-100 transition-opacity max-h-12 overflow-hidden text-[10px]" />;
+};
 
 const DEFAULT_AFILIADOS_CMS_DATA = {
   header: {
@@ -60,6 +103,31 @@ const DEFAULT_AFILIADOS_CMS_DATA = {
       a: 'Podés elegir cobrar al instante a través de Split Inverso en Mercado Pago o recibir transferencias automáticas por CBU/CVU todos los días Lunes.'
     }
   ],
+  legales: {
+    razonSocial: 'TravelApp s.a.s.',
+    cuit: '30-71829340-9',
+    domicilio: 'San Miguel de Tucumán, Argentina',
+    terminos: 'Al utilizar nuestros servicios, el usuario acepta los términos y condiciones vigentes de TravelApp s.a.s.',
+    privacidad: 'TravelApp s.a.s. garantiza la protección de datos personales de conformidad con la Ley 25.326.'
+  },
+  redesSociales: {
+    facebook: 'https://facebook.com/travelapp.ar',
+    instagram: 'https://instagram.com/travelapp.ar',
+    whatsapp: 'https://wa.me/5493814188106',
+    linkedin: '',
+    youtube: '',
+    tiktok: '',
+    messenger: 'https://m.me/travelapp'
+  },
+  sellosLegales: {
+    arcaQr: '',
+    baseDatosSello: ''
+  },
+  trabajaNosotros: {
+    titulo: 'Sumate al Equipo TravelApp',
+    subtitulo: 'Buscamos personas apasionadas por los viajes, la tecnología y el servicio de excelencia.',
+    puestos: ['Conductor Socio TravelCab', 'Guía de Experiencias', 'Atención al Cliente', 'Desarrollo de Software', 'Marketing Digital', 'Operaciones', 'Ventas B2B', 'Otro']
+  },
   footer: {
     brandText: 'TravelApp Experience Partners',
     copyrightText: '© 2026 TravelApp Ecosistema. Todos los derechos reservados.'
@@ -71,6 +139,21 @@ export default function AfiliadosLandingClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [legalModal, setLegalModal] = useState<{ title: string; content: string } | null>(null);
+
+  // Job Modal State (Trabajá con nosotros)
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [jobForm, setJobForm] = useState({
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    puesto: '',
+    mensaje: ''
+  });
 
   // Escuchar cambios dinámicos del CMS en tiempo real
   useEffect(() => {
@@ -85,6 +168,10 @@ export default function AfiliadosLandingClient() {
             hero: { ...DEFAULT_AFILIADOS_CMS_DATA.hero, ...(val.hero || {}) },
             payoutMethods: { ...DEFAULT_AFILIADOS_CMS_DATA.payoutMethods, ...(val.payoutMethods || {}) },
             faqs: val.faqs || DEFAULT_AFILIADOS_CMS_DATA.faqs,
+            legales: { ...DEFAULT_AFILIADOS_CMS_DATA.legales, ...(val.legales || {}) },
+            redesSociales: { ...DEFAULT_AFILIADOS_CMS_DATA.redesSociales, ...(val.redesSociales || {}) },
+            sellosLegales: { ...DEFAULT_AFILIADOS_CMS_DATA.sellosLegales, ...(val.sellosLegales || {}) },
+            trabajaNosotros: { ...DEFAULT_AFILIADOS_CMS_DATA.trabajaNosotros, ...(val.trabajaNosotros || {}) },
           });
         }
       });
@@ -100,11 +187,60 @@ export default function AfiliadosLandingClient() {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  const handleJobSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cvFile) return;
+
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+    try {
+      const path = `cv_submissions/${Date.now()}_${cvFile.name}`;
+      const fileRef = storageRef(storage, path);
+      const task = uploadBytesResumable(fileRef, cvFile);
+
+      task.on(
+        'state_changed',
+        (snap) => {
+          const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
+          setUploadProgress(pct);
+        },
+        (err) => {
+          console.error(err);
+          setSubmitStatus('error');
+          setIsSubmitting(false);
+        },
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          await addDoc(collection(db, 'job_applications'), {
+            ...jobForm,
+            cvUrl: url,
+            createdAt: new Date().toISOString(),
+            status: 'pendiente'
+          });
+          setSubmitStatus('success');
+          setIsSubmitting(false);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      setSubmitStatus('error');
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetJobModal = () => {
+    setShowJobModal(false);
+    setCvFile(null);
+    setSubmitStatus('idle');
+    setUploadProgress(0);
+    setJobForm({ nombre: '', apellido: '', email: '', telefono: '', puesto: '', mensaje: '' });
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-[#EF4444] selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-[#EF4444] selection:text-white">
       
       {/* NAVBAR CON LOGO REAL TRAVELAPP EXPERIENCE */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#0A2A5B]/90 border-b border-white/10 transition-all">
+      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#0A2A5B] border-b border-white/10 transition-all shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
           {/* Logo Real de TravelApp Experience */}
@@ -114,7 +250,7 @@ export default function AfiliadosLandingClient() {
               alt="TravelApp Experience"
               className="h-9 w-auto group-hover:scale-105 transition-transform"
             />
-            <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded-full bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40">
+            <span className="text-[10px] uppercase font-black tracking-widest px-2.5 py-0.5 rounded-full bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40">
               Partners
             </span>
           </Link>
@@ -166,32 +302,31 @@ export default function AfiliadosLandingClient() {
         )}
       </nav>
 
-      {/* HERO SECTION CON PALETA TRAVELAPP EXPERIENCE (AZUL TECH + ROJO CORAL) */}
-      <section className="relative pt-12 pb-24 overflow-hidden font-sans">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#EF4444]/15 rounded-full blur-[140px] pointer-events-none" />
-        
+      {/* HERO SECTION CON FONDO GRIS PROFESIONAL CLARO (SLATE 50 / WHITE) */}
+      <section className="relative pt-12 pb-24 overflow-hidden font-sans bg-gradient-to-b from-slate-50 via-white to-slate-100 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             
             {/* Left Column Content */}
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 bg-[#EF4444]/10 border border-[#EF4444]/30 px-3.5 py-1.5 rounded-full text-xs font-extrabold text-[#EF4444]">
-                <Sparkles className="w-4 h-4 text-amber-400" />
+                <Sparkles className="w-4 h-4 text-amber-500" />
                 {cmsData.hero.badge}
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none text-white">
+              {/* Título en Azul Tech */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none text-[#0A2A5B]">
                 {cmsData.hero.title}
               </h1>
 
-              <p className="text-base text-slate-300 leading-relaxed font-medium">
+              <p className="text-base text-slate-600 leading-relaxed font-medium">
                 {cmsData.hero.subtitle}
               </p>
 
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <Link
                   href={cmsData.header.registerUrl}
-                  className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-sm shadow-xl shadow-[#EF4444]/30 hover:scale-105 transition-all"
+                  className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-sm shadow-xl shadow-[#EF4444]/25 hover:scale-105 transition-all"
                 >
                   {cmsData.hero.primaryCtaText}
                   <ArrowRight className="w-5 h-5 text-amber-300" />
@@ -199,44 +334,44 @@ export default function AfiliadosLandingClient() {
 
                 <a
                   href="#niveles"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-[#0A2A5B] border border-white/10 hover:bg-[#0A2A5B]/80 text-white font-bold text-sm transition-all"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-[#0A2A5B] font-bold text-sm shadow-sm transition-all"
                 >
                   {cmsData.hero.secondaryCtaText}
                 </a>
               </div>
 
-              {/* Trust Features */}
-              <div className="pt-6 border-t border-slate-900 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              {/* Trust Features Cards */}
+              <div className="pt-6 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                 {cmsData.stats.map((s, idx) => (
-                  <div key={idx} className="bg-[#0A2A5B]/40 border border-slate-800 rounded-xl p-3">
+                  <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">{s.label}</p>
                     <p className="text-base font-black text-[#EF4444] mt-0.5">{s.value}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{s.detail}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{s.detail}</p>
                   </div>
                 ))}
               </div>
 
             </div>
 
-            {/* Right Column Card Preview */}
+            {/* Right Column Card Preview (Fondo Blanco Limpio con Sombra Elegante) */}
             <div className="relative">
-              <div className="relative rounded-3xl border border-slate-800 bg-[#0A2A5B]/60 backdrop-blur-xl p-6 shadow-2xl overflow-hidden">
-                <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-6 relative">
+              <div className="relative rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl overflow-hidden">
+                <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-6 relative border border-slate-200">
                   <img
                     src={cmsData.hero.heroImage}
                     alt="TravelApp Ambassador"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
                   
-                  <div className="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur-md p-4 rounded-xl border border-slate-700/80 flex items-center justify-between">
+                  <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-xl border border-slate-200 shadow-md flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold text-emerald-400 uppercase">Cupón Activo Seguidores</p>
-                      <p className="text-lg font-black font-mono text-amber-300">FLOR10OFF</p>
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase">Cupón Activo Seguidores</p>
+                      <p className="text-lg font-black font-mono text-[#0A2A5B]">FLOR10OFF</p>
                     </div>
                     <button
                       onClick={handleCopyDemoCode}
-                      className="bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all"
+                      className="bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm"
                     >
                       {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
                       {copiedCode ? '¡Copiado!' : 'Probar Cupón'}
@@ -246,18 +381,18 @@ export default function AfiliadosLandingClient() {
 
                 <div className="space-y-3 font-sans">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-300 font-medium">Nivel de Creador</span>
-                    <span className="font-extrabold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20">
+                    <span className="text-slate-500 font-medium">Nivel de Creador</span>
+                    <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
                       Level 3: Master Partner
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-300 font-medium">Comisión por Cuota</span>
-                    <span className="font-black text-emerald-400 text-sm">7.0%</span>
+                    <span className="text-slate-500 font-medium">Comisión por Cuota</span>
+                    <span className="font-black text-emerald-600 text-sm">7.0%</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-300 font-medium">Cobro Preferido</span>
-                    <span className="font-bold text-sky-400">Split MP Instantáneo ⚡</span>
+                    <span className="text-slate-500 font-medium">Cobro Preferido</span>
+                    <span className="font-bold text-sky-600">Split MP Instantáneo ⚡</span>
                   </div>
                 </div>
 
@@ -268,19 +403,19 @@ export default function AfiliadosLandingClient() {
         </div>
       </section>
 
-      {/* MATRIZ DE NIVELES */}
-      <section id="niveles" className="py-20 bg-slate-900/50 border-y border-slate-800/80 font-sans">
+      {/* MATRIZ DE NIVELES CON TARJETAS EN FONDO BLANCO */}
+      <section id="niveles" className="py-20 bg-white border-b border-slate-200 font-sans">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <div className="inline-flex items-center gap-1.5 bg-[#EF4444]/10 border border-[#EF4444]/30 px-3 py-1 rounded-full text-xs font-bold text-[#EF4444]">
-              <Award className="w-4 h-4 text-amber-400" />
+              <Award className="w-4 h-4 text-amber-500" />
               MATRIZ DE NIVELES & CRECIMIENTO
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-white">
+            <h2 className="text-3xl sm:text-4xl font-black text-[#0A2A5B]">
               A mayor volumen de ventas, mayor porcentaje de comisión
             </h2>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-600 font-medium">
               Avanzás de nivel automáticamente a medida que tus seguidores y clientes confirman sus reservas de turismo y experiencias.
             </p>
           </div>
@@ -289,31 +424,31 @@ export default function AfiliadosLandingClient() {
             {DEFAULT_EXPERIENCE_TIERS.map((tier) => (
               <div
                 key={tier.id}
-                className="rounded-2xl border border-slate-800 bg-[#0A2A5B]/40 p-6 flex flex-col justify-between hover:border-[#EF4444]/50 hover:shadow-xl hover:shadow-[#EF4444]/10 transition-all group"
+                className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 flex flex-col justify-between hover:border-[#EF4444] hover:bg-white hover:shadow-xl transition-all group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-black px-3 py-1 rounded-full bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30">
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/20">
                       {tier.name}
                     </span>
                   </div>
 
                   <div className="mb-6">
-                    <span className="text-4xl font-black text-white tracking-tight">{tier.commissionPct}%</span>
-                    <span className="text-xs font-bold text-slate-300 ml-1">de comisión</span>
+                    <span className="text-4xl font-black text-[#0A2A5B] tracking-tight">{tier.commissionPct}%</span>
+                    <span className="text-xs font-bold text-slate-500 ml-1">de comisión</span>
                   </div>
 
-                  <ul className="space-y-3 text-xs text-slate-300 mb-6">
+                  <ul className="space-y-3 text-xs text-slate-600 mb-6">
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span><strong>{tier.minBookings} a {tier.maxBookings || '∞'}</strong> reservas concretadas</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>Cupón de <strong>{tier.couponDiscountPct}% OFF</strong> seguidores</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0" />
                       <span><strong>+{tier.bonusRewardPoints}</strong> Puntos Rewards por reserva</span>
                     </li>
                   </ul>
@@ -321,7 +456,7 @@ export default function AfiliadosLandingClient() {
 
                 <Link
                   href={cmsData.header.registerUrl}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 group-hover:bg-[#EF4444] group-hover:border-[#EF4444] group-hover:text-white text-slate-300 font-bold text-xs text-center transition-all"
+                  className="w-full py-2.5 rounded-xl bg-white border border-slate-200 group-hover:bg-[#EF4444] group-hover:border-[#EF4444] group-hover:text-white text-[#0A2A5B] font-bold text-xs text-center transition-all shadow-sm"
                 >
                   Unirme en este Nivel
                 </Link>
@@ -332,19 +467,19 @@ export default function AfiliadosLandingClient() {
         </div>
       </section>
 
-      {/* MÉTODOS DE COBRO */}
-      <section id="cobro" className="py-20 font-sans">
+      {/* MÉTODOS DE COBRO CON ILUSTRACIÓN LIMPIA */}
+      <section id="cobro" className="py-20 bg-slate-50 font-sans border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-bold text-emerald-400">
-              <Wallet className="w-4 h-4 text-emerald-400" />
+            <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold text-emerald-700">
+              <Wallet className="w-4 h-4 text-emerald-600" />
               TRANSPARENCIA BANCARIA & MERCADO PAGO
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-white">
+            <h2 className="text-3xl sm:text-4xl font-black text-[#0A2A5B]">
               {cmsData.payoutMethods.title}
             </h2>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-600 font-medium">
               {cmsData.payoutMethods.subtitle}
             </p>
           </div>
@@ -352,25 +487,22 @@ export default function AfiliadosLandingClient() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
             {/* Split MP */}
-            <div className="rounded-3xl border border-sky-500/30 bg-gradient-to-b from-[#0A2A5B] to-slate-950 p-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 text-sky-500/10">
-                <Zap className="w-32 h-32" />
-              </div>
-              <div className="inline-flex items-center gap-2 bg-sky-500/20 text-sky-300 text-xs font-extrabold px-3 py-1 rounded-full mb-4 border border-sky-500/30">
+            <div className="rounded-3xl border border-sky-200 bg-white p-8 relative overflow-hidden shadow-md">
+              <div className="inline-flex items-center gap-2 bg-sky-50 text-sky-700 text-xs font-extrabold px-3 py-1 rounded-full mb-4 border border-sky-200">
                 ⚡ PAGO INSTANTÁNEO
               </div>
-              <h3 className="text-xl font-black text-white mb-3">
+              <h3 className="text-xl font-black text-[#0A2A5B] mb-3">
                 {cmsData.payoutMethods.optionMpTitle}
               </h3>
-              <p className="text-xs text-slate-300 leading-relaxed mb-6">
+              <p className="text-xs text-slate-600 leading-relaxed mb-6">
                 {cmsData.payoutMethods.optionMpDesc}
               </p>
-              <div className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 space-y-2 text-xs">
-                <div className="flex justify-between text-slate-400">
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2 text-xs">
+                <div className="flex justify-between text-slate-600">
                   <span>Ejemplo Venta Experiencia:</span>
-                  <span className="font-bold text-white">$100.000 ARS</span>
+                  <span className="font-bold text-[#0A2A5B]">$100.000 ARS</span>
                 </div>
-                <div className="flex justify-between text-emerald-400 font-bold">
+                <div className="flex justify-between text-emerald-600 font-bold">
                   <span>Tu Comisión Inmediata MP (10%):</span>
                   <span>+$10.000 ARS</span>
                 </div>
@@ -382,25 +514,22 @@ export default function AfiliadosLandingClient() {
             </div>
 
             {/* CBU Weekly */}
-            <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-b from-[#0A2A5B] to-slate-950 p-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 text-amber-500/10">
-                <DollarSign className="w-32 h-32" />
-              </div>
-              <div className="inline-flex items-center gap-2 bg-amber-500/20 text-amber-300 text-xs font-extrabold px-3 py-1 rounded-full mb-4 border border-amber-500/30">
+            <div className="rounded-3xl border border-amber-200 bg-white p-8 relative overflow-hidden shadow-md">
+              <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 text-xs font-extrabold px-3 py-1 rounded-full mb-4 border border-amber-200">
                 🗓️ TODOS LOS LUNES
               </div>
-              <h3 className="text-xl font-black text-white mb-3">
+              <h3 className="text-xl font-black text-[#0A2A5B] mb-3">
                 {cmsData.payoutMethods.optionCbuTitle}
               </h3>
-              <p className="text-xs text-slate-300 leading-relaxed mb-6">
+              <p className="text-xs text-slate-600 leading-relaxed mb-6">
                 {cmsData.payoutMethods.optionCbuDesc}
               </p>
-              <div className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 space-y-2 text-xs">
-                <div className="flex justify-between text-slate-400">
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2 text-xs">
+                <div className="flex justify-between text-slate-600">
                   <span>Acumulado Semanal Billetera:</span>
-                  <span className="font-bold text-white">$48.000 ARS</span>
+                  <span className="font-bold text-[#0A2A5B]">$48.000 ARS</span>
                 </div>
-                <div className="flex justify-between text-amber-400 font-bold">
+                <div className="flex justify-between text-amber-700 font-bold">
                   <span>Transferencia Lunes a tu CBU:</span>
                   <span>$48.000 ARS</span>
                 </div>
@@ -416,8 +545,8 @@ export default function AfiliadosLandingClient() {
         </div>
       </section>
 
-      {/* FAQS SECTION */}
-      <section id="faqs" className="py-20 bg-slate-900/40 border-t border-slate-800/80 font-sans">
+      {/* FAQS SECTION EN FONDO BLANCO */}
+      <section id="faqs" className="py-20 bg-white font-sans">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center space-y-3">
@@ -425,17 +554,17 @@ export default function AfiliadosLandingClient() {
               <HelpCircle className="w-4 h-4 text-[#EF4444]" />
               RESPUESTAS RÁPIDAS
             </div>
-            <h2 className="text-3xl font-black text-white">Preguntas Frecuentes</h2>
+            <h2 className="text-3xl font-black text-[#0A2A5B]">Preguntas Frecuentes</h2>
           </div>
 
           <div className="space-y-4">
             {cmsData.faqs.map((faq, idx) => (
-              <div key={idx} className="rounded-2xl border border-slate-800 bg-[#0A2A5B]/30 p-6 space-y-2">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 space-y-2">
+                <h3 className="text-base font-bold text-[#0A2A5B] flex items-center gap-2">
                   <ChevronRight className="w-4 h-4 text-[#EF4444] shrink-0" />
                   {faq.q}
                 </h3>
-                <p className="text-xs text-slate-300 pl-6 leading-relaxed">
+                <p className="text-xs text-slate-600 pl-6 leading-relaxed">
                   {faq.a}
                 </p>
               </div>
@@ -462,13 +591,13 @@ export default function AfiliadosLandingClient() {
         </div>
       </section>
 
-      {/* FOOTER CORPORATIVO OFICIAL IDENTICO A TRAVELAPP.AR */}
-      <footer className="bg-slate-950 border-t border-slate-800 text-slate-400 py-16 text-xs font-sans">
+      {/* FOOTER CORPORATIVO OFICIAL EXACTAMENTE IDÉNTICO A TRAVELAPP.AR */}
+      <footer className="bg-slate-950 text-slate-400 py-16 text-xs font-sans border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
             
-            {/* Columna 1: Brand */}
+            {/* Columna 1: Brand & Redes Sociales */}
             <div className="space-y-4">
               <img
                 src="/assets/travelapp_blanco.svg"
@@ -478,36 +607,55 @@ export default function AfiliadosLandingClient() {
               <p className="text-xs text-slate-400 leading-relaxed">
                 El Ecosistema de Viajes más completo de Argentina. Experiencias auténticas, movilidad segura y recompensas.
               </p>
-              <div className="flex items-center gap-3 pt-2">
-                <a href="https://instagram.com/travelapp.ar" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:border-[#EF4444] transition-all">
-                  <span className="sr-only">Instagram</span> 📸
-                </a>
-                <a href="https://facebook.com/travelapp.ar" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:border-[#EF4444] transition-all">
-                  <span className="sr-only">Facebook</span> 📘
-                </a>
+              <div className="flex items-center gap-2.5 pt-2">
+                {cmsData.redesSociales?.instagram && (
+                  <a href={cmsData.redesSociales.instagram} target="_blank" rel="noreferrer" className="h-9 w-9 rounded-xl bg-slate-900 hover:bg-[#EF4444] flex items-center justify-center transition-colors border border-slate-800">
+                    <InstagramIcon className="h-4 w-4 text-slate-400 hover:text-white" />
+                  </a>
+                )}
+                {cmsData.redesSociales?.facebook && (
+                  <a href={cmsData.redesSociales.facebook} target="_blank" rel="noreferrer" className="h-9 w-9 rounded-xl bg-slate-900 hover:bg-blue-600 flex items-center justify-center transition-colors border border-slate-800">
+                    <FacebookIcon className="h-4 w-4 text-slate-400 hover:text-white" />
+                  </a>
+                )}
+                {cmsData.redesSociales?.linkedin && (
+                  <a href={cmsData.redesSociales.linkedin} target="_blank" rel="noreferrer" className="h-9 w-9 rounded-xl bg-slate-900 hover:bg-blue-700 flex items-center justify-center transition-colors border border-slate-800">
+                    <LinkedinIcon className="h-4 w-4 text-slate-400 hover:text-white" />
+                  </a>
+                )}
+                {cmsData.redesSociales?.youtube && (
+                  <a href={cmsData.redesSociales.youtube} target="_blank" rel="noreferrer" className="h-9 w-9 rounded-xl bg-slate-900 hover:bg-red-600 flex items-center justify-center transition-colors border border-slate-800">
+                    <YoutubeIcon className="h-4 w-4 text-slate-400 hover:text-white" />
+                  </a>
+                )}
+                {cmsData.redesSociales?.tiktok && (
+                  <a href={cmsData.redesSociales.tiktok} target="_blank" rel="noreferrer" className="h-9 w-9 rounded-xl bg-slate-900 hover:bg-black flex items-center justify-center transition-colors border border-slate-800">
+                    <TiktokIcon className="h-4 w-4 text-slate-400 hover:text-white" />
+                  </a>
+                )}
               </div>
             </div>
 
             {/* Columna 2: Unidades de Negocio */}
             <div className="space-y-3">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider">Unidades de Negocio</h4>
-              <ul className="space-y-2 text-xs">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider mb-4">Nuestros Servicios</h4>
+              <ul className="space-y-3 text-xs">
                 <li>
-                  <Link href="/landing/experience" className="hover:text-[#EF4444] transition-colors flex items-center gap-2">
-                    <img src="/assets/experience_blanco.svg" className="h-4 w-auto opacity-70" alt="" />
+                  <Link href="/landing/experience" className="flex items-center gap-2 hover:text-[#EF4444] transition-colors">
+                    <img src="/assets/experience_blanco.svg" className="h-4 w-auto opacity-60" alt="" />
                     TravelApp Experience
                   </Link>
                 </li>
                 <li>
-                  <Link href="/landing/rewards" className="hover:text-[#EF4444] transition-colors flex items-center gap-2">
-                    <img src="/assets/rewards_blanco.svg" className="h-4 w-auto opacity-70" alt="" />
+                  <Link href="/landing/rewards" className="flex items-center gap-2 hover:text-[#EF4444] transition-colors">
+                    <img src="/assets/rewards_blanco.svg" className="h-4 w-auto opacity-60" alt="" />
                     TravelApp Rewards
                   </Link>
                 </li>
                 <li>
-                  <Link href="/landing/travelcab" className="hover:text-[#EF4444] transition-colors flex items-center gap-2">
-                    <img src="/assets/travelcab_blanco.svg" className="h-4 w-auto opacity-70" alt="" />
-                    TravelCab Movilidad
+                  <Link href="/landing/travelcab" className="flex items-center gap-2 hover:text-[#EF4444] transition-colors">
+                    <img src="/assets/travelcab_blanco.svg" className="h-4 w-auto opacity-60" alt="" />
+                    TravelCab
                   </Link>
                 </li>
               </ul>
@@ -515,18 +663,18 @@ export default function AfiliadosLandingClient() {
 
             {/* Columna 3: Información Legal */}
             <div className="space-y-3">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider">Información Legal</h4>
-              <ul className="space-y-2 text-xs">
-                <li>TravelApp Ecosistema de Servicios S.A.</li>
-                <li>CUIT: 30-71829340-9</li>
-                <li>Av. Aconquija 1850, Yerba Buena, Tucumán</li>
+              <h4 className="text-xs font-black text-white uppercase tracking-wider mb-4">Información Legal</h4>
+              <ul className="space-y-3 text-xs text-slate-400">
+                <li>{cmsData.legales?.razonSocial}</li>
+                <li>CUIT: {cmsData.legales?.cuit}</li>
+                <li>{cmsData.legales?.domicilio}</li>
                 <li>
-                  <button onClick={() => setLegalModal({ title: 'Términos y Condiciones', content: 'Términos de servicio oficiales de TravelApp Ecosistema.' })} className="hover:text-white transition-colors text-left">
+                  <button onClick={() => setLegalModal({ title: 'Términos y Condiciones', content: cmsData.legales?.terminos })} className="hover:text-white transition-colors text-left">
                     Términos y Condiciones
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setLegalModal({ title: 'Política de Privacidad', content: 'Política de Privacidad y Protección de Datos de TravelApp.' })} className="hover:text-white transition-colors text-left">
+                  <button onClick={() => setLegalModal({ title: 'Política de Privacidad', content: cmsData.legales?.privacidad })} className="hover:text-white transition-colors text-left">
                     Política de Privacidad
                   </button>
                 </li>
@@ -535,22 +683,33 @@ export default function AfiliadosLandingClient() {
 
             {/* Columna 4: Contacto */}
             <div className="space-y-3">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider">Contacto Directo</h4>
-              <ul className="space-y-2.5 text-xs">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider mb-4">Contacto</h4>
+              <ul className="space-y-3 text-xs">
                 <li>
-                  <a href="https://wa.me/5493814188106" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold">
-                    <Phone className="w-3.5 h-3.5" /> WhatsApp Oficial
+                  <a href={cmsData.redesSociales?.whatsapp} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold">
+                    <Phone className="h-3.5 w-3.5" /> WhatsApp
                   </a>
                 </li>
                 <li>
                   <a href="tel:08102200018" className="inline-flex items-center gap-2 text-slate-300 hover:text-white font-semibold">
-                    <Phone className="w-3.5 h-3.5 text-[#EF4444]" /> 0810-220-0018
+                    <Phone className="h-3.5 w-3.5 text-[#EF4444]" /> 0810-220-0018
                   </a>
                 </li>
                 <li>
                   <a href="mailto:hola@travelapp.ar" className="inline-flex items-center gap-2 text-slate-300 hover:text-white font-semibold">
-                    <Mail className="w-3.5 h-3.5 text-[#EF4444]" /> hola@travelapp.ar
+                    <Mail className="h-3.5 w-3.5 text-[#EF4444]" /> hola@travelapp.ar
                   </a>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setShowJobModal(true);
+                      setSubmitStatus('idle');
+                    }}
+                    className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-left"
+                  >
+                    <Briefcase className="h-3.5 w-3.5 text-[#EF4444]" /> Trabajá con Nosotros
+                  </button>
                 </li>
               </ul>
             </div>
@@ -558,13 +717,19 @@ export default function AfiliadosLandingClient() {
           </div>
 
           {/* Bottom Bar */}
-          <div className="border-t border-slate-900 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
-            <p>© 2026 TravelApp Ecosistema — Todos los derechos reservados.</p>
-            <div className="flex gap-4">
-              <button onClick={() => setLegalModal({ title: 'Términos y Condiciones', content: 'Términos de servicio.' })} className="hover:text-slate-300">
-                Términos
+          <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-500">
+            <p className="order-2 md:order-1 text-center md:text-left">
+              © 2026 {cmsData.legales?.razonSocial} — Todos los derechos reservados.
+            </p>
+            <div className="order-1 md:order-2 flex flex-wrap items-center justify-center gap-4">
+              <RenderLegalSeal content={cmsData.sellosLegales?.arcaQr} alt="ARCA" />
+              <RenderLegalSeal content={cmsData.sellosLegales?.baseDatosSello} alt="Base de Datos" />
+            </div>
+            <div className="order-3 flex gap-5">
+              <button onClick={() => setLegalModal({ title: 'Términos y Condiciones', content: cmsData.legales?.terminos })} className="hover:text-slate-300">
+                Términos de Servicio
               </button>
-              <button onClick={() => setLegalModal({ title: 'Política de Privacidad', content: 'Política de privacidad.' })} className="hover:text-slate-300">
+              <button onClick={() => setLegalModal({ title: 'Política de Privacidad', content: cmsData.legales?.privacidad })} className="hover:text-slate-300">
                 Privacidad
               </button>
             </div>
@@ -576,19 +741,95 @@ export default function AfiliadosLandingClient() {
       {/* LEGAL MODAL */}
       {legalModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn font-sans">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full text-slate-100 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-base font-black text-white">{legalModal.title}</h3>
-              <button onClick={() => setLegalModal(null)} className="text-slate-400 hover:text-white p-1">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-lg w-full text-slate-900 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="text-base font-black text-[#0A2A5B]">{legalModal.title}</h3>
+              <button onClick={() => setLegalModal(null)} className="text-slate-400 hover:text-slate-700 p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed max-h-60 overflow-y-auto">
+            <p className="text-xs text-slate-600 leading-relaxed max-h-60 overflow-y-auto">
               {legalModal.content}
             </p>
             <button onClick={() => setLegalModal(null)} className="w-full py-2.5 rounded-xl bg-[#0A2A5B] text-white text-xs font-bold">
               Entendido
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* JOB APPLICATION MODAL (TRABAJÁ CON NOSOTROS) */}
+      {showJobModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 bg-slate-950/80 backdrop-blur-sm overflow-y-auto font-sans">
+          <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl mb-8 overflow-hidden border border-slate-200">
+            <div className="relative bg-[#0A2A5B] p-8 text-white">
+              <button onClick={resetJobModal} className="absolute top-5 right-5 h-9 w-9 rounded-full bg-white/10 flex items-center justify-center">
+                <X className="h-5 w-5 text-white" />
+              </button>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#EF4444]">
+                Postulaciones Abiertas
+              </span>
+              <h3 className="text-2xl font-black mt-1 leading-snug">
+                {cmsData.trabajaNosotros?.titulo}
+              </h3>
+              <p className="text-xs text-slate-300 mt-2">
+                {cmsData.trabajaNosotros?.subtitulo}
+              </p>
+            </div>
+
+            {submitStatus === 'success' ? (
+              <div className="p-12 text-center">
+                <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
+                <h4 className="text-2xl font-black text-[#0A2A5B] mb-2">¡Postulación Recibida!</h4>
+                <p className="text-slate-600 text-xs mb-6">Tu CV fue enviado exitosamente al equipo de RRHH.</p>
+                <button onClick={resetJobModal} className="rounded-xl bg-[#0A2A5B] text-white px-8 py-3 text-xs font-bold">Cerrar</button>
+              </div>
+            ) : (
+              <form onSubmit={handleJobSubmit} className="p-8 space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Nombre *</label>
+                    <input required type="text" value={jobForm.nombre} onChange={e => setJobForm(p => ({ ...p, nombre: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 bg-slate-50 focus:bg-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Apellido *</label>
+                    <input required type="text" value={jobForm.apellido} onChange={e => setJobForm(p => ({ ...p, apellido: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 bg-slate-50 focus:bg-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Email *</label>
+                    <input required type="email" value={jobForm.email} onChange={e => setJobForm(p => ({ ...p, email: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 bg-slate-50 focus:bg-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Teléfono</label>
+                    <input type="tel" value={jobForm.telefono} onChange={e => setJobForm(p => ({ ...p, telefono: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 bg-slate-50 focus:bg-white focus:outline-none" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Área de Interés *</label>
+                  <select required value={jobForm.puesto} onChange={e => setJobForm(p => ({ ...p, puesto: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 bg-slate-50 focus:bg-white focus:outline-none">
+                    <option value="">Seleccioná el área...</option>
+                    {(cmsData.trabajaNosotros?.puestos || []).map((p: string) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">¿Por qué querés sumarte al equipo? *</label>
+                  <textarea required rows={3} value={jobForm.mensaje} onChange={e => setJobForm(p => ({ ...p, mensaje: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 bg-slate-50 focus:bg-white focus:outline-none" />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Curriculum Vitae (PDF o DOCX · máx. 5MB) *</label>
+                  <input type="file" accept=".pdf,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) setCvFile(f); }} className="w-full text-xs text-slate-500" />
+                </div>
+
+                <button type="submit" disabled={isSubmitting || !cvFile} className="w-full py-3.5 rounded-xl bg-[#0A2A5B] hover:bg-[#0A2A5B]/90 text-white font-bold text-xs transition-all disabled:opacity-50">
+                  {isSubmitting ? 'Enviando...' : 'Enviar Postulación'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
