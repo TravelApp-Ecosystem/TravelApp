@@ -1,33 +1,56 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Sparkles, Award, Copy, Check, Ticket, TrendingUp, ArrowLeft,
   ShoppingBag, Image as ImageIcon, Video, MessageSquare, Download, Share2,
   ExternalLink, Zap, CheckCircle2, ShieldCheck, CreditCard, RefreshCw, Smartphone
 } from 'lucide-react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { DEFAULT_EXPERIENCE_TIERS, getPartnerTier } from '@/lib/commissions';
+import { ExperiencePartnerTier } from '@/types/affiliates';
 
 export default function AfiliadosPortalPage() {
   const [copied, setCopied] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'marketplace' | 'mediahub' | 'payouts'>('dashboard');
+  const [tiers, setTiers] = useState<ExperiencePartnerTier[]>(DEFAULT_EXPERIENCE_TIERS);
+
+  // Escuchar matriz de niveles en tiempo real desde Firestore
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(doc(db, 'settings', 'affiliate_tiers'), (snap) => {
+        if (snap.exists() && snap.data()?.tiers) {
+          setTiers(snap.data().tiers);
+        }
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn('[Portal Tiers listener error]:', err);
+    }
+  }, []);
 
   // Mercado Pago OAuth State
   const [mpLinked, setMpLinked] = useState(true);
   const [mpAccountEmail, setMpAccountEmail] = useState('mp.florencia@mercadopago.com.ar');
+
+  // Determinar dinámicamente el nivel actual según la matriz editable
+  const totalBookings = 14;
+  const currentTier = getPartnerTier(totalBookings, tiers);
 
   // Creator Profile Data
   const creator = {
     name: 'María Florencia Rossi',
     role: 'Experience Ambassador / Creator',
     refCode: 'FLOR_TRAVEL',
-    currentTierName: 'Level 3: Master Partner',
-    commissionPct: 7.0, // 7% por cuota
+    currentTierName: currentTier.name,
+    commissionPct: currentTier.commissionPct,
     couponCode: 'FLOR10OFF',
-    couponDiscountPct: 10,
+    couponDiscountPct: currentTier.couponDiscountPct || 10,
     shareUrl: 'https://travelapp.ar/landing/experience?ref=FLOR_TRAVEL',
-    totalBookings: 14,
+    totalBookings,
     nextTierMinBookings: 20,
     nextTierName: 'Level 4: VIP Ambassador (10% comisión)',
     totalEarned: 98000,

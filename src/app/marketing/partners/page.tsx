@@ -121,6 +121,20 @@ export default function MarketingPartnersPage() {
   const [tierForm, setTierForm] = useState<Partial<ExperiencePartnerTier>>({});
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Escuchar la matriz de niveles configurada en Firestore
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(doc(db, 'settings', 'affiliate_tiers'), (snap) => {
+        if (snap.exists() && snap.data()?.tiers) {
+          setTiers(snap.data().tiers);
+        }
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn('[Firebase Tiers Error]:', err);
+    }
+  }, []);
+
   // Escuchar postulantes en tiempo real
   useEffect(() => {
     try {
@@ -171,11 +185,22 @@ export default function MarketingPartnersPage() {
     setTierForm({ ...tier });
   };
 
-  const handleSaveTier = (tierId: string) => {
-    setTiers(tiers.map(t => t.id === tierId ? { ...t, ...tierForm } as ExperiencePartnerTier : t));
+  const handleSaveTier = async (tierId: string) => {
+    const updatedTiers = tiers.map(t => t.id === tierId ? { ...t, ...tierForm } as ExperiencePartnerTier : t);
+    setTiers(updatedTiers);
     setEditingTierId(null);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+
+    try {
+      const { setDoc } = await import('firebase/firestore');
+      await setDoc(doc(db, 'settings', 'affiliate_tiers'), {
+        tiers: updatedTiers,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (err) {
+      console.warn('[Save Tiers Error]:', err);
+    }
   };
 
   const filteredApplicants = applicants.filter(a => {

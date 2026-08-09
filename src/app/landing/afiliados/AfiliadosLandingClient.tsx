@@ -136,9 +136,24 @@ const DEFAULT_AFILIADOS_CMS_DATA = {
 
 export default function AfiliadosLandingClient() {
   const [cmsData, setCmsData] = useState(DEFAULT_AFILIADOS_CMS_DATA);
+  const [tiers, setTiers] = useState(DEFAULT_EXPERIENCE_TIERS);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [legalModal, setLegalModal] = useState<{ title: string; content: string } | null>(null);
+
+  // Escuchar matriz de niveles en tiempo real desde Firestore
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(doc(db, 'settings', 'affiliate_tiers'), (snap) => {
+        if (snap.exists() && snap.data()?.tiers) {
+          setTiers(snap.data().tiers);
+        }
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn('[Tiers listener error]:', err);
+    }
+  }, []);
 
   // Job Modal State (Trabajá con nosotros)
   const [showJobModal, setShowJobModal] = useState(false);
@@ -421,7 +436,7 @@ export default function AfiliadosLandingClient() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {DEFAULT_EXPERIENCE_TIERS.map((tier) => (
+            {tiers.map((tier) => (
               <div
                 key={tier.id}
                 className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 flex flex-col justify-between hover:border-[#EF4444] hover:bg-white hover:shadow-xl transition-all group"
