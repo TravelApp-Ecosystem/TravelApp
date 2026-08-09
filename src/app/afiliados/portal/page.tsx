@@ -5,17 +5,82 @@ import Link from 'next/link';
 import {
   Sparkles, Award, Copy, Check, Ticket, TrendingUp,
   ShoppingBag, Image as ImageIcon, Download, Share2,
-  Zap, CheckCircle2, ShieldCheck, Mail, Headphones, HelpCircle, MessageSquare
+  Zap, CheckCircle2, ShieldCheck, Mail, Headphones, HelpCircle, MessageSquare,
+  CreditCard, Edit3, Save, AlertCircle, RefreshCw, Layers, CheckSquare
 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { DEFAULT_EXPERIENCE_TIERS, getPartnerTier } from '@/lib/commissions';
 import { ExperiencePartnerTier } from '@/types/affiliates';
 
+export interface SoldTrip {
+  id: string;
+  customerName: string;
+  experienceTitle: string;
+  totalAmount: number;
+  installmentsCount: number;
+  paidInstallments: number;
+  commissionPerInstallment: number;
+  totalCommission: number;
+  payoutStatus: 'credited_mp' | 'pending_installment' | 'pending_cbu_monday';
+  createdAt: string;
+}
+
+const MOCK_SOLD_TRIPS: SoldTrip[] = [
+  {
+    id: 'RES-901',
+    customerName: 'Santiago Rossi',
+    experienceTitle: 'Excursión Valles Calchaquíes & Bodegas VIP',
+    totalAmount: 120000,
+    installmentsCount: 3,
+    paidInstallments: 2,
+    commissionPerInstallment: 2800, // 7% of $40,000 installment
+    totalCommission: 8400,
+    payoutStatus: 'credited_mp',
+    createdAt: '2026-08-01',
+  },
+  {
+    id: 'RES-902',
+    customerName: 'Laura Benítez',
+    experienceTitle: 'Trekking & Canopy Aventura Yungas',
+    totalAmount: 60000,
+    installmentsCount: 2,
+    paidInstallments: 2,
+    commissionPerInstallment: 2100, // 7% of $30,000 installment
+    totalCommission: 4200,
+    payoutStatus: 'credited_mp',
+    createdAt: '2026-07-28',
+  },
+  {
+    id: 'RES-903',
+    customerName: 'Esteban Paz',
+    experienceTitle: 'Día de Campo & Cabalgata en Ruinas de Quilmes',
+    totalAmount: 95000,
+    installmentsCount: 3,
+    paidInstallments: 1,
+    commissionPerInstallment: 2216, // 7% of $31,666 installment
+    totalCommission: 6650,
+    payoutStatus: 'pending_installment',
+    createdAt: '2026-08-05',
+  },
+  {
+    id: 'RES-904',
+    customerName: 'Lucía Fernández',
+    experienceTitle: 'Traslado Privado Executive TravelCab',
+    totalAmount: 45000,
+    installmentsCount: 1,
+    paidInstallments: 1,
+    commissionPerInstallment: 3150,
+    totalCommission: 3150,
+    payoutStatus: 'pending_cbu_monday',
+    createdAt: '2026-08-07',
+  }
+];
+
 export default function AfiliadosPortalPage() {
   const [copied, setCopied] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'marketplace' | 'mediahub' | 'payouts'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'sales' | 'marketplace' | 'mediahub' | 'payouts'>('dashboard');
   const [tiers, setTiers] = useState<ExperiencePartnerTier[]>(DEFAULT_EXPERIENCE_TIERS);
 
   // Escuchar matriz de niveles en tiempo real desde Firestore
@@ -32,9 +97,20 @@ export default function AfiliadosPortalPage() {
     }
   }, []);
 
-  // Mercado Pago OAuth State
+  // Mercado Pago OAuth State & Desvinculación
   const [mpLinked, setMpLinked] = useState(true);
   const [mpAccountEmail, setMpAccountEmail] = useState('mp.florencia@mercadopago.com.ar');
+
+  // Datos Bancarios CBU Editables en cualquier momento
+  const [bankData, setBankData] = useState({
+    cbuCvu: '0000003100084592019482',
+    alias: 'FLOR.TRAVEL.MP',
+    accountHolder: 'María Florencia Rossi',
+    bankName: 'Mercado Pago / Banco Macro',
+    cuilDni: '20-34567890-9',
+  });
+  const [editingBank, setEditingBank] = useState(false);
+  const [bankSavedSuccess, setBankSavedSuccess] = useState(false);
 
   // Determinar dinámicamente el nivel actual según la matriz editable
   const totalBookings = 14;
@@ -149,6 +225,12 @@ export default function AfiliadosPortalPage() {
     setTimeout(() => setCopiedItem(null), 2000);
   };
 
+  const handleSaveBankData = () => {
+    setEditingBank(false);
+    setBankSavedSuccess(true);
+    setTimeout(() => setBankSavedSuccess(false), 3000);
+  };
+
   const progressPct = Math.min(100, Math.round((creator.totalBookings / creator.nextTierMinBookings) * 100));
 
   return (
@@ -226,6 +308,18 @@ export default function AfiliadosPortalPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('sales')}
+            className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 shrink-0 ${
+              activeTab === 'sales'
+                ? 'bg-[#0A2A5B] text-white shadow-md'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            Mis Viajes Vendidos & Cuotas ({MOCK_SOLD_TRIPS.length})
+          </button>
+
+          <button
             onClick={() => setActiveTab('marketplace')}
             className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 shrink-0 ${
               activeTab === 'marketplace'
@@ -258,7 +352,7 @@ export default function AfiliadosPortalPage() {
             }`}
           >
             <Zap className="w-4 h-4 text-sky-400" />
-            Cobro Mercado Pago OAuth
+            Cobro MP OAuth & Datos Bancarios
           </button>
         </div>
 
@@ -340,7 +434,97 @@ export default function AfiliadosPortalPage() {
           </div>
         )}
 
-        {/* CONTENIDO PESTAÑA 2: MARKETPLACE */}
+        {/* CONTENIDO PESTAÑA 2: CONTROL DE VIAJES VENDIDOS & CUOTAS DE MEMBRESÍA */}
+        {activeTab === 'sales' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-1">
+              <h3 className="text-base font-black text-[#0A2A5B] flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-emerald-600" /> Control de Viajes Vendidos & Estado de Cuotas de Membresía
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Seguimiento detallado de cada reserva generada con tu código, cuántas cuotas va pagando el cliente y la liquidación exacta de tu comisión por cada cuota abonada.
+              </p>
+            </div>
+
+            {/* Tabla de Viajes Vendidos */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-slate-50 text-[11px] uppercase font-bold text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3.5">Cliente & Experiencia</th>
+                      <th className="px-4 py-3.5">Monto Total</th>
+                      <th className="px-4 py-3.5 text-center">Cuotas Abonadas</th>
+                      <th className="px-4 py-3.5 text-right">Comisión x Cuota</th>
+                      <th className="px-4 py-3.5 text-right">Comisión Total</th>
+                      <th className="px-4 py-3.5 text-center">Estado de Comisión</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 bg-white">
+                    {MOCK_SOLD_TRIPS.map((trip) => {
+                      const quotaPct = Math.round((trip.paidInstallments / trip.installmentsCount) * 100);
+                      return (
+                        <tr key={trip.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="font-bold text-[#0A2A5B]">{trip.customerName}</div>
+                            <div className="text-[11px] text-slate-500 font-medium">{trip.experienceTitle}</div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">Reserva N° {trip.id} · {trip.createdAt}</div>
+                          </td>
+
+                          <td className="px-4 py-3.5 font-bold text-slate-700">
+                            ${trip.totalAmount.toLocaleString('es-AR')}
+                          </td>
+
+                          <td className="px-4 py-3.5 text-center">
+                            <div className="space-y-1">
+                              <span className="font-extrabold text-[#0A2A5B] text-xs">
+                                {trip.paidInstallments} de {trip.installmentsCount} cuotas
+                              </span>
+                              <div className="w-24 mx-auto h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                                <div
+                                  className="h-full bg-emerald-500 rounded-full"
+                                  style={{ width: `${quotaPct}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3.5 text-right font-bold text-slate-700">
+                            ${trip.commissionPerInstallment.toLocaleString('es-AR')}
+                          </td>
+
+                          <td className="px-4 py-3.5 text-right font-black text-[#0A2A5B] text-sm">
+                            ${trip.totalCommission.toLocaleString('es-AR')}
+                          </td>
+
+                          <td className="px-4 py-3.5 text-center">
+                            {trip.payoutStatus === 'credited_mp' && (
+                              <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full text-[10px] font-extrabold">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Acreditada (Split MP)
+                              </span>
+                            )}
+                            {trip.payoutStatus === 'pending_installment' && (
+                              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-extrabold">
+                                ⏳ Pendiente Próx. Cuota
+                              </span>
+                            )}
+                            {trip.payoutStatus === 'pending_cbu_monday' && (
+                              <span className="inline-flex items-center gap-1 bg-sky-100 text-sky-900 border border-sky-300 px-2.5 py-1 rounded-full text-[10px] font-extrabold">
+                                🗓️ Liquidación Lunes (CBU)
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CONTENIDO PESTAÑA 3: MARKETPLACE */}
         {activeTab === 'marketplace' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-1">
@@ -391,7 +575,7 @@ export default function AfiliadosPortalPage() {
           </div>
         )}
 
-        {/* CONTENIDO PESTAÑA 3: MEDIA HUB */}
+        {/* CONTENIDO PESTAÑA 4: MEDIA HUB */}
         {activeTab === 'mediahub' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-1">
@@ -454,51 +638,156 @@ export default function AfiliadosPortalPage() {
           </div>
         )}
 
-        {/* CONTENIDO PESTAÑA 4: MERCADO PAGO OAUTH */}
+        {/* CONTENIDO PESTAÑA 5: VINCULACIÓN DE MERCADO PAGO (OAUTH) & EDICIÓN DE DATOS BANCARIOS */}
         {activeTab === 'payouts' && (
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="text-base font-black text-[#0A2A5B] flex items-center gap-2">
-              <Zap className="w-5 h-5 text-sky-500" /> Vinculación de Mercado Pago (OAuth Split)
-            </h3>
-            <p className="text-xs text-slate-500 font-medium">
-              Conectá tu cuenta de Mercado Pago para recibir el pago automático instantáneo al concretarse cada reserva.
-            </p>
+          <div className="space-y-6">
+            
+            {bankSavedSuccess && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800 flex items-center gap-2 shadow-sm animate-fadeIn">
+                <Check className="h-4 w-4 text-emerald-600" />
+                ¡Tus datos bancarios de CBU/CVU fueron actualizados correctamente!
+              </div>
+            )}
 
-            <div className="bg-sky-50 border border-sky-200 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-sky-500 text-white flex items-center justify-center font-black text-xl shadow-md">
-                  MP
-                </div>
+            {/* SECCIÓN A: DESVINCULACIÓN & VINCULACIÓN DE MERCADO PAGO */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
-                  <h4 className="font-bold text-xs text-[#0A2A5B] flex items-center gap-1.5">
-                    Estado: 
-                    {mpLinked ? (
-                      <span className="text-emerald-700 font-black bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Vinculado & Activo
-                      </span>
-                    ) : (
-                      <span className="text-amber-700 font-black bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full text-[10px]">
-                        Desconectado
-                      </span>
-                    )}
-                  </h4>
-                  {mpLinked && (
-                    <p className="text-xs text-slate-600 font-mono mt-0.5">Cuenta: {mpAccountEmail}</p>
-                  )}
+                  <h3 className="text-base font-black text-[#0A2A5B] flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-sky-500" /> Vinculación de Mercado Pago (OAuth Split Inverso)
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Conectá o desvinculá tu billetera de Mercado Pago en cualquier momento para recibir tus comisiones de manera instantánea.
+                  </p>
                 </div>
               </div>
 
-              <button
-                onClick={() => setMpLinked(!mpLinked)}
-                className={`px-5 py-3 rounded-xl font-bold text-xs shadow-md transition-all ${
-                  mpLinked
-                    ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                    : 'bg-sky-600 text-white hover:bg-sky-700'
-                }`}
-              >
-                {mpLinked ? 'Desvincular Cuenta MP' : '⚡ Conectar Mercado Pago OAuth'}
-              </button>
+              <div className="bg-sky-50 border border-sky-200 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-sky-500 text-white flex items-center justify-center font-black text-xl shadow-md">
+                    MP
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs text-[#0A2A5B] flex items-center gap-1.5">
+                      Estado actual: 
+                      {mpLinked ? (
+                        <span className="text-emerald-700 font-black bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Vinculado & Activo
+                        </span>
+                      ) : (
+                        <span className="text-amber-700 font-black bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full text-[10px]">
+                          Desconectado
+                        </span>
+                      )}
+                    </h4>
+                    {mpLinked && (
+                      <p className="text-xs text-slate-600 font-mono mt-0.5">Cuenta MP: {mpAccountEmail}</p>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setMpLinked(!mpLinked)}
+                  className={`px-5 py-3 rounded-xl font-bold text-xs shadow-md transition-all ${
+                    mpLinked
+                      ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                      : 'bg-sky-600 text-white hover:bg-sky-700'
+                  }`}
+                >
+                  {mpLinked ? 'Desvincular Cuenta MP' : '⚡ Conectar Mercado Pago OAuth'}
+                </button>
+              </div>
             </div>
+
+            {/* SECCIÓN B: EDICIÓN DE DATOS BANCARIOS (CBU / CVU / ALIAS / TITULAR) */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-base font-black text-[#0A2A5B] flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-amber-500" /> Edición de Datos Bancarios (CBU / CVU Semanal)
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Modificá tus datos de transferencia bancaria en cualquier momento para la liquidación de los Lunes.
+                  </p>
+                </div>
+
+                {!editingBank ? (
+                  <button
+                    onClick={() => setEditingBank(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0A2A5B] font-bold text-xs border border-slate-200 transition-all"
+                  >
+                    <Edit3 className="w-4 h-4 text-[#EF4444]" /> Editar CBU / Alias
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSaveBankData}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all"
+                  >
+                    <Save className="w-4 h-4" /> Guardar Cambios
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">CBU o CVU (22 dígitos)</label>
+                    <input
+                      type="text"
+                      disabled={!editingBank}
+                      value={bankData.cbuCvu}
+                      onChange={(e) => setBankData({ ...bankData, cbuCvu: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-[#EF4444] disabled:bg-slate-100/80 disabled:text-slate-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Alias CBU / CVU</label>
+                    <input
+                      type="text"
+                      disabled={!editingBank}
+                      value={bankData.alias}
+                      onChange={(e) => setBankData({ ...bankData, alias: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-[#EF4444] disabled:bg-slate-100/80 disabled:text-slate-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Titular de la Cuenta</label>
+                    <input
+                      type="text"
+                      disabled={!editingBank}
+                      value={bankData.accountHolder}
+                      onChange={(e) => setBankData({ ...bankData, accountHolder: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#EF4444] disabled:bg-slate-100/80 disabled:text-slate-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">CUIL / DNI del Titular</label>
+                    <input
+                      type="text"
+                      disabled={!editingBank}
+                      value={bankData.cuilDni}
+                      onChange={(e) => setBankData({ ...bankData, cuilDni: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-mono text-slate-900 focus:outline-none focus:border-[#EF4444] disabled:bg-slate-100/80 disabled:text-slate-600"
+                    />
+                  </div>
+                </div>
+
+                {editingBank && (
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={handleSaveBankData}
+                      className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" /> Guardar Datos Bancarios
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
         )}
 
