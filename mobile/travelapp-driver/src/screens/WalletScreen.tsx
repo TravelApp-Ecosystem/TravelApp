@@ -73,17 +73,16 @@ export default function WalletScreen() {
     Alert.alert('Gasto registrado 📝', `Se descontaron $${amt} ARS de tu control diario.`);
   };
 
-
-      setWithdrawModalVisible(false);
-      setWithdrawAmount('');
+  const handleRequestWithdraw = async (amount: number) => {
+    try {
       Alert.alert(
         'Retiro solicitado',
-        `Hemos recibido tu solicitud de retiro por $${amount} ARS. Se acreditará en tu cuenta de Mercado Pago.`
+        `Hemos recibido tu solicitud de retiro por $${amount} ARS. Se acreditará en tu cuenta de Mercado Pago / CBU registrado.`
       );
-    } catch {
+    } catch (err) {
       Alert.alert('Error', 'No se pudo procesar el retiro. Intentá nuevamente.');
-    } finally {
-      setProcessingWithdraw(false);
+    }
+  };
   return (
     <View style={styles.container}>
       {/* Header */}

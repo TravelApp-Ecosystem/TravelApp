@@ -347,6 +347,10 @@ export default function ActiveTripScreen() {
           </View>
         </Modal>
       </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },

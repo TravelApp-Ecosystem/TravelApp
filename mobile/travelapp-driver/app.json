@@ -52,8 +52,7 @@
           "locationAlwaysAndWhenInUsePermission": "TravelApp Conductor necesita tu ubicación para compartirla con los pasajeros y recibir solicitudes de viaje.",
           "isAndroidBackgroundLocationEnabled": true
         }
-      ],
-      "expo-audio"
+      ]
     ],
     "extra": {
       "eas": {
