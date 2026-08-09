@@ -96,29 +96,31 @@ export default function AfiliadosRegisterPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden my-8">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="w-full max-w-3xl bg-[#0A2A5B]/80 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden my-8 backdrop-blur-xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#EF4444]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <Link href="/afiliados" className="inline-flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-tech-blue via-purple-600 to-emerald-400 p-0.5 shadow-md">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-amber-400" />
-              </div>
-            </div>
-            <span className="text-xl font-black tracking-tight text-white">TravelApp <span className="text-purple-400 text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30">Experience Partners</span></span>
+        {/* Brand Header Con Logo Real de TravelApp Experience */}
+        <div className="text-center space-y-3">
+          <Link href="/afiliados" className="inline-flex items-center gap-3 group">
+            <img
+              src="/assets/experience_blanco.svg"
+              alt="TravelApp Experience"
+              className="h-10 w-auto group-hover:scale-105 transition-transform"
+            />
+            <span className="text-[10px] uppercase font-black tracking-widest px-2.5 py-0.5 rounded-full bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40">
+              Partners
+            </span>
           </Link>
           <h1 className="text-2xl sm:text-3xl font-black text-white">Postulación & Registro de Embajadores</h1>
-          <p className="text-xs text-slate-400">Completá tus datos personales, canales de difusión y cuenta de cobro para solicitar tu código exclusivo.</p>
+          <p className="text-xs text-slate-300 font-medium">Completá tus datos personales, canales de difusión y cuenta de cobro para solicitar tu código exclusivo.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-6 text-xs font-sans">
           
           {/* SECCIÓN 1: DATOS PERSONALES & FISCALES */}
           <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-2">
-              <User className="w-4 h-4 text-purple-400" /> 1. Datos Personales & Identificación
+            <h3 className="text-xs font-black text-[#EF4444] uppercase tracking-wider flex items-center gap-2">
+              <User className="w-4 h-4 text-[#EF4444]" /> 1. Datos Personales & Identificación
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -130,7 +132,7 @@ export default function AfiliadosRegisterPage() {
                   placeholder="Ej. María Florencia Rossi"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500 font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] font-medium"
                 />
               </div>
 
@@ -142,7 +144,7 @@ export default function AfiliadosRegisterPage() {
                   placeholder="Ej. 34567890 o 20-34567890-9"
                   value={formData.dniCuit}
                   onChange={(e) => setFormData({ ...formData, dniCuit: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] font-mono"
                 />
               </div>
 
@@ -155,7 +157,7 @@ export default function AfiliadosRegisterPage() {
                     required
                     value={formData.dob}
                     onChange={(e) => handleDobChange(e.target.value)}
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
                   />
                 </div>
                 {ageError && (
@@ -175,7 +177,7 @@ export default function AfiliadosRegisterPage() {
                     placeholder="+54 9 381 1234567"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
                   />
                 </div>
               </div>
@@ -190,7 +192,7 @@ export default function AfiliadosRegisterPage() {
                     placeholder="tu@email.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
                   />
                 </div>
               </div>
@@ -199,8 +201,8 @@ export default function AfiliadosRegisterPage() {
 
           {/* SECCIÓN 2: UBICACIÓN & PERFIL DE CONTENIDO */}
           <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-purple-400" /> 2. Ubicación & Categoría Principal
+            <h3 className="text-xs font-black text-[#EF4444] uppercase tracking-wider flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-[#EF4444]" /> 2. Ubicación & Categoría Principal
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -209,7 +211,7 @@ export default function AfiliadosRegisterPage() {
                 <select
                   value={formData.province}
                   onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500 font-semibold"
+                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] font-semibold"
                 >
                   {ARGENTINA_PROVINCES.map((prov) => (
                     <option key={prov} value={prov}>{prov}</option>
@@ -225,7 +227,7 @@ export default function AfiliadosRegisterPage() {
                   placeholder="Ej. San Miguel de Tucumán"
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
                 />
               </div>
 
@@ -234,7 +236,7 @@ export default function AfiliadosRegisterPage() {
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500 font-semibold"
+                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] font-semibold"
                 >
                   <option value="Aventura & Turismo">Aventura & Turismo</option>
                   <option value="Lujo & Bodegas">Lujo & Bodegas</option>
@@ -248,8 +250,8 @@ export default function AfiliadosRegisterPage() {
 
           {/* SECCIÓN 3: CANALES DE DIFUSIÓN & PUBLICACIONES (HASTA 5) */}
           <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-2">
-              <Award className="w-4 h-4 text-purple-400" /> 3. Redes Sociales & Portafolio (Hasta 5 enlaces)
+            <h3 className="text-xs font-black text-[#EF4444] uppercase tracking-wider flex items-center gap-2">
+              <Award className="w-4 h-4 text-[#EF4444]" /> 3. Redes Sociales & Portafolio (Hasta 5 enlaces)
             </h3>
 
             <div>
@@ -260,7 +262,7 @@ export default function AfiliadosRegisterPage() {
                 placeholder="https://instagram.com/tu_usuario, https://tiktok.com/@tu_usuario"
                 value={formData.socialChannels}
                 onChange={(e) => setFormData({ ...formData, socialChannels: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
               />
             </div>
 
@@ -268,7 +270,7 @@ export default function AfiliadosRegisterPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block font-bold text-slate-300">Link/s de tus mejores publicaciones (Máximo 5)</label>
-                <span className="text-[11px] font-bold text-purple-400">{publicationLinks.length} / 5</span>
+                <span className="text-[11px] font-bold text-[#EF4444]">{publicationLinks.length} / 5</span>
               </div>
 
               {publicationLinks.map((link, idx) => (
@@ -278,7 +280,7 @@ export default function AfiliadosRegisterPage() {
                     placeholder={`Link de publicación ${idx + 1} (ej. Reel, Video o Post de viajes)`}
                     value={link}
                     onChange={(e) => handlePublicationLinkChange(idx, e.target.value)}
-                    className="flex-1 px-3.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500 text-xs"
+                    className="flex-1 px-3.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444] text-xs"
                   />
                   {publicationLinks.length > 1 && (
                     <button
@@ -296,7 +298,7 @@ export default function AfiliadosRegisterPage() {
                 <button
                   type="button"
                   onClick={handleAddPublicationLink}
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 bg-purple-500/10 px-3 py-1.5 rounded-lg border border-purple-500/20"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#EF4444] hover:text-red-300 bg-[#EF4444]/10 px-3 py-1.5 rounded-lg border border-[#EF4444]/20"
                 >
                   <Plus className="w-3.5 h-3.5" /> Agregar otro link de publicación
                 </button>
@@ -311,15 +313,15 @@ export default function AfiliadosRegisterPage() {
                 placeholder="Contanos brevemente sobre tu contenido, tu audiencia y por qué querés recomendar nuestros viajes..."
                 value={formData.motivationText}
                 onChange={(e) => setFormData({ ...formData, motivationText: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-[#EF4444]"
               />
             </div>
           </div>
 
           {/* SECCIÓN 4: DATOS DE COBRO (MERCADO PAGO O CBU/CVU) */}
           <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-purple-400" /> 4. Configuración Inicial de Cuenta de Cobro
+            <h3 className="text-xs font-black text-[#EF4444] uppercase tracking-wider flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-[#EF4444]" /> 4. Configuración Inicial de Cuenta de Cobro
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -328,13 +330,13 @@ export default function AfiliadosRegisterPage() {
                 onClick={() => setFormData({ ...formData, payoutMethod: 'mp_instant' })}
                 className={`p-3.5 rounded-xl border text-left transition-all ${
                   formData.payoutMethod === 'mp_instant'
-                    ? 'border-purple-500 bg-purple-500/15 text-white ring-1 ring-purple-500/50'
+                    ? 'border-[#EF4444] bg-[#EF4444]/15 text-white ring-1 ring-[#EF4444]/50'
                     : 'border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800'
                 }`}
               >
                 <p className="font-bold text-xs flex items-center justify-between">
                   ⚡ Split Mercado Pago
-                  {formData.payoutMethod === 'mp_instant' && <Check className="w-4 h-4 text-purple-400" />}
+                  {formData.payoutMethod === 'mp_instant' && <Check className="w-4 h-4 text-[#EF4444]" />}
                 </p>
                 <p className="text-[10px] text-slate-400 mt-1">Cobro automático al venderse la reserva (OAuth MP).</p>
               </button>
@@ -394,22 +396,22 @@ export default function AfiliadosRegisterPage() {
             )}
           </div>
 
-          {/* BOTÓN POSTULARSE */}
+          {/* BOTÓN POSTULARSE CON ROJO CORAL CORPORATIVO */}
           <button
             type="submit"
             disabled={loading || !!ageError}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-tech-blue hover:from-purple-500 hover:to-blue-600 text-white font-black text-sm shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            className="w-full py-4 rounded-2xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-sm shadow-xl shadow-[#EF4444]/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
           >
             {loading ? 'Enviando Postulación...' : 'Postularme como Embajador / Creator'}
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 text-amber-300" />
           </button>
 
         </form>
 
         {/* MODAL DE CONFIRMACIÓN CON LEYENDA OFICIAL */}
         {showConfirmationModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fadeIn">
-            <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-5 shadow-2xl relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fadeIn font-sans">
+            <div className="bg-slate-900 border border-[#EF4444]/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-5 shadow-2xl relative">
               
               <button
                 onClick={handleCloseModalAndProceed}
@@ -418,22 +420,20 @@ export default function AfiliadosRegisterPage() {
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 to-emerald-400 p-0.5 mx-auto shadow-lg">
-                <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center text-amber-300">
-                  <Sparkles className="w-8 h-8" />
-                </div>
+              <div className="w-16 h-16 rounded-full bg-[#EF4444] p-0.5 mx-auto shadow-lg flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-white" />
               </div>
 
               <h3 className="text-xl font-black text-white">¡Postulación Recibida con Éxito!</h3>
 
               {/* LEYENDA OFICIAL SOLICITADA POR EL USUARIO */}
-              <div className="bg-purple-950/40 border border-purple-500/30 rounded-2xl p-4 text-xs text-slate-200 leading-relaxed font-medium shadow-inner">
+              <div className="bg-[#0A2A5B]/80 border border-[#EF4444]/30 rounded-2xl p-4 text-xs text-slate-200 leading-relaxed font-medium shadow-inner">
                 "¡Buenísimo! Ya recibimos tus datos y tu cuenta de cobro quedó registrada. Nuestro equipo va a revisar tu perfil para cuidar la calidad de la comunidad. Te avisamos por acá o por WhatsApp en menos de 48 hs. ¡Ojalá te sumes pronto a la familia TravelApp!"
               </div>
 
               <button
                 onClick={handleCloseModalAndProceed}
-                className="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md transition-all"
+                className="w-full py-3.5 rounded-xl bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-xs shadow-md transition-all"
               >
                 Entrar a mi Portal de Creador
               </button>
