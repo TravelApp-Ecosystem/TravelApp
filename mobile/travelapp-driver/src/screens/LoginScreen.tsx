@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Modal, ScrollView, Linking,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Modal, ScrollView, Linking, Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { collection, doc, setDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -26,13 +27,14 @@ export default function LoginScreen() {
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
   const [regStep, setRegStep] = useState(1);
 
-  // Paso 1: Datos Personales & Clave
+  // Paso 1: Datos Personales, Clave y Foto de Perfil
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
 
   // Paso 2: Dirección y Datos Fiscales / CBU
   const [street, setStreet] = useState('');
@@ -44,20 +46,65 @@ export default function LoginScreen() {
   const [taxIdNumber, setTaxIdNumber] = useState(''); // CUIT/CUIL
   const [cbuCvu, setCbuCvu] = useState('');
 
-  // Paso 3: Datos del Vehículo
+  // Paso 3: Datos del Vehículo & Fotos de Documentación
   const [vehicleMake, setVehicleMake] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleYear, setVehicleYear] = useState('');
   const [vehicleColor, setVehicleColor] = useState('');
   const [vehiclePlate, setVehiclePlate] = useState('');
 
+  // Fotos de Documentos Requeridos
+  const [driverLicenseUri, setDriverLicenseUri] = useState<string | null>(null);
+  const [cedulaUri, setCedulaUri] = useState<string | null>(null);
+  const [rtoUri, setRtoUri] = useState<string | null>(null);
+  const [seguroUri, setSeguroUri] = useState<string | null>(null);
+
   // Paso 4: Mercado Pago Conexión & Split
   const [mpEmail, setMpEmail] = useState('');
   const [mpLinked, setMpLinked] = useState(false);
-  const [showMpInput, setShowMpInput] = useState(false);
   const [linkingMp, setLinkingMp] = useState(false);
 
   const [submittingReg, setSubmittingReg] = useState(false);
+
+  // --- Handlers de Cámara y Galería para Imagenes ---
+  const handlePickImage = async (onSelected: (uri: string) => void) => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        return Alert.alert('Permiso Requerido', 'Necesitamos acceso a tus fotos para seleccionar el archivo.');
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.7,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        onSelected(res.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn('Error picking image:', e);
+      Alert.alert('Error', 'No se pudo abrir la galería.');
+    }
+  };
+
+  const handleTakePhoto = async (onSelected: (uri: string) => void) => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        return Alert.alert('Permiso de Cámara', 'Necesitamos acceso a la cámara para tomar la fotografía.');
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.7,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        onSelected(res.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn('Error taking photo:', e);
+      Alert.alert('Error', 'No se pudo abrir la cámara.');
+    }
+  };
 
   const handleLogin = async () => {
     const trimmedEmail = email.trim().toLowerCase();
@@ -66,10 +113,8 @@ export default function LoginScreen() {
     try {
       let userCred;
       try {
-        // 1. Intentar autenticación con credenciales existentes en Firebase Auth
         userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
       } catch (err: any) {
-        // 2. Si el usuario NO existe en Firebase Auth y es un admin master, intentamos crearlo
         const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
         if (isMasterAdmin && err.code === 'auth/user-not-found') {
           try {
@@ -78,12 +123,10 @@ export default function LoginScreen() {
             throw createErr;
           }
         } else {
-          // Si el usuario ya existe pero la contraseña es errónea, lanzamos el error original
           throw err;
         }
       }
 
-      // 3. Asegurar expediente del chofer en Firestore (drivers/{uid})
       if (userCred?.user) {
         const { getDoc } = await import('firebase/firestore');
         const driverRef = doc(db, 'drivers', userCred.user.uid);
@@ -154,7 +197,6 @@ export default function LoginScreen() {
     setLinkingMp(true);
     try {
       const authUrl = `https://auth.mercadopago.com.ar/authorization?client_id=3082023901451356&response_type=code&platform_id=mp&state=driver_${encodeURIComponent(mpEmail)}&redirect_uri=${encodeURIComponent('https://travelapp.ar/api/mp/oauth/callback')}`;
-      
       const canOpen = await Linking.canOpenURL(authUrl).catch(() => false);
       if (canOpen) {
         await Linking.openURL(authUrl);
@@ -164,7 +206,6 @@ export default function LoginScreen() {
     } finally {
       setTimeout(() => {
         setMpLinked(true);
-        setShowMpInput(false);
         setLinkingMp(false);
         Alert.alert('¡Mercado Pago Conectado!', 'Tu cuenta ha sido autorizada correctamente para procesar las liquidaciones netas de viajes.');
       }, 1200);
@@ -211,7 +252,6 @@ export default function LoginScreen() {
       const cleanEmail = regEmail.trim().toLowerCase();
       let userUid = Date.now().toString();
 
-      // 1. Crear cuenta en Firebase Auth
       try {
         const userCred = await createUserWithEmailAndPassword(auth, cleanEmail, regPassword);
         userUid = userCred.user.uid;
@@ -224,7 +264,7 @@ export default function LoginScreen() {
       const isMaster = MASTER_ADMIN_EMAILS.includes(cleanEmail);
       const driverStatus = isMaster ? 'Activo' : 'En Revisión';
 
-      // 2. Crear documento de chofer en Firestore `drivers/{uid}` (Formato exacto del Dashboard)
+      // 1. Guardar en `drivers` colección de Firestore
       await setDoc(doc(db, 'drivers', userUid), {
         id: userUid,
         firstName,
@@ -232,12 +272,13 @@ export default function LoginScreen() {
         name: `${firstName} ${lastName}`,
         email: cleanEmail,
         phone: regPhone,
+        photoUrl: profilePhotoUri || undefined,
         status: driverStatus,
         allowedServiceModes: ['mu', 'aci', 'transfers'],
         maxNegativeBalance: -10000,
         currentCommissionBalance: 0,
         rating: 5.0,
-        taxIdNumber, // CUIT/CUIL
+        taxIdNumber,
         cbuCvu,
         address: { street, streetNumber, floorApp, city, province, postalCode },
         activeVehicle: {
@@ -247,12 +288,18 @@ export default function LoginScreen() {
           color: vehicleColor,
           year: Number(vehicleYear) || 2024,
         },
+        documents: {
+          driverLicense: driverLicenseUri || undefined,
+          cedula: cedulaUri || undefined,
+          rto: rtoUri || undefined,
+          seguro: seguroUri || undefined,
+        },
         mercadoPagoEmail: mpEmail,
         mercadoPagoLinked: true,
         createdAt: Date.now(),
       });
 
-      // 3. Registrar solicitud en `partner_applications` para el expediente de Onboarding
+      // 2. Guardar en `partner_applications` para análisis completo de expediente
       await addDoc(collection(db, 'partner_applications'), {
         userId: userUid,
         firstName,
@@ -261,6 +308,7 @@ export default function LoginScreen() {
         dob,
         email: cleanEmail,
         phone: regPhone,
+        photoUrl: profilePhotoUri || undefined,
         address: { street, streetNumber, floorApp, city, province, postalCode },
         taxIdNumber,
         cbuCvu,
@@ -269,6 +317,12 @@ export default function LoginScreen() {
           year: vehicleYear,
           color: vehicleColor,
           plate: vehiclePlate.toUpperCase(),
+        },
+        documents: {
+          driverLicense: driverLicenseUri || undefined,
+          cedula: cedulaUri || undefined,
+          rto: rtoUri || undefined,
+          seguro: seguroUri || undefined,
         },
         mercadoPagoEmail: mpEmail,
         mercadoPagoLinked: true,
@@ -280,9 +334,11 @@ export default function LoginScreen() {
       setRegisterModalVisible(false);
       setRegStep(1);
       setFirstName(''); setLastName(''); setDob(''); setRegEmail(''); setRegPassword(''); setRegPhone('');
-      setStreet(''); setStreetNumber(''); setFloorApp(''); setCity(''); setProvince(''); setPostalCode('');
-      setTaxIdNumber(''); setCbuCvu(''); setVehicleMake(''); setVehicleModel(''); setVehicleYear('');
-      setVehicleColor(''); setVehiclePlate(''); setMpEmail(''); setMpLinked(false);
+      setProfilePhotoUri(null); setStreet(''); setStreetNumber(''); setFloorApp(''); setCity('');
+      setProvince(''); setPostalCode(''); setTaxIdNumber(''); setCbuCvu(''); setVehicleMake('');
+      setVehicleModel(''); setVehicleYear(''); setVehicleColor(''); setVehiclePlate('');
+      setDriverLicenseUri(null); setCedulaUri(null); setRtoUri(null); setSeguroUri(null);
+      setMpEmail(''); setMpLinked(false);
 
       Alert.alert(
         '¡Registro Completado! 🚗',
@@ -363,7 +419,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* MODAL DE REGISTRO MULTIPASO / ONBOARDING COMPLETO */}
+      {/* MODAL DE REGISTRO MULTIPASO / ONBOARDING CON CÁMARA Y ARCHIVOS */}
       <Modal
         visible={registerModalVisible}
         transparent
@@ -377,17 +433,40 @@ export default function LoginScreen() {
               <Text style={styles.stepIndicator}>Paso {regStep} de 4</Text>
             </View>
             
-            {/* Barra de Progreso */}
             <View style={styles.progressBarBg}>
               <View style={[styles.progressBarFill, { width: `${(regStep / 4) * 100}%` }]} />
             </View>
 
             <ScrollView style={styles.formScroll} showsVerticalScrollIndicator={false}>
               
-              {/* PASO 1: Datos Personales & Clave */}
+              {/* PASO 1: Datos Personales, Clave & Foto de Perfil con Cámara */}
               {regStep === 1 && (
                 <View style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>Paso 1: Datos de Contacto y Clave</Text>
+                  <Text style={styles.stepTitle}>Paso 1: Foto de Perfil y Contacto</Text>
+
+                  {/* Uploader Foto de Perfil */}
+                  <View style={styles.photoUploaderBox}>
+                    <View style={styles.photoAvatarContainer}>
+                      {profilePhotoUri ? (
+                        <Image source={{ uri: profilePhotoUri }} style={styles.photoAvatarImage} />
+                      ) : (
+                        <Ionicons name="person" size={40} color="#94A3B8" />
+                      )}
+                    </View>
+                    <Text style={styles.photoUploaderTitle}>Foto de Perfil del Conductor</Text>
+                    <Text style={styles.photoUploaderSub}>Tomá una foto clara de tu rostro o cargá desde tu galería.</Text>
+                    
+                    <View style={styles.uploadButtonsRow}>
+                      <TouchableOpacity style={styles.uploadBtn} onPress={() => handleTakePhoto(setProfilePhotoUri)}>
+                        <Ionicons name="camera" size={16} color={Colors.white} />
+                        <Text style={styles.uploadBtnText}>Tomar Foto 📸</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.uploadSecondaryBtn} onPress={() => handlePickImage(setProfilePhotoUri)}>
+                        <Ionicons name="image" size={16} color={Colors.primary} />
+                        <Text style={styles.uploadSecondaryBtnText}>Galería 🖼️</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                   
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>Nombre *</Text>
@@ -564,10 +643,10 @@ export default function LoginScreen() {
                 </View>
               )}
 
-              {/* PASO 3: Datos del Vehículo */}
+              {/* PASO 3: Vehículo y Captura de Documentos */}
               {regStep === 3 && (
                 <View style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>Paso 3: Vehículo Activo de la Flota</Text>
+                  <Text style={styles.stepTitle}>Paso 3: Vehículo y Carga de Documentación</Text>
 
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>Marca *</Text>
@@ -626,6 +705,83 @@ export default function LoginScreen() {
                       onChangeText={setVehiclePlate}
                       autoCapitalize="characters"
                     />
+                  </View>
+
+                  {/* Sección de Carga de Documentación con Cámara/Galería */}
+                  <View style={styles.docsSectionBox}>
+                    <Text style={styles.docsSectionTitle}>📸 Documentos del Conductor y Vehículo</Text>
+                    
+                    {/* Item 1: Licencia de Conducir */}
+                    <View style={styles.docItemCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.docItemTitle}>Licencia de Conducir (Frente/Dorso)</Text>
+                        <Text style={styles.docItemStatus}>
+                          {driverLicenseUri ? '✓ Imagen de Licencia cargada' : 'Cargá foto de tu registro'}
+                        </Text>
+                      </View>
+                      <View style={styles.docBtnRow}>
+                        <TouchableOpacity style={styles.docMiniBtn} onPress={() => handleTakePhoto(setDriverLicenseUri)}>
+                          <Ionicons name="camera" size={14} color={Colors.white} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.docMiniSecBtn} onPress={() => handlePickImage(setDriverLicenseUri)}>
+                          <Ionicons name="image" size={14} color={Colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Item 2: Cédula Verde/Azul */}
+                    <View style={styles.docItemCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.docItemTitle}>Cédula Verde / Azul</Text>
+                        <Text style={styles.docItemStatus}>
+                          {cedulaUri ? '✓ Imagen de Cédula cargada' : 'Cargá foto de la cédula del auto'}
+                        </Text>
+                      </View>
+                      <View style={styles.docBtnRow}>
+                        <TouchableOpacity style={styles.docMiniBtn} onPress={() => handleTakePhoto(setCedulaUri)}>
+                          <Ionicons name="camera" size={14} color={Colors.white} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.docMiniSecBtn} onPress={() => handlePickImage(setCedulaUri)}>
+                          <Ionicons name="image" size={14} color={Colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Item 3: VTV / RTO */}
+                    <View style={styles.docItemCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.docItemTitle}>VTV / RTO Obligatoria</Text>
+                        <Text style={styles.docItemStatus}>
+                          {rtoUri ? '✓ Comprobante VTV cargado' : 'Cargá foto de la oblea o certificado VTV'}
+                        </Text>
+                      </View>
+                      <View style={styles.docBtnRow}>
+                        <TouchableOpacity style={styles.docMiniBtn} onPress={() => handleTakePhoto(setRtoUri)}>
+                          <Ionicons name="camera" size={14} color={Colors.white} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.docMiniSecBtn} onPress={() => handlePickImage(setRtoUri)}>
+                          <Ionicons name="image" size={14} color={Colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Item 4: Póliza de Seguro */}
+                    <View style={styles.docItemCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.docItemTitle}>Póliza de Seguro de Transporte</Text>
+                        <Text style={styles.docItemStatus}>
+                          {seguroUri ? '✓ Póliza de seguro cargada' : 'Cargá comprobante de seguro vigente'}
+                        </Text>
+                      </View>
+                      <View style={styles.docBtnRow}>
+                        <TouchableOpacity style={styles.docMiniBtn} onPress={() => handleTakePhoto(setSeguroUri)}>
+                          <Ionicons name="camera" size={14} color={Colors.white} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.docMiniSecBtn} onPress={() => handlePickImage(setSeguroUri)}>
+                          <Ionicons name="image" size={14} color={Colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   </View>
                 </View>
               )}
@@ -860,7 +1016,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F4C35',
   },
   formScroll: {
-    maxHeight: 400,
+    maxHeight: 450,
   },
   stepContainer: {
     gap: 12,
@@ -877,6 +1033,133 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand-Medium',
     color: Colors.textMuted,
     lineHeight: 18,
+  },
+  photoUploaderBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  photoAvatarContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  photoAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 35,
+  },
+  photoUploaderTitle: {
+    fontSize: 13,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+  },
+  photoUploaderSub: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Medium',
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  uploadButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  uploadBtn: {
+    backgroundColor: '#0F4C35',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  uploadBtnText: {
+    color: Colors.white,
+    fontSize: 11,
+    fontFamily: 'Quicksand-Bold',
+  },
+  uploadSecondaryBtn: {
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  uploadSecondaryBtnText: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontFamily: 'Quicksand-Bold',
+  },
+  docsSectionBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+    marginTop: 10,
+  },
+  docsSectionTitle: {
+    fontSize: 12,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+  },
+  docItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  docItemTitle: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+  },
+  docItemStatus: {
+    fontSize: 10,
+    fontFamily: 'Quicksand-Medium',
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  docBtnRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  docMiniBtn: {
+    backgroundColor: '#0F4C35',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  docMiniSecBtn: {
+    backgroundColor: '#E8F5E9',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.primary,
   },
   formRow: {
     flexDirection: 'row',
