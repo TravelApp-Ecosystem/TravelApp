@@ -546,7 +546,19 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
     hasSutrappa: false, sutrappaLicense: '', sutrappaHolder: '',
     cedulaFrente: '', cedulaDorso: '', fotoVehiculo: '', rtoDoc: '', seguroComercial: '',
     driverLicense: '', criminalRecord: '', conductCert: '', healthCert: '',
+    referredBySupervisor: '',
   });
+
+  // Detectar automáticamente el código o link del Supervisor/Afiliado (?ref= o ?supervisor=)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const refCode = params.get('ref') || params.get('supervisor') || params.get('spv');
+      if (refCode) {
+        setDRegData(prev => ({ ...prev, referredBySupervisor: refCode }));
+      }
+    }
+  }, []);
 
   // Escuchar CMS, categorías y tarifas activas en tiempo real
   useEffect(() => {
