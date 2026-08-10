@@ -4,7 +4,7 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Modal, ScrollView, Linking,
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { addDoc, collection, Timestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo } from '../components/BrandLogos';
@@ -22,18 +22,19 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Registro del Conductor - Asistente de 4 Pasos (Igual al Landing de TravelCab)
+  // Registro del Conductor - Asistente Onboarding de 4 Pasos
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
   const [regStep, setRegStep] = useState(1);
 
-  // Paso 1: Datos Personales
+  // Paso 1: Datos Personales & Clave
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState('');
   const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
 
-  // Paso 2: Dirección y Datos Fiscales
+  // Paso 2: Dirección y Datos Fiscales / CBU
   const [street, setStreet] = useState('');
   const [streetNumber, setStreetNumber] = useState('');
   const [floorApp, setFloorApp] = useState('');
@@ -65,40 +66,47 @@ export default function LoginScreen() {
     try {
       let userCred;
       try {
+        // 1. Intentar autenticación con credenciales existentes en Firebase Auth
         userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
       } catch (err: any) {
-        // Auto-registro para cuentas administradoras / de prueba (fernando@travelapp.ar, ferincola@gmail.com, etc.)
+        // 2. Si el usuario NO existe en Firebase Auth y es un admin master, intentamos crearlo
         const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
-        if (isMasterAdmin || err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
+        if (isMasterAdmin && err.code === 'auth/user-not-found') {
           try {
             userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
           } catch (createErr: any) {
             throw createErr;
           }
         } else {
+          // Si el usuario ya existe pero la contraseña es errónea, lanzamos el error original
           throw err;
         }
       }
 
-      // Asegurar perfil de conductor habilitado en Firestore
+      // 3. Asegurar expediente del chofer en Firestore (drivers/{uid})
       if (userCred?.user) {
-        const { doc, getDoc, setDoc } = await import('firebase/firestore');
+        const { getDoc } = await import('firebase/firestore');
         const driverRef = doc(db, 'drivers', userCred.user.uid);
         const snap = await getDoc(driverRef);
         if (!snap.exists()) {
           await setDoc(driverRef, {
             id: userCred.user.uid,
+            firstName: trimmedEmail.split('@')[0],
+            lastName: 'Admin',
             name: userCred.user.displayName || (trimmedEmail.includes('fernando') ? 'Fernando Admin' : 'Socio Conductor'),
             email: trimmedEmail,
             phone: '+5491100000000',
-            status: 'active',
+            status: 'Activo',
+            allowedServiceModes: ['mu', 'aci', 'transfers'],
+            maxNegativeBalance: -10000,
+            currentCommissionBalance: 0,
             rating: 5.0,
             activeVehicle: {
               brand: 'Fiat Cronos',
               model: '2024',
-              color: 'Gris Plata',
               plate: 'AF 123 JK',
-              category: 'TravelCab Standard',
+              color: 'Gris Plata',
+              year: 2024,
             },
             createdAt: Date.now(),
           });
@@ -106,14 +114,17 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       console.warn('Driver login error:', err);
-      let detail = err?.message || err?.code || 'Verificá tu clave';
-      if (err.code === 'auth/weak-password') {
-        detail = 'La contraseña debe tener al menos 6 caracteres (ej. 123456).';
+      let detail = 'Email o contraseña incorrectos. Verificá tu clave.';
+      if (err.code === 'auth/user-not-found') {
+        detail = 'El correo ingresado no está registrado.';
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        detail = 'Contraseña incorrecta. Si no la recordás, tocá "¿Olvidaste tu contraseña?" abajo.';
+      } else if (err.code === 'auth/too-many-requests') {
+        detail = 'Demasiados intentos fallidos. Intentá más tarde o restablecé tu clave.';
+      } else if (err.message) {
+        detail = err.message;
       }
-      Alert.alert(
-        'Error de Inicio de Sesión',
-        `No se pudo autenticar: ${detail}`
-      );
+      Alert.alert('Error de Inicio de Sesión', detail);
     } finally {
       setLoading(false);
     }
@@ -142,7 +153,6 @@ export default function LoginScreen() {
     }
     setLinkingMp(true);
     try {
-      // Intentar abrir portal de autorización OAuth si se especifica una URL de entorno
       const authUrl = `https://auth.mercadopago.com.ar/authorization?client_id=3082023901451356&response_type=code&platform_id=mp&state=driver_${encodeURIComponent(mpEmail)}&redirect_uri=${encodeURIComponent('https://travelapp.ar/api/mp/oauth/callback')}`;
       
       const canOpen = await Linking.canOpenURL(authUrl).catch(() => false);
@@ -163,11 +173,14 @@ export default function LoginScreen() {
 
   const handleNextStep = () => {
     if (regStep === 1) {
-      if (!firstName || !lastName || !dob || !regEmail || !regPhone) {
-        return Alert.alert('Campos requeridos', 'Por favor completa todos tus datos personales.');
+      if (!firstName || !lastName || !dob || !regEmail || !regPhone || !regPassword) {
+        return Alert.alert('Campos requeridos', 'Por favor completa todos tus datos personales y elegí una contraseña.');
       }
       if (!regEmail.includes('@')) {
         return Alert.alert('Email inválido', 'Por favor ingresa un email válido.');
+      }
+      if (regPassword.length < 6) {
+        return Alert.alert('Contraseña débil', 'La contraseña debe tener al menos 6 caracteres.');
       }
     } else if (regStep === 2) {
       if (!street || !streetNumber || !city || !province || !postalCode || !taxIdNumber || !cbuCvu) {
@@ -195,15 +208,61 @@ export default function LoginScreen() {
 
     setSubmittingReg(true);
     try {
-      // Registrar solicitud completa de socio conductor en Firestore
-      await addDoc(collection(db, 'partner_applications'), {
+      const cleanEmail = regEmail.trim().toLowerCase();
+      let userUid = Date.now().toString();
+
+      // 1. Crear cuenta en Firebase Auth
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, cleanEmail, regPassword);
+        userUid = userCred.user.uid;
+      } catch (authErr: any) {
+        if (authErr.code !== 'auth/email-already-in-use') {
+          throw authErr;
+        }
+      }
+
+      const isMaster = MASTER_ADMIN_EMAILS.includes(cleanEmail);
+      const driverStatus = isMaster ? 'Activo' : 'En Revisión';
+
+      // 2. Crear documento de chofer en Firestore `drivers/{uid}` (Formato exacto del Dashboard)
+      await setDoc(doc(db, 'drivers', userUid), {
+        id: userUid,
         firstName,
         lastName,
+        name: `${firstName} ${lastName}`,
+        email: cleanEmail,
+        phone: regPhone,
+        status: driverStatus,
+        allowedServiceModes: ['mu', 'aci', 'transfers'],
+        maxNegativeBalance: -10000,
+        currentCommissionBalance: 0,
+        rating: 5.0,
+        taxIdNumber, // CUIT/CUIL
+        cbuCvu,
+        address: { street, streetNumber, floorApp, city, province, postalCode },
+        activeVehicle: {
+          brand: `${vehicleMake} ${vehicleModel}`.trim(),
+          model: vehicleModel,
+          plate: vehiclePlate.toUpperCase(),
+          color: vehicleColor,
+          year: Number(vehicleYear) || 2024,
+        },
+        mercadoPagoEmail: mpEmail,
+        mercadoPagoLinked: true,
+        createdAt: Date.now(),
+      });
+
+      // 3. Registrar solicitud en `partner_applications` para el expediente de Onboarding
+      await addDoc(collection(db, 'partner_applications'), {
+        userId: userUid,
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName}`,
         dob,
-        email: regEmail,
+        email: cleanEmail,
         phone: regPhone,
         address: { street, streetNumber, floorApp, city, province, postalCode },
-        taxIdNumber, // CUIT/CUIL
+        taxIdNumber,
         cbuCvu,
         vehicle: {
           brand: `${vehicleMake} ${vehicleModel}`,
@@ -213,41 +272,25 @@ export default function LoginScreen() {
         },
         mercadoPagoEmail: mpEmail,
         mercadoPagoLinked: true,
-        status: 'pending',
+        status: isMaster ? 'approved' : 'pending',
         createdAt: Timestamp.now()
       });
 
-      // Limpiar Formulario y reiniciar estados
-      setFirstName('');
-      setLastName('');
-      setDob('');
-      setRegEmail('');
-      setRegPhone('');
-      setStreet('');
-      setStreetNumber('');
-      setFloorApp('');
-      setCity('');
-      setProvince('');
-      setPostalCode('');
-      setTaxIdNumber('');
-      setCbuCvu('');
-      setVehicleMake('');
-      setVehicleModel('');
-      setVehicleYear('');
-      setVehicleColor('');
-      setVehiclePlate('');
-      setMpEmail('');
-      setMpLinked(false);
-      setShowMpInput(false);
-      setRegStep(1);
+      // Reiniciar formulario
       setRegisterModalVisible(false);
+      setRegStep(1);
+      setFirstName(''); setLastName(''); setDob(''); setRegEmail(''); setRegPassword(''); setRegPhone('');
+      setStreet(''); setStreetNumber(''); setFloorApp(''); setCity(''); setProvince(''); setPostalCode('');
+      setTaxIdNumber(''); setCbuCvu(''); setVehicleMake(''); setVehicleModel(''); setVehicleYear('');
+      setVehicleColor(''); setVehiclePlate(''); setMpEmail(''); setMpLinked(false);
 
       Alert.alert(
-        '¡Solicitud enviada! 🎉',
-        'Tus datos y cuenta de Mercado Pago han sido guardados con éxito en el sistema de onboarding de TravelCab. El equipo comercial auditará tu vehículo y te contactará a la brevedad.'
+        '¡Registro Completado! 🚗',
+        `Tu solicitud fue procesada correctamente. ${isMaster ? 'Tu cuenta ha sido habilitada inmediatamente.' : 'El equipo de flota revisará tu documentación en 24-48 hs.'}`
       );
-    } catch (e) {
-      Alert.alert('Error', 'No pudimos registrar tu solicitud. Intentá de nuevo más tarde.');
+    } catch (err: any) {
+      console.error('Error submitting driver onboarding:', err);
+      Alert.alert('Error en el Registro', err?.message || 'No pudimos registrar tu solicitud. Intentá de nuevo.');
     } finally {
       setSubmittingReg(false);
     }
@@ -320,7 +363,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* MODAL DE REGISTRO MULTIPASO */}
+      {/* MODAL DE REGISTRO MULTIPASO / ONBOARDING COMPLETO */}
       <Modal
         visible={registerModalVisible}
         transparent
@@ -330,7 +373,7 @@ export default function LoginScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Registro de Conductor</Text>
+              <Text style={styles.modalTitle}>Onboarding de Conductor</Text>
               <Text style={styles.stepIndicator}>Paso {regStep} de 4</Text>
             </View>
             
@@ -341,13 +384,13 @@ export default function LoginScreen() {
 
             <ScrollView style={styles.formScroll} showsVerticalScrollIndicator={false}>
               
-              {/* PASO 1: Datos Personales */}
+              {/* PASO 1: Datos Personales & Clave */}
               {regStep === 1 && (
                 <View style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>Paso 1: Datos de Contacto</Text>
+                  <Text style={styles.stepTitle}>Paso 1: Datos de Contacto y Clave</Text>
                   
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Nombre</Text>
+                    <Text style={styles.formLabel}>Nombre *</Text>
                     <TextInput
                       style={styles.formInput}
                       placeholder="Ej. Juan"
@@ -358,7 +401,7 @@ export default function LoginScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Apellido</Text>
+                    <Text style={styles.formLabel}>Apellido *</Text>
                     <TextInput
                       style={styles.formInput}
                       placeholder="Ej. Pérez"
@@ -369,7 +412,7 @@ export default function LoginScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Fecha de Nacimiento (DD/MM/AAAA)</Text>
+                    <Text style={styles.formLabel}>Fecha de Nacimiento (DD/MM/AAAA) *</Text>
                     <TextInput
                       style={styles.formInput}
                       placeholder="Ej. 15/08/1990"
@@ -380,10 +423,10 @@ export default function LoginScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Email de Contacto</Text>
+                    <Text style={styles.formLabel}>Correo Electrónico *</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="juanperez@email.com"
+                      placeholder="juan.perez@gmail.com"
                       placeholderTextColor={Colors.textMuted}
                       value={regEmail}
                       onChangeText={setRegEmail}
@@ -393,10 +436,22 @@ export default function LoginScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Teléfono Celular (WhatsApp)</Text>
+                    <Text style={styles.formLabel}>Contraseña de Ingreso (mín. 6 caracteres) *</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="Ej. +5491100000000"
+                      placeholder="••••••••"
+                      placeholderTextColor={Colors.textMuted}
+                      value={regPassword}
+                      onChangeText={setRegPassword}
+                      secureTextEntry
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>Teléfono de Contacto (WhatsApp) *</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="+54 9 11 1234-5678"
                       placeholderTextColor={Colors.textMuted}
                       value={regPhone}
                       onChangeText={setRegPhone}
@@ -406,27 +461,28 @@ export default function LoginScreen() {
                 </View>
               )}
 
-              {/* PASO 2: Dirección y Datos Fiscales */}
+              {/* PASO 2: Domicilio y Datos Fiscales */}
               {regStep === 2 && (
                 <View style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>Paso 2: Datos Fiscales y Bancarios</Text>
-                  
+                  <Text style={styles.stepTitle}>Paso 2: Domicilio, CUIT y CBU de Cobro</Text>
+
                   <View style={styles.formRow}>
                     <View style={[styles.formGroup, { flex: 2 }]}>
-                      <Text style={styles.formLabel}>Calle</Text>
+                      <Text style={styles.formLabel}>Calle *</Text>
                       <TextInput
                         style={styles.formInput}
-                        placeholder="Ej. Av. Colón"
+                        placeholder="Av. Corrientes"
                         placeholderTextColor={Colors.textMuted}
                         value={street}
                         onChangeText={setStreet}
                       />
                     </View>
+
                     <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={styles.formLabel}>Nro</Text>
+                      <Text style={styles.formLabel}>Altura *</Text>
                       <TextInput
                         style={styles.formInput}
-                        placeholder="123"
+                        placeholder="1234"
                         placeholderTextColor={Colors.textMuted}
                         value={streetNumber}
                         onChangeText={setStreetNumber}
@@ -439,7 +495,7 @@ export default function LoginScreen() {
                     <Text style={styles.formLabel}>Piso / Departamento (Opcional)</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="Ej. 2do B"
+                      placeholder="4º B"
                       placeholderTextColor={Colors.textMuted}
                       value={floorApp}
                       onChangeText={setFloorApp}
@@ -448,17 +504,18 @@ export default function LoginScreen() {
 
                   <View style={styles.formRow}>
                     <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={styles.formLabel}>Ciudad</Text>
+                      <Text style={styles.formLabel}>Localidad / Ciudad *</Text>
                       <TextInput
                         style={styles.formInput}
-                        placeholder="San Miguel"
+                        placeholder="Tucumán / CABA"
                         placeholderTextColor={Colors.textMuted}
                         value={city}
                         onChangeText={setCity}
                       />
                     </View>
+
                     <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={styles.formLabel}>Provincia</Text>
+                      <Text style={styles.formLabel}>Provincia *</Text>
                       <TextInput
                         style={styles.formInput}
                         placeholder="Tucumán"
@@ -469,39 +526,39 @@ export default function LoginScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Código Postal</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="Ej. 4000"
-                      placeholderTextColor={Colors.textMuted}
-                      value={postalCode}
-                      onChangeText={setPostalCode}
-                      keyboardType="numeric"
-                    />
+                  <View style={styles.formRow}>
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={styles.formLabel}>Código Postal *</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="4000"
+                        placeholderTextColor={Colors.textMuted}
+                        value={postalCode}
+                        onChangeText={setPostalCode}
+                      />
+                    </View>
+
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={styles.formLabel}>CUIT / CUIL *</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="20-34567890-9"
+                        placeholderTextColor={Colors.textMuted}
+                        value={taxIdNumber}
+                        onChangeText={setTaxIdNumber}
+                        keyboardType="numeric"
+                      />
+                    </View>
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Identificación Fiscal (CUIT/CUIL)</Text>
+                    <Text style={styles.formLabel}>CBU / CVU / Alias de Cobro *</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="Ej. 20-34567890-9"
-                      placeholderTextColor={Colors.textMuted}
-                      value={taxIdNumber}
-                      onChangeText={setTaxIdNumber}
-                      keyboardType="numeric"
-                    />
-                  </View>
-
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>CBU o CVU Bancario</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="22 dígitos de tu cuenta bancaria o virtual"
+                      placeholder="0000003100012345678901 o chofer.travelapp"
                       placeholderTextColor={Colors.textMuted}
                       value={cbuCvu}
                       onChangeText={setCbuCvu}
-                      keyboardType="numeric"
                     />
                   </View>
                 </View>
@@ -510,13 +567,13 @@ export default function LoginScreen() {
               {/* PASO 3: Datos del Vehículo */}
               {regStep === 3 && (
                 <View style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>Paso 3: Ficha del Vehículo</Text>
-                  
+                  <Text style={styles.stepTitle}>Paso 3: Vehículo Activo de la Flota</Text>
+
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Marca del Auto</Text>
+                    <Text style={styles.formLabel}>Marca *</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="Ej. Chevrolet"
+                      placeholder="Ej. Fiat / Volkswagen / Toyota"
                       placeholderTextColor={Colors.textMuted}
                       value={vehicleMake}
                       onChangeText={setVehicleMake}
@@ -524,44 +581,46 @@ export default function LoginScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Modelo del Auto</Text>
+                    <Text style={styles.formLabel}>Modelo *</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="Ej. Prisma"
+                      placeholder="Ej. Cronos / Gol Trend / Corolla"
                       placeholderTextColor={Colors.textMuted}
                       value={vehicleModel}
                       onChangeText={setVehicleModel}
                     />
                   </View>
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Año</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="Ej. 2019"
-                      placeholderTextColor={Colors.textMuted}
-                      value={vehicleYear}
-                      onChangeText={setVehicleYear}
-                      keyboardType="numeric"
-                    />
+                  <View style={styles.formRow}>
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={styles.formLabel}>Año *</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="2024"
+                        placeholderTextColor={Colors.textMuted}
+                        value={vehicleYear}
+                        onChangeText={setVehicleYear}
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={styles.formLabel}>Color *</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="Gris / Blanco"
+                        placeholderTextColor={Colors.textMuted}
+                        value={vehicleColor}
+                        onChangeText={setVehicleColor}
+                      />
+                    </View>
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Color</Text>
+                    <Text style={styles.formLabel}>Patente / Matrícula *</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="Ej. Blanco"
-                      placeholderTextColor={Colors.textMuted}
-                      value={vehicleColor}
-                      onChangeText={setVehicleColor}
-                    />
-                  </View>
-
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Patente (Dominio)</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="Ej. AB123CD"
+                      placeholder="Ej. AF 123 JK"
                       placeholderTextColor={Colors.textMuted}
                       value={vehiclePlate}
                       onChangeText={setVehiclePlate}
@@ -571,97 +630,92 @@ export default function LoginScreen() {
                 </View>
               )}
 
-              {/* PASO 4: Conectar Mercado Pago (Split de Pagos) */}
+              {/* PASO 4: Vinculación Mercado Pago */}
               {regStep === 4 && (
                 <View style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>Paso 4: Billetera y Split de Pagos</Text>
-                  <Text style={styles.stepDesc}>
-                    Para operar en el ecosistema TravelCab es obligatorio vincular tu cuenta de Mercado Pago. Así, la plataforma podrá liquidar tus ganancias netas del split instantáneamente.
+                  <Text style={styles.stepTitle}>Paso 4: Conexión de Cobros Mercado Pago</Text>
+                  
+                  <Text style={styles.stepSubtitle}>
+                    Para procesar las tarifas con cobro digital y acreditación neta directa, conectá tu cuenta de Mercado Pago.
                   </Text>
 
-                  {mpLinked ? (
-                    <View style={styles.mpConnectedCard}>
-                      <Ionicons name="checkmark-circle" size={40} color={Colors.success} />
-                      <Text style={styles.mpConnectedTitle}>Mercado Pago Conectado</Text>
-                      <Text style={styles.mpConnectedEmail}>{mpEmail}</Text>
-                      <TouchableOpacity style={styles.mpDisconnectBtn} onPress={() => setMpLinked(false)}>
-                        <Text style={styles.mpDisconnectText}>Desconectar cuenta</Text>
-                      </TouchableOpacity>
+                  <View style={styles.mpConnectCard}>
+                    <View style={styles.mpBadgeRow}>
+                      <Ionicons name="card" size={24} color="#009EE3" />
+                      <Text style={styles.mpConnectTitle}>Mercado Pago Split</Text>
                     </View>
-                  ) : (
-                    <View style={styles.mpConnectContainer}>
-                      <TouchableOpacity 
-                        style={styles.mpConnectBtn}
-                        onPress={() => setShowMpInput(prev => !prev)}
-                      >
-                        <Ionicons name="logo-usd" size={20} color={Colors.white} />
-                        <Text style={styles.mpConnectBtnText}>Conectar cuenta de Mercado Pago</Text>
-                      </TouchableOpacity>
 
-                      {showMpInput && (
-                        <View style={styles.mpInputBox}>
-                          <Text style={styles.formLabel}>Email Registrado en Mercado Pago</Text>
-                          <TextInput
-                            style={styles.formInput}
-                            placeholder="tuemail@mercadopago.com"
-                            placeholderTextColor={Colors.textMuted}
-                            value={mpEmail}
-                            onChangeText={setMpEmail}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                          />
-                          <TouchableOpacity 
-                            style={styles.confirmMpBtn} 
-                            onPress={handleLinkMercadoPago}
-                            disabled={linkingMp}
-                          >
-                            {linkingMp ? (
-                              <ActivityIndicator color={Colors.white} size="small" />
-                            ) : (
-                              <Text style={styles.confirmMpText}>Autorizar y Conectar</Text>
-                            )}
-                          </TouchableOpacity>
+                    {mpLinked ? (
+                      <View style={styles.mpSuccessBox}>
+                        <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.mpSuccessTitle}>Cuenta Conectada</Text>
+                          <Text style={styles.mpSuccessSub}>{mpEmail}</Text>
                         </View>
-                      )}
-                    </View>
-                  )}
+                        <TouchableOpacity onPress={() => setMpLinked(false)}>
+                          <Text style={styles.mpChangeLink}>Cambiar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={{ width: '100%', gap: 10 }}>
+                        <TextInput
+                          style={styles.formInput}
+                          placeholder="Tu email en Mercado Pago"
+                          placeholderTextColor={Colors.textMuted}
+                          value={mpEmail}
+                          onChangeText={setMpEmail}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                        />
+
+                        <TouchableOpacity 
+                          style={styles.mpConnectBtn} 
+                          onPress={handleLinkMercadoPago}
+                          disabled={linkingMp}
+                        >
+                          {linkingMp ? (
+                            <ActivityIndicator color={Colors.white} />
+                          ) : (
+                            <>
+                              <Ionicons name="link" size={18} color={Colors.white} />
+                              <Text style={styles.mpConnectBtnText}>Autorizar Mercado Pago OAuth</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
                 </View>
               )}
 
-              {/* Navegación del Wizard */}
-              <View style={styles.modalButtons}>
-                {regStep > 1 ? (
-                  <TouchableOpacity style={styles.cancelBtn} onPress={handlePrevStep}>
-                    <Text style={styles.cancelBtnText}>Atrás</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.cancelBtn} 
-                    onPress={() => { setRegisterModalVisible(false); setRegStep(1); }}
-                  >
-                    <Text style={styles.cancelBtnText}>Salir</Text>
-                  </TouchableOpacity>
-                )}
-
-                {regStep < 4 ? (
-                  <TouchableOpacity style={styles.confirmBtn} onPress={handleNextStep}>
-                    <Text style={styles.confirmBtnText}>Siguiente</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity 
-                    style={[styles.confirmBtn, !mpLinked && styles.confirmBtnDisabled]} 
-                    onPress={handleRegisterSubmit}
-                    disabled={submittingReg || !mpLinked}
-                  >
-                    {submittingReg ? (
-                      <ActivityIndicator color={Colors.white} size="small" />
-                    ) : (
-                      <Text style={styles.confirmBtnText}>Enviar Solicitud</Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
             </ScrollView>
+
+            {/* Controles de Navegación del Modal */}
+            <View style={styles.modalFooter}>
+              {regStep > 1 && (
+                <TouchableOpacity style={styles.prevBtn} onPress={handlePrevStep}>
+                  <Text style={styles.prevBtnText}>Anterior</Text>
+                </TouchableOpacity>
+              )}
+
+              {regStep < 4 ? (
+                <TouchableOpacity style={styles.nextBtn} onPress={handleNextStep}>
+                  <Text style={styles.nextBtnText}>Siguiente ➔</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  style={[styles.submitBtn, submittingReg && { opacity: 0.6 }]} 
+                  onPress={handleRegisterSubmit}
+                  disabled={submittingReg}
+                >
+                  {submittingReg ? (
+                    <ActivityIndicator color={Colors.white} />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Finalizar Onboarding 🚀</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       </Modal>
@@ -670,77 +724,286 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.primary },
-  inner: { flex: 1, justifyContent: 'center', padding: 24 },
-  logoContainer: { alignItems: 'center', marginBottom: 32 },
-  subtitle: { fontSize: 14, fontFamily: 'Quicksand-Medium', color: 'rgba(255,255,255,0.7)', marginTop: 4 },
-  card: {
-    backgroundColor: Colors.white, borderRadius: 24, padding: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, elevation: 10,
+  container: {
+    flex: 1,
+    backgroundColor: '#0F4C35',
   },
-  cardTitle: { fontSize: 24, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginBottom: 4 },
-  cardSubtitle: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, marginBottom: 24 },
-  form: { gap: 16 },
-  inputGroup: { gap: 6 },
-  label: { fontSize: 13, fontFamily: 'Quicksand-SemiBold', color: Colors.textPrimary },
+  inner: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.white,
+    marginTop: 8,
+    letterSpacing: 0.5,
+  },
+  card: {
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+    textAlign: 'center',
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Quicksand-Medium',
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  form: {
+    gap: 14,
+  },
+  inputGroup: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 12,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+  },
   input: {
-    backgroundColor: Colors.background, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
-    fontSize: 15, fontFamily: 'Quicksand-Regular', color: Colors.textPrimary,
-    borderWidth: 1.5, borderColor: Colors.border,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: 'Quicksand-Medium',
+    color: Colors.textDark,
   },
   button: {
-    backgroundColor: Colors.accent, borderRadius: 14,
-    paddingVertical: 16, alignItems: 'center', marginTop: 4,
+    backgroundColor: '#0F4C35',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
   },
-  buttonText: { color: Colors.white, fontSize: 16, fontFamily: 'Quicksand-Bold' },
-  registerLink: { alignItems: 'center', marginTop: 24 },
-  registerLinkText: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontFamily: 'Quicksand-Medium' },
-  registerLinkHighlight: { color: Colors.accent, fontFamily: 'Quicksand-Bold', textDecorationLine: 'underline' },
-
-  // Estilos del Modal de Registro
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: Colors.white, borderRadius: 24, padding: 24, maxHeight: '85%', gap: 12 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingBottom: 10, marginBottom: 4 },
-  modalTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  stepIndicator: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.accent },
-  progressBarBg: { height: 4, backgroundColor: Colors.border, borderRadius: 2, marginBottom: 12, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: Colors.accent },
-  formScroll: { flexGrow: 0 },
-  stepContainer: { gap: 12, marginBottom: 8 },
-  stepTitle: { fontSize: 15, fontFamily: 'Quicksand-Bold', color: Colors.primary, marginBottom: 4 },
-  stepDesc: { fontSize: 12, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, lineHeight: 18, marginBottom: 12 },
-  formGroup: { gap: 6, marginBottom: 8 },
-  formRow: { flexDirection: 'row', gap: 10 },
-  formLabel: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary },
+  buttonText: {
+    color: Colors.white,
+    fontSize: 15,
+    fontFamily: 'Quicksand-Bold',
+  },
+  registerLink: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  registerLinkText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontFamily: 'Quicksand-Medium',
+  },
+  registerLinkHighlight: {
+    fontFamily: 'Quicksand-Bold',
+    textDecorationLine: 'underline',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+  },
+  stepIndicator: {
+    fontSize: 12,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.primary,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  progressBarBg: {
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#0F4C35',
+  },
+  formScroll: {
+    maxHeight: 400,
+  },
+  stepContainer: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  stepTitle: {
+    fontSize: 14,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+    marginBottom: 4,
+  },
+  stepSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Quicksand-Medium',
+    color: Colors.textMuted,
+    lineHeight: 18,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  formGroup: {
+    gap: 4,
+  },
+  formLabel: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+  },
   formInput: {
-    backgroundColor: Colors.background, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 10,
-    fontSize: 14, fontFamily: 'Quicksand-Regular', color: Colors.textPrimary,
-    borderWidth: 1.5, borderColor: Colors.border,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    fontFamily: 'Quicksand-Medium',
+    color: Colors.textDark,
   },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 20, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 14 },
-  cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: Colors.border, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
-  cancelBtnText: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary },
-  confirmBtn: { flex: 2, backgroundColor: Colors.accent, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
-  confirmBtnDisabled: { backgroundColor: Colors.border },
-  confirmBtnText: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.white },
-
-  // Mercado Pago Específico en Paso 4
-  mpConnectContainer: { alignItems: 'center', marginVertical: 10, gap: 12 },
+  mpConnectCard: {
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  mpBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mpConnectTitle: {
+    fontSize: 15,
+    fontFamily: 'Quicksand-Bold',
+    color: '#0369A1',
+  },
   mpConnectBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#009EE3', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 14, width: '100%', justifyContent: 'center',
+    backgroundColor: '#009EE3',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
-  mpConnectBtnText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
-  mpInputBox: { width: '100%', gap: 10, backgroundColor: Colors.background, padding: 16, borderRadius: 16, borderWidth: 1.5, borderColor: Colors.border },
-  confirmMpBtn: { backgroundColor: Colors.primary, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  confirmMpText: { color: Colors.white, fontSize: 13, fontFamily: 'Quicksand-Bold' },
-  mpConnectedCard: {
-    alignItems: 'center', backgroundColor: Colors.success + '0A', padding: 24, borderRadius: 20, borderWidth: 2, borderColor: Colors.success, gap: 8, marginVertical: 8,
+  mpConnectBtnText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontFamily: 'Quicksand-Bold',
   },
-  mpConnectedTitle: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.success },
-  mpConnectedEmail: { fontSize: 14, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary },
-  mpDisconnectBtn: { marginTop: 10, paddingVertical: 6, paddingHorizontal: 12 },
-  mpDisconnectText: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.danger },
+  mpSuccessBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.white,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.success,
+    width: '100%',
+  },
+  mpSuccessTitle: {
+    fontSize: 13,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textDark,
+  },
+  mpSuccessSub: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Medium',
+    color: Colors.textMuted,
+  },
+  mpChangeLink: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.primary,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  prevBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  prevBtnText: {
+    color: Colors.textDark,
+    fontSize: 13,
+    fontFamily: 'Quicksand-Bold',
+  },
+  nextBtn: {
+    flex: 1,
+    backgroundColor: '#0F4C35',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  nextBtnText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontFamily: 'Quicksand-Bold',
+  },
+  submitBtn: {
+    flex: 1,
+    backgroundColor: '#0F4C35',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  submitBtnText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontFamily: 'Quicksand-Bold',
+  },
 });
