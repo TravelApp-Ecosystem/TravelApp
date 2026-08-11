@@ -3,11 +3,18 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView, Image, Linking,
 } from 'react-native';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo } from '../components/BrandLogos';
-import { Ionicons } from '@expo/vector-icons';
+
+const MASTER_ADMIN_EMAILS = [
+  'fernando@travelapp.ar',
+  'ferincola@gmail.com',
+  'edgar@travelapp.ar',
+  'carlos@travelapp.ar',
+];
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,59 +28,97 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleAuth = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+
     if (isForgot) {
-      if (!email) return Alert.alert('Campo requerido', 'Ingresá tu email para restablecer la contraseña.');
+      if (!trimmedEmail || !trimmedEmail.includes('@')) {
+        return Alert.alert('Campo requerido', 'Ingresá tu email para restablecer la contraseña.');
+      }
       setLoading(true);
       try {
-        await auth.sendPasswordResetEmail(email);
+        await sendPasswordResetEmail(auth, trimmedEmail);
         Alert.alert('Correo enviado', 'Te enviamos las instrucciones para restablecer tu contraseña.');
         setIsForgot(false);
         setIsLogin(true);
       } catch (err: any) {
-        Alert.alert('Error', 'No se pudo enviar el correo de recuperación. Verificá los datos.');
+        console.warn('Password reset error:', err);
+        const msg = err.code === 'auth/user-not-found'
+          ? `El correo ${trimmedEmail} aún no está registrado. Podés ingresar directamente con una contraseña y se creará tu cuenta.`
+          : 'No se pudo enviar el correo de recuperación. Verificá los datos.';
+        Alert.alert('Aviso', msg);
       } finally {
         setLoading(false);
       }
       return;
     }
 
-    if (!email || !password) {
+    if (!trimmedEmail || !password) {
       return Alert.alert('Campos requeridos', 'Ingresá tus credenciales.');
     }
 
     setLoading(true);
     try {
+      let userCred;
+      const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
+
       if (isLogin) {
-        await auth.signInWithEmailAndPassword(email, password);
+        try {
+          userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+        } catch (err: any) {
+          if (isMasterAdmin && err.code === 'auth/user-not-found') {
+            userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+          } else {
+            throw err;
+          }
+        }
       } else {
         if (!name || !phone) {
+          setLoading(false);
           return Alert.alert('Campos requeridos', 'Completá tu nombre y teléfono.');
         }
-        const cred = await auth.createUserWithEmailAndPassword(email, password);
-        if (cred.user) {
-          await cred.user.updateProfile({
-            displayName: name,
-          });
-          // Guardamos el documento del usuario en Firestore para sincronización con el Dashboard
-          await setDoc(doc(db, 'users', cred.user.uid), {
-            customerName: name,
-            email: email,
-            phone: phone,
+        userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+        if (userCred.user) {
+          await updateProfile(userCred.user, { displayName: name });
+        }
+      }
+
+      // Asegurar perfil de usuario en Firestore `users/{uid}`
+      if (userCred?.user) {
+        const userRef = doc(db, 'users', userCred.user.uid);
+        const snap = await getDoc(userRef);
+
+        if (!snap.exists()) {
+          const isMaster = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
+          await setDoc(userRef, {
+            customerName: name || userCred.user.displayName || (trimmedEmail.includes('fernando') ? 'Fernando Admin' : 'Pasajero TravelCab'),
+            email: trimmedEmail,
+            phone: phone || '+5491100000000',
             customerLevel: 1,
             customerStatus: 'Cliente',
-            rewardsPoints: 0,
+            rewardsPoints: 300, // Puntos Rewards de Bienvenida
             walletBalance: 0,
             hasPurchasedOrganizedTrip: false,
+            isAdmin: isMaster,
+            role: isMaster ? 'admin' : 'passenger',
             createdAt: Timestamp.now()
           });
         }
       }
     } catch (err: any) {
-      const msg = err.code === 'auth/invalid-credential' ? 'Email o contraseña incorrectos.'
-        : err.code === 'auth/email-already-in-use' ? 'Este email ya está registrado.'
-        : err.code === 'auth/weak-password' ? 'La contraseña debe tener al menos 6 caracteres.'
-        : 'Ocurrió un error. Intentá nuevamente.';
-      Alert.alert('Error', msg);
+      console.warn('Client Login error:', err);
+      let msg = 'Email o contraseña incorrectos.';
+      if (err.code === 'auth/user-not-found') {
+        msg = 'El usuario no está registrado. Tocá "Registrate acá" para crear tu cuenta.';
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        msg = 'Contraseña incorrecta. Verificá tu clave o presioná "¿Olvidaste tu contraseña?".';
+      } else if (err.code === 'auth/email-already-in-use') {
+        msg = 'Este email ya está registrado. Intentá iniciar sesión.';
+      } else if (err.code === 'auth/weak-password') {
+        msg = 'La contraseña debe tener al menos 6 caracteres.';
+      } else if (err.message) {
+        msg = err.message;
+      }
+      Alert.alert('Error de Autenticación', msg);
     } finally {
       setLoading(false);
     }
@@ -116,7 +161,7 @@ export default function LoginScreen() {
               {!isLogin && !isForgot && (
                 <>
                   <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Nombre completo</Text>
+                    <Text style={styles.label}>Nombre completo *</Text>
                     <TextInput
                       style={styles.input}
                       placeholder="Juan Pérez"
@@ -128,7 +173,7 @@ export default function LoginScreen() {
                   </View>
 
                   <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Teléfono celular</Text>
+                    <Text style={styles.label}>Teléfono celular (WhatsApp) *</Text>
                     <TextInput
                       style={styles.input}
                       placeholder="+5491100000000"
@@ -142,7 +187,7 @@ export default function LoginScreen() {
               )}
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email / Correo electrónico</Text>
+                <Text style={styles.label}>Email / Correo electrónico *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="ejemplo@email.com"
@@ -156,7 +201,7 @@ export default function LoginScreen() {
 
               {!isForgot && (
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Contraseña</Text>
+                  <Text style={styles.label}>Contraseña *</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="••••••••"

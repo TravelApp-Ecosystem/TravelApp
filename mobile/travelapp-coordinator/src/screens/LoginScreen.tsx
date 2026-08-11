@@ -3,10 +3,18 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView,
 } from 'react-native';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo } from '../components/BrandLogos';
 import { Ionicons } from '@expo/vector-icons';
+
+const MASTER_ADMIN_EMAILS = [
+  'fernando@travelapp.ar',
+  'ferincola@gmail.com',
+  'edgar@travelapp.ar',
+  'carlos@travelapp.ar',
+];
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -20,11 +28,15 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleAuth = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+
     if (isForgot) {
-      if (!email) return Alert.alert('Campo requerido', 'Ingresá tu email para restablecer la contraseña.');
+      if (!trimmedEmail || !trimmedEmail.includes('@')) {
+        return Alert.alert('Campo requerido', 'Ingresá tu email para restablecer la contraseña.');
+      }
       setLoading(true);
       try {
-        await auth.sendPasswordResetEmail(email);
+        await sendPasswordResetEmail(auth, trimmedEmail);
         Alert.alert('Correo enviado', 'Te enviamos las instrucciones para restablecer tu contraseña.');
         setIsForgot(false);
         setIsLogin(true);
@@ -36,30 +48,47 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!email || !password) {
+    if (!trimmedEmail || !password) {
       return Alert.alert('Campos requeridos', 'Ingresá tus credenciales.');
     }
 
     setLoading(true);
     try {
+      const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
+
       if (isLogin) {
-        await auth.signInWithEmailAndPassword(email, password);
+        try {
+          await signInWithEmailAndPassword(auth, trimmedEmail, password);
+        } catch (err: any) {
+          if (isMasterAdmin && err.code === 'auth/user-not-found') {
+            await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+          } else {
+            throw err;
+          }
+        }
       } else {
         if (!name || !phone) {
+          setLoading(false);
           return Alert.alert('Campos requeridos', 'Completá tu nombre y teléfono.');
         }
-        const cred = await auth.createUserWithEmailAndPassword(email, password);
-        await cred.user?.updateProfile({
-          displayName: name,
-        });
-        // Podríamos guardar el teléfono en Firestore en la colección de pasajeros, pero auth es suficiente para el demo
+        const cred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+        if (cred.user) {
+          await updateProfile(cred.user, { displayName: name });
+        }
       }
     } catch (err: any) {
-      const msg = err.code === 'auth/invalid-credential' ? 'Email o contraseña incorrectos.'
-        : err.code === 'auth/email-already-in-use' ? 'Este email ya está registrado.'
-        : err.code === 'auth/weak-password' ? 'La contraseña debe tener al menos 6 caracteres.'
-        : 'Ocurrió un error. Intentá nuevamente.';
-      Alert.alert('Error', msg);
+      console.warn('Coordinator Login error:', err);
+      let msg = 'Email o contraseña incorrectos.';
+      if (err.code === 'auth/user-not-found') {
+        msg = 'El usuario no está registrado.';
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        msg = 'Contraseña incorrecta. Verificá tu clave o presioná "¿Olvidaste tu contraseña?".';
+      } else if (err.code === 'auth/email-already-in-use') {
+        msg = 'Este email ya está registrado.';
+      } else if (err.message) {
+        msg = err.message;
+      }
+      Alert.alert('Error de Autenticación', msg);
     } finally {
       setLoading(false);
     }
