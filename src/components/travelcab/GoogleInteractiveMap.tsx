@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow } from "@react-google-maps/api";
 import { Trip, TripStatus } from "@/types/travelcab";
-import { Car, Compass, Play, CheckCircle, Navigation } from "lucide-react";
+import { Car, Compass, Play, CheckCircle, Navigation, User, Phone } from "lucide-react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface GoogleInteractiveMapProps {
   activeTrip: Trip | null;
@@ -110,6 +112,19 @@ const mapOptions = {
 
 const GOOGLE_MAPS_LIBRARIES: any[] = ["places"];
 
+export interface RealDriver {
+  id: string;
+  name: string;
+  phone: string;
+  lat: number;
+  lng: number;
+  status: string;
+  isOnline: boolean;
+  vehicle: string;
+  plate: string;
+  color: string;
+}
+
 export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
   activeTrip,
   trips,
@@ -125,17 +140,46 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   
-  // Conductores simulados en la flota en San Miguel de Tucumán
-  const [drivers, setDrivers] = useState([
-    { id: "drv-1", name: "Ana Martínez (Mov. 07)", lat: -26.815, lng: -65.210, status: "Disponible", color: "#3b82f6" },
-    { id: "drv-2", name: "Roberto Gómez (Mov. 14)", lat: -26.835, lng: -65.230, status: "Disponible", color: "#eab308" },
-    { id: "drv-3", name: "Luis Fernández (Mov. 22)", lat: -26.820, lng: -65.240, status: "Disponible", color: "#10b981" },
-    { id: "drv-4", name: "Carlos Pérez (Mov. 10)", lat: -26.800, lng: -65.200, status: "Disponible", color: "#a855f7" },
-  ]);
+  // Conductores reales desde la colección Firestore `drivers`
+  const [realDrivers, setRealDrivers] = useState<RealDriver[]>([]);
+  const [selectedDriver, setSelectedDriver] = useState<RealDriver | null>(null);
 
   const [assignedDriverId, setAssignedDriverId] = useState<string | null>(null);
   const [carPosition, setCarPosition] = useState<{ lat: number; lng: number } | null>(null);
   const animationRef = useRef<number | null>(null);
+
+  // Escuchar en tiempo real la colección de choferes en Firestore `drivers`
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'drivers'), (snapshot) => {
+      const list: RealDriver[] = snapshot.docs.map((docSnap, index) => {
+        const data = docSnap.data();
+        const fullName = data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Socio Conductor';
+        
+        // Coordenadas reales GPS (o dispersión sutil si recién inicia)
+        const lat = data.location?.latitude || data.location?.lat || data.currentLocation?.latitude || (-26.82414 + (index * 0.003));
+        const lng = data.location?.longitude || data.location?.lng || data.currentLocation?.longitude || (-65.22260 + (index * 0.004));
+
+        return {
+          id: docSnap.id,
+          name: fullName,
+          phone: data.phone || '+54 381 000-0000',
+          lat,
+          lng,
+          status: data.status || 'Activo',
+          isOnline: data.isOnline !== false,
+          vehicle: data.activeVehicle?.brand || data.activeVehicle?.make || 'Vehículo Habilitado',
+          plate: data.activeVehicle?.plate || 'AB 123 CD',
+          color: data.activeVehicle?.color || 'Gris',
+        };
+      });
+
+      setRealDrivers(list);
+    }, (err) => {
+      console.error('Error listening to drivers for Dispatcher map:', err);
+    });
+
+    return () => unsub();
+  }, []);
 
   // Cargar ruta cuando cambia el viaje activo o las coordenadas de vista previa
   useEffect(() => {
@@ -198,9 +242,8 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
     map
   ]);
 
-  // Manejar simulación de movimiento del auto
+  // Manejar movimiento del viaje activo
   useEffect(() => {
-    // Cancelar animación previa
     if (animationRef.current) {
       clearInterval(animationRef.current);
       animationRef.current = null;
@@ -211,37 +254,30 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
     const routePath = directions.routes[0]?.overview_path;
     if (!routePath || routePath.length === 0) return;
 
-    // Asignar chofer si está en camino o viaje y no hay uno asignado
     if ((activeTrip.status === "En Camino" || activeTrip.status === "En Viaje") && !assignedDriverId) {
-      // Elegimos un conductor disponible al azar
-      const available = drivers.find(d => d.status === "Disponible") || drivers[0];
-      setAssignedDriverId(available.id);
-      
-      // Actualizamos su estado en la lista local
-      setDrivers(prev => prev.map(d => d.id === available.id ? { ...d, status: "Ocupado" } : d));
-      
-      if (onUpdateTripStatus && !activeTrip.driverName) {
-        onUpdateTripStatus(activeTrip.id, activeTrip.status, available.name);
+      const available = realDrivers.find(d => d.status === "Activo") || realDrivers[0];
+      if (available) {
+        setAssignedDriverId(available.id);
+        if (onUpdateTripStatus && !activeTrip.driverName) {
+          onUpdateTripStatus(activeTrip.id, activeTrip.status, available.name);
+        }
       }
     }
 
     let pathPoints: google.maps.LatLng[] = [];
 
     if (activeTrip.status === "En Camino" && activeTrip.originCoords) {
-      // El auto viaja desde la ubicación del conductor hasta el origen del pasajero (simulado directo por ahora)
-      const driver = drivers.find(d => d.id === assignedDriverId) || drivers[0];
-      const start = new window.google.maps.LatLng(driver.lat, driver.lng);
-      const end = new window.google.maps.LatLng(activeTrip.originCoords.lat, activeTrip.originCoords.lng);
-      
-      // Creamos 40 puntos intermedios simples de interpolación
+      const driver = realDrivers.find(d => d.id === assignedDriverId) || realDrivers[0];
+      const dLat = driver?.lat || -26.82414;
+      const dLng = driver?.lng || -65.22260;
+
       for (let i = 0; i <= 40; i++) {
         const fraction = i / 40;
-        const lat = driver.lat + (activeTrip.originCoords.lat - driver.lat) * fraction;
-        const lng = driver.lng + (activeTrip.originCoords.lng - driver.lng) * fraction;
+        const lat = dLat + (activeTrip.originCoords.lat - dLat) * fraction;
+        const lng = dLng + (activeTrip.originCoords.lng - dLng) * fraction;
         pathPoints.push(new window.google.maps.LatLng(lat, lng));
       }
     } else if (activeTrip.status === "En Viaje") {
-      // El auto viaja a lo largo de la ruta de Google Maps
       pathPoints = routePath;
     }
 
@@ -255,35 +291,26 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
           const point = pathPoints[index];
           const newPos = { lat: point.lat(), lng: point.lng() };
           setCarPosition(newPos);
-          
-          // Mover el mapa suavemente con el auto
           if (map) {
             map.panTo(newPos);
           }
         } else {
-          // Llegó a destino del tramo
           clearInterval(interval);
           animationRef.current = null;
 
-          // Si llegó al origen del pasajero en "En Camino", podemos pasarlo automáticamente a "En Viaje" tras unos segundos
           if (activeTrip.status === "En Camino" && onUpdateTripStatus) {
             setTimeout(() => {
               onUpdateTripStatus(activeTrip.id, "En Viaje", activeTrip.driverName);
             }, 3000);
           } else if (activeTrip.status === "En Viaje" && onUpdateTripStatus) {
-            // Completó el viaje
             setTimeout(() => {
               onUpdateTripStatus(activeTrip.id, "Completado", activeTrip.driverName);
-              // Liberar conductor
-              if (assignedDriverId) {
-                setDrivers(prev => prev.map(d => d.id === assignedDriverId ? { ...d, status: "Disponible", lat: pathPoints[pathPoints.length-1].lat(), lng: pathPoints[pathPoints.length-1].lng() } : d));
-              }
               setAssignedDriverId(null);
               setCarPosition(null);
             }, 3000);
           }
         }
-      }, 150); // Velocidad de la animación
+      }, 150);
 
       animationRef.current = interval as any;
     }
@@ -293,7 +320,7 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
         clearInterval(animationRef.current);
       }
     };
-  }, [activeTrip?.status, directions, assignedDriverId]);
+  }, [activeTrip?.status, directions, assignedDriverId, realDrivers]);
 
   if (loadError) {
     return (
@@ -336,9 +363,9 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
           <DirectionsRenderer
             directions={directions}
             options={{
-              suppressMarkers: true, // Manejamos nuestros marcadores personalizados
+              suppressMarkers: true,
               polylineOptions: {
-                strokeColor: "#ff7b1a", // Color naranja vial de TravelCab
+                strokeColor: "#ff7b1a",
                 strokeOpacity: 0.8,
                 strokeWeight: 5,
               },
@@ -346,74 +373,46 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
           />
         )}
 
-        {/* Marcadores de Viaje Activo o Vista Previa */}
+        {/* Origen (A) */}
         {activeTrip && activeTrip.originCoords && (
           <Marker
             position={activeTrip.originCoords}
-            label={{
-              text: "A",
-              color: "white",
-              fontWeight: "bold",
-            }}
+            label={{ text: "A", color: "white", fontWeight: "bold" }}
             title={`Origen: ${activeTrip.origin}`}
           />
         )}
         {!activeTrip && previewCoords?.originCoords && (
           <Marker
             position={previewCoords.originCoords}
-            label={{
-              text: "A",
-              color: "white",
-              fontWeight: "bold",
-            }}
+            label={{ text: "A", color: "white", fontWeight: "bold" }}
             title="Origen cotizado"
           />
         )}
 
+        {/* Destino (B) */}
         {activeTrip && activeTrip.destinationCoords && (
           <Marker
             position={activeTrip.destinationCoords}
-            label={{
-              text: "B",
-              color: "black",
-              fontWeight: "bold",
-            }}
+            label={{ text: "B", color: "black", fontWeight: "bold" }}
             title={`Destino: ${activeTrip.destination}`}
           />
         )}
         {!activeTrip && previewCoords?.destinationCoords && (
           <Marker
             position={previewCoords.destinationCoords}
-            label={{
-              text: "B",
-              color: "black",
-              fontWeight: "bold",
-            }}
+            label={{ text: "B", color: "black", fontWeight: "bold" }}
             title="Destino cotizado"
           />
         )}
 
-        {/* Icono del Auto Animado (si hay posición de animación activa) */}
-        {carPosition && (
-          <Marker
-            position={carPosition}
-            icon={{
-              path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: 6,
-              fillColor: "#ff7b1a",
-              fillOpacity: 1.0,
-              strokeColor: "#ffffff",
-              strokeWeight: 2,
-              rotation: 90, // Rotar ícono de auto
-            }}
-            title={activeTrip?.driverName || "Vehículo TravelCab"}
-          />
-        )}
-
-        {/* Marcadores de Flota (conductores que no están en el viaje activo) */}
-        {drivers.map((drv) => {
-          // Si es el conductor asignado al viaje animado, no lo duplicamos
+        {/* Marcadores de Choferes Reales desde Firestore (Puntos de Color Verde/Naranja/Gris) */}
+        {realDrivers.map((drv) => {
           if (drv.id === assignedDriverId && carPosition) return null;
+
+          // Color del punto: 🟢 Verde Esmeralda (Activo), 🟡 Naranja (En Viaje), 🔴 Gris (En Revisión/Desconectado)
+          const dotColor = drv.status === 'Activo' && drv.isOnline ? '#10B981'
+            : drv.status === 'En Viaje' ? '#FF7B1A'
+            : '#94A3B8';
 
           return (
             <Marker
@@ -421,16 +420,46 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
               position={{ lat: drv.lat, lng: drv.lng }}
               icon={{
                 path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 7,
-                fillColor: drv.color,
-                fillOpacity: 0.9,
-                strokeColor: "#ffffff",
-                strokeWeight: 1.5,
+                scale: 9,
+                fillColor: dotColor,
+                fillOpacity: 1.0,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
               }}
-              title={`${drv.name} - ${drv.status}`}
+              title={`${drv.name} — ${drv.status}`}
+              onClick={() => setSelectedDriver(drv)}
             />
           );
         })}
+
+        {/* InfoWindow al hacer clic en el punto de un Chofer */}
+        {selectedDriver && (
+          <InfoWindow
+            position={{ lat: selectedDriver.lat, lng: selectedDriver.lng }}
+            onCloseClick={() => setSelectedDriver(null)}
+          >
+            <div className="p-2 min-w-[200px] text-slate-800 space-y-1.5">
+              <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
+                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: selectedDriver.status === 'Activo' ? '#10B981' : '#FF7B1A' }} />
+                <span className="font-bold text-xs">{selectedDriver.name}</span>
+              </div>
+              <p className="text-[11px] text-slate-600 flex items-center gap-1">
+                <Car className="h-3 w-3 text-slate-400" /> {selectedDriver.vehicle} ({selectedDriver.color})
+              </p>
+              <p className="text-[11px] text-slate-600 font-mono">
+                Patente: <strong>{selectedDriver.plate}</strong>
+              </p>
+              <p className="text-[11px] text-slate-600 flex items-center gap-1">
+                <Phone className="h-3 w-3 text-slate-400" /> {selectedDriver.phone}
+              </p>
+              <div className="pt-1">
+                <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                  {selectedDriver.status}
+                </span>
+              </div>
+            </div>
+          </InfoWindow>
+        )}
       </GoogleMap>
 
       {/* Flotante superior con info del viaje seleccionado */}
@@ -467,7 +496,6 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
             )}
           </div>
 
-          {/* Acciones de Control de Flujo (para probar simulación) */}
           <div className="mt-4 flex gap-2">
             {activeTrip.status === "Buscando Chofer" && (
               <button
