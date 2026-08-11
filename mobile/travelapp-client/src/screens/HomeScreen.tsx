@@ -79,6 +79,22 @@ function decodePolyline(encoded: string) {
   return poly;
 }
 
+export const formatDriverName = (fullName?: string) => {
+  if (!fullName) return 'Socio Conductor';
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1][0]}.`;
+};
+
+export const formatPlate = (plate?: string) => {
+  if (!plate) return 'AF *** JK';
+  const clean = plate.replace(/\s+/g, '').toUpperCase();
+  if (clean.length >= 6) {
+    return `${clean.slice(0, 2)} *** ${clean.slice(-2)}`;
+  }
+  return plate;
+};
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -1239,17 +1255,25 @@ export default function HomeScreen() {
               {/* Tarjeta del Chofer Asignado y Vehículo */}
               <View style={styles.driverTrackingCard}>
                 <View style={styles.driverPanelHeader}>
-                  <Image source={{ uri: driverDetails.avatar }} style={styles.driverAvatarImg} />
+                  <Image 
+                    source={{ uri: driverDetails.avatar || driverDetails.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' }} 
+                    style={styles.driverAvatarImg} 
+                  />
                   <View style={styles.driverInfoCol}>
-                    <Text style={styles.driverNameLabel}>{driverDetails.name}</Text>
-                    <Text style={styles.driverCarPlate}>{driverDetails.model} · <Text style={{ fontFamily: 'Quicksand-Bold' }}>{driverDetails.plate}</Text></Text>
-                    <Text style={styles.driverRatingText}>⭐ {driverDetails.rating} · Conductor Verificado</Text>
+                    <Text style={styles.driverNameLabel}>{formatDriverName(driverDetails.name)}</Text>
+                    <Text style={styles.driverCarPlate}>{driverDetails.model || 'Vehículo Conductor'} · <Text style={{ fontFamily: 'Quicksand-Bold', color: Colors.primary }}>{formatPlate(driverDetails.plate)}</Text></Text>
+                    <Text style={styles.driverRatingText}>
+                      ⭐ {driverDetails.rating || '4.9'} · <Text style={{ color: Colors.textMuted }}>{driverDetails.totalTrips || 142} viajes realizados</Text>
+                    </Text>
                   </View>
                 </View>
                 
-                {driverDetails.carPhoto && (
-                  <Image source={{ uri: driverDetails.carPhoto }} style={styles.carPhotoTrackingImg} />
-                )}
+                {driverDetails.carPhoto ? (
+                  <View style={{ marginTop: 4 }}>
+                    <Text style={{ fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.textMuted, marginBottom: 4 }}>Vehículo asignado:</Text>
+                    <Image source={{ uri: driverDetails.carPhoto }} style={styles.carPhotoTrackingImg} />
+                  </View>
+                ) : null}
               </View>
 
               {/* Controles de Viaje (Fila Horizontal) */}
@@ -1831,36 +1855,39 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {/* Selector de Método de Pago */}
+                {/* Selector de Método de Pago Compacto con Logo Oficial de Mercado Pago */}
                 <Text style={styles.canvaPaymentTitle}>Forma de pago</Text>
-                <View style={styles.canvaPaymentBox}>
+                <View style={styles.canvaPaymentCompactBar}>
                   {[
-                    { id: 'Efectivo', label: 'Efectivo', activeColor: '#00A86B', idleColor: '#4BB5E6' },
-                    { id: 'Mercado Pago', label: 'Mercado Pago', activeColor: '#009EE3', idleColor: '#4BB5E6' },
-                    { id: 'Rewards', label: 'Puntos Rewards', activeColor: '#F59E0B', idleColor: '#4BB5E6' }
+                    { id: 'Efectivo', label: 'Efectivo', icon: 'cash', isMP: false, color: '#15803D' },
+                    { id: 'Mercado Pago', label: 'Mercado Pago', icon: null, isMP: true, color: '#009EE3' },
+                    { id: 'Rewards', label: 'Rewards', icon: 'gift', isMP: false, color: '#D97706' }
                   ].map(m => {
                     const isSelected = selectedPayment === m.id;
                     return (
-                      <View key={m.id} style={styles.canvaPaymentCol}>
-                        <Text style={styles.canvaPaymentColLabel}>{m.label}</Text>
-                        <TouchableOpacity 
-                          style={[
-                            styles.canvaPaymentBlock, 
-                            { backgroundColor: isSelected ? m.activeColor : m.idleColor }
-                          ]}
-                          onPress={() => setSelectedPayment(m.id)}
-                        >
-                          {m.id === 'Efectivo' && (
-                            <Ionicons name="cash" size={18} color={Colors.white} />
-                          )}
-                          {m.id === 'Mercado Pago' && (
-                            <Ionicons name="card" size={18} color={Colors.white} />
-                          )}
-                          {m.id === 'Rewards' && (
-                            <Ionicons name="gift" size={18} color={Colors.white} />
-                          )}
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity 
+                        key={m.id}
+                        style={[
+                          styles.canvaPaymentCompactItem,
+                          isSelected && { backgroundColor: m.color, borderColor: m.color }
+                        ]}
+                        onPress={() => setSelectedPayment(m.id)}
+                      >
+                        {m.isMP ? (
+                          <Image 
+                            source={{ uri: 'https://http2.mlstatic.com/frontend-assets/ui-navigation/5.19.1/mercadopago/logo__small@2x.png' }} 
+                            style={{ width: 18, height: 18, resizeMode: 'contain', borderRadius: 4 }} 
+                          />
+                        ) : (
+                          <Ionicons name={m.icon as any} size={16} color={isSelected ? Colors.white : '#475569'} />
+                        )}
+                        <Text style={[
+                          styles.canvaPaymentCompactLabel,
+                          isSelected && { color: Colors.white, fontFamily: 'Quicksand-Bold' }
+                        ]}>
+                          {m.label}
+                        </Text>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>
@@ -3184,12 +3211,16 @@ const styles = StyleSheet.create({
   canvaInputField: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 24, paddingHorizontal: 16, height: 44, marginTop: 4, marginBottom: 8 },
   canvaTextInput: { flex: 1, fontSize: 13, fontFamily: 'Quicksand-Bold', color: '#0A2A5B', padding: 0 },
   
-  canvaPaymentTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: '#718096', marginTop: 12, marginBottom: 8, textAlign: 'center' },
+  canvaPaymentTitle: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: '#718096', marginTop: 10, marginBottom: 6, textAlign: 'center' },
   canvaPaymentBox: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 16 },
   canvaPaymentCol: { flex: 1, alignItems: 'center', gap: 4 },
   canvaPaymentColLabel: { fontSize: 10, fontFamily: 'Quicksand-Bold', color: '#718096', textAlign: 'center' },
   canvaPaymentBlock: { width: '100%', height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, elevation: 1 },
   
+  canvaPaymentCompactBar: { flexDirection: 'row', gap: 6, justifyContent: 'space-between', marginBottom: 12 },
+  canvaPaymentCompactItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 8, paddingHorizontal: 6, borderRadius: 20 },
+  canvaPaymentCompactLabel: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: '#475569' },
+
   canvaCalcularBtn: { backgroundColor: '#FF7A00', borderRadius: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8, shadowColor: '#FF7A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
   canvaCalcularBtnText: { color: Colors.white, fontSize: 16, fontFamily: 'Quicksand-Bold' },
   
@@ -3397,10 +3428,10 @@ const styles = StyleSheet.create({
   controlBtnSquare: { flex: 1, height: 62, borderRadius: 12, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 2 },
   controlBtnLabel: { color: Colors.white, fontSize: 10, fontFamily: 'Quicksand-Bold' },
 
-  // Estilos de pantalla dividida 50/50 y panel de novedades deslizable
+  // Estilos de pantalla dividida 62/38 para mayor visibilidad del mapa
   activeTripScreenContainer: { flex: 1, backgroundColor: Colors.white },
-  topHalfMapContainer: { height: '50%', width: '100%' },
-  bottomHalfContainer: { height: '50%', width: '100%', backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 },
+  topHalfMapContainer: { height: '62%', width: '100%' },
+  bottomHalfContainer: { height: '38%', width: '100%', backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 },
   bottomHalfScrollContent: { padding: 16, paddingBottom: 40, gap: 12 },
   ecosystemDrawerContainer: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 16, padding: 12, backgroundColor: Colors.background, marginTop: 8 },
   ecosystemDrawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },

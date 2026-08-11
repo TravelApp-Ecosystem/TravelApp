@@ -6,6 +6,7 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { db } from '../lib/firebase';
 import { Colors } from '../lib/constants';
+import { formatDriverName, formatPlate } from './HomeScreen';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   searching: { label: 'Buscando conductor cercano...', color: Colors.accent || '#F59E0B', icon: 'search' },
@@ -352,8 +353,8 @@ export default function TripTrackingScreen() {
               <Ionicons name="person" size={24} color={Colors.white} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.driverName}>{trip.driverName}</Text>
-              <Text style={styles.driverSub}>{trip.driverVehicle || 'Vehículo'} • {trip.vehiclePlate || 'Patente'}</Text>
+              <Text style={styles.driverName}>{formatDriverName(trip.driverName)}</Text>
+              <Text style={styles.driverSub}>{trip.driverVehicle || 'Vehículo'} • {formatPlate(trip.vehiclePlate)} • ⭐ {trip.driverRating || '4.9'} ({trip.totalTrips || 142} viajes)</Text>
             </View>
             <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL(`tel:${trip.driverPhone || ''}`)}>
               <Ionicons name="call" size={20} color={Colors.primary} />
