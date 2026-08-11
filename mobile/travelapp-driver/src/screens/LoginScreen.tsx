@@ -357,7 +357,7 @@ export default function LoginScreen() {
       <View style={styles.inner}>
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <TravelCabLogo size={70} textColor={Colors.white} isAccentColor={false} />
+          <TravelCabLogo size={70} textColor={Colors.primary} isAccentColor={false} />
           <Text style={styles.subtitle}>Portal del Conductor</Text>
         </View>
 
@@ -882,7 +882,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F4C35',
+    backgroundColor: Colors.white,
   },
   inner: {
     flex: 1,
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     fontFamily: 'Quicksand-Bold',
-    color: Colors.white,
+    color: Colors.primary,
     marginTop: 8,
     letterSpacing: 0.5,
   },
@@ -904,16 +904,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: 24,
     padding: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 4,
   },
   cardTitle: {
     fontSize: 20,
     fontFamily: 'Quicksand-Bold',
-    color: Colors.textDark,
+    color: Colors.primary,
     textAlign: 'center',
   },
   cardSubtitle: {
@@ -947,7 +949,7 @@ const styles = StyleSheet.create({
     color: Colors.textDark,
   },
   button: {
-    backgroundColor: '#0F4C35',
+    backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -963,12 +965,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   registerLinkText: {
-    color: Colors.white,
+    color: '#475569',
     fontSize: 13,
     fontFamily: 'Quicksand-Medium',
   },
   registerLinkHighlight: {
     fontFamily: 'Quicksand-Bold',
+    color: Colors.primary,
     textDecorationLine: 'underline',
   },
   // Modal Styles

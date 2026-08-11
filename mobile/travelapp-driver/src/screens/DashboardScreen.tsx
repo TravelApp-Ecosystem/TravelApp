@@ -274,12 +274,19 @@ export default function DashboardScreen() {
       setTodayEarnings(earnings);
     });
 
-    // Escuchar si hay viajes pendientes (en búsqueda)
+    // Escuchar si hay viajes pendientes (en búsqueda real) no rechazados por este chofer
     const qPending = query(collection(db, 'trips'), where('status', '==', 'searching'));
     const unsubPending = onSnapshot(qPending, (snap) => {
       if (isOnline && !snap.empty) {
-        const trip = { id: snap.docs[0].id, ...snap.docs[0].data() };
-        navigation.navigate('TripRequest', { trip });
+        const validDoc = snap.docs.find(docSnap => {
+          const data = docSnap.data();
+          const rejectedList = data.rejectedBy || [];
+          return !rejectedList.includes(user.uid);
+        });
+        if (validDoc) {
+          const trip = { id: validDoc.id, ...validDoc.data() };
+          navigation.navigate('TripRequest', { trip });
+        }
       }
     });
 
