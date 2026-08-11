@@ -16,4 +16,6 @@ export const Colors = {
 
 export const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
+export const API_BASE_URL = 'https://travelapp.ar';
+
 export const TRAVIS_WEBHOOK_URL = 'https://us-central1-mvp-travelapp.cloudfunctions.net/travis-webhook';

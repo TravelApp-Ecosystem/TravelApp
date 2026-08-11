@@ -63,33 +63,29 @@ export default function TripRequestScreen() {
   const handleAccept = async () => {
     setLoading(true);
     try {
-      const user = auth.currentUser!;
-      
-      // Fetch dynamic driver profile details from drivers/{uid}
-      const driverSnap = await getDoc(doc(db, 'drivers', user.uid));
-      const driverData = driverSnap.exists() ? driverSnap.data() : null;
-      
-      const driverName = driverData?.name || user.displayName || 'Conductor';
-      const driverPhone = driverData?.phone || '+5491122334455';
-      const driverRating = driverData?.rating || 4.9;
-      
-      const activeVehicle = driverData?.activeVehicle;
-      const vehicleModel = activeVehicle ? `${activeVehicle.brand} (${activeVehicle.color})` : 'Fiat Cronos (Gris)';
-      const vehiclePlate = activeVehicle?.plate || 'AF123JK';
-      
-      const driverProfilePhoto = driverData?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200';
-      const driverCarPhoto = activeVehicle?.photoUrl || 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=400';
+      const user = auth.currentUser;
+      if (!user) return;
 
-      const isMercadoPago = trip.paymentMethod === 'Mercado Pago' || trip.paymentMethod === 'Mercado Pago (Wallet Connect)';
+      // Obtener expediente dinámico del chofer activo en Firestore
+      const driverRef = doc(db, 'drivers', user.uid);
+      const driverSnap = await getDoc(driverRef);
+      const driverData = driverSnap.data();
 
+      const driverName = driverData?.name || user.displayName || (user.email ? user.email.split('@')[0] : 'Socio Conductor');
+      const driverPhone = driverData?.phone || '+5491100000000';
+      const driverRating = driverData?.rating || 5.0;
+      const vehicleModel = driverData?.activeVehicle?.brand || 'Fiat Cronos (Gris Plata)';
+      const vehiclePlate = driverData?.activeVehicle?.plate || 'AF 123 JK';
+      const driverProfilePhoto = driverData?.photoUrl || undefined;
+      const driverCarPhoto = driverData?.activeVehicle?.photoUrl || undefined;
+
+      const isMercadoPago = trip?.paymentMethod === 'Mercado Pago';
       if (isMercadoPago) {
         let paymentSuccess = false;
         let payData: any = null;
 
-        // Intentamos llamar a la API de débito en localhost:3000 y 10.0.2.2:3000 (Android emulator)
         const endpoints = [
-          `http://localhost:3000/api/checkout/process-debit`,
-          `http://10.0.2.2:3000/api/checkout/process-debit`
+          `${API_BASE_URL}/api/checkout/process-debit`,
         ];
 
         for (const url of endpoints) {

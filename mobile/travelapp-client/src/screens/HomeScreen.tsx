@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { Colors, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY } from '../lib/constants';
+import { Colors, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY, API_BASE_URL } from '../lib/constants';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { TravelCabLogo, TravelAppLogo, TravelExperienceLogo } from '../components/BrandLogos';
 
@@ -853,41 +853,10 @@ export default function HomeScreen() {
         createdAt: Timestamp.now()
       };
 
+      // Búsqueda en vivo de choferes reales en Firestore
       setRequestFlowStep('searching');
       const docRef = await addDoc(collection(db, 'trips'), tripData);
       setActiveTrip({ id: docRef.id, ...tripData });
-
-      // Configurar un timer para simulación (si no hay choferes reales tras 15 segundos)
-      const timer = setTimeout(() => {
-        Alert.alert(
-          'Simulación de Viaje',
-          '¿Deseas simular que un conductor acepta tu solicitud para continuar con la prueba?',
-          [
-            {
-              text: 'Seguir buscando real',
-              style: 'cancel'
-            },
-            {
-              text: 'Simular Chofer',
-              onPress: async () => {
-                // Simular aceptación escribiendo datos mock en el documento de Firestore
-                await updateDoc(doc(db, 'trips', docRef.id), {
-                  status: 'accepted',
-                  driverId: 'driver-mock-1',
-                  driverName: 'Roberto Gómez (Simulado)',
-                  driverPhone: '+5491133334444',
-                  driverRating: 4.9,
-                  vehicleModel: 'Chevrolet Prisma (Blanco)',
-                  vehiclePlate: 'AB 876 YZ',
-                  driverLocation: originCoords ? { latitude: originCoords.latitude - 0.005, longitude: originCoords.longitude - 0.005 } : { latitude: -26.8241, longitude: -65.2226 },
-                  acceptedAt: Timestamp.now()
-                });
-              }
-            }
-          ]
-        );
-      }, 15000);
-      setSearchTimer(timer);
 
       // Escuchar el documento en tiempo real
       const unsubTrip = onSnapshot(doc(db, 'trips', docRef.id), async (snap) => {
@@ -913,7 +882,7 @@ export default function HomeScreen() {
           if (data.paymentMethod === 'Mercado Pago' && data.paymentStatus === 'awaiting_payment') {
             if (mpLinked) {
               try {
-                const payResponse = await fetch('http://localhost:3000/api/checkout/process-debit', {
+                const payResponse = await fetch(`${API_BASE_URL}/api/checkout/process-debit`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -1119,7 +1088,7 @@ export default function HomeScreen() {
   // Vinculación de Billetera Mercado Pago (Wallet Connect)
   const handleLinkMercadoPago = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/checkout/wallet-connect', {
+      const response = await fetch(`${API_BASE_URL}/api/checkout/wallet-connect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, email: user.email })
@@ -1132,8 +1101,8 @@ export default function HomeScreen() {
       }
     } catch (err) {
       console.warn(err);
-      // Fallback local
-      const localSimUrl = `http://localhost:3000/checkout/mp-connect?userId=${user.uid}&email=${encodeURIComponent(user.email || '')}`;
+      // Fallback a producción
+      const localSimUrl = `${API_BASE_URL}/checkout/mp-connect?userId=${user.uid}&email=${encodeURIComponent(user.email || '')}`;
       Linking.openURL(localSimUrl);
     }
   };
@@ -1152,7 +1121,7 @@ export default function HomeScreen() {
         return;
       }
 
-      const response = await fetch('http://localhost:3000/api/checkout/process-debit', {
+      const response = await fetch(`${API_BASE_URL}/api/checkout/process-debit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
