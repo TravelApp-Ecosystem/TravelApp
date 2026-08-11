@@ -938,27 +938,41 @@ export default function HomeScreen() {
         // 5. Completado
         if (data.status === 'completed') {
           setActiveTrip((prev: any) => prev ? { ...prev, status: 'completed', finalPrice: data.finalPrice } : null);
-          showOverlayNotification("¡Viaje finalizado! Gracias por viajar con nosotros.");
+          const userEmail = user?.email || 'tu correo';
+          showOverlayNotification(`¡Viaje finalizado! Enviamos tu recibo digital a ${userEmail} 📧`);
           playNotificationSoundAndVibrate();
           
+          // Enviar recibo digital automáticamente por correo electrónico
+          if (user?.email) {
+            fetch(`${API_BASE_URL}/api/receipt/send`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tripId: snap.id,
+                passengerEmail: user.email,
+                passengerName: user.displayName || 'Pasajero',
+                amount: data.finalPrice || estimatedPrice,
+                origin: data.origin || origin,
+                destination: data.destination || destination,
+                driverName: data.driverName || 'Conductor TravelCab',
+                paymentMethod: data.paymentMethod || 'Efectivo',
+                date: new Date().toLocaleDateString('es-AR')
+              })
+            }).catch(console.warn);
+          }
+
           setTimeout(() => {
-            Alert.alert(
-              'Viaje Finalizado',
-              `El viaje finalizó correctamente. Total abonado: $${data.finalPrice || estimatedPrice} ARS.`,
-              [{ text: 'Calificar Conductor', onPress: () => {
-                setRequestFlowStep('idle');
-                setActiveTrip(null);
-                setDriverDetails(null);
-                setOrigin('');
-                setDestination('');
-                setOriginCoords(null);
-                setDestinationCoords(null);
-                setRoutePolyline('');
-                setRouteDistance(0);
-                setRouteDuration(0);
-              }}]
-            );
-          }, 1500);
+            setRequestFlowStep('idle');
+            setActiveTrip(null);
+            setDriverDetails(null);
+            setOrigin('');
+            setDestination('');
+            setOriginCoords(null);
+            setDestinationCoords(null);
+            setRoutePolyline('');
+            setRouteDistance(0);
+            setRouteDuration(0);
+          }, 2000);
 
           unsubTrip();
         }
