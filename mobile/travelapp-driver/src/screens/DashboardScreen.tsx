@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { doc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { useNavigation } from '@react-navigation/native';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
@@ -319,40 +320,70 @@ export default function DashboardScreen() {
     };
   }, [isOnline]);
 
-  // Enviar ubicación periódicamente cuando está online
+  // Enviar ubicación periódicamente cuando está online con protección total contra crashes
   useEffect(() => {
     if (isOnline) {
-      locationInterval.current = setInterval(async () => {
+      const updateLocation = async () => {
         try {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-          setCurrentLocation((prev: any) => prev ? { ...prev, ...coords } : { ...coords, latitudeDelta: 0.015, longitudeDelta: 0.015 });
-          
-          await setDoc(doc(db, 'drivers', user.uid), {
-            isOnline: true,
-            location: coords,
-            updatedAt: Timestamp.now(),
-            name: user.displayName || 'Conductor',
-          }, { merge: true });
+          let loc = await Location.getLastKnownPositionAsync({});
+          if (!loc) {
+            loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          }
+          if (loc?.coords) {
+            const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+            setCurrentLocation((prev: any) => prev ? { ...prev, ...coords } : { ...coords, latitudeDelta: 0.015, longitudeDelta: 0.015 });
+            
+            await setDoc(doc(db, 'drivers', user.uid), {
+              isOnline: true,
+              location: coords,
+              updatedAt: Timestamp.now(),
+              name: user.displayName || 'Conductor',
+            }, { merge: true });
+          }
         } catch (e) {
-          console.log("Error sending driver location", e);
+          console.log("Error updating driver location:", e);
         }
-      }, 10000);
+      };
+
+      updateLocation();
+      locationInterval.current = setInterval(updateLocation, 10000);
     } else {
-      clearInterval(locationInterval.current);
-      setDoc(doc(db, 'drivers', user.uid), { isOnline: false, updatedAt: Timestamp.now() }, { merge: true });
+      if (locationInterval.current) clearInterval(locationInterval.current);
+      setDoc(doc(db, 'drivers', user.uid), { isOnline: false, updatedAt: Timestamp.now() }, { merge: true }).catch(console.warn);
     }
-    return () => clearInterval(locationInterval.current);
+    return () => {
+      if (locationInterval.current) clearInterval(locationInterval.current);
+    };
   }, [isOnline]);
 
   const toggleOnline = async () => {
     if (!isOnline) {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        return Alert.alert('Permisos requeridos', 'Necesitamos acceso a tu ubicación para conectarte.');
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          return Alert.alert('Permisos Requeridos 📍', 'Necesitamos acceso a tu ubicación para conectarte a la flota.');
+        }
+
+        const hasServices = await Location.hasServicesEnabledAsync();
+        if (!hasServices) {
+          return Alert.alert('GPS Desactivado 📡', 'Por favor activa el GPS / Ubicación de tu teléfono para ponerte en línea.');
+        }
+
+        // Solicitar permisos de notificaciones explícitos para Android
+        try {
+          await Notifications.requestPermissionsAsync();
+        } catch (nErr) {
+          console.log("Notification permissions prompt:", nErr);
+        }
+
+        setIsOnline(true);
+      } catch (err) {
+        console.warn("Error toggling online:", err);
+        setIsOnline(true);
       }
+    } else {
+      setIsOnline(false);
     }
-    setIsOnline(prev => !prev);
   };
 
   const handleSupportOption = (type: 'emergency' | 'whatsapp' | 'travis') => {

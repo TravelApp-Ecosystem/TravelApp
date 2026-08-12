@@ -382,7 +382,7 @@ export default function LoginScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Contraseña</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { fontFamily: undefined }]}
                 placeholder="••••••••"
                 placeholderTextColor={Colors.textMuted}
                 value={password}
@@ -517,7 +517,7 @@ export default function LoginScreen() {
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>Contraseña de Ingreso (mín. 6 caracteres) *</Text>
                     <TextInput
-                      style={styles.formInput}
+                      style={[styles.formInput, { fontFamily: undefined }]}
                       placeholder="••••••••"
                       placeholderTextColor={Colors.textMuted}
                       value={regPassword}
