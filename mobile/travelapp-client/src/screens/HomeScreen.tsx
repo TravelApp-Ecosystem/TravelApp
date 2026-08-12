@@ -749,13 +749,15 @@ export default function HomeScreen() {
       const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(text)}&key=${GOOGLE_MAPS_KEY}&language=es&components=country:ar`;
       const res = await fetch(url);
       const data = await res.json();
-      if (data.predictions) {
+      if (data.predictions && data.predictions.length > 0) {
         if (field === 'origin') setOriginSuggestions(data.predictions);
         else setDestSuggestions(data.predictions);
+      } else {
+        throw new Error("No predictions");
       }
     } catch (e) {
       console.warn("Error fetching place suggestions:", e);
-      // Fallback local mock prediction list if API fails
+      // Fallback local dinámico si la API no devuelve predicciones inmediatas
       const mockSuggestions = [
         { place_id: `mock-1-${field}`, description: `${text}, San Miguel de Tucumán` },
         { place_id: `mock-2-${field}`, description: `${text}, Yerba Buena, Tucumán` },
@@ -778,48 +780,91 @@ export default function HomeScreen() {
     }
     setActiveSearchField(null);
 
-    // If it's a simulated mock place
-    if (place_id.startsWith('mock-')) {
-      const mockCoords = field === 'origin' 
-        ? { latitude: -26.8241, longitude: -65.2226 }
-        : { latitude: -26.8167, longitude: -65.2833 };
-      if (field === 'origin') setOriginCoords(mockCoords);
-      else setDestinationCoords(mockCoords);
-      return;
+    try {
+      const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(description)}&key=${GOOGLE_MAPS_KEY}`;
+      const geoRes = await fetch(geoUrl);
+      const geoData = await geoRes.json();
+      if (geoData.results && geoData.results.length > 0) {
+        const loc = geoData.results[0].geometry.location;
+        const coords = { latitude: loc.lat, longitude: loc.lng };
+        if (field === 'origin') setOriginCoords(coords);
+        else setDestinationCoords(coords);
+        return;
+      }
+    } catch (gErr) {
+      console.warn("Geocoding lookup failed for suggestion:", gErr);
     }
 
-    try {
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&key=${GOOGLE_MAPS_KEY}&fields=geometry`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.result && data.result.geometry && data.result.geometry.location) {
-        const { lat, lng } = data.result.geometry.location;
-        const coords = { latitude: lat, longitude: lng };
-        if (field === 'origin') {
-          setOriginCoords(coords);
-        } else {
-          setDestinationCoords(coords);
-        }
+    // Fallback de coordenadas aproximadas si falla geocoding
+    const mockCoords = field === 'origin' 
+      ? { latitude: -26.8241, longitude: -65.2226 }
+      : { latitude: -26.8167, longitude: -65.2833 };
+    if (field === 'origin') setOriginCoords(mockCoords);
+    else setDestinationCoords(mockCoords);
+  };
+
+  const ensureCoordsAndRoute = async (): Promise<boolean> => {
+    let oCoords = originCoords;
+    let dCoords = destinationCoords;
+
+    // Si origen está vacío o es 'Ubicación actual', asignar GPS actual del usuario
+    if (!origin || origin.toLowerCase().includes('ubicación') || origin.toLowerCase().includes('actual')) {
+      if (currentLocation) {
+        oCoords = { latitude: currentLocation.latitude, longitude: currentLocation.longitude };
+        setOriginCoords(oCoords);
+        if (!origin) setOrigin('Ubicación actual');
       }
-    } catch (e) {
-      console.warn("Error getting place details:", e);
-      const mockCoords = field === 'origin' 
-        ? { latitude: -26.8241, longitude: -65.2226 }
-        : { latitude: -26.8167, longitude: -65.2833 };
-      if (field === 'origin') setOriginCoords(mockCoords);
-      else setDestinationCoords(mockCoords);
     }
+
+    // Si oCoords es nulo y hay texto de origen, resolver con Geocoding
+    if (!oCoords && origin) {
+      try {
+        const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(origin + ', Tucumán, Argentina')}&key=${GOOGLE_MAPS_KEY}`;
+        const res = await fetch(geoUrl);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          const loc = data.results[0].geometry.location;
+          oCoords = { latitude: loc.lat, longitude: loc.lng };
+          setOriginCoords(oCoords);
+        }
+      } catch (e) {
+        console.warn("Geocoding origin failed:", e);
+      }
+    }
+
+    // Si dCoords es nulo y hay texto de destino, resolver con Geocoding
+    if (!dCoords && destination) {
+      try {
+        const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(destination + ', Tucumán, Argentina')}&key=${GOOGLE_MAPS_KEY}`;
+        const res = await fetch(geoUrl);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          const loc = data.results[0].geometry.location;
+          dCoords = { latitude: loc.lat, longitude: loc.lng };
+          setDestinationCoords(dCoords);
+        }
+      } catch (e) {
+        console.warn("Geocoding destination failed:", e);
+      }
+    }
+
+    // Si se obtienen las coordenadas, calcular la distancia y duración real de la ruta
+    if (oCoords && dCoords) {
+      await fetchRouteDetailsWithCoords(oCoords, dCoords);
+      return true;
+    }
+    return false;
   };
 
   useEffect(() => {
     if (originCoords && destinationCoords) {
-      fetchRouteDetails();
+      fetchRouteDetailsWithCoords(originCoords, destinationCoords);
     }
   }, [originCoords, destinationCoords]);
 
-  const fetchRouteDetails = async () => {
+  const fetchRouteDetailsWithCoords = async (oCoords: any, dCoords: any) => {
     try {
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originCoords.latitude},${originCoords.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&key=${GOOGLE_MAPS_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${oCoords.latitude},${oCoords.longitude}&destination=${dCoords.latitude},${dCoords.longitude}&key=${GOOGLE_MAPS_KEY}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.routes && data.routes.length > 0) {
@@ -829,17 +874,24 @@ export default function HomeScreen() {
         setRouteDuration(leg.duration.value / 60);
         setRoutePolyline(route.overview_polyline.points);
       } else {
-        throw new Error("No routes found");
+        throw new Error("No route found");
       }
     } catch (e) {
       console.warn("Error getting directions:", e);
-      const lat1 = originCoords.latitude;
-      const lon1 = originCoords.longitude;
-      const lat2 = destinationCoords.latitude;
-      const lon2 = destinationCoords.longitude;
+      const lat1 = oCoords.latitude;
+      const lon1 = oCoords.longitude;
+      const lat2 = dCoords.latitude;
+      const lon2 = dCoords.longitude;
       const dist = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2)) * 111.32;
-      setRouteDistance(dist > 0 ? dist : 5.4);
-      setRouteDuration(dist > 0 ? dist * 2 : 12);
+      const finalDist = dist > 0.5 ? dist : 5.4;
+      setRouteDistance(finalDist);
+      setRouteDuration(finalDist * 2);
+    }
+  };
+
+  const fetchRouteDetails = async () => {
+    if (originCoords && destinationCoords) {
+      await fetchRouteDetailsWithCoords(originCoords, destinationCoords);
     }
   };
 
@@ -1895,10 +1947,11 @@ export default function HomeScreen() {
                 {/* Botón Calcular Viaje Naranja Redondeado */}
                 <TouchableOpacity 
                   style={styles.canvaCalcularBtn}
-                  onPress={() => {
-                    if (!origin || !destination) {
-                      return Alert.alert('Ruta incompleta', 'Ingresá origen y destino.');
+                  onPress={async () => {
+                    if (!destination) {
+                      return Alert.alert('Destino incompleto', 'Por favor ingresá la dirección a donde querés ir.');
                     }
+                    await ensureCoordsAndRoute();
                     setRequestFlowStep('pricing');
                   }}
                 >
