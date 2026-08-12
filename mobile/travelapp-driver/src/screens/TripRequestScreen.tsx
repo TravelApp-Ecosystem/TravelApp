@@ -44,10 +44,14 @@ export default function TripRequestScreen() {
         if (snap.exists()) {
           const soundUrl = snap.data()?.notificationSoundUrl;
           if (soundUrl) {
-            const player = createAudioPlayer(soundUrl);
-            player.loop = true;
-            player.play();
-            soundRef.current = player;
+            try {
+              const player = createAudioPlayer(soundUrl);
+              player.loop = true;
+              player.play();
+              soundRef.current = player;
+            } catch (audioErr) {
+              console.warn('Audio player skipped gracefully:', audioErr);
+            }
           }
         }
       } catch (err) {

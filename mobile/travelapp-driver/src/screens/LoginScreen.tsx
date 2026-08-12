@@ -382,12 +382,14 @@ export default function LoginScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Contraseña</Text>
               <TextInput
-                style={[styles.input, { fontFamily: undefined }]}
+                style={[styles.input, Platform.OS === 'android' && { fontFamily: undefined, fontSize: 16 }]}
                 placeholder="••••••••"
                 placeholderTextColor={Colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={true}
+                autoCorrect={false}
+                autoCapitalize="none"
               />
             </View>
             <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
