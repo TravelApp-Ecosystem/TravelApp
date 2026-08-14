@@ -46,11 +46,6 @@
           "locationAlwaysAndWhenInUsePermission": "TravelApp necesita tu ubicación para mostrarte conductores cercanos y calcular rutas."
         }
       ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "ea6db588-3a1c-4772-b4ec-3ddf077e6c6e"
-      }
-    }
+    ]
   }
 }
