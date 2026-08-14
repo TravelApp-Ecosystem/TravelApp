@@ -4,7 +4,6 @@ import {
   Animated, Alert, ActivityIndicator, Vibration, Dimensions
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { createAudioPlayer } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -19,7 +18,6 @@ export default function TripRequestScreen() {
   const { trip } = route.params;
   const [loading, setLoading] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const soundRef = useRef<any>(null);
 
   // Calcular ETA estimado en tiempo (Minutos de viaje para recoger al pasajero)
   const pickupEtaMinutes = trip?.pickupEtaMinutes || Math.max(3, Math.round((trip?.distanceToPassengerKm || 2.4) * 1.6));
@@ -31,58 +29,20 @@ export default function TripRequestScreen() {
   useEffect(() => {
     Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true }).start();
 
-    let isSubscribed = true;
-
-    // Reproducir sonido y vibración
-    const startAlerts = async () => {
-      try {
-        Vibration.vibrate([0, 500, 200, 500, 200, 500], true);
-
-        const snap = await getDoc(doc(db, 'system_config', 'logistics'));
-        if (!isSubscribed) return;
-
-        if (snap.exists()) {
-          const soundUrl = snap.data()?.notificationSoundUrl;
-          if (soundUrl) {
-            try {
-              const player = createAudioPlayer(soundUrl);
-              player.loop = true;
-              player.play();
-              soundRef.current = player;
-            } catch (audioErr) {
-              console.warn('Audio player skipped gracefully:', audioErr);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to play request sound in driver app:', err);
-      }
-    };
-
-    startAlerts();
+    // Reproducir patrón de vibración táctil sin depender de módulos nativos inestables
+    try {
+      Vibration.vibrate([0, 600, 250, 600, 250, 600], true);
+    } catch (e) {
+      console.warn('Vibration error:', e);
+    }
 
     return () => {
-      isSubscribed = false;
       Vibration.cancel();
-      if (soundRef.current) {
-        try {
-          soundRef.current.pause();
-        } catch (e) {
-          // ignore
-        }
-      }
     };
   }, []);
 
   const stopAlerts = () => {
     Vibration.cancel();
-    if (soundRef.current) {
-      try {
-        soundRef.current.pause();
-      } catch (e) {
-        // ignore
-      }
-    }
   };
 
   const handleAccept = async () => {

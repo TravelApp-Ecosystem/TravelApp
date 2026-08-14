@@ -11,7 +11,6 @@ import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Colors, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY, API_BASE_URL } from '../lib/constants';
-import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { TravelCabLogo, TravelAppLogo, TravelExperienceLogo } from '../components/BrandLogos';
 
 const { width, height } = Dimensions.get('window');
@@ -692,12 +691,6 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Configuración de audio para expo-audio
-  useEffect(() => {
-    setAudioModeAsync({
-      playsInSilentMode: true,
-    }).catch((err: any) => console.log("Audio mode set error:", err));
-  }, []);
   const showOverlayNotification = (msg: string) => {
     setOverlayMessage(msg);
     Animated.sequence([
@@ -720,18 +713,8 @@ export default function HomeScreen() {
   const playNotificationSoundAndVibrate = async () => {
     try {
       Vibration.vibrate([0, 500, 200, 500]);
-      if (notificationSoundUrl) {
-        const player = createAudioPlayer(notificationSoundUrl);
-        const subscription = player.addListener('playbackStatusUpdate', (status) => {
-          if (status.didJustFinish) {
-            subscription.remove();
-            player.release();
-          }
-        });
-        player.play();
-      }
     } catch (e) {
-      console.warn("Failed to play notification sound:", e);
+      console.warn("Failed to vibrate:", e);
     }
   };
 
