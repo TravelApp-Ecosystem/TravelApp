@@ -188,16 +188,20 @@ export default function DashboardScreen() {
 
   // Pulso animado cuando está online
   useEffect(() => {
-    if (isOnline) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.15, duration: 1000, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
+    try {
+      if (isOnline) {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1.15, duration: 1000, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          ])
+        ).start();
+      } else {
+        pulseAnim.stopAnimation();
+        pulseAnim.setValue(1);
+      }
+    } catch (e) {
+      console.warn('Animation error:', e);
     }
   }, [isOnline]);
 
@@ -208,8 +212,8 @@ export default function DashboardScreen() {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           setCurrentLocation({
-            latitude: -34.6037,
-            longitude: -58.3816,
+            latitude: -26.82414,
+            longitude: -65.22260,
             latitudeDelta: 0.015,
             longitudeDelta: 0.015,
           });
@@ -217,17 +221,12 @@ export default function DashboardScreen() {
           return;
         }
 
-        // 1. Intentar obtener la última ubicación conocida (instantáneo)
         let loc = await Location.getLastKnownPositionAsync({});
-        
-        // 2. Si no hay última ubicación, pedir la actual con balanced accuracy (más rápido)
-        if (!loc) {
-          loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
+        if (!loc || !loc.coords || typeof loc.coords.latitude !== 'number' || isNaN(loc.coords.latitude)) {
+          loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
         }
 
-        if (loc) {
+        if (loc && loc.coords && typeof loc.coords.latitude === 'number' && !isNaN(loc.coords.latitude)) {
           setCurrentLocation({
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
@@ -235,14 +234,18 @@ export default function DashboardScreen() {
             longitudeDelta: 0.015,
           });
         } else {
-          throw new Error("No location resolved");
+          setCurrentLocation({
+            latitude: -26.82414,
+            longitude: -65.22260,
+            latitudeDelta: 0.015,
+            longitudeDelta: 0.015,
+          });
         }
       } catch (e) {
         console.log("Error getting location, using fallback coordinate", e);
-        // Coordenada por defecto (Buenos Aires Centro)
         setCurrentLocation({
-          latitude: -34.6037,
-          longitude: -58.3816,
+          latitude: -26.82414,
+          longitude: -65.22260,
           latitudeDelta: 0.015,
           longitudeDelta: 0.015,
         });
@@ -278,38 +281,45 @@ export default function DashboardScreen() {
     // Escuchar si hay viajes pendientes (en búsqueda real) no rechazados por este chofer
     const qPending = query(collection(db, 'trips'), where('status', '==', 'searching'));
     const unsubPending = onSnapshot(qPending, (snap) => {
-      if (isOnline && !snap.empty) {
-        const validDoc = snap.docs.find(docSnap => {
-          const data = docSnap.data();
-          const rejectedList = data.rejectedBy || [];
-          return !rejectedList.includes(user.uid);
-        });
-        if (validDoc) {
-          const trip = { id: validDoc.id, ...validDoc.data() };
-          navigation.navigate('TripRequest', { trip });
+      try {
+        if (isOnline && !snap.empty && user?.uid) {
+          const validDoc = snap.docs.find(docSnap => {
+            const data = docSnap.data();
+            const rejectedList = data.rejectedBy || [];
+            return !rejectedList.includes(user.uid);
+          });
+          if (validDoc) {
+            const trip = { id: validDoc.id, ...validDoc.data() };
+            navigation.navigate('TripRequest', { trip });
+          }
         }
+      } catch (err) {
+        console.warn("Error checking pending trips:", err);
       }
     });
 
     // Escuchar vehículos en Firestore
     const unsubVehicles = onSnapshot(collection(db, 'drivers', user.uid, 'vehicles'), async (snap) => {
-      if (snap.empty) {
-        // Inicializar con vehículo por defecto si la base está vacía
-        const defaultVehicle = {
-          brand: 'Chevrolet Prisma',
-          plate: 'AB 123 CD',
-          color: 'Blanco',
-          category: 'Standard',
-          active: true,
-          createdAt: Timestamp.now()
-        };
-        const docRef = await addDoc(collection(db, 'drivers', user.uid, 'vehicles'), defaultVehicle);
-        await setDoc(doc(db, 'drivers', user.uid), {
-          activeVehicle: { id: docRef.id, ...defaultVehicle }
-        }, { merge: true });
-      } else {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Vehicle));
-        setVehicles(list);
+      try {
+        if (snap.empty) {
+          const defaultVehicle = {
+            brand: 'Chevrolet Prisma',
+            plate: 'AB 123 CD',
+            color: 'Blanco',
+            category: 'Standard',
+            active: true,
+            createdAt: Timestamp.now()
+          };
+          const docRef = await addDoc(collection(db, 'drivers', user.uid, 'vehicles'), defaultVehicle);
+          await setDoc(doc(db, 'drivers', user.uid), {
+            activeVehicle: { id: docRef.id, ...defaultVehicle }
+          }, { merge: true });
+        } else {
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Vehicle));
+          setVehicles(list);
+        }
+      } catch (e) {
+        console.warn("Error loading vehicles:", e);
       }
     });
 
@@ -326,19 +336,19 @@ export default function DashboardScreen() {
       const updateLocation = async () => {
         try {
           let loc = await Location.getLastKnownPositionAsync({});
-          if (!loc) {
-            loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          if (!loc || !loc.coords || typeof loc.coords.latitude !== 'number' || isNaN(loc.coords.latitude)) {
+            loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
           }
-          if (loc?.coords) {
+          if (loc && loc.coords && typeof loc.coords.latitude === 'number' && !isNaN(loc.coords.latitude)) {
             const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-            setCurrentLocation((prev: any) => prev ? { ...prev, ...coords } : { ...coords, latitudeDelta: 0.015, longitudeDelta: 0.015 });
+            setCurrentLocation({ latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0.015, longitudeDelta: 0.015 });
             
             await setDoc(doc(db, 'drivers', user.uid), {
               isOnline: true,
               location: coords,
               updatedAt: Timestamp.now(),
               name: user.displayName || 'Conductor',
-            }, { merge: true });
+            }, { merge: true }).catch(console.warn);
           }
         } catch (e) {
           console.log("Error updating driver location:", e);
@@ -366,14 +376,7 @@ export default function DashboardScreen() {
 
         const hasServices = await Location.hasServicesEnabledAsync();
         if (!hasServices) {
-          return Alert.alert('GPS Desactivado 📡', 'Por favor activa el GPS / Ubicación de tu teléfono para ponerte en línea.');
-        }
-
-        // Solicitar permisos de notificaciones explícitos para Android
-        try {
-          await Notifications.requestPermissionsAsync();
-        } catch (nErr) {
-          console.log("Notification permissions prompt:", nErr);
+          return Alert.alert('GPS Desactivado 📡', 'Por favor activa la Ubicación / GPS de tu teléfono para ponerte en línea.');
         }
 
         setIsOnline(true);
@@ -527,8 +530,8 @@ export default function DashboardScreen() {
           showsUserLocation
           showsMyLocationButton={false}
         >
-          {isOnline && currentLocation && (
-            <Marker coordinate={currentLocation} title="Tu Ubicación Online">
+          {isOnline && currentLocation && typeof currentLocation.latitude === 'number' && !isNaN(currentLocation.latitude) && typeof currentLocation.longitude === 'number' && !isNaN(currentLocation.longitude) && (
+            <Marker coordinate={{ latitude: currentLocation.latitude, longitude: currentLocation.longitude }} title="Tu Ubicación Online">
               <View style={styles.markerOutline}>
                 <View style={styles.markerInner} />
               </View>
