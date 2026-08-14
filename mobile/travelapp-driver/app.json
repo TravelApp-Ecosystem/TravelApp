@@ -42,6 +42,10 @@
         "android.permission.POST_NOTIFICATIONS",
         "VIBRATE",
         "android.permission.VIBRATE",
+        "WAKE_LOCK",
+        "android.permission.WAKE_LOCK",
+        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
         "RECEIVE_BOOT_COMPLETED"
       ]
     },
@@ -52,8 +56,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "TravelApp Conductor necesita tu ubicación para compartirla con los pasajeros y recibir solicitudes de viaje.",
-          "isAndroidBackgroundLocationEnabled": true
+          "locationAlwaysAndWhenInUsePermission": "TravelApp Conductor necesita tu ubicación en segundo plano para recibir viajes y compartir tu ubicación en tiempo real.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [

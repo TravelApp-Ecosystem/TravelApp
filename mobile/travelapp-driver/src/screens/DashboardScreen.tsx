@@ -10,6 +10,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { doc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useNavigation } from '@react-navigation/native';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
@@ -335,6 +336,8 @@ export default function DashboardScreen() {
   // Enviar ubicación periódicamente cuando está online con protección total contra crashes
   useEffect(() => {
     if (isOnline && user?.uid) {
+      activateKeepAwakeAsync('driver_online').catch(console.warn);
+
       const updateLocation = async () => {
         try {
           let loc = await Location.getLastKnownPositionAsync({});
@@ -362,12 +365,14 @@ export default function DashboardScreen() {
       updateLocation();
       locationInterval.current = setInterval(updateLocation, 10000);
     } else {
+      deactivateKeepAwake('driver_online').catch(console.warn);
       if (locationInterval.current) clearInterval(locationInterval.current);
       if (user?.uid) {
         setDoc(doc(db, 'drivers', user.uid), { isOnline: false, updatedAt: Timestamp.now() }, { merge: true }).catch(console.warn);
       }
     }
     return () => {
+      deactivateKeepAwake('driver_online').catch(console.warn);
       if (locationInterval.current) clearInterval(locationInterval.current);
     };
   }, [isOnline, user?.uid]);

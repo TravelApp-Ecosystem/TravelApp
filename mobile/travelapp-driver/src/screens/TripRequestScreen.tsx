@@ -4,6 +4,7 @@ import {
   Animated, Alert, ActivityIndicator, Vibration, Dimensions
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -18,6 +19,7 @@ export default function TripRequestScreen() {
   const { trip } = route.params;
   const [loading, setLoading] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   // Calcular ETA estimado en tiempo (Minutos de viaje para recoger al pasajero)
   const pickupEtaMinutes = trip?.pickupEtaMinutes || Math.max(3, Math.round((trip?.distanceToPassengerKm || 2.4) * 1.6));
@@ -29,20 +31,60 @@ export default function TripRequestScreen() {
   useEffect(() => {
     Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true }).start();
 
-    // Reproducir patrón de vibración táctil sin depender de módulos nativos inestables
-    try {
-      Vibration.vibrate([0, 600, 250, 600, 250, 600], true);
-    } catch (e) {
-      console.warn('Vibration error:', e);
-    }
+    let isSubscribed = true;
+
+    const startAlerts = async () => {
+      try {
+        // Vibración finita de aviso (sin bucle infinito)
+        Vibration.vibrate([0, 500, 250, 500], false);
+
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          staysActiveInBackground: true,
+        }).catch(console.warn);
+
+        const snap = await getDoc(doc(db, 'system_config', 'logistics'));
+        if (!isSubscribed) return;
+
+        const soundUrl = snap.exists() ? snap.data()?.notificationSoundUrl : null;
+        if (soundUrl) {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: soundUrl },
+            { shouldPlay: true, isLooping: true, volume: 1.0 }
+          );
+          if (isSubscribed) {
+            soundRef.current = sound;
+          } else {
+            await sound.unloadAsync();
+          }
+        }
+      } catch (err) {
+        console.warn("Notification audio warning:", err);
+      }
+    };
+
+    startAlerts();
 
     return () => {
+      isSubscribed = false;
       Vibration.cancel();
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+      }
     };
   }, []);
 
-  const stopAlerts = () => {
+  const stopAlerts = async () => {
     Vibration.cancel();
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      } catch (e) {
+        // ignore
+      }
+    }
   };
 
   const handleAccept = async () => {
