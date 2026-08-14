@@ -21,6 +21,8 @@ const MASTER_ADMIN_EMAILS = [
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Registro del Conductor - Asistente Onboarding de 4 Pasos
@@ -381,16 +383,29 @@ export default function LoginScreen() {
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Contraseña</Text>
-              <TextInput
-                style={[styles.input, Platform.OS === 'android' && { fontFamily: undefined, fontSize: 16 }]}
-                placeholder="••••••••"
-                placeholderTextColor={Colors.textMuted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true}
-                autoCorrect={false}
-                autoCapitalize="none"
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={[styles.passwordInputFlex, !showPassword && Platform.OS === 'android' && { fontFamily: undefined }]}
+                  placeholder="••••••••"
+                  placeholderTextColor={Colors.textMuted}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  style={styles.eyeButton} 
+                  onPress={() => setShowPassword(prev => !prev)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name={showPassword ? "eye" : "eye-off-outline"} 
+                    size={22} 
+                    color={showPassword ? Colors.primary : Colors.textMuted} 
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
             <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
               {loading ? (
@@ -518,14 +533,29 @@ export default function LoginScreen() {
 
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>Contraseña de Ingreso (mín. 6 caracteres) *</Text>
-                    <TextInput
-                      style={[styles.formInput, { fontFamily: undefined }]}
-                      placeholder="••••••••"
-                      placeholderTextColor={Colors.textMuted}
-                      value={regPassword}
-                      onChangeText={setRegPassword}
-                      secureTextEntry
-                    />
+                    <View style={styles.passwordContainer}>
+                      <TextInput
+                        style={[styles.passwordInputFlex, !showRegPassword && Platform.OS === 'android' && { fontFamily: undefined }]}
+                        placeholder="••••••••"
+                        placeholderTextColor={Colors.textMuted}
+                        value={regPassword}
+                        onChangeText={setRegPassword}
+                        secureTextEntry={!showRegPassword}
+                        autoCorrect={false}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity 
+                        style={styles.eyeButton} 
+                        onPress={() => setShowRegPassword(prev => !prev)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons 
+                          name={showRegPassword ? "eye" : "eye-off-outline"} 
+                          size={22} 
+                          color={showRegPassword ? Colors.primary : Colors.textMuted} 
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   <View style={styles.formGroup}>
@@ -1293,5 +1323,28 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 13,
     fontFamily: 'Quicksand-Bold',
+  },
+
+  // Contenedor de contraseña con botón de ojo (Show/Hide Password)
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingRight: 12,
+  },
+  passwordInputFlex: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: Colors.textDark,
+  },
+  eyeButton: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
