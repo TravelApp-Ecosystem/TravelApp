@@ -385,7 +385,11 @@ export default function LoginScreen() {
               <Text style={styles.label}>Contraseña</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
-                  style={[styles.passwordInputFlex, !showPassword && Platform.OS === 'android' && { fontFamily: undefined }]}
+                  style={[
+                    styles.passwordInputFlex,
+                    { color: '#0F172A', fontSize: 16 },
+                    !showPassword && Platform.OS === 'android' && { fontFamily: 'sans-serif' }
+                  ]}
                   placeholder="••••••••"
                   placeholderTextColor={Colors.textMuted}
                   value={password}
@@ -535,7 +539,11 @@ export default function LoginScreen() {
                     <Text style={styles.formLabel}>Contraseña de Ingreso (mín. 6 caracteres) *</Text>
                     <View style={styles.passwordContainer}>
                       <TextInput
-                        style={[styles.passwordInputFlex, !showRegPassword && Platform.OS === 'android' && { fontFamily: undefined }]}
+                        style={[
+                          styles.passwordInputFlex,
+                          { color: '#0F172A', fontSize: 16 },
+                          !showRegPassword && Platform.OS === 'android' && { fontFamily: 'sans-serif' }
+                        ]}
                         placeholder="••••••••"
                         placeholderTextColor={Colors.textMuted}
                         value={regPassword}
