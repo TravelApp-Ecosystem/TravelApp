@@ -43,7 +43,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "TravelApp necesita tu ubicación para mostrarte conductores cercanos y calcular rutas."
+          "locationAlwaysAndWhenInUsePermission": "TravelApp Coordinador necesita tu ubicación para gestionar y coordinar los viajes grupales."
         }
       ]
     ]

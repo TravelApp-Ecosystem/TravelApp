@@ -1,5 +1,5 @@
 {
-  "name": "travelapp-client",
+  "name": "travelapp-coordinator",
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {

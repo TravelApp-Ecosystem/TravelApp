@@ -48,6 +48,11 @@
           "locationAlwaysAndWhenInUsePermission": "TravelApp Conductor necesita tu ubicación para compartirla con los pasajeros y recibir solicitudes de viaje."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "907a480e-16a9-4115-97c2-b921d41de0d4"
+      }
+    }
   }
 }
