@@ -167,7 +167,7 @@ export default function DashboardScreen() {
   const slideMenuAnim = useRef(new Animated.Value(-width * 0.75)).current;
   const locationInterval = useRef<any>(null);
 
-  const user = auth.currentUser!;
+  const user = auth.currentUser;
 
   // Animación de menú lateral
   useEffect(() => {
@@ -258,6 +258,8 @@ export default function DashboardScreen() {
 
   // Escuchar viajes de hoy, solicitudes y modulo de vehículos
   useEffect(() => {
+    if (!user) return;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -276,7 +278,7 @@ export default function DashboardScreen() {
         earnings += (trip.finalPrice || trip.estimatedPrice || 0);
       });
       setTodayEarnings(earnings);
-    });
+    }, (err) => console.warn("Completed trips error:", err));
 
     // Escuchar si hay viajes pendientes (en búsqueda real) no rechazados por este chofer
     const qPending = query(collection(db, 'trips'), where('status', '==', 'searching'));
@@ -296,7 +298,7 @@ export default function DashboardScreen() {
       } catch (err) {
         console.warn("Error checking pending trips:", err);
       }
-    });
+    }, (err) => console.warn("Pending trips error:", err));
 
     // Escuchar vehículos en Firestore
     const unsubVehicles = onSnapshot(collection(db, 'drivers', user.uid, 'vehicles'), async (snap) => {
@@ -321,18 +323,18 @@ export default function DashboardScreen() {
       } catch (e) {
         console.warn("Error loading vehicles:", e);
       }
-    });
+    }, (err) => console.warn("Vehicles listener error:", err));
 
     return () => {
       unsub();
       unsubPending();
       unsubVehicles();
     };
-  }, [isOnline]);
+  }, [isOnline, user?.uid]);
 
   // Enviar ubicación periódicamente cuando está online con protección total contra crashes
   useEffect(() => {
-    if (isOnline) {
+    if (isOnline && user?.uid) {
       const updateLocation = async () => {
         try {
           let loc = await Location.getLastKnownPositionAsync({});
@@ -343,12 +345,14 @@ export default function DashboardScreen() {
             const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             setCurrentLocation({ latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0.015, longitudeDelta: 0.015 });
             
-            await setDoc(doc(db, 'drivers', user.uid), {
-              isOnline: true,
-              location: coords,
-              updatedAt: Timestamp.now(),
-              name: user.displayName || 'Conductor',
-            }, { merge: true }).catch(console.warn);
+            if (user?.uid) {
+              await setDoc(doc(db, 'drivers', user.uid), {
+                isOnline: true,
+                location: coords,
+                updatedAt: Timestamp.now(),
+                name: user.displayName || 'Conductor',
+              }, { merge: true }).catch(console.warn);
+            }
           }
         } catch (e) {
           console.log("Error updating driver location:", e);
@@ -359,14 +363,17 @@ export default function DashboardScreen() {
       locationInterval.current = setInterval(updateLocation, 10000);
     } else {
       if (locationInterval.current) clearInterval(locationInterval.current);
-      setDoc(doc(db, 'drivers', user.uid), { isOnline: false, updatedAt: Timestamp.now() }, { merge: true }).catch(console.warn);
+      if (user?.uid) {
+        setDoc(doc(db, 'drivers', user.uid), { isOnline: false, updatedAt: Timestamp.now() }, { merge: true }).catch(console.warn);
+      }
     }
     return () => {
       if (locationInterval.current) clearInterval(locationInterval.current);
     };
-  }, [isOnline]);
+  }, [isOnline, user?.uid]);
 
   const toggleOnline = async () => {
+    if (!user) return;
     if (!isOnline) {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -388,6 +395,15 @@ export default function DashboardScreen() {
       setIsOnline(false);
     }
   };
+
+  if (!user) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.white }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 12, fontFamily: 'Quicksand-Bold', color: Colors.textDark }}>Cargando sesión...</Text>
+      </View>
+    );
+  }
 
   const handleSupportOption = (type: 'emergency' | 'whatsapp' | 'travis') => {
     setSupportModalVisible(false);
@@ -527,7 +543,7 @@ export default function DashboardScreen() {
           style={styles.map}
           provider={PROVIDER_GOOGLE}
           initialRegion={currentLocation}
-          showsUserLocation
+          showsUserLocation={false}
           showsMyLocationButton={false}
         >
           {isOnline && currentLocation && typeof currentLocation.latitude === 'number' && !isNaN(currentLocation.latitude) && typeof currentLocation.longitude === 'number' && !isNaN(currentLocation.longitude) && (
