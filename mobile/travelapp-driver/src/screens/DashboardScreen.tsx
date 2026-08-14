@@ -532,9 +532,10 @@ export default function DashboardScreen() {
         >
           {isOnline && currentLocation && typeof currentLocation.latitude === 'number' && !isNaN(currentLocation.latitude) && typeof currentLocation.longitude === 'number' && !isNaN(currentLocation.longitude) && (
             <Marker coordinate={{ latitude: currentLocation.latitude, longitude: currentLocation.longitude }} title="Tu Ubicación Online">
-              <View style={styles.markerOutline}>
-                <View style={styles.markerInner} />
+              <View style={[styles.carMarkerCircle, { backgroundColor: '#10B981' }]}>
+                <Ionicons name="car" size={22} color={Colors.white} />
               </View>
+              <View style={[styles.carMarkerArrow, { borderTopColor: '#10B981' }]} />
             </Marker>
           )}
         </MapView>
@@ -1295,4 +1296,33 @@ const styles = StyleSheet.create({
   taxiLiveStatVal: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
   taxiLiveStatLabel: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
   taxiLiveStatDivider: { width: 1.5, height: '80%', backgroundColor: Colors.border, alignSelf: 'center' },
+
+  // Marcador de Autito con Colores (Verde / Naranja / Gris)
+  carMarkerCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  carMarkerArrow: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    alignSelf: 'center',
+    marginTop: -2,
+  },
 });
