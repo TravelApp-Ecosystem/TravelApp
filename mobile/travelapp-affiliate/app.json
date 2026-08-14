@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "TravelApp Partners",
+    "owner": "fer-travelapp",
     "slug": "travelapp-affiliate",
     "version": "1.0.0",
     "orientation": "portrait",

@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "TravelApp",
+    "owner": "fer-travelapp",
     "slug": "travelapp-client",
     "version": "1.0.0",
     "orientation": "portrait",
