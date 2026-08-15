@@ -47,6 +47,11 @@
           "locationAlwaysAndWhenInUsePermission": "TravelApp Coordinador necesita tu ubicación para gestionar y coordinar los viajes grupales."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b29b0be3-e903-4916-bf0a-3fba81a176fd"
+      }
+    }
   }
 }

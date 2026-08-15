@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import firebase from 'firebase/compat/app';
+import { User, onAuthStateChanged } from 'firebase/auth';
 import { ActivityIndicator, View } from 'react-native';
 import { auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
@@ -18,15 +18,49 @@ import ProfileScreen from '../screens/ProfileScreen';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const [user, setUser] = useState<firebase.User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsub;
+    let isMounted = true;
+
+    // Timer de seguridad: desbloquea la app a los 3.5s si el listener de auth demora o falla
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 3500);
+
+    let unsub = () => {};
+    try {
+      unsub = onAuthStateChanged(
+        auth,
+        (u) => {
+          if (isMounted) {
+            setUser(u);
+            setLoading(false);
+            clearTimeout(safetyTimer);
+          }
+        },
+        (error) => {
+          console.warn('Auth state error in coordinator app:', error);
+          if (isMounted) {
+            setLoading(false);
+            clearTimeout(safetyTimer);
+          }
+        }
+      );
+    } catch (err) {
+      console.warn('Auth listener mount error:', err);
+      if (isMounted) {
+        setLoading(false);
+        clearTimeout(safetyTimer);
+      }
+    }
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+      unsub();
+    };
   }, []);
 
   if (loading) {

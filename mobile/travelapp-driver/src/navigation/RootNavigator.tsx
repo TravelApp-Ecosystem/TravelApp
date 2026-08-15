@@ -22,11 +22,45 @@ export default function RootNavigator() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsub;
+    let isMounted = true;
+
+    // Timer de seguridad: desbloquea la app a los 3.5s si el listener de auth demora o falla
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 3500);
+
+    let unsub = () => {};
+    try {
+      unsub = onAuthStateChanged(
+        auth,
+        (u) => {
+          if (isMounted) {
+            setUser(u);
+            setLoading(false);
+            clearTimeout(safetyTimer);
+          }
+        },
+        (error) => {
+          console.warn('Auth state error in driver app:', error);
+          if (isMounted) {
+            setLoading(false);
+            clearTimeout(safetyTimer);
+          }
+        }
+      );
+    } catch (err) {
+      console.warn('Auth listener mount error:', err);
+      if (isMounted) {
+        setLoading(false);
+        clearTimeout(safetyTimer);
+      }
+    }
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+      unsub();
+    };
   }, []);
 
   if (loading) {

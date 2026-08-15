@@ -16,6 +16,8 @@ export const Colors = {
   textMuted: '#94A3B8',
 };
 
-export const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+export const GOOGLE_MAPS_KEY =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U';
 
-export const API_BASE_URL = 'https://travelapp.ar';
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL || 'https://travelapp.ar';
