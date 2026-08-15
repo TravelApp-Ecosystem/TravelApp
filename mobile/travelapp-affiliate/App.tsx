@@ -2,18 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View, StyleSheet, Text, Animated, ImageBackground } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts, Quicksand_400Regular, Quicksand_500Medium, Quicksand_600SemiBold, Quicksand_700Bold } from '@expo-google-fonts/quicksand';
 import { Ionicons } from '@expo/vector-icons';
-
-import HomeScreen from './src/screens/HomeScreen';
-import BookingsScreen from './src/screens/BookingsScreen';
-import PayoutConfigScreen from './src/screens/PayoutConfigScreen';
-import PromoMediaScreen from './src/screens/PromoMediaScreen';
+import RootNavigator from './src/navigation/RootNavigator';
 import { TravelExperienceLogo, TravelAppLogo } from './src/components/BrandLogos';
-
-const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -36,7 +28,7 @@ export default function App() {
       const t3 = setTimeout(() => setActiveIcon('gift'), 1500);
       const t4 = setTimeout(() => setActiveIcon('logo'), 2000);
 
-      // Desvanecer splash a los 3500ms
+      // Desvanecer splash a los 3200ms
       const timer = setTimeout(() => {
         Animated.timing(splashOpacity, {
           toValue: 0,
@@ -45,7 +37,7 @@ export default function App() {
         }).start(() => {
           setShowSplash(false);
         });
-      }, 3500);
+      }, 3200);
 
       return () => {
         clearTimeout(t1);
@@ -70,7 +62,7 @@ export default function App() {
 
   if (!fontsLoaded) {
     return (
-      <View style={[styles.splashContainer, { backgroundColor: '#0A2A5B' }]}>
+      <View style={[styles.splashContainer, { backgroundColor: '#1E1B4B' }]}>
         <ActivityIndicator size="large" color="#FFFFFF" />
       </View>
     );
@@ -81,38 +73,8 @@ export default function App() {
       <StatusBar style="light" />
       <View style={{ flex: 1 }}>
         
-        <NavigationContainer>
-          <Stack.Navigator
-            initialRouteName="Home"
-            screenOptions={{
-              headerStyle: { backgroundColor: '#0A2A5B' },
-              headerTintColor: '#FFFFFF',
-              headerTitleStyle: { fontFamily: 'Quicksand-Bold' },
-              contentStyle: { backgroundColor: '#F8FAFC' },
-            }}
-          >
-            <Stack.Screen 
-              name="Home" 
-              component={HomeScreen} 
-              options={{ title: 'TravelApp Experience Partners' }}
-            />
-            <Stack.Screen 
-              name="Bookings" 
-              component={BookingsScreen} 
-              options={{ title: 'Reservas & Comisiones' }}
-            />
-            <Stack.Screen 
-              name="PayoutConfig" 
-              component={PayoutConfigScreen} 
-              options={{ title: 'Configuración de Cobro' }}
-            />
-            <Stack.Screen 
-              name="PromoMedia" 
-              component={PromoMediaScreen} 
-              options={{ title: 'Material Promocional' }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
+        {/* Navegador principal con autenticación */}
+        <RootNavigator />
 
         {/* SPLASH SCREEN ANIMADO CON FONDO DE IMAGEN & SUPERPOSICIÓN DE MARCA */}
         {showSplash && (
@@ -122,7 +84,7 @@ export default function App() {
               style={styles.imageBackground}
               resizeMode="cover"
             >
-              {/* Overlay Azul Tech Semitransparente para Máxima Legibilidad */}
+              {/* Overlay Azul Tech Semitransparente para Legibilidad */}
               <View style={styles.darkOverlay}>
                 
                 {/* Logo Central o Icono Animado */}
@@ -174,7 +136,7 @@ const styles = StyleSheet.create({
   },
   splashContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0A2A5B',
+    backgroundColor: '#1E1B4B',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -185,7 +147,7 @@ const styles = StyleSheet.create({
   },
   darkOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(10, 42, 91, 0.82)', // Azul Tech semitransparente
+    backgroundColor: 'rgba(30, 27, 75, 0.88)',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 60,
