@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "TravelApp Conductor",
+    "owner": "fer-travelapps-team",
     "slug": "travelapp-driver",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -32,7 +33,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -48,7 +51,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "907a480e-16a9-4115-97c2-b921d41de0d4"
+        "projectId": "981daf60-ddc3-4651-9f8f-34fb64cf612b"
       }
     }
   }
