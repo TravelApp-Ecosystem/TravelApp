@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
   Modal,
   Switch,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
@@ -56,6 +58,11 @@ export default function CompleteProfileScreen() {
   const [gender, setGender] = useState<'M' | 'F' | 'X' | ''>('');
   const [nationality, setNationality] = useState('Argentina');
   const [occupation, setOccupation] = useState('');
+
+  // Fotos de Documentación (Opcionales)
+  const [dniFrontPhoto, setDniFrontPhoto] = useState<string | null>(null);
+  const [dniBackPhoto, setDniBackPhoto] = useState<string | null>(null);
+  const [passportPhoto, setPassportPhoto] = useState<string | null>(null);
 
   // 2. Domicilio & Facturación AFIP
   const [street, setStreet] = useState('');
@@ -116,6 +123,9 @@ export default function CompleteProfileScreen() {
             setDocNumber(data.document.number || '');
             setPassportExpiry(data.document.expiryDate || '');
             setNationality(data.document.nationality || 'Argentina');
+            if (data.document.frontUrl) setDniFrontPhoto(data.document.frontUrl);
+            if (data.document.backUrl) setDniBackPhoto(data.document.backUrl);
+            if (data.document.passportUrl) setPassportPhoto(data.document.passportUrl);
           }
           if (data.passport) setPassportNumber(data.passport);
           if (data.dob) setDob(data.dob);
@@ -275,6 +285,33 @@ export default function CompleteProfileScreen() {
     ]);
   };
 
+  const pickDocumentPhoto = async (type: 'dniFront' | 'dniBack' | 'passport') => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para adjuntar el documento.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const dataUrl = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        if (type === 'dniFront') setDniFrontPhoto(dataUrl);
+        else if (type === 'dniBack') setDniBackPhoto(dataUrl);
+        else if (type === 'passport') setPassportPhoto(dataUrl);
+      }
+    } catch (e) {
+      console.warn('Error picking image:', e);
+    }
+  };
+
   // Guardar todo en Firebase
   const handleSaveAll = async () => {
     if (!user?.uid) return;
@@ -296,6 +333,9 @@ export default function CompleteProfileScreen() {
           number: docNumber.trim(),
           expiryDate: passportExpiry.trim(),
           nationality: nationality.trim(),
+          frontUrl: dniFrontPhoto || null,
+          backUrl: dniBackPhoto || null,
+          passportUrl: passportPhoto || null,
         },
         passport: passportNumber.trim() || null,
         address: {
@@ -554,6 +594,142 @@ export default function CompleteProfileScreen() {
                   placeholder="Ej: Ingeniero"
                   placeholderTextColor={Colors.textMuted}
                 />
+              </View>
+            </View>
+
+            {/* Fotos de Documentación Opcionales */}
+            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <View>
+                  <Text style={{ fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary }}>
+                    Fotos del Documento (Opcional)
+                  </Text>
+                  <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Regular', color: Colors.textMuted }}>
+                    Podés adjuntar fotos para acelerar la verificación y emisión.
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                  <Text style={{ fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.textMuted }}>OPCIONAL</Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {/* DNI Frente */}
+                <TouchableOpacity
+                  onPress={() => pickDocumentPhoto('dniFront')}
+                  style={{
+                    flex: 1,
+                    height: 90,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: dniFrontPhoto ? '#10B981' : '#CBD5E1',
+                    borderStyle: dniFrontPhoto ? 'solid' : 'dashed',
+                    backgroundColor: '#F8FAFC',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    position: 'relative',
+                  }}
+                >
+                  {dniFrontPhoto ? (
+                    <>
+                      <Image source={{ uri: dniFrontPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      <TouchableOpacity
+                        onPress={() => setDniFrontPhoto(null)}
+                        style={{ position: 'absolute', top: 4, right: 4, backgroundColor: '#EF4444', borderRadius: 10, padding: 3 }}
+                      >
+                        <Ionicons name="close" size={12} color="#FFF" />
+                      </TouchableOpacity>
+                      <View style={{ position: 'absolute', bottom: 2, left: 2, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 4, borderRadius: 4 }}>
+                        <Text style={{ color: '#FFF', fontSize: 9, fontFamily: 'Quicksand-Bold' }}>DNI Frente</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="camera-outline" size={22} color={Colors.textMuted} />
+                      <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginTop: 4 }}>DNI Frente</Text>
+                      <Text style={{ fontSize: 9, fontFamily: 'Quicksand-Regular', color: Colors.textMuted }}>Tocar p/ subir</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* DNI Dorso */}
+                <TouchableOpacity
+                  onPress={() => pickDocumentPhoto('dniBack')}
+                  style={{
+                    flex: 1,
+                    height: 90,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: dniBackPhoto ? '#10B981' : '#CBD5E1',
+                    borderStyle: dniBackPhoto ? 'solid' : 'dashed',
+                    backgroundColor: '#F8FAFC',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    position: 'relative',
+                  }}
+                >
+                  {dniBackPhoto ? (
+                    <>
+                      <Image source={{ uri: dniBackPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      <TouchableOpacity
+                        onPress={() => setDniBackPhoto(null)}
+                        style={{ position: 'absolute', top: 4, right: 4, backgroundColor: '#EF4444', borderRadius: 10, padding: 3 }}
+                      >
+                        <Ionicons name="close" size={12} color="#FFF" />
+                      </TouchableOpacity>
+                      <View style={{ position: 'absolute', bottom: 2, left: 2, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 4, borderRadius: 4 }}>
+                        <Text style={{ color: '#FFF', fontSize: 9, fontFamily: 'Quicksand-Bold' }}>DNI Dorso</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="camera-outline" size={22} color={Colors.textMuted} />
+                      <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginTop: 4 }}>DNI Dorso</Text>
+                      <Text style={{ fontSize: 9, fontFamily: 'Quicksand-Regular', color: Colors.textMuted }}>Tocar p/ subir</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Pasaporte */}
+                <TouchableOpacity
+                  onPress={() => pickDocumentPhoto('passport')}
+                  style={{
+                    flex: 1,
+                    height: 90,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: passportPhoto ? '#10B981' : '#CBD5E1',
+                    borderStyle: passportPhoto ? 'solid' : 'dashed',
+                    backgroundColor: '#F8FAFC',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    position: 'relative',
+                  }}
+                >
+                  {passportPhoto ? (
+                    <>
+                      <Image source={{ uri: passportPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      <TouchableOpacity
+                        onPress={() => setPassportPhoto(null)}
+                        style={{ position: 'absolute', top: 4, right: 4, backgroundColor: '#EF4444', borderRadius: 10, padding: 3 }}
+                      >
+                        <Ionicons name="close" size={12} color="#FFF" />
+                      </TouchableOpacity>
+                      <View style={{ position: 'absolute', bottom: 2, left: 2, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 4, borderRadius: 4 }}>
+                        <Text style={{ color: '#FFF', fontSize: 9, fontFamily: 'Quicksand-Bold' }}>Pasaporte</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="book-outline" size={22} color={Colors.textMuted} />
+                      <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginTop: 4 }}>Pasaporte</Text>
+                      <Text style={{ fontSize: 9, fontFamily: 'Quicksand-Regular', color: Colors.textMuted }}>Tocar p/ subir</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
           </View>
