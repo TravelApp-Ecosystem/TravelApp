@@ -112,7 +112,7 @@ export default function App() {
                 <View style={styles.footerContainer}>
                   <Text style={styles.ecosystemLabel}>Miembro del ecosistema</Text>
                   <View style={styles.appLogoRow}>
-                    <TravelAppLogo size={24} textColor="#FFFFFF" isAccentColor={true} />
+                    <TravelAppLogo size={140} textColor="#FFFFFF" />
                   </View>
                   <Text style={styles.copyrightText}>
                     Todos los derechos reservados TravelApp s.a.s. - 2026 - Versión 1.1
