@@ -8,7 +8,7 @@ import { Colors } from './src/lib/constants';
 import { TravelAppLogo } from './src/components/BrandLogos';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'Quicksand-Regular': Quicksand_400Regular,
     'Quicksand-Medium': Quicksand_500Medium,
     'Quicksand-SemiBold': Quicksand_600SemiBold,
@@ -19,7 +19,7 @@ export default function App() {
   const splashOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontError) {
       // Mostrar splash durante 3 segundos, luego desvanecer en 500ms
       const timer = setTimeout(() => {
         Animated.timing(splashOpacity, {
@@ -32,9 +32,9 @@ export default function App() {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={[styles.splashContainer, { backgroundColor: '#0F172A' }]}>
         <ActivityIndicator size="large" color="#38BDF8" />
@@ -52,8 +52,8 @@ export default function App() {
           <Animated.View style={[styles.splashContainer, { opacity: splashOpacity }]}>
             {/* Logo Central */}
             <View style={styles.centerContainer}>
-              <TravelAppLogo size={90} textColor="#FFFFFF" isAccentColor={true} />
-              <Text style={{ color: '#FFFFFF', fontSize: 20, fontFamily: 'Quicksand-Bold', marginTop: 16 }}>Supervisor de Flota</Text>
+              <TravelAppLogo size={200} textColor="#FFFFFF" />
+              <Text style={{ color: '#38BDF8', fontSize: 18, fontFamily: 'Quicksand-Bold', marginTop: 16, letterSpacing: 0.5 }}>SUPERVISOR DE FLOTA</Text>
             </View>
 
             {/* Footer */}
@@ -72,7 +72,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   splashContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'space-between',

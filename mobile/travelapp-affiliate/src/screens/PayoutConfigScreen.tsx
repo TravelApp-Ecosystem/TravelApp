@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   cardMp: { backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#BAE6FD', padding: 16, gap: 8 },
   cardCbu: { backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#FDE68A', padding: 16, gap: 8 },
   cardTitle: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: '#0A2A5B' },
-  cardDesc: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: '#64748B', leading: 16 },
+  cardDesc: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: '#64748B', lineHeight: 16 },
   mpStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', padding: 10, borderRadius: 10, marginVertical: 4 },
   mpStatusText: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#065F46' },
   mpLinkBtn: { backgroundColor: '#009EE3', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },

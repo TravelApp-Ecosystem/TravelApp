@@ -3,12 +3,12 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, Alert, ActivityIndicator, Vibration, Dimensions
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { db, auth } from '../lib/firebase';
 import { Colors, API_BASE_URL } from '../lib/constants';
+import { InteractiveMapView } from '../components/InteractiveMapView';
 
 const { width } = Dimensions.get('window');
 
@@ -212,34 +212,11 @@ export default function TripRequestScreen() {
 
         {/* Mapa Interactivo con Origen y Destino */}
         <View style={styles.mapContainer}>
-          <MapView
-            provider={PROVIDER_GOOGLE}
+          <InteractiveMapView
             style={styles.map}
-            initialRegion={{
-              latitude: (originCoords.latitude + destinationCoords.latitude) / 2,
-              longitude: (originCoords.longitude + destinationCoords.longitude) / 2,
-              latitudeDelta: Math.abs(originCoords.latitude - destinationCoords.latitude) * 1.6 || 0.03,
-              longitudeDelta: Math.abs(originCoords.longitude - destinationCoords.longitude) * 1.6 || 0.03,
-            }}
-            scrollEnabled={false}
-            zoomEnabled={false}
-          >
-            <Marker
-              coordinate={originCoords}
-              title={`Origen: ${trip.origin || 'Pasajero'}`}
-              pinColor="#10B981"
-            />
-            <Marker
-              coordinate={destinationCoords}
-              title={`Destino: ${trip.destination || 'Destino'}`}
-              pinColor="#EF4444"
-            />
-            <Polyline
-              coordinates={[originCoords, destinationCoords]}
-              strokeColor="#FF6B00"
-              strokeWidth={4}
-            />
-          </MapView>
+            originCoords={originCoords}
+            destinationCoords={destinationCoords}
+          />
         </View>
 
         {/* Ganancia Estimada */}
@@ -311,7 +288,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   panel: {

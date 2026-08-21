@@ -4,14 +4,17 @@ import {
   TextInput, ActivityIndicator, Animated, ScrollView, Dimensions, Alert, Modal, Image, Linking, Platform, Vibration,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, Polyline, UrlTile } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
+import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../lib/firebase';
-import { Colors, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY, API_BASE_URL } from '../lib/constants';
+import { Colors, Fonts, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY, API_BASE_URL } from '../lib/constants';
 import { TravelCabLogo, TravelAppLogo, TravelExperienceLogo } from '../components/BrandLogos';
+import { InteractiveMapView } from '../components/InteractiveMapView';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,54 +47,98 @@ function getNext10Days() {
   return days;
 }
 
-function decodePolyline(encoded: string) {
-  if (!encoded) return [];
-  const poly = [];
-  let index = 0, len = encoded.length;
-  let lat = 0, lng = 0;
+export function decodePolyline(encoded: any) {
+  if (Array.isArray(encoded)) return encoded;
+  if (!encoded || typeof encoded !== 'string') return [];
+  try {
+    const poly = [];
+    let index = 0, len = encoded.length;
+    let lat = 0, lng = 0;
 
-  while (index < len) {
-    let b, shift = 0, result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lat += dlat;
+    while (index < len) {
+      let b, shift = 0, result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20 && index < len);
+      const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
 
-    shift = 0;
-    result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lng += dlng;
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20 && index < len);
+      const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
 
-    poly.push({
-      latitude: lat / 1e5,
-      longitude: lng / 1e5
-    });
+      const nLat = lat / 1e5;
+      const nLng = lng / 1e5;
+      if (!isNaN(nLat) && !isNaN(nLng)) {
+        poly.push({ latitude: nLat, longitude: nLng });
+      }
+    }
+    return poly;
+  } catch (e) {
+    return [];
   }
-  return poly;
 }
 
+export const DEFAULT_REGION = {
+  latitude: -26.8326,
+  longitude: -65.2038,
+  latitudeDelta: 0.04,
+  longitudeDelta: 0.04,
+};
+
+export const MAP_PROVIDER = Platform.OS === 'android' ? undefined : PROVIDER_GOOGLE;
+
+export const getMapRegion = (coords?: any, userLoc?: any) => {
+  if (coords?.latitude && coords?.longitude) {
+    return {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      latitudeDelta: 0.04,
+      longitudeDelta: 0.04,
+    };
+  }
+  if (userLoc?.latitude && userLoc?.longitude) {
+    return {
+      latitude: userLoc.latitude,
+      longitude: userLoc.longitude,
+      latitudeDelta: 0.04,
+      longitudeDelta: 0.04,
+    };
+  }
+  return DEFAULT_REGION;
+};
+
+export const getSafeIoniconsName = (iconName: any, fallback = 'car-outline'): any => {
+  if (typeof iconName !== 'string' || !iconName) return fallback;
+  const clean = iconName.trim();
+  if (clean.startsWith('http') || clean.startsWith('data:') || clean.length > 30 || clean.includes('/') || clean.includes(';') || clean.includes('+') || clean.includes('=')) {
+    return fallback;
+  }
+  return clean;
+};
+
 export const formatDriverName = (fullName?: string) => {
-  if (!fullName) return 'Socio Conductor';
+  if (!fullName) return 'Conductor';
   const parts = fullName.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0];
-  return `${parts[0]} ${parts[1][0]}.`;
+  return parts[0] || fullName;
 };
 
 export const formatPlate = (plate?: string) => {
-  if (!plate) return 'AF *** JK';
-  const clean = plate.replace(/\s+/g, '').toUpperCase();
-  if (clean.length >= 6) {
-    return `${clean.slice(0, 2)} *** ${clean.slice(-2)}`;
+  if (!plate) return '•••• 76 YZ';
+  const clean = plate.trim().toUpperCase();
+  if (clean.length > 4) {
+    const visibleEnd = clean.slice(-4);
+    return `•••• ${visibleEnd}`;
   }
-  return plate;
+  return `•••• ${clean}`;
 };
 
 export default function HomeScreen() {
@@ -107,7 +154,7 @@ export default function HomeScreen() {
   const [serviceMode, setServiceMode] = useState<'urbana' | 'aci'>('urbana');
 
   // Estados de Ubicación y Mapa
-  const [currentLocation, setCurrentLocation] = useState<any>(null);
+  const [currentLocation, setCurrentLocation] = useState<any>(DEFAULT_REGION);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [onlineDrivers, setOnlineDrivers] = useState<any[]>([]);
 
@@ -122,7 +169,7 @@ export default function HomeScreen() {
   const [destSuggestions, setDestSuggestions] = useState<any[]>([]);
   const [originCoords, setOriginCoords] = useState<any>(null);
   const [destinationCoords, setDestinationCoords] = useState<any>(null);
-  const [routePolyline, setRoutePolyline] = useState<string>('');
+  const [routePolyline, setRoutePolyline] = useState<any>('');
   const [routeDistance, setRouteDistance] = useState<number>(0);
   const [routeDuration, setRouteDuration] = useState<number>(0);
   const [activeSearchField, setActiveSearchField] = useState<'origin' | 'destination' | null>(null);
@@ -155,10 +202,44 @@ export default function HomeScreen() {
   const [passengerTrips, setPassengerTrips] = useState<any[]>([]);
   const [rewardsPoints, setRewardsPoints] = useState(1450); // Puntos por defecto
   const [activeSubMode, setActiveSubMode] = useState<'urbana' | 'interurbano' | 'traslados'>('urbana');
+  const [intermediateStops, setIntermediateStops] = useState<string[]>([]); // Hasta 3 paradas intermedias
   const [scheduleCity, setScheduleCity] = useState('');
   const [schedulePassengers, setSchedulePassengers] = useState('1');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Estados de Billetera TravelPay y Perfil
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [userPhone, setUserPhone] = useState<string>('');
+  const [userPhotoURL, setUserPhotoURL] = useState<string>('');
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+
+  // Estados de Chat en Vivo (Conductor - Pasajero - Concorde 360)
+  const [isChatModalVisible, setIsChatModalVisible] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInputText, setChatInputText] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+  const handleAddStop = () => {
+    if (intermediateStops.length < 3) {
+      setIntermediateStops([...intermediateStops, '']);
+    } else {
+      Alert.alert('Límite alcanzado', 'Podés agregar un máximo de 3 paradas intermedias.');
+    }
+  };
+
+  const handleRemoveStop = (index: number) => {
+    const updated = [...intermediateStops];
+    updated.splice(index, 1);
+    setIntermediateStops(updated);
+  };
+
+  const handleUpdateStop = (index: number, text: string) => {
+    const updated = [...intermediateStops];
+    updated[index] = text;
+    setIntermediateStops(updated);
+  };
+
 
   // Datos de TravelApp Experience - Viajes Contratados
   const [hasPurchasedOrganizedTrip, setHasPurchasedOrganizedTrip] = useState(false);
@@ -192,6 +273,17 @@ export default function HomeScreen() {
   const [isEcosystemExpanded, setIsEcosystemExpanded] = useState(false);
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const mapRef = useRef<MapView | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+
+  // Escuchador de autenticación y errores de Google Maps API (gm_authFailure)
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      (window as any).gm_authFailure = () => {
+        console.error("❌ Google Maps API Error: gm_authFailure. Clave de API denegada o cuota excedida.");
+        Alert.alert("Google Maps Error", "gm_authFailure: Error de autenticación o cuota en clave API de Google Maps.");
+      };
+    }
+  }, []);
 
   // Animación de paneles
   const panelSlideAnim = useRef(new Animated.Value(0)).current;
@@ -220,7 +312,7 @@ export default function HomeScreen() {
     }
   }, [originCoords, destinationCoords, routePolyline]);
 
-  // Escuchar perfil en tiempo real para Mercado Pago y datos extendidos
+  // Escuchar perfil en tiempo real para Mercado Pago, Billetera y datos extendidos
   useEffect(() => {
     if (user?.uid) {
       const unsubProfile = onSnapshot(doc(db, 'users', user.uid), (snap) => {
@@ -235,13 +327,154 @@ export default function HomeScreen() {
           if (data.rewardsPoints !== undefined) {
             setRewardsPoints(data.rewardsPoints);
           }
+          if (data.walletBalance !== undefined) {
+            setWalletBalance(data.walletBalance);
+          }
+          if (data.phoneNumber) {
+            setUserPhone(data.phoneNumber);
+          } else if (user?.phoneNumber) {
+            setUserPhone(user.phoneNumber);
+          }
+          if (data.photoURL) {
+            setUserPhotoURL(data.photoURL);
+          } else if (user?.photoURL) {
+            setUserPhotoURL(user.photoURL);
+          }
         }
       });
       return unsubProfile;
     }
   }, [user?.uid]);
 
-  // Escuchar viaje contratado y sus mensajes de grupo en tiempo real
+  // Selección de Foto de Perfil (Cámara o Galería)
+  const handlePickProfileImage = () => {
+    Alert.alert(
+      'Foto de Perfil',
+      'Seleccioná una opción para actualizar tu foto de perfil:',
+      [
+        {
+          text: 'Tomar Foto con Cámara 📷',
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permiso Requerido', 'Necesitamos acceso a la cámara para tomar tu foto.');
+                return;
+              }
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+                base64: true,
+              });
+              if (!result.canceled && result.assets && result.assets[0]) {
+                await uploadProfilePhoto(result.assets[0]);
+              }
+            } catch (e) {
+              console.error('Error al abrir cámara:', e);
+              Alert.alert('Error', 'No se pudo abrir la cámara.');
+            }
+          },
+        },
+        {
+          text: 'Seleccionar de Galería 🖼️',
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permiso Requerido', 'Necesitamos acceso a la galería para seleccionar la foto.');
+                return;
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+                base64: true,
+              });
+              if (!result.canceled && result.assets && result.assets[0]) {
+                await uploadProfilePhoto(result.assets[0]);
+              }
+            } catch (e) {
+              console.error('Error al abrir galería:', e);
+              Alert.alert('Error', 'No se pudo abrir la galería.');
+            }
+          },
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]
+    );
+  };
+
+  const uploadProfilePhoto = async (asset: ImagePicker.ImagePickerAsset) => {
+    try {
+      const photoUri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+      setUserPhotoURL(photoUri);
+
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL: photoUri });
+      }
+      await setDoc(doc(db, 'users', user.uid), { photoURL: photoUri }, { merge: true });
+      Alert.alert('¡Foto Actualizada!', 'Tu foto de perfil se guardó correctamente.');
+    } catch (e) {
+      console.error('Error actualizando foto:', e);
+      Alert.alert('Error', 'No se pudo guardar la foto de perfil.');
+    }
+  };
+
+  const handleSavePhone = async () => {
+    if (!userPhone.trim()) {
+      return Alert.alert('Campo Requerido', 'Ingresá tu número de teléfono / WhatsApp.');
+    }
+    setIsSavingPhone(true);
+    try {
+      await setDoc(doc(db, 'users', user.uid), { phoneNumber: userPhone.trim() }, { merge: true });
+      Alert.alert('Guardado', 'Número de teléfono actualizado con éxito.');
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo actualizar el número de teléfono.');
+    } finally {
+      setIsSavingPhone(false);
+    }
+  };
+
+  // Escuchar mensajes del chat del viaje activo en Firestore (Sincronizado con Concorde 360)
+  useEffect(() => {
+    if (activeTrip?.id) {
+      const q = collection(db, 'trips', activeTrip.id, 'messages');
+      const unsubChat = onSnapshot(q, (snap) => {
+        const msgs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        msgs.sort((a: any, b: any) => {
+          const tA = a.createdAt?.seconds || 0;
+          const tB = b.createdAt?.seconds || 0;
+          return tA - tB;
+        });
+        setChatMessages(msgs);
+      });
+      return unsubChat;
+    }
+  }, [activeTrip?.id]);
+
+  const handleSendMessage = async () => {
+    if (!chatInputText.trim() || !activeTrip?.id) return;
+    const messageText = chatInputText.trim();
+    setChatInputText('');
+    setIsSendingMessage(true);
+    try {
+      await addDoc(collection(db, 'trips', activeTrip.id, 'messages'), {
+        text: messageText,
+        senderId: user.uid,
+        senderName: firstName || 'Pasajero',
+        senderRole: 'passenger',
+        createdAt: Timestamp.now(),
+      });
+    } catch (e) {
+      console.error('Error enviando mensaje:', e);
+      Alert.alert('Error', 'No se pudo enviar el mensaje.');
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
   useEffect(() => {
     if (user?.uid) {
       const q = query(collection(db, 'contracted_trips'), where('userId', '==', user.uid));
@@ -496,19 +729,36 @@ export default function HomeScreen() {
           loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         }
         if (loc) {
-          setCurrentLocation({
+          const userCoords = {
             latitude: loc.coords.latitude,
             longitude: loc.coords.longitude,
             latitudeDelta: 0.015,
             longitudeDelta: 0.015,
-          });
+          };
+          setCurrentLocation(userCoords);
+          setOriginCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+
+          // Asignar dirección del GPS por defecto al campo de Origen
+          try {
+            const addressRes = await Location.reverseGeocodeAsync({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            });
+            if (addressRes && addressRes.length > 0) {
+              const addr = addressRes[0];
+              const street = addr.street || addr.name || '';
+              const number = addr.streetNumber ? ` ${addr.streetNumber}` : '';
+              const district = addr.city || addr.subregion || addr.region || '';
+              const formatted = street ? `${street}${number}${district ? `, ${district}` : ''}` : 'Ubicación actual';
+              setOrigin(formatted);
+            } else {
+              setOrigin('Ubicación actual');
+            }
+          } catch {
+            setOrigin('Ubicación actual');
+          }
         } else {
-          setCurrentLocation({
-            latitude: -34.6037,
-            longitude: -58.3816,
-            latitudeDelta: 0.015,
-            longitudeDelta: 0.015,
-          });
+          setCurrentLocation(DEFAULT_REGION);
         }
       } catch (e) {
         console.log("Error obtaining GPS client", e);
@@ -736,11 +986,15 @@ export default function HomeScreen() {
         if (field === 'origin') setOriginSuggestions(data.predictions);
         else setDestSuggestions(data.predictions);
       } else {
-        throw new Error("No predictions");
+        const mockSuggestions = [
+          { place_id: `mock-1-${field}`, description: `${text}, San Miguel de Tucumán` },
+          { place_id: `mock-2-${field}`, description: `${text}, Yerba Buena, Tucumán` },
+          { place_id: `mock-3-${field}`, description: `${text}, Tafí Viejo, Tucumán` },
+        ];
+        if (field === 'origin') setOriginSuggestions(mockSuggestions);
+        else setDestSuggestions(mockSuggestions);
       }
     } catch (e) {
-      console.warn("Error fetching place suggestions:", e);
-      // Fallback local dinámico si la API no devuelve predicciones inmediatas
       const mockSuggestions = [
         { place_id: `mock-1-${field}`, description: `${text}, San Miguel de Tucumán` },
         { place_id: `mock-2-${field}`, description: `${text}, Yerba Buena, Tucumán` },
@@ -857,18 +1111,19 @@ export default function HomeScreen() {
         setRouteDuration(leg.duration.value / 60);
         setRoutePolyline(route.overview_polyline.points);
       } else {
-        throw new Error("No route found");
+        throw new Error("No route found from Directions API");
       }
     } catch (e) {
-      console.warn("Error getting directions:", e);
+      // Fallback suave de distancia y trazado de polyline sin emitir advertencia
       const lat1 = oCoords.latitude;
       const lon1 = oCoords.longitude;
       const lat2 = dCoords.latitude;
       const lon2 = dCoords.longitude;
       const dist = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2)) * 111.32;
-      const finalDist = dist > 0.5 ? dist : 5.4;
+      const finalDist = dist > 0.5 ? Math.round(dist * 10) / 10 : 5.4;
       setRouteDistance(finalDist);
-      setRouteDuration(finalDist * 2);
+      setRouteDuration(Math.round(finalDist * 2));
+      setRoutePolyline([oCoords, dCoords]);
     }
   };
 
@@ -916,7 +1171,7 @@ export default function HomeScreen() {
 
         // 1. Aceptado
         if (data.status === 'accepted' && data.driverId) {
-          if (timer) clearTimeout(timer);
+          if (searchTimer) clearTimeout(searchTimer);
           
           const driverDetailsObj = {
             id: data.driverId,
@@ -1239,49 +1494,15 @@ export default function HomeScreen() {
     <View style={[styles.container, activeTab === 'home' && requestFlowStep !== 'active' && { backgroundColor: '#0A2A5B' }]}>
       {activeTab === 'home' && requestFlowStep === 'active' && driverDetails ? (
         <View style={styles.activeTripScreenContainer}>
-          {/* 50% Superior: Mapa de Seguimiento */}
+          {/* 50% Superior: Mapa de Seguimiento Interactivo HD */}
           <View style={styles.topHalfMapContainer}>
-            {Platform.OS === 'web' ? (
-              <View style={styles.webMapPlaceholder}>
-                <View style={styles.webMapGrid}>
-                  <View style={[styles.gridLine, { top: '50%', left: 0, right: 0 }]} />
-                  <View style={[styles.gridLine, { left: '50%', top: 0, bottom: 0 }]} />
-                  <View style={[styles.simulatedCar, { top: '45%', left: '45%' }]}>
-                    <Ionicons name="car" size={20} color={Colors.accent} />
-                  </View>
-                </View>
-                <Text style={styles.webMapText}>Seguimiento en Vivo (Simulación)</Text>
-              </View>
-            ) : (
-              <MapView
-                ref={mapRef}
-                style={styles.map}
-                initialRegion={currentLocation}
-                showsUserLocation
-              >
-                {originCoords && (
-                  <Marker coordinate={originCoords} title="Origen">
-                    <View style={[styles.markerPin, { backgroundColor: Colors.success }]}>
-                      <Ionicons name="pin" size={16} color={Colors.white} />
-                    </View>
-                  </Marker>
-                )}
-                {destinationCoords && (
-                  <Marker coordinate={destinationCoords} title="Destino">
-                    <View style={[styles.markerPin, { backgroundColor: Colors.danger }]}>
-                      <Ionicons name="flag" size={16} color={Colors.white} />
-                    </View>
-                  </Marker>
-                )}
-                {routePolyline ? (
-                  <Polyline
-                    coordinates={decodePolyline(routePolyline)}
-                    strokeColor={Colors.accent}
-                    strokeWidth={4}
-                  />
-                ) : null}
-              </MapView>
-            )}
+            <InteractiveMapView
+              originCoords={originCoords}
+              destinationCoords={destinationCoords}
+              routeCoordinates={routePolyline ? decodePolyline(routePolyline) : null}
+              onlineDrivers={activeTrip?.driverLocation ? [{ id: 'active_driver', name: driverDetails?.name, location: activeTrip.driverLocation, heading: activeTrip.driverHeading }] : onlineDrivers}
+              style={{ width: '100%', height: '100%' }}
+            />
           </View>
 
           {/* 50% Inferior: Panel de información y deslizable */}
@@ -1339,7 +1560,7 @@ export default function HomeScreen() {
 
                 <TouchableOpacity 
                   style={[styles.controlBtnSquare, { backgroundColor: Colors.primary }]}
-                  onPress={() => navigation.navigate('Chat')}
+                  onPress={() => setIsChatModalVisible(true)}
                 >
                   <Ionicons name="chatbubbles-outline" size={20} color={Colors.white} />
                   <Text style={styles.controlBtnLabel}>Chat Chofer</Text>
@@ -1418,69 +1639,26 @@ export default function HomeScreen() {
         </View>
       ) : activeTab === 'home' && requestFlowStep === 'pricing' ? (
         <View style={styles.activeTripScreenContainer}>
-          {/* 50% Superior: Mapa de Seguimiento */}
+          {/* 62% Superior: Mapa de Seguimiento y Tarifas HD Interactivo */}
           <View style={styles.topHalfMapContainer}>
-            {Platform.OS === 'web' ? (
-              <View style={styles.webMapPlaceholder}>
-                <View style={styles.webMapGrid}>
-                  <View style={[styles.gridLine, { top: '50%', left: 0, right: 0 }]} />
-                  <View style={[styles.gridLine, { left: '50%', top: 0, bottom: 0 }]} />
-                  {onlineDrivers.slice(0, 3).map((d: any, index: number) => {
-                    const topVal = 40 + (index * 12) % 40;
-                    const leftVal = 30 + (index * 19) % 50;
-                    return (
-                      <View key={d.id || index} style={[styles.simulatedCar, { top: `${topVal}%`, left: `${leftVal}%` }]}>
-                        <Ionicons name="car" size={18} color={Colors.accent} />
-                      </View>
-                    );
-                  })}
-                </View>
-                <Text style={styles.webMapText}>Mapa de Tarifas (Simulación)</Text>
-              </View>
-            ) : (
-              <MapView
-                ref={mapRef}
-                style={styles.map}
-                initialRegion={currentLocation}
-                showsUserLocation
-              >
-                {onlineDrivers.map((d: any) => d.location && (
-                  <Marker
-                    key={d.id}
-                    coordinate={d.location}
-                    title={d.name}
-                  >
-                    <View style={[styles.markerPin, { backgroundColor: Colors.primary, width: 26, height: 26, borderRadius: 13 }]}>
-                      <Ionicons name="car" size={14} color={Colors.white} />
-                    </View>
-                  </Marker>
-                ))}
-                {originCoords && (
-                  <Marker coordinate={originCoords} title="Origen">
-                    <View style={[styles.markerPin, { backgroundColor: Colors.success }]}>
-                      <Ionicons name="pin" size={16} color={Colors.white} />
-                    </View>
-                  </Marker>
-                )}
-                {destinationCoords && (
-                  <Marker coordinate={destinationCoords} title="Destino">
-                    <View style={[styles.markerPin, { backgroundColor: Colors.danger }]}>
-                      <Ionicons name="flag" size={16} color={Colors.white} />
-                    </View>
-                  </Marker>
-                )}
-                {routePolyline ? (
-                  <Polyline
-                    coordinates={decodePolyline(routePolyline)}
-                    strokeColor={Colors.accent}
-                    strokeWidth={4}
-                  />
-                ) : null}
-              </MapView>
-            )}
+            <InteractiveMapView
+              originCoords={originCoords}
+              destinationCoords={destinationCoords}
+              routeCoordinates={routePolyline ? decodePolyline(routePolyline) : null}
+              onlineDrivers={onlineDrivers}
+              style={{ width: '100%', height: '100%' }}
+            />
+
+            {/* Badge Flotante Superior de Direcciones Estilo Uber/Cabify */}
+            <View style={styles.vectorMapHeaderBadgeLight}>
+              <Ionicons name="navigate-circle" size={20} color={Colors.accent} />
+              <Text style={styles.vectorMapBadgeTextLight} numberOfLines={1}>
+                {origin ? `${origin.split(',')[0]} ➔ ${destination ? destination.split(',')[0] : 'Destino'}` : 'Ruta Calculada'}
+              </Text>
+            </View>
           </View>
 
-          {/* 50% Inferior: Tarifas y Selección (Estilo Canva) */}
+          {/* 38% Inferior: Tarifas y Selección (Estilo Canva) */}
           <View style={[styles.bottomHalfContainer, { paddingBottom: insets.bottom }]}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.bottomHalfScrollContent}>
               <Text style={styles.canvaPricingTitle}>Tarifa aproximada</Text>
@@ -1490,6 +1668,7 @@ export default function HomeScreen() {
                   categories.slice(0, 4).map(cat => {
                     const isSelected = selectedCategory === cat.name;
                     const fare = calculateFare(cat.name);
+                    const categoryImage = cat.imageUrl || cat.iconImage || cat.image || (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:') || cat.icon.length > 30 || cat.icon.includes('/') || cat.icon.includes(';') || cat.icon.includes('+') || cat.icon.includes('=')) ? cat.icon : null);
                     return (
                       <TouchableOpacity 
                         key={cat.id} 
@@ -1497,13 +1676,17 @@ export default function HomeScreen() {
                         onPress={() => setSelectedCategory(cat.name)}
                       >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                          <View style={styles.categoryIconCircle}>
-                            <Ionicons 
-                              name={cat.icon || "car-outline"} 
-                              size={20} 
-                              color={Colors.accent} 
-                            />
-                          </View>
+                          {categoryImage ? (
+                            <Image source={{ uri: categoryImage }} style={{ width: 42, height: 32, resizeMode: 'contain' }} />
+                          ) : (
+                            <View style={styles.categoryIconCircle}>
+                              <Ionicons 
+                                name={getSafeIoniconsName(cat.icon, 'car-outline')} 
+                                size={20} 
+                                color={Colors.accent} 
+                              />
+                            </View>
+                          )}
                           <Text style={styles.canvaCategoryName}>{cat.name}</Text>
                         </View>
                         <Text style={styles.canvaCategoryPrice}>${fare}</Text>
@@ -1592,9 +1775,14 @@ export default function HomeScreen() {
             <MapView
               ref={mapRef}
               style={styles.map}
-              initialRegion={currentLocation}
+              initialRegion={DEFAULT_REGION}
               showsUserLocation
             >
+              <UrlTile
+                urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                maximumZ={19}
+                flipY={false}
+              />
               {/* Choferes online */}
               {onlineDrivers.map((d: any) => d.location && (
                 <Marker
@@ -1636,25 +1824,29 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* HEADER DE INICIO (ESTILO CANVA) */}
+      {/* HEADER DE INICIO (ESTILO AZUL TECH) */}
       {activeTab === 'home' && requestFlowStep === 'idle' && (
-        <View style={[styles.canvaHeader, { paddingTop: insets.top > 0 ? insets.top + 16 : 40 }]}>
+        <View style={[styles.canvaHeader, { paddingTop: insets.top > 0 ? insets.top + 12 : 36 }]}>
           <View style={styles.canvaLogoRow}>
-            <TravelCabLogo size={32} textColor={Colors.white} isAccentColor={true} />
+            <TravelCabLogo size={140} textColor={Colors.white} isAccentColor={true} />
           </View>
           
-          <View style={styles.canvaUserGreetingRow}>
-            <View style={styles.canvaUserAvatarCircle}>
-              <Ionicons name="person" size={18} color="#0A2A5B" />
+          <View style={styles.canvaUserGreetingBox}>
+            <View style={styles.canvaUserGreetingRow}>
+              <View style={styles.canvaUserAvatarCircle}>
+                <Ionicons name="person" size={16} color={Colors.primary} />
+              </View>
+              <Text style={styles.canvaGreetingText}>
+                Hola {user?.displayName ? user.displayName.split(' ')[0] : 'Pasajero'}, ¿a dónde vamos hoy?
+              </Text>
             </View>
-            <Text style={styles.canvaGreetingText}>
-              Hola {user?.displayName ? user.displayName.split(' ')[0] : 'Fernando'} ¿Adonde vamos hoy?
-            </Text>
-          </View>
-          
-          <View style={styles.canvaPointsRow}>
-            <Text style={styles.canvaPointsVal}>{rewardsPoints}</Text>
-            <Text style={styles.canvaPointsLabel}> Puntos Rewards</Text>
+
+            <View style={styles.canvaPointsRow}>
+              <Ionicons name="star" size={14} color={Colors.accent} style={{ marginRight: 4 }} />
+              <Text style={styles.canvaPointsLabel}>Tenes acumulados </Text>
+              <Text style={styles.canvaPointsVal}>{rewardsPoints}</Text>
+              <Text style={styles.canvaPointsLabel}> puntos</Text>
+            </View>
           </View>
         </View>
       )}
@@ -1688,7 +1880,8 @@ export default function HomeScreen() {
                       setServiceMode('urbana');
                     }}
                   >
-                    <Text style={[styles.canvaTabOptText, activeSubMode === 'urbana' && styles.canvaTabOptTextActive]}>Urbano</Text>
+                    <Ionicons name="car-outline" size={16} color={activeSubMode === 'urbana' ? Colors.white : Colors.textMuted} style={{ marginRight: 4 }} />
+                    <Text style={[styles.canvaTabOptText, activeSubMode === 'urbana' && styles.canvaTabOptTextActive]}>Movilidad Urbana</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.canvaTabOpt, activeSubMode === 'interurbano' && styles.canvaTabOptActive]}
@@ -1697,12 +1890,14 @@ export default function HomeScreen() {
                       setServiceMode('aci');
                     }}
                   >
+                    <Ionicons name="navigate-outline" size={16} color={activeSubMode === 'interurbano' ? Colors.white : Colors.textMuted} style={{ marginRight: 4 }} />
                     <Text style={[styles.canvaTabOptText, activeSubMode === 'interurbano' && styles.canvaTabOptTextActive]}>Interurbano</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.canvaTabOpt, activeSubMode === 'traslados' && styles.canvaTabOptActive]}
                     onPress={() => setActiveSubMode('traslados')}
                   >
+                    <Ionicons name="bus-outline" size={16} color={activeSubMode === 'traslados' ? Colors.white : Colors.textMuted} style={{ marginRight: 4 }} />
                     <Text style={[styles.canvaTabOptText, activeSubMode === 'traslados' && styles.canvaTabOptTextActive]}>Traslados</Text>
                   </TouchableOpacity>
                 </View>
@@ -1713,12 +1908,12 @@ export default function HomeScreen() {
                   activeSubMode === 'interurbano' && { color: Colors.accent },
                   activeSubMode === 'traslados' && { color: Colors.danger }
                 ]}>
-                  {activeSubMode === 'urbana' ? 'Movilidad Urbana' : activeSubMode === 'interurbano' ? 'Interurbano' : 'Traslados'}
+                  {activeSubMode === 'urbana' ? 'Movilidad Urbana' : activeSubMode === 'interurbano' ? 'Interurbano' : 'Traslados Especiales'}
                 </Text>
 
-                {/* Formularios según modo */}
-                {activeSubMode !== 'traslados' ? (
-                  <View style={{ gap: 8 }}>
+                {/* MODO 1: MOVILIDAD URBANA */}
+                {activeSubMode === 'urbana' && (
+                  <View style={{ gap: 10 }}>
                     {/* Origen */}
                     <View>
                       <Text style={styles.canvaInputLabel}>Origen</Text>
@@ -1755,6 +1950,41 @@ export default function HomeScreen() {
                         </View>
                       )}
                     </View>
+
+                    {/* Paradas Intermedias (Hasta 3) */}
+                    {intermediateStops.map((stopText, idx) => (
+                      <View key={`stop-${idx}`}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={styles.canvaInputLabel}>Parada Intermedia {idx + 1}</Text>
+                          <TouchableOpacity onPress={() => handleRemoveStop(idx)}>
+                            <Text style={{ fontSize: 11, fontFamily: Fonts.medium, color: Colors.danger }}>Quitar</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={styles.canvaInputField}>
+                          <Ionicons name="git-commit-outline" size={16} color={Colors.warning} style={{ marginRight: 8 }} />
+                          <TextInput
+                            style={styles.canvaTextInput}
+                            placeholder={`Dirección de parada ${idx + 1}`}
+                            placeholderTextColor="#A0AEC0"
+                            value={stopText}
+                            onChangeText={(val) => handleUpdateStop(idx, val)}
+                          />
+                          <TouchableOpacity onPress={() => handleRemoveStop(idx)}>
+                            <Ionicons name="close-circle" size={18} color={Colors.danger} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+
+                    {/* Botón para agregar parada intermedia (máximo 3) */}
+                    {intermediateStops.length < 3 && (
+                      <TouchableOpacity onPress={handleAddStop} style={styles.addStopBtn}>
+                        <Ionicons name="add-circle-outline" size={16} color={Colors.accent} />
+                        <Text style={styles.addStopBtnText}>
+                          + Agregar parada intermedia ({intermediateStops.length}/3)
+                        </Text>
+                      </TouchableOpacity>
+                    )}
 
                     {/* Destino */}
                     <View>
@@ -1793,38 +2023,76 @@ export default function HomeScreen() {
                       )}
                     </View>
                   </View>
-                ) : (
-                  <View style={{ gap: 8 }}>
-                    {/* Fila 1: Fecha y Hora */}
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.canvaInputLabel}>Fecha</Text>
-                        <TouchableOpacity 
-                          style={styles.canvaInputField}
-                          onPress={() => setShowDatePicker(true)}
-                        >
-                          <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
-                          <Text style={[styles.canvaTextInput, !scheduleDate && { color: '#A0AEC0' }]}>
-                            {scheduleDate || "Elegir fecha"}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
+                )}
 
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.canvaInputLabel}>Hora</Text>
-                        <TouchableOpacity 
-                          style={styles.canvaInputField}
-                          onPress={() => setShowTimePicker(true)}
-                        >
-                          <Ionicons name="time-outline" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
-                          <Text style={[styles.canvaTextInput, !scheduleTime && { color: '#A0AEC0' }]}>
-                            {scheduleTime ? `${scheduleTime} hs` : "Elegir hora"}
-                          </Text>
-                        </TouchableOpacity>
+                {/* MODO 2: INTERURBANO */}
+                {activeSubMode === 'interurbano' && (
+                  <View style={{ gap: 10 }}>
+                    {/* Origen */}
+                    <View>
+                      <Text style={styles.canvaInputLabel}>Origen</Text>
+                      <View style={styles.canvaInputField}>
+                        <Ionicons name="ellipse" size={10} color={Colors.success} style={{ marginRight: 8 }} />
+                        <TextInput
+                          style={styles.canvaTextInput}
+                          placeholder="Origen (Ubicación o Ciudad)"
+                          placeholderTextColor="#A0AEC0"
+                          value={origin}
+                          onChangeText={(text) => fetchPlaceSuggestions(text, 'origin')}
+                          onFocus={() => setActiveSearchField('origin')}
+                        />
                       </View>
                     </View>
 
-                    {/* Fila 2: Ciudad y Cantidad de pasajeros */}
+                    {/* Destino */}
+                    <View>
+                      <Text style={styles.canvaInputLabel}>Destino Interurbano</Text>
+                      <View style={styles.canvaInputField}>
+                        <Ionicons name="location" size={14} color={Colors.danger} style={{ marginRight: 8 }} />
+                        <TextInput
+                          style={styles.canvaTextInput}
+                          placeholder="Ciudad / Localidad de destino"
+                          placeholderTextColor="#A0AEC0"
+                          value={destination}
+                          onChangeText={(text) => fetchPlaceSuggestions(text, 'destination')}
+                          onFocus={() => setActiveSearchField('destination')}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Cantidad de Pasajeros */}
+                    <View>
+                      <Text style={styles.canvaInputLabel}>Pasajeros (Máximo habilitado en la categoría)</Text>
+                      <View style={styles.passengerStepperRow}>
+                        <TouchableOpacity
+                          style={styles.stepperBtn}
+                          onPress={() => {
+                            const val = Math.max(1, parseInt(schedulePassengers || '1') - 1);
+                            setSchedulePassengers(val.toString());
+                          }}
+                        >
+                          <Ionicons name="remove" size={18} color={Colors.textPrimary} />
+                        </TouchableOpacity>
+                        <Text style={styles.stepperValText}>{schedulePassengers || '1'} Pasajero(s)</Text>
+                        <TouchableOpacity
+                          style={styles.stepperBtn}
+                          onPress={() => {
+                            const maxLimit = selectedCategory === 'Premium' ? 4 : 7;
+                            const val = Math.min(maxLimit, parseInt(schedulePassengers || '1') + 1);
+                            setSchedulePassengers(val.toString());
+                          }}
+                        >
+                          <Ionicons name="add" size={18} color={Colors.textPrimary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* MODO 3: TRASLADOS */}
+                {activeSubMode === 'traslados' && (
+                  <View style={{ gap: 10 }}>
+                    {/* Fila 1: Ciudad y Pasajeros */}
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                       <View style={{ flex: 1.5 }}>
                         <Text style={styles.canvaInputLabel}>Ciudad</Text>
@@ -1846,7 +2114,7 @@ export default function HomeScreen() {
                           <Ionicons name="people-outline" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
                           <TextInput 
                             style={styles.canvaTextInput}
-                            placeholder="Cantidad"
+                            placeholder="Cant."
                             placeholderTextColor="#A0AEC0"
                             keyboardType="numeric"
                             value={schedulePassengers}
@@ -1858,45 +2126,43 @@ export default function HomeScreen() {
 
                     {/* Origen */}
                     <View>
-                      <Text style={styles.canvaInputLabel}>Origen</Text>
+                      <Text style={styles.canvaInputLabel}>Origen de Traslado</Text>
                       <View style={styles.canvaInputField}>
                         <Ionicons name="ellipse" size={10} color={Colors.success} style={{ marginRight: 8 }} />
                         <TextInput 
                           style={styles.canvaTextInput}
-                          placeholder="Origen (Ubicación actual)"
+                          placeholder="Aeropuerto / Hotel / Dirección"
                           placeholderTextColor="#A0AEC0"
                           value={origin}
                           onChangeText={(text) => fetchPlaceSuggestions(text, 'origin')}
-                          onFocus={() => setActiveSearchField('origin')}
                         />
                       </View>
                     </View>
 
                     {/* Destino */}
                     <View>
-                      <Text style={styles.canvaInputLabel}>Destino</Text>
+                      <Text style={styles.canvaInputLabel}>Destino de Traslado</Text>
                       <View style={styles.canvaInputField}>
                         <Ionicons name="location" size={14} color={Colors.danger} style={{ marginRight: 8 }} />
                         <TextInput 
                           style={styles.canvaTextInput}
-                          placeholder="¿A dónde querés ir?"
+                          placeholder="Punto final de traslado"
                           placeholderTextColor="#A0AEC0"
                           value={destination}
                           onChangeText={(text) => fetchPlaceSuggestions(text, 'destination')}
-                          onFocus={() => setActiveSearchField('destination')}
                         />
                       </View>
                     </View>
                   </View>
                 )}
 
-                {/* Selector de Método de Pago Compacto con Logo Oficial de Mercado Pago */}
+                {/* Selector Sutil de Forma de Pago */}
                 <Text style={styles.canvaPaymentTitle}>Forma de pago</Text>
                 <View style={styles.canvaPaymentCompactBar}>
                   {[
-                    { id: 'Efectivo', label: 'Efectivo', icon: 'cash', isMP: false, color: '#15803D' },
+                    { id: 'Efectivo', label: 'Efectivo', icon: 'cash-outline', isMP: false, color: '#15803D' },
                     { id: 'Mercado Pago', label: 'Mercado Pago', icon: null, isMP: true, color: '#009EE3' },
-                    { id: 'Rewards', label: 'Rewards', icon: 'gift', isMP: false, color: '#D97706' }
+                    { id: 'Rewards', label: 'Puntos Rewards', icon: 'gift-outline', isMP: false, color: '#D97706' }
                   ].map(m => {
                     const isSelected = selectedPayment === m.id;
                     return (
@@ -1914,11 +2180,11 @@ export default function HomeScreen() {
                             style={{ width: 18, height: 18, resizeMode: 'contain', borderRadius: 4 }} 
                           />
                         ) : (
-                          <Ionicons name={m.icon as any} size={16} color={isSelected ? Colors.white : '#475569'} />
+                          <Ionicons name={getSafeIoniconsName(m.icon, 'wallet-outline')} size={16} color={isSelected ? Colors.white : '#475569'} />
                         )}
                         <Text style={[
                           styles.canvaPaymentCompactLabel,
-                          isSelected && { color: Colors.white, fontFamily: 'Quicksand-Bold' }
+                          isSelected && { color: Colors.white, fontFamily: Fonts.bold }
                         ]}>
                           {m.label}
                         </Text>
@@ -1938,10 +2204,13 @@ export default function HomeScreen() {
                     setRequestFlowStep('pricing');
                   }}
                 >
-                  <Text style={styles.canvaCalcularBtnText}>Calcular viaje</Text>
+                  <Text style={styles.canvaCalcularBtnText}>
+                    {activeSubMode === 'traslados' ? 'Calcular traslado' : 'Calcular viaje'}
+                  </Text>
                 </TouchableOpacity>
               </Animated.View>
             )}
+
 
             {/* Carruseles CMS de Novedades del Ecosistema y Beneficios Rewards */}
             {requestFlowStep === 'idle' && (
@@ -2008,10 +2277,9 @@ export default function HomeScreen() {
         {activeTab === 'experience' && (
           <View style={[styles.tabContentContainer, { paddingTop: insets.top > 0 ? insets.top + 10 : 20 }]}>
             <View style={styles.experienceHeader}>
-              <TravelAppLogo size={28} textColor={Colors.primary} isAccentColor={true} />
-              <Text style={styles.experienceHeaderTitle}>TravelApp Experiences</Text>
+              <TravelExperienceLogo size={180} textColor={Colors.primary} />
             </View>
-            <Text style={styles.experienceHeaderDesc}>Viajes grupales, de autor y experiencias premium seleccionadas para vos.</Text>
+            <Text style={styles.experienceHeaderDesc}>Tus mejores experiencias aquí</Text>
 
             {/* Segmented Control de Experiencias */}
             <View style={styles.segmentedControl}>
@@ -2027,7 +2295,7 @@ export default function HomeScreen() {
                 onPress={() => setExperienceMainTab('trip')}
               >
                 <Ionicons name="compass" size={16} color={experienceMainTab === 'trip' ? Colors.white : Colors.textSecondary} />
-                <Text style={[styles.segmentText, experienceMainTab === 'trip' && styles.segmentTextActive]}>Mi Viaje Grupal</Text>
+                <Text style={[styles.segmentText, experienceMainTab === 'trip' && styles.segmentTextActive]}>Mi experiencia</Text>
                 {!hasPurchasedOrganizedTrip && (
                   <Ionicons name="lock-closed" size={12} color={experienceMainTab === 'trip' ? Colors.white : Colors.textMuted} style={{ marginLeft: 4 }} />
                 )}
@@ -2058,7 +2326,7 @@ export default function HomeScreen() {
                                 setExperienceMainTab('trip');
                                 setActiveTripSubTab('itinerary');
                                 if (!hasPurchasedOrganizedTrip) {
-                                  Alert.alert("Simulador", "Habilitá el Switch del Modo Tester para poder interactuar con Travis sobre el viaje.");
+                                  Alert.alert("Acceso Restringido", "Este sector exclusivo se habilitará una vez que realices la reserva de tu viaje.");
                                 } else {
                                   setTravisQuery(`¿Qué excursiones recomiendan hacer en Mendoza en un viaje de 5 días?`);
                                 }
@@ -2080,7 +2348,7 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* SECCIÓN B: MI VIAJE GRUPAL */}
+            {/* SECCIÓN B: MI EXPERIENCIA */}
             {experienceMainTab === 'trip' && (
               <View style={{ width: '100%' }}>
                 {!hasPurchasedOrganizedTrip || !contractedTrip ? (
@@ -2090,27 +2358,8 @@ export default function HomeScreen() {
                     </View>
                     <Text style={styles.lockedTripTitle}>Módulo Bloqueado</Text>
                     <Text style={styles.lockedTripDesc}>
-                      Este sector exclusivo se habilitará una vez que realices la reserva o contrates un viaje grupal organizado por nosotros.
+                      Este sector exclusivo se habilitará una vez que realices la reserva o contrates una experiencia organizada por nosotros. Solo usuarios con reserva activa pueden acceder.
                     </Text>
-                    
-                    <View style={styles.testerCard}>
-                      <View style={styles.testerHeader}>
-                        <Ionicons name="flask-outline" size={20} color={Colors.primary} />
-                        <Text style={styles.testerTitle}>Herramienta del Tester (Simulación)</Text>
-                      </View>
-                      <Text style={styles.testerDesc}>
-                        Activa este interruptor para simular en tiempo real que contrataste el viaje grupal "Quebrada de Humahuaca & Salinas Grandes" y probar todo el módulo.
-                      </Text>
-                      <View style={styles.testerToggleRow}>
-                        <Text style={styles.testerToggleLabel}>Simular Viaje Adquirido</Text>
-                        <Switch 
-                          value={hasPurchasedOrganizedTrip}
-                          onValueChange={(val) => handleSimulateTrip(val)}
-                          trackColor={{ false: '#CBD5E1', true: Colors.accent }}
-                          thumbColor={Colors.white}
-                        />
-                      </View>
-                    </View>
                   </View>
                 ) : (
                   <View style={styles.activeTripDetailContainer}>
@@ -2716,31 +2965,57 @@ export default function HomeScreen() {
         {activeTab === 'profile' && (
           <View style={[styles.tabContentContainer, { paddingTop: insets.top > 0 ? insets.top + 10 : 20 }]}>
             <Text style={styles.tabHeaderTitle}>Configuración de Cuenta</Text>
-            <Text style={styles.tabHeaderDesc}>Actualizá tus datos personales y completá la ficha de viaje para el ecosistema.</Text>
+            <Text style={styles.tabHeaderDesc}>Actualizá tus datos personales y gestioná tu saldo y servicios.</Text>
 
-            {/* TravelApp Experience button */}
+            {/* TravelApp Experience button (Fondo blanco, reducido y nítido) */}
             <TouchableOpacity 
-              style={styles.experienceBtn}
+              style={styles.experienceBtnProfile}
               onPress={() => Linking.openURL('https://travelapp.ar/experiences')}
             >
-              <TravelExperienceLogo size={180} />
+              <TravelExperienceLogo size={140} textColor="#0B192C" />
             </TouchableOpacity>
 
-            {/* Mercado Pago Wallet Connect Card */}
-            <View style={styles.mpWalletCard}>
-              <View style={styles.mpWalletHeader}>
-                <Ionicons name="wallet-outline" size={24} color="#009EE3" />
-                <Text style={styles.mpWalletTitle}>Mercado Pago Wallet Connect</Text>
+            {/* Billetera TravelPay (Saldo a Favor) */}
+            <View style={styles.walletCard}>
+              <View style={styles.walletHeaderRow}>
+                <View style={styles.walletIconBox}>
+                  <Ionicons name="wallet-outline" size={22} color={Colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.walletCardTitle}>Billetera TravelPay</Text>
+                  <Text style={styles.walletCardSub}>Saldo a favor recargable</Text>
+                </View>
+                <View style={styles.walletBalanceBadge}>
+                  <Text style={styles.walletBalanceValue}>
+                    $ {walletBalance.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.walletInfoBox}>
+                <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
+                <Text style={styles.walletInfoText}>
+                  Saldo cargado desde Administración. Se aplicará automáticamente para abonar tu próximo viaje.
+                </Text>
+              </View>
+            </View>
+
+            {/* Mercado Pago Wallet Connect Card (Compacta) */}
+            <View style={styles.mpWalletCardCompact}>
+              <View style={styles.mpWalletHeaderCompact}>
+                <View style={styles.mpLogoBox}>
+                  <Ionicons name="card-outline" size={18} color="#009EE3" />
+                </View>
+                <Text style={styles.mpWalletTitleCompact}>Mercado Pago Wallet Connect</Text>
               </View>
               {mpLinked ? (
-                <View style={styles.mpWalletBody}>
-                  <View style={styles.mpLinkedBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-                    <Text style={styles.mpLinkedBadgeText}>Cuenta Vinculada (Débito 1-Clic)</Text>
+                <View style={styles.mpWalletBodyCompact}>
+                  <View style={styles.mpLinkedBadgeCompact}>
+                    <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                    <Text style={styles.mpLinkedBadgeTextCompact}>Cuenta Vinculada (Débito 1-Clic)</Text>
                   </View>
-                  <Text style={styles.mpWalletDesc}>Email: {mpLinkedEmail || user.email}</Text>
+                  <Text style={styles.mpWalletDescCompact}>Email: {mpLinkedEmail || user.email}</Text>
                   <TouchableOpacity 
-                    style={styles.mpUnlinkBtn} 
+                    style={styles.mpUnlinkBtnCompact} 
                     onPress={async () => {
                       try {
                         await setDoc(doc(db, 'users', user.uid), {
@@ -2754,40 +3029,107 @@ export default function HomeScreen() {
                       }
                     }}
                   >
-                    <Text style={styles.mpUnlinkBtnText}>Desvincular Cuenta</Text>
+                    <Text style={styles.mpUnlinkBtnTextCompact}>Desvincular Cuenta</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View style={styles.mpWalletBody}>
-                  <Text style={styles.mpWalletDesc}>
-                    Vinculá tu cuenta para pagar tus traslados automáticamente en segundo plano, sin ingresar tarjetas.
+                <View style={styles.mpWalletBodyCompact}>
+                  <Text style={styles.mpWalletDescCompact}>
+                    Vinculá tu cuenta para pagar traslados automáticamente en segundo plano.
                   </Text>
-                  <TouchableOpacity style={styles.mpLinkBtn} onPress={handleLinkMercadoPago}>
-                    <Ionicons name="logo-usd" size={16} color={Colors.white} />
-                    <Text style={styles.mpLinkBtnText}>Vincular Mercado Pago</Text>
+                  <TouchableOpacity style={styles.mpLinkBtnCompact} onPress={handleLinkMercadoPago}>
+                    <Ionicons name="logo-usd" size={14} color={Colors.white} />
+                    <Text style={styles.mpLinkBtnTextCompact}>Vincular Mercado Pago</Text>
                   </TouchableOpacity>
                 </View>
               )}
             </View>
 
+            {/* Formulario de Datos Registrados */}
             <View style={styles.profileForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nombre completo</Text>
-                <TextInput style={[styles.formInput, { backgroundColor: '#ECEFF1' }]} value={user.displayName || 'Pasajero'} editable={false} />
+              <Text style={styles.sectionFormTitle}>Datos Registrados</Text>
+
+              {/* Foto de Perfil Editable */}
+              <View style={styles.avatarEditContainer}>
+                <View style={styles.avatarWrapper}>
+                  {userPhotoURL ? (
+                    <Image source={{ uri: userPhotoURL }} style={styles.userAvatarImg} />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <Ionicons name="person" size={36} color={Colors.primary} />
+                    </View>
+                  )}
+                  <TouchableOpacity style={styles.cameraBadgeBtn} onPress={handlePickProfileImage}>
+                    <Ionicons name="camera" size={14} color={Colors.white} />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={styles.changePhotoTextBtn} onPress={handlePickProfileImage}>
+                  <Text style={styles.changePhotoText}>Cambiar foto de perfil (Cámara o Galería)</Text>
+                </TouchableOpacity>
               </View>
 
+              {/* Nombre y Apellido (No Editable) */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email registrado</Text>
-                <TextInput style={[styles.formInput, { backgroundColor: '#ECEFF1' }]} value={user.email || 'Email'} editable={false} />
+                <Text style={styles.label}>Nombre y Apellido (Registrado)</Text>
+                <TextInput 
+                  style={[styles.formInput, { backgroundColor: '#ECEFF1', color: '#64748B' }]} 
+                  value={user.displayName || 'Pasajero'} 
+                  editable={false} 
+                />
               </View>
 
-              {/* Botón para completar la Ficha de Reserva */}
+              {/* Email Registrado (No Editable) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Correo Electrónico (Registrado)</Text>
+                <TextInput 
+                  style={[styles.formInput, { backgroundColor: '#ECEFF1', color: '#64748B' }]} 
+                  value={user.email || 'Email'} 
+                  editable={false} 
+                />
+              </View>
+
+              {/* Nº de Teléfono / WhatsApp (Editable) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Nº de Teléfono / WhatsApp (Editable)</Text>
+                <View style={styles.phoneInputRow}>
+                  <TextInput 
+                    style={[styles.formInput, { flex: 1 }]} 
+                    value={userPhone} 
+                    onChangeText={setUserPhone}
+                    placeholder="+54 9 11 1234 5678"
+                    placeholderTextColor={Colors.textMuted}
+                    keyboardType="phone-pad"
+                  />
+                  <TouchableOpacity 
+                    style={styles.savePhoneBtn} 
+                    onPress={handleSavePhone}
+                    disabled={isSavingPhone}
+                  >
+                    {isSavingPhone ? (
+                      <ActivityIndicator size="small" color={Colors.white} />
+                    ) : (
+                      <Text style={styles.savePhoneBtnText}>Guardar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Botón para abrir la Ficha de Cliente */}
               <TouchableOpacity 
-                style={styles.dossierLaunchBtn}
-                onPress={() => setIsDossierModalVisible(true)}
+                style={[styles.dossierLaunchBtn, { backgroundColor: '#0A2A5B', paddingHorizontal: 14, justifyContent: 'space-between' }]}
+                onPress={() => navigation.navigate('CompleteProfile')}
+                activeOpacity={0.85}
               >
-                <Ionicons name="document-text-outline" size={20} color={Colors.white} />
-                <Text style={styles.dossierLaunchBtnText}>Completar Ficha de Reserva</Text>
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,122,0,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="person-circle-outline" size={24} color="#FF7A00" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={[styles.dossierLaunchBtnText, { textAlign: 'left', fontSize: 14 }]}>Ficha de Cliente</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: Fonts.medium }}>
+                    DNI, Pasaporte, Grupo Familiar y AFIP
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
               </TouchableOpacity>
 
               {/* Cerrar Sesión */}
@@ -2799,6 +3141,84 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* MODAL DE CHAT EN VIVO CON CONDUCTOR (MONITOREADO POR CONCORDE 360) */}
+      <Modal
+        visible={isChatModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setIsChatModalVisible(false)}
+      >
+        <View style={styles.chatModalContainer}>
+          {/* Header del Chat */}
+          <View style={[styles.chatModalHeader, { paddingTop: insets.top > 0 ? insets.top + 10 : 20 }]}>
+            <TouchableOpacity style={styles.chatCloseBtn} onPress={() => setIsChatModalVisible(false)}>
+              <Ionicons name="arrow-back" size={24} color={Colors.primary} />
+            </TouchableOpacity>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.chatHeaderName}>
+                {driverDetails ? formatDriverName(driverDetails.name) : 'Conductor Asignado'}
+              </Text>
+              <Text style={styles.chatHeaderSub}>Monitoreado en tiempo real por Concorde 360</Text>
+            </View>
+            <View style={styles.concordeBadge}>
+              <Ionicons name="shield-checkmark" size={16} color={Colors.success} />
+            </View>
+          </View>
+
+          {/* Mensajes */}
+          <ScrollView style={styles.chatMessagesScroll} contentContainerStyle={{ padding: 16, gap: 12 }}>
+            {chatMessages.length > 0 ? (
+              chatMessages.map(msg => {
+                const isMe = msg.senderId === user?.uid || msg.senderRole === 'passenger';
+                const isAdmin = msg.senderRole === 'admin';
+                return (
+                  <View 
+                    key={msg.id} 
+                    style={[
+                      styles.liveChatBubble,
+                      isMe ? styles.liveChatBubbleMe : isAdmin ? styles.liveChatBubbleAdmin : styles.liveChatBubbleDriver
+                    ]}
+                  >
+                    <Text style={[styles.chatSenderLabel, isMe && { color: 'rgba(255,255,255,0.8)' }]}>
+                      {isAdmin ? '🛡️ Central Concorde 360' : msg.senderName || (isMe ? 'Vos' : 'Conductor')}
+                    </Text>
+                    <Text style={[styles.liveChatBubbleText, isMe && { color: Colors.white }]}>{msg.text}</Text>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={styles.emptyChatBox}>
+                <Ionicons name="chatbubbles-outline" size={40} color={Colors.textMuted} />
+                <Text style={styles.emptyChatText}>Iniciá la conversación con {driverDetails ? formatDriverName(driverDetails.name) : 'el conductor'}</Text>
+                <Text style={styles.emptyChatSub}>Los mensajes son monitoreados desde el panel de control Concorde 360.</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Input para enviar mensaje */}
+          <View style={[styles.chatInputBar, { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 16 }]}>
+            <TextInput
+              style={styles.chatTextInput}
+              value={chatInputText}
+              onChangeText={setChatInputText}
+              placeholder="Escribí un mensaje..."
+              placeholderTextColor={Colors.textMuted}
+            />
+            <TouchableOpacity 
+              style={[styles.liveChatSendBtn, !chatInputText.trim() && { backgroundColor: Colors.border }]} 
+              onPress={handleSendMessage}
+              disabled={!chatInputText.trim() || isSendingMessage}
+            >
+              {isSendingMessage ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Ionicons name="send" size={18} color={Colors.white} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* FOOTER NAVIGATION BAR */}
       {requestFlowStep !== 'active' && (
@@ -2820,7 +3240,7 @@ export default function HomeScreen() {
                   setActiveTab(tab.id as any);
                 }}
               >
-                <Ionicons name={tab.icon as any} size={22} color={isSelected ? Colors.accent : '#94A3B8'} />
+                <Ionicons name={getSafeIoniconsName(tab.icon, 'map-outline')} size={22} color={isSelected ? Colors.accent : '#94A3B8'} />
                 <Text style={[styles.tabLabel, isSelected && styles.tabLabelActive]}>{tab.label}</Text>
               </TouchableOpacity>
             );
@@ -3183,7 +3603,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   mapContainer: { ...StyleSheet.absoluteFill, zIndex: 1 },
-  map: { flex: 1 },
+  map: { flex: 1, width: '100%', height: '100%', backgroundColor: '#FFFFFF' },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { color: Colors.textSecondary, fontSize: 14, fontFamily: 'Quicksand-Medium' },
   markerPin: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
@@ -3215,6 +3635,31 @@ const styles = StyleSheet.create({
   webMapGrid: { ...StyleSheet.absoluteFill },
   gridLine: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.15)' },
   simulatedCar: { position: 'absolute', width: 50, height: 35, justifyContent: 'center', alignItems: 'center' },
+  whiteCarBubblePin: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.white,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.accent,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 6,
+  },
+  vectorMapBackgroundLight: { ...StyleSheet.absoluteFill, backgroundColor: '#EAEFF5', overflow: 'hidden' },
+  mapCityBlock: { position: 'absolute', backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#DCE4EE' },
+  mapParkZone: { position: 'absolute', backgroundColor: '#D8F3DC', borderRadius: 10, borderWidth: 1, borderColor: '#B7E4C7' },
+  gridLineLight: { position: 'absolute', backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1' },
+  vectorRouteLineBold: { flex: 1, height: 4, backgroundColor: Colors.accent, marginHorizontal: 4, borderRadius: 2 },
+  routeCarCenterPin: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.white,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.accent,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 5,
+  },
+  vectorMapHeaderBadgeLight: {
+    position: 'absolute', top: 12, left: 16, right: 16,
+    backgroundColor: Colors.primary, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, elevation: 6
+  },
+  vectorMapBadgeTextLight: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Quicksand-Bold', flex: 1 },
+  vectorRouteContainer: { ...StyleSheet.absoluteFill, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', paddingHorizontal: 50 },
+  vectorRouteLine: { flex: 1, height: 4, backgroundColor: Colors.accent, marginHorizontal: 8, borderRadius: 2 },
   webMapText: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: 'rgba(255,255,255,0.4)', zIndex: 5 },
   webSimulatedRouteContainer: { position: 'absolute', top: '50%', left: '15%', right: '15%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   simulatedMarker: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
@@ -3227,14 +3672,15 @@ const styles = StyleSheet.create({
   tabHeaderDesc: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, lineHeight: 18 },
 
   // Estilos Canva Redesign
-  canvaHeader: { paddingHorizontal: 20, paddingBottom: 24, gap: 14 },
+  canvaHeader: { paddingHorizontal: 20, paddingBottom: 16, alignItems: 'center', gap: 10 },
   canvaLogoRow: { alignItems: 'center', justifyContent: 'center' },
-  canvaUserGreetingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  canvaUserAvatarCircle: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
-  canvaGreetingText: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.white, flex: 1 },
-  canvaPointsRow: { flexDirection: 'row', alignItems: 'center' },
-  canvaPointsVal: { fontSize: 26, fontFamily: 'Quicksand-Bold', color: Colors.white },
-  canvaPointsLabel: { fontSize: 26, fontFamily: 'Quicksand-Bold', color: '#F59E0B' },
+  canvaUserGreetingBox: { alignItems: 'center', justifyContent: 'center', gap: 4, width: '100%' },
+  canvaUserGreetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, maxWidth: '100%' },
+  canvaUserAvatarCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
+  canvaGreetingText: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  canvaPointsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  canvaPointsVal: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.accent },
+  canvaPointsLabel: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: 'rgba(255, 255, 255, 0.9)' },
   
   canvaTabsRow: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 20, padding: 3, marginBottom: 8 },
   canvaTabOpt: { flex: 1, paddingVertical: 6, alignItems: 'center', borderRadius: 18 },
@@ -3466,7 +3912,7 @@ const styles = StyleSheet.create({
 
   // Estilos de pantalla dividida 62/38 para mayor visibilidad del mapa
   activeTripScreenContainer: { flex: 1, backgroundColor: Colors.white },
-  topHalfMapContainer: { height: '62%', width: '100%' },
+  topHalfMapContainer: { height: '62%', width: '100%', minHeight: 300 },
   bottomHalfContainer: { height: '38%', width: '100%', backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 },
   bottomHalfScrollContent: { padding: 16, paddingBottom: 40, gap: 12 },
   ecosystemDrawerContainer: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 16, padding: 12, backgroundColor: Colors.background, marginTop: 8 },
@@ -3615,6 +4061,237 @@ const styles = StyleSheet.create({
   confirmBtnText: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.white },
   inputGroup: { gap: 6, width: '100%' },
   modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  // Botón de TravelApp Experiences en Perfil (Fondo blanco, reducido y nítido)
+  experienceBtnProfile: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    marginBottom: 8,
+  },
+
+  // Tarjeta de Billetera TravelPay (Saldo a Favor)
+  walletCard: {
+    backgroundColor: '#0B192C',
+    borderRadius: 18,
+    padding: 16,
+    gap: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  walletHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  walletIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  walletCardTitle: {
+    fontSize: 15,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.white,
+  },
+  walletCardSub: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Medium',
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  walletBalanceBadge: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  walletBalanceValue: {
+    fontSize: 14,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.white,
+  },
+  walletInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  walletInfoText: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Medium',
+    color: 'rgba(255, 255, 255, 0.85)',
+    flex: 1,
+    lineHeight: 15,
+  },
+
+  // Mercado Pago Wallet Connect Card (Compacta)
+  mpWalletCardCompact: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#009EE330',
+    marginBottom: 8,
+  },
+  mpWalletHeaderCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mpLogoBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#009EE315',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mpWalletTitleCompact: {
+    fontSize: 13,
+    fontFamily: 'Quicksand-Bold',
+    color: '#009EE3',
+  },
+  mpWalletBodyCompact: {
+    gap: 6,
+  },
+  mpWalletDescCompact: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Regular',
+    color: Colors.textSecondary,
+    lineHeight: 15,
+  },
+  mpLinkBtnCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#009EE3',
+    borderRadius: 10,
+    paddingVertical: 8,
+  },
+  mpLinkBtnTextCompact: {
+    color: Colors.white,
+    fontSize: 12,
+    fontFamily: 'Quicksand-Bold',
+  },
+  mpLinkedBadgeCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.success + '15',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  mpLinkedBadgeTextCompact: {
+    fontSize: 10,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.success,
+  },
+  mpUnlinkBtnCompact: {
+    borderWidth: 1,
+    borderColor: Colors.danger,
+    borderRadius: 8,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  mpUnlinkBtnTextCompact: {
+    color: Colors.danger,
+    fontSize: 11,
+    fontFamily: 'Quicksand-Bold',
+  },
+
+  // Sección Datos Registrados
+  sectionFormTitle: {
+    fontSize: 15,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.primary,
+    marginBottom: 4,
+  },
+  avatarEditContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginVertical: 6,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    width: 72,
+    height: 72,
+  },
+  userAvatarImg: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: Colors.accent,
+  },
+  avatarPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  cameraBadgeBtn: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.white,
+  },
+  changePhotoTextBtn: {
+    paddingVertical: 2,
+  },
+  changePhotoText: {
+    fontSize: 12,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.accent,
+    textAlign: 'center',
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  savePhoneBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 14,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  savePhoneBtnText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontFamily: 'Quicksand-Bold',
+  },
+
   mpWalletCard: {
     backgroundColor: Colors.white, borderRadius: 20, padding: 18, gap: 12,
     borderWidth: 1.5, borderColor: '#009EE330', marginVertical: 4,
@@ -3635,15 +4312,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20,
   },
   mpLinkedBadgeText: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.success },
+  // Estilos del Modal de Chat en Vivo
+  chatModalContainer: { flex: 1, backgroundColor: '#F8FAFC' },
+  chatModalHeader: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 14,
+    backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  chatCloseBtn: { padding: 4 },
+  chatHeaderName: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.primary },
+  chatHeaderSub: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
+  concordeBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.success + '15', alignItems: 'center', justifyContent: 'center' },
+  chatMessagesScroll: { flex: 1 },
+  liveChatBubble: { maxWidth: '80%', padding: 12, borderRadius: 16, gap: 2 },
+  liveChatBubbleMe: { alignSelf: 'flex-end', backgroundColor: Colors.primary, borderBottomRightRadius: 2 },
+  liveChatBubbleDriver: { alignSelf: 'flex-start', backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, borderBottomLeftRadius: 2 },
+  liveChatBubbleAdmin: { alignSelf: 'center', backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B', width: '90%' },
+  chatSenderLabel: { fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary },
+  liveChatBubbleText: { fontSize: 14, fontFamily: 'Quicksand-Regular', color: Colors.textPrimary },
+  emptyChatBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 8 },
+  emptyChatText: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  emptyChatSub: { fontSize: 12, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 20 },
+  chatInputBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 12,
+    backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  chatTextInput: {
+    flex: 1, backgroundColor: '#F1F5F9', borderRadius: 24, paddingHorizontal: 18, height: 46,
+    fontSize: 14, fontFamily: 'Quicksand-Medium', color: Colors.textPrimary,
+  },
+  liveChatSendBtn: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.accent,
+    alignItems: 'center', justifyContent: 'center',
+  },
+
   mpUnlinkBtn: {
     borderWidth: 1.5, borderColor: Colors.danger, borderRadius: 12, paddingVertical: 12, alignItems: 'center',
   },
   mpUnlinkBtnText: { color: Colors.danger, fontSize: 13, fontFamily: 'Quicksand-Bold' },
 
   // Pestaña Experiencias
-  experienceHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
-  experienceHeaderTitle: { fontSize: 20, fontFamily: 'Quicksand-Bold', color: Colors.primary },
-  experienceHeaderDesc: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, marginBottom: 14 },
+  experienceHeader: { alignItems: 'flex-start', justifyContent: 'center', marginBottom: 2 },
+  experienceHeaderDesc: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary, marginBottom: 16 },
   
   segmentedControl: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 14, padding: 4, marginBottom: 18 },
   segmentBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10 },
@@ -3861,4 +4570,44 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     flex: 1,
   },
+  addStopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    alignSelf: 'flex-start',
+  },
+  addStopBtnText: {
+    fontSize: 12,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.accent,
+  },
+  passengerStepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  stepperBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textPrimary,
+  },
 });
+

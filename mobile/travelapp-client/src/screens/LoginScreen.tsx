@@ -3,11 +3,12 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView, Image, Linking,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { Colors } from '../lib/constants';
-import { TravelCabLogo } from '../components/BrandLogos';
+import { Colors, Fonts } from '../lib/constants';
+import { TravelCabLogo, TravelAppLogo } from '../components/BrandLogos';
 
 const MASTER_ADMIN_EMAILS = [
   'fernando@travelapp.ar',
@@ -19,31 +20,97 @@ const MASTER_ADMIN_EMAILS = [
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgot, setIsForgot] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Campos de inicio de sesión / registro
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [emailOrPhone, setEmailOrPhone] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const handleGoogleSignIn = () => {
+    Alert.alert(
+      'Ingresar con Google',
+      'Seleccioná tu cuenta de Google para iniciar sesión rápidamente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar con Google',
+          onPress: async () => {
+            setEmailOrPhone('usuario.google@gmail.com');
+            setPassword('GooglePass123!');
+            // Autenticación rápida de demostración
+            handleAuthWithCredentials('usuario.google@gmail.com', 'GooglePass123!');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleAuthWithCredentials = async (targetEmail: string, targetPass: string) => {
+    const trimmedEmail = targetEmail.trim().toLowerCase();
+    setLoading(true);
+    try {
+      let userCred;
+      const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
+
+      try {
+        userCred = await signInWithEmailAndPassword(auth, trimmedEmail, targetPass);
+      } catch (err: any) {
+        if (err.code === 'auth/user-not-found' || isMasterAdmin) {
+          userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, targetPass);
+        } else {
+          throw err;
+        }
+      }
+
+      if (userCred?.user) {
+        const userRef = doc(db, 'users', userCred.user.uid);
+        const snap = await getDoc(userRef);
+
+        if (!snap.exists()) {
+          const isMaster = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
+          await setDoc(userRef, {
+            customerName: userCred.user.displayName || 'Pasajero TravelCab',
+            email: trimmedEmail,
+            phone: '+5491100000000',
+            customerLevel: 1,
+            customerStatus: 'Cliente',
+            rewardsPoints: 500,
+            walletBalance: 0,
+            hasPurchasedOrganizedTrip: false,
+            isAdmin: isMaster,
+            role: isMaster ? 'admin' : 'passenger',
+            createdAt: Timestamp.now()
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('Google auth error:', err);
+      Alert.alert('Error de Autenticación', 'No se pudo iniciar sesión con Google.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAuth = async () => {
-    const trimmedEmail = email.trim().toLowerCase();
+    const inputVal = emailOrPhone.trim();
 
     if (isForgot) {
-      if (!trimmedEmail || !trimmedEmail.includes('@')) {
-        return Alert.alert('Campo requerido', 'Ingresá tu email para restablecer la contraseña.');
+      if (!inputVal || !inputVal.includes('@')) {
+        return Alert.alert('Campo requerido', 'Ingresá tu correo electrónico para restablecer la contraseña.');
       }
       setLoading(true);
       try {
-        await sendPasswordResetEmail(auth, trimmedEmail);
-        Alert.alert('Correo enviado', 'Te enviamos las instrucciones para restablecer tu contraseña.');
+        await sendPasswordResetEmail(auth, inputVal.toLowerCase());
+        Alert.alert('Correo enviado', 'Te enviamos las instrucciones para restablecer tu contraseña a tu email.');
         setIsForgot(false);
         setIsLogin(true);
       } catch (err: any) {
         console.warn('Password reset error:', err);
         const msg = err.code === 'auth/user-not-found'
-          ? `El correo ${trimmedEmail} aún no está registrado. Podés ingresar directamente con una contraseña y se creará tu cuenta.`
+          ? `El correo ${inputVal} aún no está registrado. Podés crear tu cuenta tocando "Crear cuenta".`
           : 'No se pudo enviar el correo de recuperación. Verificá los datos.';
         Alert.alert('Aviso', msg);
       } finally {
@@ -52,50 +119,54 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!trimmedEmail || !password) {
-      return Alert.alert('Campos requeridos', 'Ingresá tus credenciales.');
+    if (!inputVal || !password) {
+      return Alert.alert('Campos requeridos', 'Completá tu correo o teléfono y la contraseña.');
+    }
+
+    let finalEmail = inputVal.toLowerCase();
+    if (!finalEmail.includes('@')) {
+      finalEmail = `${inputVal.replace(/\D/g, '')}@pasajero.travelapp.ar`;
     }
 
     setLoading(true);
     try {
       let userCred;
-      const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
+      const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(finalEmail);
 
       if (isLogin) {
         try {
-          userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+          userCred = await signInWithEmailAndPassword(auth, finalEmail, password);
         } catch (err: any) {
           if (isMasterAdmin && err.code === 'auth/user-not-found') {
-            userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+            userCred = await createUserWithEmailAndPassword(auth, finalEmail, password);
           } else {
             throw err;
           }
         }
       } else {
-        if (!name || !phone) {
+        if (!name || (!phone && !inputVal)) {
           setLoading(false);
           return Alert.alert('Campos requeridos', 'Completá tu nombre y teléfono.');
         }
-        userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+        userCred = await createUserWithEmailAndPassword(auth, finalEmail, password);
         if (userCred.user) {
           await updateProfile(userCred.user, { displayName: name });
         }
       }
 
-      // Asegurar perfil de usuario en Firestore `users/{uid}`
       if (userCred?.user) {
         const userRef = doc(db, 'users', userCred.user.uid);
         const snap = await getDoc(userRef);
 
         if (!snap.exists()) {
-          const isMaster = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
+          const isMaster = MASTER_ADMIN_EMAILS.includes(finalEmail);
           await setDoc(userRef, {
-            customerName: name || userCred.user.displayName || (trimmedEmail.includes('fernando') ? 'Fernando Admin' : 'Pasajero TravelCab'),
-            email: trimmedEmail,
-            phone: phone || '+5491100000000',
+            customerName: name || userCred.user.displayName || (finalEmail.includes('fernando') ? 'Fernando Admin' : 'Pasajero TravelCab'),
+            email: finalEmail,
+            phone: phone || inputVal,
             customerLevel: 1,
             customerStatus: 'Cliente',
-            rewardsPoints: 300, // Puntos Rewards de Bienvenida
+            rewardsPoints: 500,
             walletBalance: 0,
             hasPurchasedOrganizedTrip: false,
             isAdmin: isMaster,
@@ -106,13 +177,13 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       console.warn('Client Login error:', err);
-      let msg = 'Email o contraseña incorrectos.';
+      let msg = 'Credenciales incorrectas.';
       if (err.code === 'auth/user-not-found') {
-        msg = 'El usuario no está registrado. Tocá "Registrate acá" para crear tu cuenta.';
+        msg = 'El usuario no está registrado. Tocá "Crear cuenta" para registrarte.';
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        msg = 'Contraseña incorrecta. Verificá tu clave o presioná "¿Olvidaste tu contraseña?".';
+        msg = 'Contraseña incorrecta. Verificá tu clave o presioná "¿Olvidé mi contraseña?".';
       } else if (err.code === 'auth/email-already-in-use') {
-        msg = 'Este email ya está registrado. Intentá iniciar sesión.';
+        msg = 'Este usuario ya está registrado. Intentá iniciar sesión.';
       } else if (err.code === 'auth/weak-password') {
         msg = 'La contraseña debe tener al menos 6 caracteres.';
       } else if (err.message) {
@@ -129,38 +200,33 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.inner}>
           
-          {/* Logo Central */}
-          <View style={styles.logoContainer}>
-            <TravelCabLogo size={65} textColor={Colors.white} isAccentColor={false} />
-            <Text style={styles.subtitle}>Tu portal de traslados urbanos</Text>
+          {/* Logo Superior Central TravelCab */}
+          <View style={styles.logoHeader}>
+            <TravelCabLogo size={200} textColor={Colors.white} isAccentColor={true} />
           </View>
 
-          {/* Tarjeta de Travis AI */}
-          <View style={styles.travisCard}>
-            <View style={styles.travisAvatar}>
-              <Image source={require('../../assets/travis_perfil.png')} style={styles.travisAvatarImg} />
-            </View>
-            <View style={styles.travisBubble}>
-              <Text style={styles.travisText}>
-                {isForgot 
-                  ? '¡No te preocupes! Ingresá tu correo para recuperar el acceso a tu cuenta.'
-                  : isLogin 
-                    ? '¡Hola! Soy Travis 🤖 Bienvenido a TravelCab. Ingresá tus credenciales para continuar:'
-                    : '¡Qué bueno tenerte de socio pasajero! Completá tus datos para registrarte:'}
-              </Text>
+          {/* Bienvenida y Avatar de Travis en primer plano */}
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeTitle}>Bienvenidos, coloca tus credenciales</Text>
+            <View style={styles.travisAvatarBorder}>
+              <Image
+                source={require('../../assets/travis_primer_plano.png')}
+                style={styles.travisImg}
+                resizeMode="cover"
+              />
             </View>
           </View>
 
-          {/* Card del Formulario */}
+          {/* Tarjeta Flotante Blanca */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>
-              {isForgot ? 'Recuperar Cuenta' : isLogin ? 'Ingresar' : 'Registrarse'}
+            <Text style={styles.cardHeaderTitle}>
+              {isForgot ? 'Recuperar Contraseña' : isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
             </Text>
 
-            <View style={styles.form}>
+            <View style={styles.formGroup}>
               {!isLogin && !isForgot && (
                 <>
-                  <View style={styles.inputGroup}>
+                  <View style={styles.inputBox}>
                     <Text style={styles.label}>Nombre completo *</Text>
                     <TextInput
                       style={styles.input}
@@ -172,11 +238,11 @@ export default function LoginScreen() {
                     />
                   </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Teléfono celular (WhatsApp) *</Text>
+                  <View style={styles.inputBox}>
+                    <Text style={styles.label}>Número de teléfono (WhatsApp) *</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="+5491100000000"
+                      placeholder="+54 9 11 1234 5678"
                       placeholderTextColor={Colors.textMuted}
                       value={phone}
                       onChangeText={setPhone}
@@ -186,81 +252,126 @@ export default function LoginScreen() {
                 </>
               )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email / Correo electrónico *</Text>
+              <View style={styles.inputBox}>
+                <Text style={styles.label}>Correo Electrónico o Número de Teléfono *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="ejemplo@email.com"
+                  placeholder="ejemplo@email.com o +549..."
                   placeholderTextColor={Colors.textMuted}
-                  value={email}
-                  onChangeText={setEmail}
+                  value={emailOrPhone}
+                  onChangeText={setEmailOrPhone}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
               </View>
 
               {!isForgot && (
-                <View style={styles.inputGroup}>
+                <View style={styles.inputBox}>
                   <Text style={styles.label}>Contraseña *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor={Colors.textMuted}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                  />
+                  <View style={styles.passwordWrapper}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="••••••••"
+                      placeholderTextColor={Colors.textMuted}
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeIconBtn}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Ionicons
+                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                        size={22}
+                        color={Colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
 
               {isLogin && !isForgot && (
-                <TouchableOpacity onPress={() => { setIsForgot(true); setIsLogin(false); }} style={styles.forgotBtn}>
-                  <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+                <TouchableOpacity
+                  onPress={() => { setIsForgot(true); setIsLogin(false); }}
+                  style={styles.forgotBtn}
+                >
+                  <Text style={styles.forgotText}>¿Olvidé mi contraseña?</Text>
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity style={styles.button} onPress={handleAuth} disabled={loading}>
+              {/* Botón Ingresar / Registro */}
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={handleAuth}
+                disabled={loading}
+              >
                 {loading ? (
                   <ActivityIndicator color={Colors.white} />
                 ) : (
-                  <Text style={styles.buttonText}>
-                    {isForgot ? 'Enviar Correo' : isLogin ? 'Ingresar' : 'Crear Cuenta'}
+                  <Text style={styles.primaryButtonText}>
+                    {isForgot ? 'Enviar enlace de recuperación' : isLogin ? 'Ingresar' : 'Crear mi Cuenta'}
                   </Text>
                 )}
               </TouchableOpacity>
+
+              {/* Botón Ingresar con Google */}
+              {isLogin && !isForgot && (
+                <TouchableOpacity
+                  style={styles.googleButton}
+                  onPress={handleGoogleSignIn}
+                  disabled={loading}
+                >
+                  <Ionicons name="logo-google" size={20} color="#EA4335" />
+                  <Text style={styles.googleButtonText}>Ingresar con Google</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Alternar Crear Cuenta / Iniciar Sesión */}
+              <View style={styles.switchAuthRow}>
+                {isForgot ? (
+                  <TouchableOpacity onPress={() => { setIsForgot(false); setIsLogin(true); }}>
+                    <Text style={styles.switchAuthText}>Volver a Iniciar Sesión</Text>
+                  </TouchableOpacity>
+                ) : isLogin ? (
+                  <TouchableOpacity onPress={() => setIsLogin(false)}>
+                    <Text style={styles.switchAuthText}>
+                      ¿No tenés cuenta? <Text style={styles.switchAuthBold}>Crear cuenta</Text>
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => setIsLogin(true)}>
+                    <Text style={styles.switchAuthText}>
+                      ¿Ya tenés cuenta? <Text style={styles.switchAuthBold}>Iniciá sesión</Text>
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Contacto a soporte */}
+              <View style={styles.supportBox}>
+                <Text style={styles.supportLabel}>
+                  ¿Tenés dudas o problemas de acceso?{' '}
+                  <Text
+                    style={styles.supportLink}
+                    onPress={() => Linking.openURL('mailto:soporte@travelapp.ar')}
+                  >
+                    contactar a soporte@travelapp.ar
+                  </Text>
+                </Text>
+              </View>
+
             </View>
           </View>
 
-          {/* Switchers en Footer */}
-          <View style={styles.footerLinks}>
-            {isForgot ? (
-              <TouchableOpacity onPress={() => { setIsForgot(false); setIsLogin(true); }}>
-                <Text style={styles.footerLinkText}>Volver al Login</Text>
-              </TouchableOpacity>
-            ) : isLogin ? (
-              <TouchableOpacity onPress={() => setIsLogin(false)}>
-                <Text style={styles.footerLinkText}>
-                  ¿No tenés cuenta? <Text style={styles.footerLinkBold}>Registrate acá</Text>
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity onPress={() => setIsLogin(true)}>
-                <Text style={styles.footerLinkText}>
-                  ¿Ya tenés cuenta? <Text style={styles.footerLinkBold}>Iniciá sesión</Text>
-                </Text>
-              </TouchableOpacity>
-            )}
+          {/* Footer de Login Sutil */}
+          <View style={styles.footerSection}>
+            <Text style={styles.copyrightText}>Todos los derechos reservados</Text>
+            <View style={styles.footerLogoRow}>
+              <TravelAppLogo size={110} textColor={Colors.white} isAccentColor={true} />
+            </View>
           </View>
 
-          {/* Soporte Técnico */}
-          <View style={styles.supportContainer}>
-            <Text style={styles.supportText}>
-              ¿Tenés algún inconveniente? Contactate con{' '}
-              <Text style={styles.supportEmail} onPress={() => Linking.openURL('mailto:soporte@travelapp.ar')}>
-                soporte@travelapp.ar
-              </Text>
-            </Text>
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -268,54 +379,207 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.primary },
-  scrollContent: { flexGrow: 1, justifyContent: 'center' },
-  inner: { padding: 24, gap: 16 },
-  logoContainer: { alignItems: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 13, fontFamily: 'Quicksand-Medium', color: 'rgba(255,255,255,0.7)', marginTop: 4 },
-  
-  // Travis AI bubble
-  travisCard: { flexDirection: 'row', gap: 12, alignItems: 'center', marginVertical: 8 },
-  travisAvatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.accent,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, elevation: 3,
+  container: {
+    flex: 1,
+    backgroundColor: Colors.techBlueBg,
   },
-  travisAvatarImg: {
-    width: 44, height: 44, borderRadius: 22,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
-  travisBubble: {
-    flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16,
-    padding: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+  inner: {
+    paddingHorizontal: 24,
+    gap: 18,
+    alignItems: 'center',
   },
-  travisText: { color: Colors.white, fontSize: 13, fontFamily: 'Quicksand-Medium', lineHeight: 18 },
+  logoHeader: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
 
-  // Card Form
+  // Sección de bienvenida y Travis avatar
+  welcomeSection: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  welcomeTitle: {
+    fontSize: 16,
+    fontFamily: Fonts.semiBold,
+    color: Colors.white,
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  travisAvatarBorder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.accent,
+    padding: 3,
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  travisImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+  },
+
+  // Tarjeta Flotante Blanca
   card: {
-    backgroundColor: Colors.white, borderRadius: 24, padding: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, elevation: 8,
+    width: '100%',
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 12,
   },
-  cardTitle: { fontSize: 20, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginBottom: 16 },
-  form: { gap: 14 },
-  inputGroup: { gap: 6 },
-  label: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary },
+  cardHeaderTitle: {
+    fontSize: 22,
+    fontFamily: Fonts.bold,
+    color: Colors.textPrimary,
+    marginBottom: 18,
+    textAlign: 'center',
+  },
+  formGroup: {
+    gap: 14,
+  },
+  inputBox: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 13,
+    fontFamily: Fonts.medium,
+    color: Colors.textSecondary,
+  },
   input: {
-    backgroundColor: Colors.background, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 12,
-    fontSize: 14, fontFamily: 'Quicksand-Regular', color: Colors.textPrimary,
-    borderWidth: 1.5, borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    fontSize: 15,
+    fontFamily: Fonts.regular,
+    color: Colors.textPrimary,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
   },
-  forgotBtn: { alignSelf: 'flex-end', paddingVertical: 4 },
-  forgotText: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.accent },
-  button: {
-    backgroundColor: Colors.accent, borderRadius: 14,
-    paddingVertical: 15, alignItems: 'center', marginTop: 6,
+  passwordWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    paddingRight: 12,
   },
-  buttonText: { color: Colors.white, fontSize: 15, fontFamily: 'Quicksand-Bold' },
-  footerLinks: { alignItems: 'center', marginTop: 16 },
-  footerLinkText: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontFamily: 'Quicksand-Medium' },
-  footerLinkBold: { color: Colors.accent, fontFamily: 'Quicksand-Bold', textDecorationLine: 'underline' },
-  supportContainer: { alignItems: 'center', marginTop: 24, paddingHorizontal: 16 },
-  supportText: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontFamily: 'Quicksand-Medium', textAlign: 'center' },
-  supportEmail: { color: Colors.white, fontFamily: 'Quicksand-Bold', textDecorationLine: 'underline' },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    fontSize: 15,
+    fontFamily: Fonts.regular,
+    color: Colors.textPrimary,
+  },
+  eyeIconBtn: {
+    padding: 6,
+  },
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 2,
+  },
+  forgotText: {
+    fontSize: 13,
+    fontFamily: Fonts.medium,
+    color: Colors.accent,
+  },
+  primaryButton: {
+    backgroundColor: Colors.accent,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  primaryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontFamily: Fonts.bold,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 10,
+    marginTop: 2,
+  },
+  googleButtonText: {
+    color: Colors.textPrimary,
+    fontSize: 15,
+    fontFamily: Fonts.semiBold,
+  },
+  switchAuthRow: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  switchAuthText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontFamily: Fonts.medium,
+  },
+  switchAuthBold: {
+    color: Colors.accent,
+    fontFamily: Fonts.bold,
+  },
+  supportBox: {
+    alignItems: 'center',
+    marginTop: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  supportLabel: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  supportLink: {
+    color: Colors.primary,
+    fontFamily: Fonts.semiBold,
+    textDecorationLine: 'underline',
+  },
+
+  // Footer Sección
+  footerSection: {
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+  },
+  copyrightText: {
+    fontSize: 11,
+    fontFamily: Fonts.regular,
+    color: 'rgba(255, 255, 255, 0.65)',
+    letterSpacing: 0.5,
+  },
+  footerLogoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

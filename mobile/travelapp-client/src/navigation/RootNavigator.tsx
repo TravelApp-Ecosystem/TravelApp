@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { User, onAuthStateChanged } from 'firebase/auth';
+import firebase from 'firebase/compat/app';
 import { ActivityIndicator, View } from 'react-native';
 import { auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
@@ -14,53 +14,20 @@ import ChatScreen from '../screens/ChatScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import RewardsScreen from '../screens/RewardsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import CompleteProfileScreen from '../screens/CompleteProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<firebase.User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
-    // Timer de seguridad: desbloquea la app a los 3.5s si el listener de auth demora o falla
-    const safetyTimer = setTimeout(() => {
-      if (isMounted) setLoading(false);
-    }, 3500);
-
-    let unsub = () => {};
-    try {
-      unsub = onAuthStateChanged(
-        auth,
-        (u) => {
-          if (isMounted) {
-            setUser(u);
-            setLoading(false);
-            clearTimeout(safetyTimer);
-          }
-        },
-        (error) => {
-          console.warn('Auth state error in client app:', error);
-          if (isMounted) {
-            setLoading(false);
-            clearTimeout(safetyTimer);
-          }
-        }
-      );
-    } catch (err) {
-      console.warn('Auth listener mount error:', err);
-      if (isMounted) {
-        setLoading(false);
-        clearTimeout(safetyTimer);
-      }
-    }
-
-    return () => {
-      isMounted = false;
-      clearTimeout(safetyTimer);
-      unsub();
-    };
+    const unsub = auth.onAuthStateChanged((u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return unsub;
   }, []);
 
   if (loading) {
@@ -85,6 +52,7 @@ export default function RootNavigator() {
             <Stack.Screen name="History" component={HistoryScreen} />
             <Stack.Screen name="Rewards" component={RewardsScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
           </>
         )}
       </Stack.Navigator>

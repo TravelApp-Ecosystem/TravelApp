@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#1E293B', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 24 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   cardTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
-  textArea: { backgroundColor: '#0F172A', borderRadius: 12, borderContent: 'center', padding: 12, color: '#FFFFFF', fontSize: 13, minHeight: 90, textAlignVertical: 'top', borderWidth: 1, borderColor: '#334155', marginBottom: 14 },
+  textArea: { backgroundColor: '#0F172A', borderRadius: 12, padding: 12, color: '#FFFFFF', fontSize: 13, minHeight: 90, textAlignVertical: 'top', borderWidth: 1, borderColor: '#334155', marginBottom: 14 },
   sendBtn: { backgroundColor: '#A855F7', borderRadius: 12, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   sendBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
   sectionTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', marginBottom: 12 },

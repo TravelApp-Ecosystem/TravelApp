@@ -102,7 +102,7 @@ export default function LoginScreen() {
           
           {/* Logo Central */}
           <View style={styles.logoContainer}>
-            <TravelAppLogo size={36} textColor={Colors.white} isAccentColor={true} />
+            <TravelAppLogo size={180} textColor={Colors.white} />
             <Text style={styles.appTitle}>SUPERVISOR DE FLOTA</Text>
             <Text style={styles.subtitle}>Centro de Auditoría & Control Operativo</Text>
           </View>

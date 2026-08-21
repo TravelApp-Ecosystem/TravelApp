@@ -8,7 +8,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { TravelExperienceLogo, TravelAppLogo } from './src/components/BrandLogos';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'Quicksand-Regular': Quicksand_400Regular,
     'Quicksand-Medium': Quicksand_500Medium,
     'Quicksand-SemiBold': Quicksand_600SemiBold,
@@ -21,7 +21,7 @@ export default function App() {
   const iconAnim = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontError) {
       // Secuencia animada de iconos (Camara -> Maletin -> Avion -> Regalo -> Logo Experience)
       const t1 = setTimeout(() => setActiveIcon('briefcase'), 500);
       const t2 = setTimeout(() => setActiveIcon('airplane'), 1000);
@@ -47,7 +47,7 @@ export default function App() {
         clearTimeout(timer);
       };
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     // Animación de pulso/rebote al cambiar de icono
@@ -60,7 +60,7 @@ export default function App() {
     }).start();
   }, [activeIcon]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={[styles.splashContainer, { backgroundColor: '#1E1B4B' }]}>
         <ActivityIndicator size="large" color="#FFFFFF" />
@@ -131,11 +131,11 @@ export default function App() {
 
 const styles = StyleSheet.create({
   splashOverlayContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 99999,
   },
   splashContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#1E1B4B',
     alignItems: 'center',
     justifyContent: 'center',

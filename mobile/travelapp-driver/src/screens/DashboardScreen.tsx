@@ -15,6 +15,7 @@ import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo } from '../components/BrandLogos';
+import { InteractiveMapView } from '../components/InteractiveMapView';
 
 const { width, height } = Dimensions.get('window');
 
@@ -262,23 +263,28 @@ export default function DashboardScreen() {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
 
     const q = query(
       collection(db, 'trips'),
       where('driverId', '==', user.uid),
-      where('status', '==', 'completed'),
-      where('createdAt', '>=', Timestamp.fromDate(today))
+      where('status', '==', 'completed')
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      setTodayTrips(snap.size);
+      let count = 0;
       let earnings = 0;
       snap.forEach(d => {
         const trip = d.data();
-        earnings += (trip.finalPrice || trip.estimatedPrice || 0);
+        const tripDate = trip.createdAt?.toDate ? trip.createdAt.toDate().getTime() : (typeof trip.createdAt === 'number' ? trip.createdAt : 0);
+        if (tripDate >= todayTimestamp) {
+          count++;
+          earnings += (trip.finalPrice || trip.estimatedPrice || 0);
+        }
       });
+      setTodayTrips(count);
       setTodayEarnings(earnings);
-    }, (err) => console.warn("Completed trips error:", err));
+    }, (err) => console.log("Completed trips listener:", err));
 
     // Escuchar si hay viajes pendientes (en búsqueda real) no rechazados por este chofer
     const qPending = query(collection(db, 'trips'), where('status', '==', 'searching'));
@@ -335,13 +341,15 @@ export default function DashboardScreen() {
   // Enviar ubicación periódicamente cuando está online con protección total contra crashes
   useEffect(() => {
     if (isOnline && user?.uid) {
-      activateKeepAwakeAsync('driver_online').catch(console.warn);
+      try {
+        activateKeepAwakeAsync('driver_online').catch(() => {});
+      } catch {}
 
       const updateLocation = async () => {
         try {
-          let loc = await Location.getLastKnownPositionAsync({});
-          if (!loc || !loc.coords || typeof loc.coords.latitude !== 'number' || isNaN(loc.coords.latitude)) {
-            loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+          let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+          if (!loc || !loc.coords) {
+            loc = await Location.getLastKnownPositionAsync({}).catch(() => null);
           }
           if (loc && loc.coords && typeof loc.coords.latitude === 'number' && !isNaN(loc.coords.latitude)) {
             const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
@@ -353,7 +361,7 @@ export default function DashboardScreen() {
                 location: coords,
                 updatedAt: Timestamp.now(),
                 name: user.displayName || 'Conductor',
-              }, { merge: true }).catch(console.warn);
+              }, { merge: true }).catch(() => {});
             }
           }
         } catch (e) {
@@ -364,14 +372,18 @@ export default function DashboardScreen() {
       updateLocation();
       locationInterval.current = setInterval(updateLocation, 10000);
     } else {
-      deactivateKeepAwake('driver_online').catch(console.warn);
+      try {
+        deactivateKeepAwake('driver_online');
+      } catch {}
       if (locationInterval.current) clearInterval(locationInterval.current);
       if (user?.uid) {
-        setDoc(doc(db, 'drivers', user.uid), { isOnline: false, updatedAt: Timestamp.now() }, { merge: true }).catch(console.warn);
+        setDoc(doc(db, 'drivers', user.uid), { isOnline: false, updatedAt: Timestamp.now() }, { merge: true }).catch(() => {});
       }
     }
     return () => {
-      deactivateKeepAwake('driver_online').catch(console.warn);
+      try {
+        deactivateKeepAwake('driver_online');
+      } catch {}
       if (locationInterval.current) clearInterval(locationInterval.current);
     };
   }, [isOnline, user?.uid]);
@@ -543,22 +555,19 @@ export default function DashboardScreen() {
           <Text style={styles.loadingText}>Iniciando GPS...</Text>
         </View>
       ) : (
-        <MapView
+        <InteractiveMapView
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={currentLocation}
-          showsUserLocation={false}
-          showsMyLocationButton={false}
-        >
-          {isOnline && currentLocation && typeof currentLocation.latitude === 'number' && !isNaN(currentLocation.latitude) && typeof currentLocation.longitude === 'number' && !isNaN(currentLocation.longitude) && (
-            <Marker coordinate={{ latitude: currentLocation.latitude, longitude: currentLocation.longitude }} title="Tu Ubicación Online">
-              <View style={[styles.carMarkerCircle, { backgroundColor: '#10B981' }]}>
-                <Ionicons name="car" size={22} color={Colors.white} />
-              </View>
-              <View style={[styles.carMarkerArrow, { borderTopColor: '#10B981' }]} />
-            </Marker>
-          )}
-        </MapView>
+          originCoords={
+            currentLocation
+              ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude }
+              : { latitude: -26.8326, longitude: -65.2038 }
+          }
+          onlineDrivers={
+            isOnline && currentLocation
+              ? [{ id: auth.currentUser?.uid || 'me', name: 'Tu Vehículo Online', location: currentLocation, heading: 0 }]
+              : []
+          }
+        />
       )}
 
       {/* Visor de recaudación del día en la parte superior */}
@@ -619,22 +628,21 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Botón Viaje Libre para Taxi */}
-        {isTaxi && isOnline && (
-          <TouchableOpacity 
-            style={styles.taximeterBtn} 
-            onPress={() => {
-              setTaximeterStep('idle');
-              setTaxiSeconds(0);
-              setTaxiDistance(0.0);
-              setTaxiFare(300.0);
-              setTaximeterVisible(true);
-            }}
-          >
-            <Ionicons name="calculator-outline" size={20} color={Colors.white} />
-            <Text style={styles.taximeterBtnText}>Iniciar Viaje Libre (Taxímetro)</Text>
-          </TouchableOpacity>
-        )}
+        {/* Botón Viaje Libre / Taxímetro SUTRAPA (Habilitado para conductores y administradores) */}
+        <TouchableOpacity 
+          style={styles.taximeterBtn} 
+          onPress={() => {
+            setTaximeterStep('idle');
+            setTaxiSeconds(0);
+            setTaxiDistance(0.0);
+            setTaxiFare(300.0);
+            setTaximeterVisible(true);
+          }}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="calculator-outline" size={20} color={Colors.white} />
+          <Text style={styles.taximeterBtnText}>Modo Taxímetro (Viaje Libre / SUTRAPA)</Text>
+        </TouchableOpacity>
       </View>
 
       {/* MODAL DE TAXÍMETRO (VIAJE LIBRE) */}

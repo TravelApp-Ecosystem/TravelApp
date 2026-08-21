@@ -12,6 +12,14 @@ interface Customer {
   displayName: string;
   email: string;
   phone: string;
+  familyMembers?: {
+    id: string;
+    fullName: string;
+    relationship: string;
+    documentType: string;
+    documentNumber: string;
+    dob?: string;
+  }[];
 }
 
 export default function NewReservationPage() {
@@ -27,6 +35,7 @@ export default function NewReservationPage() {
   const [selectedTourId, setSelectedTourId] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [branchId, setBranchId] = useState('1');
+  const [selectedFamilyMemberIds, setSelectedFamilyMemberIds] = useState<string[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -39,15 +48,16 @@ export default function NewReservationPage() {
       setTours(list);
     });
 
-    // 2. Sync crm_customers
-    const unsubCustomers = onSnapshot(collection(db, 'crm_customers'), (snap) => {
+    // 2. Sync crm_customers & users
+    const unsubCustomers = onSnapshot(collection(db, 'users'), (snap) => {
       const list = snap.docs.map(docSnap => {
         const data = docSnap.data();
         return {
           id: docSnap.id,
-          displayName: data.displayName || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Cliente',
+          displayName: data.displayName || data.customerName || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Cliente',
           email: data.email || '',
-          phone: data.phone || ''
+          phone: data.phone || '',
+          familyMembers: data.familyMembers || []
         };
       });
       setCustomers(list);
@@ -62,19 +72,36 @@ export default function NewReservationPage() {
     };
   }, []);
 
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+
   // Autofill passenger info when a CRM customer is selected
   const handleSelectCustomer = (id: string) => {
     setSelectedCustomerId(id);
+    setSelectedFamilyMemberIds([]);
     const cust = customers.find(c => c.id === id);
     if (cust) {
       setPassengerName(cust.displayName);
       setPassengerEmail(cust.email);
       setPassengerPhone(cust.phone);
+      setQuantity('1');
     } else {
       setPassengerName('');
       setPassengerEmail('');
       setPassengerPhone('');
+      setQuantity('1');
     }
+  };
+
+  // Toggle family member companion
+  const handleToggleFamilyMember = (famId: string) => {
+    let nextIds: string[];
+    if (selectedFamilyMemberIds.includes(famId)) {
+      nextIds = selectedFamilyMemberIds.filter(id => id !== famId);
+    } else {
+      nextIds = [...selectedFamilyMemberIds, famId];
+    }
+    setSelectedFamilyMemberIds(nextIds);
+    setQuantity(String(1 + nextIds.length));
   };
 
   // Custom trip state if not selecting catalog tour
@@ -101,6 +128,8 @@ export default function NewReservationPage() {
       const fileNum = `FILE-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       const branchName = branchId === '2' ? 'Sucursal Pilar' : branchId === '3' ? 'Sucursal Tucumán' : 'Sucursal Retiro';
 
+      const accompanyingFamily = selectedCustomer?.familyMembers?.filter(f => selectedFamilyMemberIds.includes(f.id)) || [];
+
       const payload = {
         fileNumber: fileNum,
         tourId: selectedTourId,
@@ -109,6 +138,11 @@ export default function NewReservationPage() {
         emailPasajero: passengerEmail,
         telefonoPasajero: passengerPhone,
         cantidadPersonas: Number(quantity),
+        accompanyingFamily,
+        passengersList: [
+          { name: passengerName, role: 'Titular', email: passengerEmail, phone: passengerPhone },
+          ...accompanyingFamily.map(f => ({ name: f.fullName, role: f.relationship, doc: `${f.documentType} ${f.documentNumber}`, dob: f.dob }))
+        ],
         estado: 'Pendiente',
         branchId,
         branchName,
@@ -122,6 +156,7 @@ export default function NewReservationPage() {
       setLastFileNumber(fileNum);
       setSuccess(true);
       setSelectedCustomerId('');
+      setSelectedFamilyMemberIds([]);
       setPassengerName('');
       setPassengerEmail('');
       setPassengerPhone('');
@@ -236,6 +271,46 @@ export default function NewReservationPage() {
                 />
               </div>
             </div>
+
+            {/* Grupo Familiar Selector */}
+            {selectedCustomer?.familyMembers && selectedCustomer.familyMembers.length > 0 && (
+              <div className="bg-sky-50/70 border border-sky-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-black text-sky-900 flex items-center gap-1.5">
+                    👨‍👩‍👧‍👦 Grupo Familiar Detectado ({selectedCustomer.familyMembers.length} registrados)
+                  </p>
+                  <span className="text-[10px] font-bold bg-sky-200/80 text-sky-900 px-2 py-0.5 rounded-full">
+                    {selectedFamilyMemberIds.length} seleccionados
+                  </span>
+                </div>
+                <p className="text-xs text-sky-700">Tildá los familiares que viajan con el titular para incluirlos en el File y autocalcular la cantidad de PAX.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {selectedCustomer.familyMembers.map(f => {
+                    const isChecked = selectedFamilyMemberIds.includes(f.id);
+                    return (
+                      <div
+                        key={f.id}
+                        onClick={() => handleToggleFamilyMember(f.id)}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                          isChecked ? 'bg-white border-tech-blue shadow-sm' : 'bg-white/60 border-slate-200 opacity-80 hover:opacity-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="h-4 w-4 rounded text-tech-blue focus:ring-0 cursor-pointer"
+                        />
+                        <div className="flex-1 text-xs">
+                          <p className="font-bold text-slate-800">{f.fullName}</p>
+                          <p className="text-[11px] text-slate-500">{f.relationship} · {f.documentType} {f.documentNumber}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Configuración de Reserva */}
             <div className="border-t border-slate-100 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4">

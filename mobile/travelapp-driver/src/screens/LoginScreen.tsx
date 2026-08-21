@@ -8,7 +8,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswor
 import { collection, doc, setDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Colors } from '../lib/constants';
-import { TravelCabLogo } from '../components/BrandLogos';
+import { TravelCabLogo, TravelAppLogo } from '../components/BrandLogos';
 import { Ionicons } from '@expo/vector-icons';
 
 const MASTER_ADMIN_EMAILS = [
@@ -359,14 +359,14 @@ export default function LoginScreen() {
       <View style={styles.inner}>
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <TravelCabLogo size={70} textColor={Colors.primary} isAccentColor={false} />
-          <Text style={styles.subtitle}>Portal del Conductor</Text>
+          <TravelCabLogo size={220} textColor="#0B192C" />
+          <Text style={styles.subtitle}>Portal Oficial de Conductores</Text>
         </View>
 
         {/* Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Iniciar sesión</Text>
-          <Text style={styles.cardSubtitle}>Accedé con tus credenciales de socio</Text>
+          <Text style={styles.cardSubtitle}>Accedé con tus credenciales de socio conductor</Text>
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
@@ -438,6 +438,14 @@ export default function LoginScreen() {
             ¿No tenés cuenta de socio? <Text style={styles.registerLinkHighlight}>Registrate acá</Text>
           </Text>
         </TouchableOpacity>
+
+        {/* Footer del Ecosistema */}
+        <View style={{ alignItems: 'center', marginTop: 24, gap: 4 }}>
+          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Miembro del ecosistema
+          </Text>
+          <TravelAppLogo size={120} textColor="#0B192C" />
+        </View>
       </View>
 
       {/* MODAL DE REGISTRO MULTIPASO / ONBOARDING CON CÁMARA Y ARCHIVOS */}

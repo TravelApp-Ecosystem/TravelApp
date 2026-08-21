@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow } from "@react-google-maps/api";
 import { Trip, TripStatus } from "@/types/travelcab";
-import { Car, Compass, Play, CheckCircle, Navigation, User, Phone } from "lucide-react";
+import { Car, Compass, Play, CheckCircle, Navigation, User, Phone, AlertTriangle, ShieldAlert } from "lucide-react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getCarSvgDataUrl, getVehicleColor } from "@/lib/carMarkerSvg";
 
 interface GoogleInteractiveMapProps {
   activeTrip: Trip | null;
@@ -123,6 +124,9 @@ export interface RealDriver {
   vehicle: string;
   plate: string;
   color: string;
+  hasAlert?: boolean;
+  alertReason?: string;
+  heading?: number;
 }
 
 export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
@@ -158,6 +162,22 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
         // Coordenadas reales GPS (o dispersión sutil si recién inicia)
         const lat = data.location?.latitude || data.location?.lat || data.currentLocation?.latitude || (-26.82414 + (index * 0.003));
         const lng = data.location?.longitude || data.location?.lng || data.currentLocation?.longitude || (-65.22260 + (index * 0.004));
+        const heading = data.location?.heading || data.currentLocation?.heading || data.heading || (index * 75) % 360;
+
+        // Detección inteligente de alertas (Vencimiento de VTV/Seguro o Botón de Auxilio/Evento)
+        const hasAlert = !!(
+          data.hasAlert ||
+          data.panicAlert ||
+          data.documentAlert ||
+          data.alertReason ||
+          (data.documents && (data.documents.vtvExpired || data.documents.insuranceExpired || data.documents.licenseExpired))
+        );
+
+        const alertReason = data.alertReason || (
+          data.panicAlert ? '¡Alerta SOS / Asistencia del Chofer!' :
+          data.documentAlert ? 'Documentación Vencida (VTV / Seguro / Carnet)' :
+          (data.documents?.vtvExpired ? 'VTV Vencida' : data.documents?.insuranceExpired ? 'Póliza de Seguro Vencida' : undefined)
+        );
 
         return {
           id: docSnap.id,
@@ -165,11 +185,14 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
           phone: data.phone || '+54 381 000-0000',
           lat,
           lng,
+          heading,
           status: data.status || 'Activo',
           isOnline: data.isOnline !== false,
           vehicle: data.activeVehicle?.brand || data.activeVehicle?.make || 'Vehículo Habilitado',
           plate: data.activeVehicle?.plate || 'AB 123 CD',
           color: data.activeVehicle?.color || 'Gris',
+          hasAlert,
+          alertReason,
         };
       });
 
@@ -405,57 +428,102 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
           />
         )}
 
-        {/* Marcadores de Choferes Reales desde Firestore (Puntos de Color Verde/Naranja/Gris) */}
+        {/* Marcadores de Choferes Reales con Autito SVG (🟢 Online Verde / ⚪ Offline Gris / 🟠 En Viaje Naranja / 🔴 Alerta Roja) */}
         {realDrivers.map((drv) => {
           if (drv.id === assignedDriverId && carPosition) return null;
 
-          // Color del punto: 🟢 Verde Esmeralda (Activo), 🟡 Naranja (En Viaje), 🔴 Gris (En Revisión/Desconectado)
-          const dotColor = drv.status === 'Activo' && drv.isOnline ? '#10B981'
-            : drv.status === 'En Viaje' ? '#FF7B1A'
-            : '#94A3B8';
+          const carIconUrl = getCarSvgDataUrl({
+            status: drv.status,
+            isOnline: drv.isOnline,
+            hasAlert: drv.hasAlert,
+            alertReason: drv.alertReason,
+            heading: drv.heading || 0,
+          });
 
           return (
             <Marker
               key={drv.id}
               position={{ lat: drv.lat, lng: drv.lng }}
               icon={{
-                path: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
-                scale: 1.2,
-                fillColor: dotColor,
-                fillOpacity: 1.0,
-                strokeColor: '#ffffff',
-                strokeWeight: 1.5,
+                url: carIconUrl,
+                scaledSize: new window.google.maps.Size(42, 42),
+                anchor: new window.google.maps.Point(21, 21),
               }}
-              title={`${drv.name} — ${drv.status}`}
+              title={`${drv.name} — ${drv.status} ${drv.hasAlert ? `⚠️ [ALERTA: ${drv.alertReason}]` : ''}`}
               onClick={() => setSelectedDriver(drv)}
             />
           );
         })}
 
-        {/* InfoWindow al hacer clic en el punto de un Chofer */}
+        {/* Vehículo en movimiento durante viaje activo */}
+        {carPosition && (
+          <Marker
+            position={carPosition}
+            icon={{
+              url: getCarSvgDataUrl({
+                status: 'En Viaje',
+                isOnline: true,
+                hasAlert: false,
+                heading: 0,
+              }),
+              scaledSize: new window.google.maps.Size(46, 46),
+              anchor: new window.google.maps.Point(23, 23),
+            }}
+            title="Móvil en Camino / En Viaje"
+          />
+        )}
+
+        {/* InfoWindow al hacer clic en el autito de un Chofer */}
         {selectedDriver && (
           <InfoWindow
             position={{ lat: selectedDriver.lat, lng: selectedDriver.lng }}
             onCloseClick={() => setSelectedDriver(null)}
           >
-            <div className="p-2 min-w-[200px] text-slate-800 space-y-1.5">
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
-                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: selectedDriver.status === 'Activo' ? '#10B981' : '#FF7B1A' }} />
-                <span className="font-bold text-xs">{selectedDriver.name}</span>
-              </div>
-              <p className="text-[11px] text-slate-600 flex items-center gap-1">
-                <Car className="h-3 w-3 text-slate-400" /> {selectedDriver.vehicle} ({selectedDriver.color})
-              </p>
-              <p className="text-[11px] text-slate-600 font-mono">
-                Patente: <strong>{selectedDriver.plate}</strong>
-              </p>
-              <p className="text-[11px] text-slate-600 flex items-center gap-1">
-                <Phone className="h-3 w-3 text-slate-400" /> {selectedDriver.phone}
-              </p>
-              <div className="pt-1">
-                <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
-                  {selectedDriver.status}
+            <div className="p-2.5 min-w-[220px] text-slate-800 space-y-2">
+              {/* Alerta Destacada si existe */}
+              {selectedDriver.hasAlert && (
+                <div className="bg-red-50 border border-red-200 p-2 rounded-lg flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[11px] font-black text-red-700 uppercase tracking-tight">Alerta de Seguridad / Vencimiento</p>
+                    <p className="text-[10px] text-red-600 font-semibold">{selectedDriver.alertReason || 'Requiere inspección inmediata'}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{
+                      backgroundColor: selectedDriver.hasAlert ? '#EF4444' : selectedDriver.status === 'Activo' && selectedDriver.isOnline ? '#10B981' : selectedDriver.status === 'En Viaje' ? '#FF7B1A' : '#94A3B8'
+                    }}
+                  />
+                  <span className="font-bold text-xs">{selectedDriver.name}</span>
+                </div>
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+                  selectedDriver.hasAlert ? 'bg-red-100 text-red-800' :
+                  selectedDriver.status === 'Activo' && selectedDriver.isOnline ? 'bg-emerald-100 text-emerald-800' :
+                  selectedDriver.status === 'En Viaje' ? 'bg-orange-100 text-orange-800' :
+                  'bg-slate-100 text-slate-700'
+                }`}>
+                  {selectedDriver.hasAlert ? 'ALERTA' : selectedDriver.status}
                 </span>
+              </div>
+
+              <div className="space-y-1 text-[11px] text-slate-600">
+                <p className="flex items-center gap-1.5">
+                  <Car className="h-3.5 w-3.5 text-slate-400" />
+                  <span>{selectedDriver.vehicle} ({selectedDriver.color})</span>
+                </p>
+                <p className="flex items-center gap-1.5 font-mono">
+                  <span className="text-[10px] text-slate-400 font-sans font-bold">PATENTE:</span>
+                  <strong>{selectedDriver.plate}</strong>
+                </p>
+                <p className="flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-slate-400" />
+                  <span>{selectedDriver.phone}</span>
+                </p>
               </div>
             </div>
           </InfoWindow>

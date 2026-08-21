@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Users, Search, Eye, Star, ChevronRight,
-  Phone, Mail, Shield, Crown, Filter
+  Phone, Mail, Shield, Crown, Filter, UserPlus
 } from 'lucide-react';
 import { Lead, CustomerLevel } from '@/types/crm';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -91,97 +92,183 @@ const LevelBadge = ({ level }: { level: CustomerLevel }) =>
 
 // ── Customer Modal ────────────────────────────────────────────
 const CustomerModal = ({ customer, onClose }: { customer: Lead; onClose: () => void }) => {
-  const isVIP = customer.customerLevel === 2;
+  const isVIP = customer.customerLevel === 2 || (customer.profileCompletedPercentage && customer.profileCompletedPercentage > 50);
+  const familyCount = customer.familyMembers?.length || 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className={`rounded-t-2xl p-5 ${isVIP ? 'bg-gradient-to-r from-amber-50 to-orange-50' : 'bg-slate-50'}`}>
+        <div className={`p-6 border-b border-slate-100 ${isVIP ? 'bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent' : 'bg-slate-50'}`}>
           <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">{customer.customerName}</h2>
-              <div className="mt-1 flex items-center gap-2">
-                <LevelBadge level={customer.customerLevel} />
-                <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${customer.customerStatus === 'Cliente' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                  {customer.customerStatus}
-                </span>
+            <div className="flex items-center gap-3">
+              <div className={`h-12 w-12 rounded-2xl flex items-center justify-center font-black text-base shadow-sm ${isVIP ? 'bg-amber-500 text-white' : 'bg-tech-blue text-white'}`}>
+                {customer.customerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">{customer.customerName}</h2>
+                <div className="mt-1 flex items-center gap-2">
+                  <LevelBadge level={customer.customerLevel} />
+                  <span className={`text-xs font-semibold rounded-full px-2.5 py-0.5 ${customer.customerStatus === 'Cliente' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {customer.customerStatus}
+                  </span>
+                  {customer.profileCompletedPercentage !== undefined && (
+                    <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                      {customer.profileCompletedPercentage}% datos
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-            <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all">✕</button>
+            <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-all">✕</button>
           </div>
         </div>
 
-        <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* Contact */}
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Contacto</p>
-            {customer.phone && <p className="flex items-center gap-2 text-sm text-slate-700"><Phone className="h-3.5 w-3.5 text-slate-400" />{customer.phone}</p>}
-            {customer.email && <p className="flex items-center gap-2 text-sm text-slate-700"><Mail className="h-3.5 w-3.5 text-slate-400" />{customer.email}</p>}
+          <div className="grid grid-cols-2 gap-4 bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Teléfono / WhatsApp</p>
+              <p className="text-sm font-semibold text-slate-700 mt-0.5">{customer.phone || 'No registrado'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email</p>
+              <p className="text-sm font-semibold text-slate-700 mt-0.5 truncate">{customer.email || 'No registrado'}</p>
+            </div>
           </div>
 
-          {/* Wallet */}
+          {/* Wallet / Points */}
           {customer.wallet && (
-            <div className="rounded-xl border border-tech-blue/20 bg-tech-blue/5 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-tech-blue mb-2">Billetera</p>
-              <div className="flex gap-4">
+            <div className="rounded-xl border border-tech-blue/20 bg-tech-blue/5 p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-tech-blue">Billetera & Fidelización</p>
+                <p className="text-xs text-slate-500 mt-0.5">Saldo promocional y puntos acumulados</p>
+              </div>
+              <div className="flex gap-6 text-right">
                 <div>
-                  <p className="text-[10px] text-slate-400">Puntos</p>
-                  <p className="text-lg font-bold text-tech-blue">{customer.wallet.pointsBalance.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400">Puntos Rewards</p>
+                  <p className="text-lg font-black text-amber-600">⭐ {customer.wallet.pointsBalance.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-400">Crédito</p>
-                  <p className="text-lg font-bold text-tech-blue">${customer.wallet.cashCredit.toLocaleString('es-AR')}</p>
+                  <p className="text-[10px] text-slate-400">Crédito ARS</p>
+                  <p className="text-lg font-black text-tech-blue">${customer.wallet.cashCredit.toLocaleString('es-AR')}</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Level 2 extended */}
-          {isVIP && (
-            <>
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Datos Personales (Nivel 2)</p>
-                {customer.dob && <p className="text-sm text-slate-600"><span className="font-medium">Nacimiento:</span> {customer.dob}</p>}
-                {customer.occupation && <p className="text-sm text-slate-600"><span className="font-medium">Ocupación:</span> {customer.occupation}</p>}
+          {/* Documentos & Emisión IATA */}
+          <div className="border-t border-slate-100 pt-3 space-y-2">
+            <p className="text-xs font-black uppercase tracking-wide text-tech-blue">1. Documentación & Emisión de Pasajes</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div className="bg-slate-50 p-2.5 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-bold">DOCUMENTO / DNI</span>
+                <span className="font-bold text-slate-700">{customer.document?.number || '—'}</span>
               </div>
+              <div className="bg-slate-50 p-2.5 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-bold">PASAPORTE</span>
+                <span className="font-bold text-slate-700">{customer.document?.type === 'Pasaporte' ? customer.document.number : (customer.document?.expiryDate ? `Vto: ${customer.document.expiryDate}` : '—')}</span>
+              </div>
+              <div className="bg-slate-50 p-2.5 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-bold">NACIMIENTO / GÉNERO</span>
+                <span className="font-bold text-slate-700">{customer.dob || '—'} {customer.gender ? `(${customer.gender})` : ''}</span>
+              </div>
+            </div>
+          </div>
 
-              {customer.document && (
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Documento</p>
-                  <p className="flex items-center gap-2 text-sm text-slate-600">
-                    <Shield className="h-3.5 w-3.5 text-slate-400" />
-                    {customer.document.type}: {customer.document.number}
-                    {customer.document.expiryDate && <span className="text-xs text-slate-400">(vto: {customer.document.expiryDate})</span>}
-                  </p>
-                </div>
-              )}
+          {/* Grupo Familiar & Acompañantes */}
+          <div className="border-t border-slate-100 pt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-black uppercase tracking-wide text-tech-blue flex items-center gap-1.5">
+                👨‍👩‍👧‍👦 2. Grupo Familiar & Acompañantes Frecuentes ({familyCount})
+              </p>
+            </div>
+            {customer.familyMembers && customer.familyMembers.length > 0 ? (
+              <div className="space-y-2">
+                {customer.familyMembers.map((fam, idx) => (
+                  <div key={fam.id || idx} className="flex items-center justify-between bg-sky-50/60 border border-sky-100 p-2.5 rounded-xl text-xs">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800">{fam.fullName}</span>
+                        <span className="bg-sky-200/70 text-sky-800 text-[10px] font-bold px-2 py-0.5 rounded-md">{fam.relationship}</span>
+                      </div>
+                      <p className="text-slate-500 text-[11px]">
+                        {fam.documentType}: <span className="font-mono font-medium">{fam.documentNumber}</span>
+                        {fam.dob ? ` · Nac: ${fam.dob}` : ''}
+                        {fam.gender ? ` (${fam.gender})` : ''}
+                      </p>
+                    </div>
+                    {fam.dietaryRestrictions && (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-1 rounded-md">
+                        🥗 {fam.dietaryRestrictions}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg">No posee familiares cargados aún.</p>
+            )}
+          </div>
 
-              {customer.address && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Domicilio</p>
-                  <p className="text-sm text-slate-600 mt-1">
-                    {customer.address.street} {customer.address.number}, {customer.address.city}, {customer.address.province} ({customer.address.postalCode})
-                  </p>
-                </div>
-              )}
+          {/* Domicilio & Facturación AFIP */}
+          <div className="border-t border-slate-100 pt-3 space-y-2">
+            <p className="text-xs font-black uppercase tracking-wide text-tech-blue">3. Domicilio & Facturación (AFIP)</p>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-50 p-2.5 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-bold">DOMICILIO RESIDENCIA</span>
+                <span className="font-semibold text-slate-700">
+                  {customer.address ? `${customer.address.street} ${customer.address.number || ''}, ${customer.address.city || ''} (${customer.address.province || ''})` : '—'}
+                </span>
+              </div>
+              <div className="bg-slate-50 p-2.5 rounded-lg">
+                <span className="text-slate-400 block text-[10px] font-bold">CONDICIÓN IVA / CUIT</span>
+                <span className="font-bold text-slate-800">
+                  {customer.taxData?.taxCondition || 'Consumidor Final'} {customer.taxData?.cuitCuil ? `· CUIT: ${customer.taxData.cuitCuil}` : ''}
+                </span>
+                {customer.taxData?.businessName && <span className="block text-slate-500 text-[11px]">{customer.taxData.businessName}</span>}
+              </div>
+            </div>
+          </div>
 
-              {customer.emergencyContact && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Contacto de Emergencia</p>
-                  <p className="text-sm text-slate-600 mt-1 font-medium">{customer.emergencyContact.name}</p>
-                  <p className="text-sm text-slate-500">{customer.emergencyContact.phone} · {customer.emergencyContact.relationship}</p>
-                </div>
-              )}
+          {/* Ficha Médica & Contacto Emergencia */}
+          <div className="border-t border-slate-100 pt-3 space-y-2">
+            <p className="text-xs font-black uppercase tracking-wide text-tech-blue">4. Ficha Médica & Emergencia</p>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-amber-50/70 border border-amber-200/60 p-2.5 rounded-lg">
+                <span className="text-amber-800 block text-[10px] font-bold">CONTACTO DE EMERGENCIA</span>
+                <span className="font-bold text-slate-800">{customer.emergencyContact?.name || '—'}</span>
+                <span className="block text-slate-600 text-[11px]">{customer.emergencyContact?.phone} ({customer.emergencyContact?.relationship || 'Contacto'})</span>
+              </div>
+              <div className="bg-amber-50/70 border border-amber-200/60 p-2.5 rounded-lg">
+                <span className="text-amber-800 block text-[10px] font-bold">ALERGIAS & DIETAS</span>
+                <span className="font-bold text-amber-900">{customer.dietaryRestrictions || customer.allergies || customer.medicalSafety?.dietaryRestrictions || 'Sin restricciones'}</span>
+                {customer.medicalSafety?.mobilityAssistance && <span className="block text-red-600 font-bold text-[10px]">♿ Requiere Asistencia Especial</span>}
+              </div>
+            </div>
+          </div>
 
-              {(customer.allergies || customer.dietaryRestrictions) && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600">Alergias / Dieta</p>
-                  {customer.allergies && <p className="text-sm text-amber-800 mt-1">Alergia: {customer.allergies}</p>}
-                  {customer.dietaryRestrictions && <p className="text-sm text-amber-800">Dieta: {customer.dietaryRestrictions}</p>}
+          {/* Preferencias VIP */}
+          {customer.preferences && (
+            <div className="border-t border-slate-100 pt-3 space-y-2">
+              <p className="text-xs font-black uppercase tracking-wide text-tech-blue">5. Preferencias de Viaje VIP</p>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="bg-slate-50 p-2 rounded-lg text-center">
+                  <span className="text-slate-400 block text-[10px] font-bold">ASIENTO</span>
+                  <span className="font-bold text-slate-700">{customer.preferences.seatPreference || 'Indistinto'}</span>
                 </div>
-              )}
-            </>
+                <div className="bg-slate-50 p-2 rounded-lg text-center">
+                  <span className="text-slate-400 block text-[10px] font-bold">HABITACIÓN</span>
+                  <span className="font-bold text-slate-700">{customer.preferences.roomPreference || 'Matrimonial'}</span>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-lg text-center">
+                  <span className="text-slate-400 block text-[10px] font-bold">MILLAS</span>
+                  <span className="font-bold text-slate-700">{customer.preferences.frequentFlyerProgram ? `${customer.preferences.frequentFlyerProgram}: ${customer.preferences.frequentFlyerNumber}` : '—'}</span>
+                </div>
+              </div>
+            </div>
           )}
+
         </div>
       </div>
     </div>
@@ -221,12 +308,19 @@ export default function CustomersPage() {
               transactions: []
             },
             dob: data.dob || '',
+            gender: data.gender || undefined,
+            nationality: data.nationality || undefined,
             occupation: data.occupation || '',
-            document: data.document || undefined,
+            document: data.document || (data.documentNumber ? { type: 'DNI', number: data.documentNumber } : undefined),
             address: data.address || undefined,
             emergencyContact: data.emergencyContact || undefined,
             allergies: data.allergies || '',
             dietaryRestrictions: data.dietaryRestrictions || '',
+            medicalSafety: data.medicalSafety || undefined,
+            taxData: data.taxData || undefined,
+            preferences: data.preferences || undefined,
+            familyMembers: data.familyMembers || undefined,
+            profileCompletedPercentage: data.profileCompletedPercentage || undefined,
           } as Lead;
         });
         setUsers(list);
@@ -254,11 +348,20 @@ export default function CustomersPage() {
     <div className="flex h-full w-full flex-col bg-slate-50 p-6 gap-6">
 
       {/* Header */}
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-tech-blue">
-          <Users className="h-7 w-7" /> Lista de Clientes
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">Base de clientes y prospectos registrados en el ecosistema Concorde 360.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-tech-blue">
+            <Users className="h-7 w-7" /> Lista de Clientes
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">Base de clientes y prospectos registrados en el ecosistema Concorde 360.</p>
+        </div>
+        <Link
+          href="/experiences/customers/new"
+          className="inline-flex items-center gap-2 bg-tech-blue hover:bg-tech-blue/90 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm w-fit"
+        >
+          <UserPlus className="h-4 w-4 text-emerald-400" />
+          + Crear Nuevo Cliente
+        </Link>
       </div>
 
       {/* Stats */}

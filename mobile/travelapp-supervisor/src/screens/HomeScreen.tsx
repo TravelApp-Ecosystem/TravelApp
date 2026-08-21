@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   badge: { color: '#F59E0B', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 2 },
   greeting: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
   subgreeting: { color: '#94A3B8', fontSize: 12 },
-  qrButton: { backgroundColor: '#1E293B', padding: 12, borderRadius: 16, borderContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
+  qrButton: { backgroundColor: '#1E293B', padding: 12, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
   balanceCard: { backgroundColor: '#1E293B', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#334155', marginBottom: 20 },
   balanceLabel: { color: '#94A3B8', fontSize: 10, fontWeight: '800' },
   balanceAmount: { color: '#F59E0B', fontSize: 32, fontWeight: '900', marginVertical: 4 },

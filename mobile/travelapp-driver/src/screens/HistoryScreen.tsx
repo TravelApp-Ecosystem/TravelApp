@@ -19,12 +19,18 @@ export default function HistoryScreen() {
         const user = auth.currentUser!;
         const q = query(
           collection(db, 'trips'),
-          where('driverId', '==', user.uid),
-          where('status', '==', 'completed'),
-          orderBy('createdAt', 'desc')
+          where('driverId', '==', user.uid)
         );
         const snap = await getDocs(q);
-        setTrips(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const list = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((t: any) => t.status === 'completed')
+          .sort((a: any, b: any) => {
+            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (typeof a.createdAt === 'number' ? a.createdAt : 0);
+            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (typeof b.createdAt === 'number' ? b.createdAt : 0);
+            return timeB - timeA;
+          });
+        setTrips(list);
       } catch {
         setTrips([]);
       } finally {

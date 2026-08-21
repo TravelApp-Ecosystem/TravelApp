@@ -8,7 +8,7 @@ import { Colors } from './src/lib/constants';
 import { TravelCabLogo, TravelAppLogo } from './src/components/BrandLogos';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'Quicksand-Regular': Quicksand_400Regular,
     'Quicksand-Medium': Quicksand_500Medium,
     'Quicksand-SemiBold': Quicksand_600SemiBold,
@@ -19,7 +19,7 @@ export default function App() {
   const splashOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontError) {
       // Mostrar splash durante 3 segundos, luego desvanecer en 500ms
       const timer = setTimeout(() => {
         Animated.timing(splashOpacity, {
@@ -32,9 +32,9 @@ export default function App() {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={[styles.splashContainer, { backgroundColor: Colors.primary }]}>
         <ActivityIndicator size="large" color={Colors.white} />

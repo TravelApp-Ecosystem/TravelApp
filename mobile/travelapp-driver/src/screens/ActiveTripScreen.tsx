@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Switch, Modal, TextInput, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { db, auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
+import { InteractiveMapView } from '../components/InteractiveMapView';
 
 const STEPS = [
   { status: 'on_way', label: 'En camino al pasajero', action: 'Llegué al punto de encuentro', next: 'arrived' },
@@ -161,23 +161,11 @@ export default function ActiveTripScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView
+      <InteractiveMapView
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        initialRegion={{
-          latitude: driverLocation?.latitude ?? -31.4167,
-          longitude: driverLocation?.longitude ?? -64.1833,
-          latitudeDelta: 0.03, longitudeDelta: 0.03,
-        }}
-        showsUserLocation>
-        {driverLocation && (
-          <Marker coordinate={driverLocation} title="Tu posición">
-            <View style={styles.driverMarker}>
-              <Ionicons name="car" size={18} color={Colors.white} />
-            </View>
-          </Marker>
-        )}
-      </MapView>
+        originCoords={driverLocation || { latitude: -26.8326, longitude: -65.2038 }}
+        destinationCoords={trip?.destinationCoords || null}
+      />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 10 : 40 }]}>

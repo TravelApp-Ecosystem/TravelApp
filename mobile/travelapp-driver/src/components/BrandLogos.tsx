@@ -1,7 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { Colors } from '../lib/constants';
+import { View, Image, StyleSheet } from 'react-native';
 
 interface LogoProps {
   size?: number;
@@ -9,72 +7,60 @@ interface LogoProps {
   isAccentColor?: boolean;
 }
 
-export function TravelCabLogo({ size = 40, textColor, isAccentColor = true }: LogoProps) {
-  const defaultTextPrimaryColor = textColor || Colors.textPrimary;
-  const accentTextWordColor = isAccentColor ? Colors.accent : Colors.white;
+export function TravelCabLogo({ size = 180, textColor = '#FFFFFF' }: LogoProps) {
+  const isWhite = textColor === '#FFFFFF' || textColor === 'white' || textColor === '#fff';
+  const imgSource = isWhite
+    ? require('../../assets/travelcab_blanco.png')
+    : require('../../assets/travelcab_original.png');
 
   return (
     <View style={styles.container}>
-      <Svg
-        width={size}
-        height={size * 0.9}
-        viewBox="0 0 100 135"
-        fill="none"
-      >
-        <Path
-          fill="#ff7a00"
-          d="M 1.378906 129.910156 L 50.621094 3.613281 L 98.011719 130.386719 L 50.621094 91.445312 Z"
-        />
-      </Svg>
-      <View style={styles.textRow}>
-        <Text style={[styles.brandText, { color: defaultTextPrimaryColor }]}>Travel</Text>
-        <Text style={[styles.brandText, { color: accentTextWordColor }]}>Cab</Text>
-      </View>
+      <Image
+        source={imgSource}
+        style={{ width: size, height: size * 0.36 }}
+        resizeMode="contain"
+      />
     </View>
   );
 }
 
-export function TravelAppLogo({ size = 30, textColor, isAccentColor = true }: LogoProps) {
-  const defaultTextPrimaryColor = textColor || Colors.textPrimary;
-  const accentTextWordColor = isAccentColor ? Colors.accent : Colors.white;
+export function TravelAppLogo({ size = 140, textColor = '#FFFFFF' }: LogoProps) {
+  const isWhite = textColor === '#FFFFFF' || textColor === 'white' || textColor === '#fff';
+  const imgSource = isWhite
+    ? require('../../assets/travelapp_blanco.png')
+    : require('../../assets/travelapp_original.png');
 
   return (
     <View style={styles.container}>
-      <Svg
-        width={size}
-        height={size * 0.9}
-        viewBox="0 0 100 135"
-        fill="none"
-      >
-        <Path
-          fill="#ff7a00"
-          d="M 1.378906 129.910156 L 50.621094 3.613281 L 98.011719 130.386719 L 50.621094 91.445312 Z"
-        />
-      </Svg>
-      <View style={styles.textRow}>
-        <Text style={[styles.appText, { color: defaultTextPrimaryColor }]}>Travel</Text>
-        <Text style={[styles.appText, { color: accentTextWordColor }]}>App</Text>
-      </View>
+      <Image
+        source={imgSource}
+        style={{ width: size, height: size * 0.36 }}
+        resizeMode="contain"
+      />
+    </View>
+  );
+}
+
+export function TravelExperienceLogo({ size = 180, textColor = '#0B192C' }: LogoProps) {
+  const isWhite = textColor === '#FFFFFF' || textColor === 'white' || textColor === '#fff';
+  const imgSource = isWhite
+    ? require('../../assets/experience_blanco.png')
+    : require('../../assets/experience_original.png');
+
+  return (
+    <View style={styles.container}>
+      <Image
+        source={imgSource}
+        style={{ width: size, height: size * 0.36 }}
+        resizeMode="contain"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-  },
-  textRow: {
-    flexDirection: 'row',
-  },
-  brandText: {
-    fontSize: 28,
-    fontFamily: 'Quicksand-Bold',
-  },
-  appText: {
-    fontSize: 20,
-    fontFamily: 'Quicksand-Bold',
   },
 });
