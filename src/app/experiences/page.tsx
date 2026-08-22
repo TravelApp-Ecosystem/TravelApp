@@ -38,11 +38,21 @@ const mockChartData = [
   { name: 'Dom', consultas: 80, ventas: 30 },
 ];
 
+interface SupplierDeadline {
+  id: string;
+  amountToPay: number;
+  currency: string;
+  deadlineDate: string;
+  status: string;
+  branchId?: string;
+}
+
 export default function ExperiencesDashboardPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [supplierDeadlines, setSupplierDeadlines] = useState<SupplierDeadline[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Sync reservations in real-time
+  // Sync reservations & supplier deadlines in real-time
   useEffect(() => {
     const q = query(collection(db, 'experience_reservations'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -70,7 +80,19 @@ export default function ExperiencesDashboardPage() {
       console.error("Error loading experience reservations:", error);
       setLoading(false);
     });
-    return () => unsub();
+
+    const unsubDeadlines = onSnapshot(collection(db, 'supplier_deadlines'), (snap) => {
+      const dList: SupplierDeadline[] = [];
+      snap.forEach(d => {
+        dList.push({ id: d.id, ...d.data() } as SupplierDeadline);
+      });
+      setSupplierDeadlines(dList);
+    });
+
+    return () => {
+      unsub();
+      unsubDeadlines();
+    };
   }, []);
 
   const handleUpdateStatus = async (id: string, newStatus: 'Confirmada' | 'Cancelada' | 'Pendiente') => {
@@ -97,10 +119,26 @@ export default function ExperiencesDashboardPage() {
   const resPilar = reservations.filter(r => r.branchId === '2').length || 26;
   const resTucuman = reservations.filter(r => r.branchId === '3').length || 40;
 
-  // 2. Deadlines in 24hs (Por pagar y por cobrar)
-  const expiringCount = reservations.filter(r => r.estado === 'Pendiente').length || 8;
-  const expiringPagarRetiro = 18500;
-  const expiringCobrarRetiro = 45000;
+  // 2. Deadlines in 24hs (Por pagar a operadores y por cobrar a pasajeros)
+  const urgentPayablesCount = supplierDeadlines.filter(d => {
+    if (d.status === 'Pagado') return false;
+    const now = new Date().setHours(0, 0, 0, 0);
+    const deadline = new Date(d.deadlineDate).setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+    return diffDays <= 1;
+  }).length;
+
+  const totalPayableUsd = supplierDeadlines
+    .filter(d => d.currency === 'USD' && d.status !== 'Pagado')
+    .reduce((s, d) => s + (d.amountToPay || 0), 0);
+
+  const totalPayableArs = supplierDeadlines
+    .filter(d => d.currency === 'ARS' && d.status !== 'Pagado')
+    .reduce((s, d) => s + (d.amountToPay || 0), 0);
+
+  const expiringCount = urgentPayablesCount > 0 ? urgentPayablesCount : (reservations.filter(r => r.estado === 'Pendiente').length || 8);
+  const expiringPagarRetiro = totalPayableUsd > 0 ? `U$D ${totalPayableUsd.toLocaleString()}` : '$18.500';
+  const expiringCobrarRetiro = totalPayableArs > 0 ? `$${totalPayableArs.toLocaleString()}` : '$45.000';
   const expiringPagarPilar = 8200;
   const expiringCobrarPilar = 23000;
   const expiringPagarTucuman = 12000;
@@ -160,27 +198,30 @@ export default function ExperiencesDashboardPage() {
         </div>
 
         {/* KPI 2: Vencimientos 24hs */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex justify-between items-center text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Vencen en 24h</span>
+        <Link
+          href="/experiences/reservations"
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-amber-400 hover:shadow-md transition group block"
+        >
+          <div className="flex justify-between items-center text-slate-400 group-hover:text-amber-600 transition">
+            <span className="text-xs font-bold uppercase tracking-wider">Vencen en 24h</span>
             <Clock className="h-5 w-5 text-amber-500" />
           </div>
-          <p className="text-3xl font-black text-tech-blue mt-3">{expiringCount} reservas</p>
+          <p className="text-3xl font-black text-tech-blue mt-3 group-hover:text-amber-600 transition">{expiringCount} {urgentPayablesCount > 0 ? 'vencimientos' : 'reservas'}</p>
           <div className="mt-3 text-xs text-slate-500 space-y-1 border-t border-slate-100 pt-2">
             <div className="flex justify-between text-[10px]">
-              <span>Retiro:</span>
-              <span className="font-semibold text-slate-700">Pág: ${expiringPagarRetiro} | Cob: ${expiringCobrarRetiro}</span>
+              <span>Adeudado Proveedores:</span>
+              <span className="font-black text-purple-700">{totalPayableUsd > 0 ? `U$D ${totalPayableUsd.toLocaleString()}` : (totalPayableArs > 0 ? `$${totalPayableArs.toLocaleString()}` : '$0')}</span>
             </div>
             <div className="flex justify-between text-[10px]">
-              <span>Pilar:</span>
-              <span className="font-semibold text-slate-700">Pág: ${expiringPagarPilar} | Cob: ${expiringCobrarPilar}</span>
+              <span>Saldo por Cobrar Pax:</span>
+              <span className="font-black text-emerald-700">{expiringCobrarRetiro}</span>
             </div>
-            <div className="flex justify-between text-[10px]">
-              <span>Tucumán:</span>
-              <span className="font-semibold text-slate-700">Pág: ${expiringPagarTucuman} | Cob: ${expiringCobrarTucuman}</span>
+            <div className="text-[10px] text-amber-600 font-bold flex items-center gap-1 pt-0.5">
+              <span>Ver agenda de liquidaciones</span>
+              <ArrowUpRight className="h-3 w-3" />
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* KPI 3: Venta de Pasajes */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

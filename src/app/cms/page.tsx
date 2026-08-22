@@ -259,18 +259,95 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
     logo: "/assets/travelapp_logo.svg",
     brand: "TravelApp",
     product: "Experiences",
-    ctaText: "Reservar Ahora",
-    ctaUrl: "https://wa.me/5493814188106?text=Hola!%20Quiero%20saber%20más%20sobre%20TravelApp%20Experiences.",
+    announcementText: "🔥 Preventa Temporada 2026: Reservá hoy en cuotas fijas o con Time-to-Pay garantizado",
+    announcementUrl: "/marketplace",
+    ctaText: "Explorar Catálogo",
+    ctaUrl: "/marketplace",
     loginUrl: "/login"
+  },
+  heroPromoBanner: {
+    enabled: true,
+    tag: "PROMO EXCLUSIVA",
+    text: "🔥 12 Cuotas fijas sin interés en paquetes propios + Time-to-Pay garantizado",
+    subtext: "Congelá tu tarifa hoy sin tarjeta de crédito y asegurá tu butaca"
+  },
+  marketplaceHero: {
+    bgType: "image",
+    bgSolidColor: "#0f172a",
+    bgImageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80",
+    title: "Marketplace de Viajes, Cruceros & Experiencias",
+    titleColor: "#FFFFFF",
+    subtitle: "Salidas grupales propias con bus cama, cruceros internacionales y circuitos por el mundo. Reservá online con Time-to-Pay garantizado o consultá con nuestros especialistas.",
+    subtitleColor: "#CBD5E1",
+    tag: "CATÁLOGO OFICIAL 2026",
+    tagColor: "#EF4444",
+    tagBgColor: "rgba(239, 68, 68, 0.15)",
+    overlayOpacity: 45
+  },
+  enabledSearchTabs: {
+    paquetes: true,
+    vuelos: false,
+    hoteles: false,
+    buses: false,
+    civitatis: false,
+    travelcab: true
   },
   heroSlides: [
     {
-      title: "Viví Argentina de otra manera",
-      subtitle: "Experiencias únicas en el NOA, Cuyo y la Patagonia",
-      text: "Recorridos exclusivos y curados con guías certificados locales.",
+      title: "Viví Argentina y el Mundo con Calidad Premium",
+      subtitle: "Salidas Grupales con Bus Propio, Cruceros & Circuitos Internacionales",
+      text: "Recorridos acompañados por coordinadores 24/7, hoteles seleccionados y la mejor tarifa garantizada.",
       bgImage: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1920&q=80",
-      ctaText: "Descubrir Catálogo",
-      ctaUrl: "#catalog"
+      ctaText: "Ver Salidas 2026",
+      ctaUrl: "/marketplace"
+    },
+    {
+      title: "Norte Argentino & Paisajes Mágicos",
+      subtitle: "Salta, Jujuy, Cafayate & Quebrada de Humahuaca",
+      text: "Transporte cama ejecutivo, pensión completa y excursiones exclusivas.",
+      bgImage: "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1920&q=80",
+      ctaText: "Descubrir Itinerario",
+      ctaUrl: "/marketplace"
+    },
+    {
+      title: "Cruceros & Travesías Internacionales",
+      subtitle: "Brasil, Caribe y Mediterráneo All Inclusive",
+      text: "Cabinas con balcón, gastronomía de primer nivel y espectáculos a bordo.",
+      bgImage: "https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1920&q=80",
+      ctaText: "Cotizar Crucero",
+      ctaUrl: "/marketplace"
+    }
+  ],
+  metrics: [
+    { number: "+15.000", label: "Pasajeros Transportados", icon: "Users" },
+    { number: "98.5%", label: "Satisfacción & Reseñas 5★", icon: "Star" },
+    { number: "24 / 7", label: "Coordinación & Soporte en Destino", icon: "Shield" },
+    { number: "100%", label: "Salidas Garantizadas con Time-to-Pay", icon: "Clock" }
+  ],
+  testimonials: [
+    {
+      name: "Marta & Roberto González",
+      location: "Córdoba Capital",
+      comment: "Viajamos al Norte con TravelApp y la coordinación fue impecable. El micro súper cómodo y los hoteles de primer nivel. ¡Ya señamos para las Cataratas!",
+      rating: 5,
+      trip: "Norte Argentino Fascinante",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      name: "Carlos Silveira",
+      location: "San Miguel de Tucumán",
+      comment: "La reserva con Time-to-Pay me permitió congelar el viaje mientras coordinaba con mi familia. Muy transparente y la App móvil te acompaña todo el recorrido.",
+      rating: 5,
+      trip: "Mendoza & Ruta del Vino",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      name: "Valeria Benítez",
+      location: "Buenos Aires",
+      comment: "El crucero por Brasil superó todas las expectativas. Atención personalizada desde el primer día y nos sumó puntos Club Rewards para usar en TravelCab.",
+      rating: 5,
+      trip: "Crucero MSC Brasil & Ilhabela",
+      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80"
     }
   ],
   carouselOffers: [
@@ -513,7 +590,7 @@ const DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS = {
   }
 };
 
-type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards' | 'afi_hero' | 'afi_cobro' | 'afi_faq' | 'afi_footer';
+type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards' | 'afi_hero' | 'afi_cobro' | 'afi_faq' | 'afi_footer' | 'exp_marketplace' | 'exp_buscador' | 'exp_metrics' | 'exp_testimonials';
 
 export default function CMSPage() {
   const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards' | 'app-inicio' | 'afiliados'>('travelcab');
@@ -1309,7 +1386,7 @@ export default function CMSPage() {
         {(selectedLanding === 'travelcab' 
           ? ['hero', 'servicios', 'conductores', 'rewards', 'faq', 'legales'] 
           : selectedLanding === 'experience'
-          ? ['slider', 'ofertas', 'servicios', 'rewards', 'social']
+          ? ['slider', 'exp_marketplace', 'exp_buscador', 'exp_metrics', 'exp_testimonials', 'rewards', 'social']
           : selectedLanding === 'rewards'
           ? ['rew_slider', 'rew_beneficios', 'rew_social', 'rew_negocio', 'rew_legales']
           : selectedLanding === 'app-inicio'
@@ -1328,14 +1405,18 @@ export default function CMSPage() {
             }`}
           >
             {tab === 'hero' && '1. Heros y Portada'}
-            {tab === 'slider' && '1. Hero Slider (Max 10)'}
+            {tab === 'slider' && '1. Hero Slider & Promo Banner'}
+            {tab === 'exp_marketplace' && '2. Cabecera Marketplace'}
+            {tab === 'exp_buscador' && '3. Buscador Multiproducto (APIs)'}
+            {tab === 'exp_metrics' && '4. Métricas Institucionales'}
+            {tab === 'exp_testimonials' && '5. Testimonios de Pasajeros'}
             {tab === 'ofertas' && '2. Ofertas Carrusel (Max 6)'}
             {tab === 'servicios' && (selectedLanding === 'travelcab' ? '2. Servicios & Categorías' : '3. Tarjetas Servicios')}
             {tab === 'conductores' && '3. Híbrido Conductor'}
-            {tab === 'rewards' && (selectedLanding === 'travelcab' ? '4. Resumen Rewards' : '4. Bloque Rewards')}
+            {tab === 'rewards' && (selectedLanding === 'travelcab' ? '4. Resumen Rewards' : '6. Bloque Rewards')}
             {tab === 'faq' && '5. FAQ (Preguntas Frecuentes)'}
             {tab === 'legales' && '6. Legales & Redes'}
-            {tab === 'social' && '5. Redes & Footer'}
+            {tab === 'social' && (selectedLanding === 'experience' ? '7. Redes, Contacto & ARCA QR' : '5. Redes & Footer')}
             {tab === 'eco_hero' && '1. Hero (Imagen/Video)'}
             {tab === 'eco_unidades' && '2. Unidades de Negocio'}
             {tab === 'eco_quienes' && '3. Quiénes Somos'}
@@ -1943,6 +2024,523 @@ export default function CMSPage() {
               {(data.heroSlides || []).length === 0 && (
                 <p className="text-slate-400 text-center py-8 text-sm">No hay diapositivas cargadas en el slider. Agrega una arriba.</p>
               )}
+            </div>
+
+            {/* BANNER PROMO EDITABLE EN EL HERO */}
+            <div className="mt-8 bg-red-50/60 p-6 rounded-2xl border border-red-200 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-red-900">🔥 Banner Promocional Flotante en el Hero</h4>
+                  <p className="text-xs text-red-700">Muestra un aviso destacado de alto impacto (ej: 12 Cuotas fijas sin interés en paquetes propios).</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = data.heroPromoBanner?.enabled !== false;
+                    setData((prev: any) => ({
+                      ...prev,
+                      heroPromoBanner: {
+                        ...(prev.heroPromoBanner || {}),
+                        enabled: !current
+                      }
+                    }));
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition ${
+                    data.heroPromoBanner?.enabled !== false
+                      ? 'bg-red-600 text-white'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {data.heroPromoBanner?.enabled !== false ? 'Activo' : 'Desactivado'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">Texto Principal del Banner</label>
+                  <input
+                    type="text"
+                    value={data.heroPromoBanner?.text || ''}
+                    onChange={(e) => setData((prev: any) => ({
+                      ...prev,
+                      heroPromoBanner: { ...(prev.heroPromoBanner || {}), text: e.target.value }
+                    }))}
+                    placeholder="Ej: 🔥 12 Cuotas fijas sin interés en paquetes propios reservando hoy"
+                    className="w-full rounded-xl border border-slate-200 p-2 bg-white font-bold text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 mb-1">Etiqueta / Badge</label>
+                  <input
+                    type="text"
+                    value={data.heroPromoBanner?.tag || ''}
+                    onChange={(e) => setData((prev: any) => ({
+                      ...prev,
+                      heroPromoBanner: { ...(prev.heroPromoBanner || {}), tag: e.target.value }
+                    }))}
+                    placeholder="Ej: PROMO EXCLUSIVA"
+                    className="w-full rounded-xl border border-slate-200 p-2 bg-white font-bold text-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EXPERIENCE: CABECERA DEL MARKETPLACE */}
+        {selectedLanding === 'experience' && activeTab === 'exp_marketplace' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">🛍️ Cabecera &amp; Portada del Marketplace</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Personaliza la cabecera superior del Marketplace oficial de viajes, su fondo (imagen o color sólido) y los colores tipográficos.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-6">
+              
+              {/* 1. Tipo de Fondo */}
+              <div>
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
+                  Tipo de Fondo de la Cabecera
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setData((prev: any) => ({
+                      ...prev,
+                      marketplaceHero: { ...(prev.marketplaceHero || {}), bgType: 'image' }
+                    }))}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                      data.marketplaceHero?.bgType !== 'solid'
+                        ? 'bg-slate-900 text-white shadow-md'
+                        : 'bg-white text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    🖼️ Imagen de Fondo HD
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setData((prev: any) => ({
+                      ...prev,
+                      marketplaceHero: { ...(prev.marketplaceHero || {}), bgType: 'solid' }
+                    }))}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                      data.marketplaceHero?.bgType === 'solid'
+                        ? 'bg-slate-900 text-white shadow-md'
+                        : 'bg-white text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    🎨 Color Sólido
+                  </button>
+                </div>
+              </div>
+
+              {/* Si es Imagen de Fondo */}
+              {data.marketplaceHero?.bgType !== 'solid' ? (
+                <div className="space-y-3 p-4 bg-white rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">URL Imagen de Fondo</label>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-black border border-blue-200">
+                      📐 Medida recomendada: 1920 x 600 px (JPG o WebP)
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={data.marketplaceHero?.bgImageUrl || ''}
+                    onChange={(e) => setData((prev: any) => ({
+                      ...prev,
+                      marketplaceHero: { ...(prev.marketplaceHero || {}), bgImageUrl: e.target.value }
+                    }))}
+                    placeholder="https://images.unsplash.com/photo-..."
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-mono bg-slate-50"
+                  />
+
+                  {/* Vista previa de imagen */}
+                  {data.marketplaceHero?.bgImageUrl && (
+                    <div className="w-full h-36 rounded-xl overflow-hidden border border-slate-200 relative">
+                      <img
+                        src={data.marketplaceHero.bgImageUrl}
+                        alt="Marketplace Hero Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <div
+                        className="absolute inset-0 bg-slate-950 flex items-center justify-center text-white text-xs font-black"
+                        style={{ opacity: (data.marketplaceHero?.overlayOpacity ?? 45) / 100 }}
+                      >
+                        Capa de Oscurecimiento: {data.marketplaceHero?.overlayOpacity ?? 45}%
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                      Opacidad de la capa protectora del texto: <strong>{data.marketplaceHero?.overlayOpacity ?? 45}%</strong>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="90"
+                      value={data.marketplaceHero?.overlayOpacity ?? 45}
+                      onChange={(e) => setData((prev: any) => ({
+                        ...prev,
+                        marketplaceHero: { ...(prev.marketplaceHero || {}), overlayOpacity: Number(e.target.value) }
+                      }))}
+                      className="w-full accent-red-600"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Si es Color Sólido */
+                <div className="space-y-3 p-4 bg-white rounded-xl border border-slate-200">
+                  <label className="block text-xs font-bold text-slate-700">Color Sólido de Fondo (Hex)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={data.marketplaceHero?.bgSolidColor || '#0f172a'}
+                      onChange={(e) => setData((prev: any) => ({
+                        ...prev,
+                        marketplaceHero: { ...(prev.marketplaceHero || {}), bgSolidColor: e.target.value }
+                      }))}
+                      className="h-10 w-16 rounded-lg cursor-pointer border border-slate-200 p-0.5"
+                    />
+                    <input
+                      type="text"
+                      value={data.marketplaceHero?.bgSolidColor || '#0f172a'}
+                      onChange={(e) => setData((prev: any) => ({
+                        ...prev,
+                        marketplaceHero: { ...(prev.marketplaceHero || {}), bgSolidColor: e.target.value }
+                      }))}
+                      className="w-36 rounded-xl border border-slate-200 p-2 font-mono text-xs uppercase font-bold"
+                    />
+                    {/* Presets rápidos */}
+                    <div className="flex gap-1.5">
+                      {['#0f172a', '#1e293b', '#831843', '#065f46', '#1e3a8a', '#312e81'].map(hex => (
+                        <button
+                          key={hex}
+                          type="button"
+                          onClick={() => setData((prev: any) => ({
+                            ...prev,
+                            marketplaceHero: { ...(prev.marketplaceHero || {}), bgSolidColor: hex }
+                          }))}
+                          className="h-7 w-7 rounded-full border border-white shadow-sm"
+                          style={{ backgroundColor: hex }}
+                          title={hex}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Textos & Colores Tipográficos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Título Principal */}
+                <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase">Título Principal</label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold">Color:</span>
+                      <input
+                        type="color"
+                        value={data.marketplaceHero?.titleColor || '#FFFFFF'}
+                        onChange={(e) => setData((prev: any) => ({
+                          ...prev,
+                          marketplaceHero: { ...(prev.marketplaceHero || {}), titleColor: e.target.value }
+                        }))}
+                        className="h-6 w-8 rounded cursor-pointer border border-slate-200 p-0.5"
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={data.marketplaceHero?.title || ''}
+                    onChange={(e) => setData((prev: any) => ({
+                      ...prev,
+                      marketplaceHero: { ...(prev.marketplaceHero || {}), title: e.target.value }
+                    }))}
+                    placeholder="Ej: Marketplace de Viajes, Cruceros & Experiencias"
+                    className="w-full rounded-xl border border-slate-200 p-2 text-xs font-black text-slate-900 bg-slate-50"
+                  />
+                </div>
+
+                {/* Subtítulo / Descripción */}
+                <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase">Subtítulo / Descripción</label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold">Color:</span>
+                      <input
+                        type="color"
+                        value={data.marketplaceHero?.subtitleColor || '#CBD5E1'}
+                        onChange={(e) => setData((prev: any) => ({
+                          ...prev,
+                          marketplaceHero: { ...(prev.marketplaceHero || {}), subtitleColor: e.target.value }
+                        }))}
+                        className="h-6 w-8 rounded cursor-pointer border border-slate-200 p-0.5"
+                      />
+                    </div>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={data.marketplaceHero?.subtitle || ''}
+                    onChange={(e) => setData((prev: any) => ({
+                      ...prev,
+                      marketplaceHero: { ...(prev.marketplaceHero || {}), subtitle: e.target.value }
+                    }))}
+                    placeholder="Ej: Salidas grupales propias con bus cama, cruceros..."
+                    className="w-full rounded-xl border border-slate-200 p-2 text-xs text-slate-700 bg-slate-50"
+                  />
+                </div>
+
+                {/* Etiqueta / Badge Superior */}
+                <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase">Etiqueta Superior / Tag</label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold">Color:</span>
+                      <input
+                        type="color"
+                        value={data.marketplaceHero?.tagColor || '#EF4444'}
+                        onChange={(e) => setData((prev: any) => ({
+                          ...prev,
+                          marketplaceHero: { ...(prev.marketplaceHero || {}), tagColor: e.target.value }
+                        }))}
+                        className="h-6 w-8 rounded cursor-pointer border border-slate-200 p-0.5"
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={data.marketplaceHero?.tag || ''}
+                    onChange={(e) => setData((prev: any) => ({
+                      ...prev,
+                      marketplaceHero: { ...(prev.marketplaceHero || {}), tag: e.target.value }
+                    }))}
+                    placeholder="Ej: CATÁLOGO OFICIAL 2026"
+                    className="w-full rounded-xl border border-slate-200 p-2 text-xs font-bold text-slate-800 bg-slate-50"
+                  />
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* EXPERIENCE: MÓDULOS DEL BUSCADOR EN EL HERO */}
+        {selectedLanding === 'experience' && activeTab === 'exp_buscador' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">🔍 Configuración del Buscador del Hero</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Habilita o deshabilita los módulos de búsqueda según tengas activas las conexiones API con cada proveedor.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                { id: 'paquetes', label: '🚍 Paquetes & Salidas Propias', desc: 'Conectado al Marketplace propio' },
+                { id: 'vuelos', label: '✈️ Vuelos GDS / Basset API', desc: 'Búsqueda de vuelos comerciales' },
+                { id: 'hoteles', label: '🏨 Hoteles & Bedbanks', desc: 'Búsqueda de alojamiento' },
+                { id: 'buses', label: '🚌 Micros de Línea / Unibus', desc: 'Pasajes de bus de larga distancia' },
+                { id: 'civitatis', label: '🎯 Tours & Civitatis API', desc: 'Excursiones y actividades' },
+                { id: 'travelcab', label: '🚕 Traslados TravelCab', desc: 'Cotización de transfers punto a punto' },
+              ].map((module) => {
+                const isEnabled = data.enabledSearchTabs?.[module.id] !== false && (module.id === 'paquetes' || module.id === 'travelcab' || data.enabledSearchTabs?.[module.id] === true);
+
+                return (
+                  <div key={module.id} className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-xs text-slate-900">{module.label}</div>
+                      <div className="text-[10px] text-slate-400">{module.desc}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setData((prev: any) => ({
+                          ...prev,
+                          enabledSearchTabs: {
+                            ...(prev.enabledSearchTabs || {}),
+                            [module.id]: !isEnabled
+                          }
+                        }));
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition ${
+                        isEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {isEnabled ? 'Habilitado' : 'Oculto'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* EXPERIENCE: MÉTRICAS INSTITUCIONALES */}
+        {selectedLanding === 'experience' && activeTab === 'exp_metrics' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">📊 Métricas &amp; Barra de Confianza (4 Estadísticas)</h3>
+              <p className="text-xs text-slate-400 mt-1">Cifras institucionales que generan confianza antes de contratar un viaje.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {(data.metrics || DEFAULT_EXPERIENCE_CMS_DATA.metrics).map((m: any, idx: number) => (
+                <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <span className="text-xs font-black text-slate-400 uppercase">Métrica #{idx + 1}</span>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Cifra / Número</label>
+                      <input
+                        type="text"
+                        value={m.number || ''}
+                        onChange={(e) => {
+                          const updated = [...(data.metrics || DEFAULT_EXPERIENCE_CMS_DATA.metrics)];
+                          updated[idx] = { ...updated[idx], number: e.target.value };
+                          setData((prev: any) => ({ ...prev, metrics: updated }));
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-2 text-xs font-black text-slate-900 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Etiqueta / Descripción</label>
+                      <input
+                        type="text"
+                        value={m.label || ''}
+                        onChange={(e) => {
+                          const updated = [...(data.metrics || DEFAULT_EXPERIENCE_CMS_DATA.metrics)];
+                          updated[idx] = { ...updated[idx], label: e.target.value };
+                          setData((prev: any) => ({ ...prev, metrics: updated }));
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-2 text-xs font-medium text-slate-700 bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* EXPERIENCE: TESTIMONIOS DE PASAJEROS */}
+        {selectedLanding === 'experience' && activeTab === 'exp_testimonials' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">⭐ Testimonios &amp; Reseñas de Pasajeros</h3>
+                <p className="text-xs text-slate-400 mt-1">Opiniones y calificaciones reales de viajeros que contrataron servicios.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setData((prev: any) => ({
+                    ...prev,
+                    testimonials: [
+                      ...(prev.testimonials || []),
+                      {
+                        name: "Nuevo Pasajero",
+                        location: "Ciudad",
+                        trip: "Destino del Viaje",
+                        rating: 5,
+                        comment: "Excelente experiencia y coordinación.",
+                        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+                      }
+                    ]
+                  }));
+                }}
+                className="px-3.5 py-2 bg-tech-blue text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
+              >
+                + Agregar Testimonio
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(data.testimonials || DEFAULT_EXPERIENCE_CMS_DATA.testimonials).map((t: any, idx: number) => (
+                <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = (data.testimonials || []).filter((_: any, i: number) => i !== idx);
+                      setData((prev: any) => ({ ...prev, testimonials: updated }));
+                    }}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 p-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <span className="text-xs font-black text-slate-400 uppercase">Testimonio #{idx + 1}</span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Nombre del Pasajero</label>
+                      <input
+                        type="text"
+                        value={t.name || ''}
+                        onChange={(e) => {
+                          const updated = [...(data.testimonials || [])];
+                          updated[idx] = { ...updated[idx], name: e.target.value };
+                          setData((prev: any) => ({ ...prev, testimonials: updated }));
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-2 bg-white font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Ubicación / Ciudad</label>
+                      <input
+                        type="text"
+                        value={t.location || ''}
+                        onChange={(e) => {
+                          const updated = [...(data.testimonials || [])];
+                          updated[idx] = { ...updated[idx], location: e.target.value };
+                          setData((prev: any) => ({ ...prev, testimonials: updated }));
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-2 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Viaje / Tour Realizado</label>
+                      <input
+                        type="text"
+                        value={t.trip || ''}
+                        onChange={(e) => {
+                          const updated = [...(data.testimonials || [])];
+                          updated[idx] = { ...updated[idx], trip: e.target.value };
+                          setData((prev: any) => ({ ...prev, testimonials: updated }));
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-2 bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Comentario / Reseña</label>
+                      <textarea
+                        rows={2}
+                        value={t.comment || ''}
+                        onChange={(e) => {
+                          const updated = [...(data.testimonials || [])];
+                          updated[idx] = { ...updated[idx], comment: e.target.value };
+                          setData((prev: any) => ({ ...prev, testimonials: updated }));
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-2 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">URL Avatar / Foto</label>
+                      <input
+                        type="text"
+                        value={t.avatar || ''}
+                        onChange={(e) => {
+                          const updated = [...(data.testimonials || [])];
+                          updated[idx] = { ...updated[idx], avatar: e.target.value };
+                          setData((prev: any) => ({ ...prev, testimonials: updated }));
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-2 bg-white font-mono text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

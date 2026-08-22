@@ -35,8 +35,11 @@ function AppShell({
     isLandingHost ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
-    pathname === "/landing/travelcab" ||
-    pathname.startsWith("/landing/travelcab/") ||
+    pathname === "/marketplace" ||
+    pathname.startsWith("/marketplace/") ||
+    pathname === "/afiliados" ||
+    pathname.startsWith("/afiliados/") ||
+    pathname.startsWith("/checkout/") ||
     pathname.startsWith("/landing/");
 
   if (hideShell) {

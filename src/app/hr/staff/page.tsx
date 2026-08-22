@@ -24,6 +24,7 @@ interface StaffMember {
   reportsToName: string;
   email: string;
   phone: string;
+  commissionPercent?: number; // % Comisión por venta acordada en contrato
   status: 'Activo' | 'Licencia' | 'Baja';
 }
 
@@ -43,6 +44,7 @@ const MOCK_STAFF: StaffMember[] = [
     reportsToName: '',
     email: 'federico.frinconi@concorde.360.com',
     phone: '+54 11 5555-0001',
+    commissionPercent: 3.5,
     status: 'Activo'
   },
   {
@@ -60,6 +62,7 @@ const MOCK_STAFF: StaffMember[] = [
     reportsToName: 'Federico Frinconi',
     email: 'laura.gomez@concorde.360.com',
     phone: '+54 11 5555-0002',
+    commissionPercent: 3.0,
     status: 'Activo'
   },
   {
@@ -68,7 +71,7 @@ const MOCK_STAFF: StaffMember[] = [
     dni: '38222333',
     cuit: '20-38222333-5',
     fechaIngreso: '2025-05-10',
-    cargo: 'Coordinador de Logística',
+    cargo: 'Asesor de Ventas & Emisión',
     sucursalId: '3',
     sucursalName: 'Sucursal Tucumán',
     photoBase64: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Martin',
@@ -77,6 +80,7 @@ const MOCK_STAFF: StaffMember[] = [
     reportsToName: 'Laura Gómez',
     email: 'martin.cardozo@concorde.360.com',
     phone: '+54 381 5555-0003',
+    commissionPercent: 2.5,
     status: 'Activo'
   }
 ];
@@ -92,7 +96,21 @@ export default function HRStaffPage() {
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
   const [isPdfUploading, setIsPdfUploading] = useState(false);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    dni: string;
+    cuit: string;
+    fechaIngreso: string;
+    cargo: string;
+    sucursalId: string;
+    photoBase64: string;
+    contractPdfBase64: string;
+    reportsToId: string;
+    email: string;
+    phone: string;
+    commissionPercent: number;
+    status: 'Activo' | 'Licencia' | 'Baja';
+  }>({
     name: '',
     dni: '',
     cuit: '',
@@ -104,15 +122,14 @@ export default function HRStaffPage() {
     reportsToId: '',
     email: '',
     phone: '',
-    status: 'Activo' as StaffMember['status']
+    commissionPercent: 3.0,
+    status: 'Activo'
   });
 
   useEffect(() => {
     // Sincronización en vivo con Firestore
     const unsub = onSnapshot(collection(db, 'hr_staff'), (snapshot) => {
-      if (snapshot.empty) {
-        setStaff(MOCK_STAFF);
-      } else {
+      if (!snapshot.empty) {
         const list: StaffMember[] = snapshot.docs.map(docSnap => {
           const data = docSnap.data();
           return {
@@ -130,10 +147,13 @@ export default function HRStaffPage() {
             reportsToName: data.reportsToName || '',
             email: data.email || '',
             phone: data.phone || '',
+            commissionPercent: Number(data.commissionPercent || 3.0),
             status: data.status || 'Activo'
           };
         });
         setStaff(list);
+      } else {
+        setStaff(MOCK_STAFF);
       }
       setLoading(false);
     }, (error) => {
@@ -213,6 +233,7 @@ export default function HRStaffPage() {
       reportsToId: '',
       email: '',
       phone: '',
+      commissionPercent: 3.0,
       status: 'Activo'
     });
     setShowModal(true);
@@ -232,6 +253,7 @@ export default function HRStaffPage() {
       reportsToId: emp.reportsToId,
       email: emp.email,
       phone: emp.phone,
+      commissionPercent: emp.commissionPercent !== undefined ? emp.commissionPercent : 3.0,
       status: emp.status
     });
     setShowModal(true);
@@ -261,6 +283,7 @@ export default function HRStaffPage() {
         reportsToName,
         email: form.email,
         phone: form.phone,
+        commissionPercent: Number(form.commissionPercent || 0),
         status: form.status
       };
 
@@ -360,6 +383,12 @@ export default function HRStaffPage() {
                   <div className="flex justify-between">
                     <span className="text-slate-400">Sucursal:</span>
                     <span className="font-semibold text-slate-700">{emp.sucursalName}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-emerald-50/80 px-2 py-1 rounded-lg border border-emerald-200">
+                    <span className="text-emerald-800 font-bold text-[11px]">Comisión por Venta:</span>
+                    <span className="font-black text-emerald-900 text-xs">
+                      {emp.commissionPercent !== undefined ? emp.commissionPercent : 3.0}%
+                    </span>
                   </div>
                   {emp.reportsToName && (
                     <div className="flex justify-between text-[11px] text-indigo-700">
@@ -497,10 +526,10 @@ export default function HRStaffPage() {
                 </div>
               </div>
 
-              {/* Sucursal, Reporta a, Estado */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* Sucursal, Reporta a, Estado, Comisión */}
+              <div className="grid grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Sucursal de Asignación</label>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Sucursal</label>
                   <select
                     value={form.sucursalId}
                     onChange={e => setForm(p => ({ ...p, sucursalId: e.target.value }))}
@@ -512,28 +541,41 @@ export default function HRStaffPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Reporta a (Jerarquía)</label>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Reporta a</label>
                   <select
                     value={form.reportsToId}
                     onChange={e => setForm(p => ({ ...p, reportsToId: e.target.value }))}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none bg-white focus:border-tech-blue"
                   >
-                    <option value="">Ninguno (Nivel Director)</option>
+                    <option value="">Ninguno (Director)</option>
                     {staff.filter(s => s.id !== editingId).map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.cargo})</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Estado de Contrato</label>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Comisión Venta (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={form.commissionPercent}
+                    onChange={e => setForm(p => ({ ...p, commissionPercent: parseFloat(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-black text-emerald-800 outline-none bg-emerald-50/50 focus:border-tech-blue"
+                    placeholder="Ej: 3.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Estado</label>
                   <select
                     value={form.status}
                     onChange={e => setForm(p => ({ ...p, status: e.target.value as any }))}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none bg-white focus:border-tech-blue"
                   >
-                    <option value="Activo">Activo / En Base</option>
-                    <option value="Licencia">Licencia Temporal</option>
-                    <option value="Baja">Baja / Desvinculado</option>
+                    <option value="Activo">Activo</option>
+                    <option value="Licencia">Licencia</option>
+                    <option value="Baja">Baja</option>
                   </select>
                 </div>
               </div>
