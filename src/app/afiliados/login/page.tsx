@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, Mail, AlertCircle, Sparkles, ArrowRight, ShieldAlert, CheckCircle2, Clock } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, AlertCircle, Sparkles, ArrowRight, ShieldAlert, CheckCircle2, Clock, Fingerprint } from 'lucide-react';
+import { isBiometricsAvailable, verifyBiometric, registerBiometric, getSavedBiometricEmail } from '@/lib/biometrics';
 
 export default function AfiliadosLoginPage() {
   const router = useRouter();
@@ -13,6 +14,37 @@ export default function AfiliadosLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<'idle' | 'pending' | 'suspended' | 'active'>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEmail = getSavedBiometricEmail() || localStorage.getItem('travelapp_last_email');
+      if (savedEmail) setEmail(savedEmail);
+      isBiometricsAvailable().then(setBiometricsAvailable);
+    }
+  }, []);
+
+  const handleBiometricLogin = async () => {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const res = await verifyBiometric();
+      if (res.success && res.email) {
+        document.cookie = "ta_session=1; path=/; max-age=31536000; SameSite=Lax";
+        setAccountStatus('active');
+        setTimeout(() => router.push('/afiliados/portal'), 300);
+      } else {
+        if (email.trim()) {
+          await registerBiometric(email.trim());
+        }
+        setError('No se pudo validar la biometría. Por favor ingresá tu contraseña.');
+      }
+    } catch {
+      setError('Error al procesar biometría.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,10 +52,14 @@ export default function AfiliadosLoginPage() {
     setAccountStatus('idle');
     setIsSubmitting(true);
 
+    const trimmedEmail = email.trim().toLowerCase();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('travelapp_last_email', trimmedEmail);
+      if (window.PublicKeyCredential) registerBiometric(trimmedEmail).catch(() => {});
+    }
+
     setTimeout(() => {
       setIsSubmitting(false);
-
-      const trimmedEmail = email.trim().toLowerCase();
 
       // Simulación de estados para prueba
       if (trimmedEmail.includes('pendiente') || trimmedEmail.includes('nuevo')) {
@@ -37,6 +73,7 @@ export default function AfiliadosLoginPage() {
       }
 
       // Si es un embajador habilitado / activo
+      document.cookie = "ta_session=1; path=/; max-age=31536000; SameSite=Lax";
       setAccountStatus('active');
       router.push('/afiliados/portal');
     }, 800);
@@ -216,6 +253,18 @@ export default function AfiliadosLoginPage() {
               {isSubmitting ? 'Verificando Habilitación...' : 'Ingresar a mi Portal de Creador'}
               <ArrowRight className="w-4 h-4 text-[#EF4444]" />
             </button>
+
+            {biometricsAvailable && (
+              <button
+                type="button"
+                onClick={handleBiometricLogin}
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 py-3 text-xs font-black uppercase text-slate-700 transition-all cursor-pointer shadow-sm"
+              >
+                <Fingerprint className="w-4 h-4 text-[#EF4444]" />
+                Ingresar con Huella / Face ID
+              </button>
+            )}
           </form>
 
           {/* Footer del login */}

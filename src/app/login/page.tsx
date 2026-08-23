@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Plane, Lock, Mail, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Plane, Lock, Mail, AlertCircle, Fingerprint, Smartphone } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { isBiometricsAvailable, registerBiometric, verifyBiometric, hasBiometricCredentials, getSavedBiometricEmail } from "@/lib/biometrics";
 
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -19,6 +20,20 @@ export default function LoginPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+
+  // Cargar último email recordado y comprobar soporte de biometría en el teléfono
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedEmail = getSavedBiometricEmail() || localStorage.getItem("travelapp_last_email");
+      if (savedEmail) {
+        setEmail(savedEmail);
+      }
+      isBiometricsAvailable().then((supported) => {
+        setBiometricsAvailable(supported);
+      });
+    }
+  }, []);
 
   // If already authenticated, redirect immediately
   useEffect(() => {
@@ -52,6 +67,13 @@ export default function LoginPage() {
 
     try {
       await login(trimmedEmail, password);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("travelapp_last_email", trimmedEmail);
+        // Intentar registrar biometría para próximos accesos de 1-toque
+        if (window.PublicKeyCredential) {
+          registerBiometric(trimmedEmail).catch(() => {});
+        }
+      }
       router.replace("/");
     } catch (err: unknown) {
       const code =
@@ -74,6 +96,40 @@ export default function LoginPage() {
         default:
           setError("Ocurrió un error al iniciar sesión. Intentá nuevamente.");
       }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    setError(null);
+    setSuccess(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await verifyBiometric();
+      if (result.success && result.email) {
+        // En teléfonos con biometría verificada, renovar cookie de 1 año y entrar directo
+        document.cookie = "ta_session=1; path=/; max-age=31536000; SameSite=Lax";
+        setSuccess("¡Identidad biométrica confirmada! Ingresando...");
+        setTimeout(() => {
+          router.replace("/");
+        }, 300);
+      } else {
+        if (email.trim()) {
+          const registered = await registerBiometric(email.trim());
+          if (registered) {
+            setSuccess("¡Huella / Face ID registrado con éxito para este dispositivo!");
+          } else {
+            setError("No se pudo validar la biometría. Por favor ingresá tu contraseña.");
+          }
+        } else {
+          setError("Ingresá tu correo electrónico para registrar o validar tu huella / Face ID.");
+        }
+      }
+    } catch (err) {
+      console.error("Biometrics error:", err);
+      setError("Error al procesar la biometría en este dispositivo.");
     } finally {
       setIsSubmitting(false);
     }
@@ -306,6 +362,26 @@ export default function LoginPage() {
                   "Ingresar al Ecosistema"
                 )}
               </button>
+
+              {/* Botón de Autenticación Biométrica (Huella / Face ID) */}
+              {biometricsAvailable && (
+                <div className="pt-2">
+                  <div className="relative flex items-center justify-center my-3">
+                    <div className="border-t border-slate-200 w-full"></div>
+                    <span className="bg-white px-3 text-[10px] uppercase font-bold text-slate-400">O ingresá con</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleBiometricLogin}
+                    disabled={isSubmitting}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 py-3 text-xs font-black uppercase tracking-wider text-slate-700 transition-all active:scale-[0.98] cursor-pointer shadow-sm"
+                  >
+                    <Fingerprint className="h-4 w-4 text-[#ff6b00]" />
+                    Desbloquear con Huella / Face ID
+                  </button>
+                </div>
+              )}
             </form>
 
             {/* Ambassador link section */}

@@ -5,6 +5,7 @@ import { Map as MapIcon, Search, Filter, Compass } from 'lucide-react';
 import { TripCard } from '@/components/travelcab/TripCard';
 import { Trip, TripStatus } from '@/types/travelcab';
 import { UnifiedDispatcher } from '@/components/travelcab/UnifiedDispatcher';
+import { FreeTripTaximeter } from '@/components/travelcab/FreeTripTaximeter';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import dynamic from 'next/dynamic';
@@ -26,7 +27,7 @@ const GoogleInteractiveMap = dynamic(
 export default function DispatcherPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
-  const [rightPanelMode, setRightPanelMode] = useState<'list' | 'dispatch'>('dispatch');
+  const [rightPanelMode, setRightPanelMode] = useState<'list' | 'dispatch' | 'free_trip'>('free_trip');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [previewCoords, setPreviewCoords] = useState<{
@@ -98,16 +99,29 @@ export default function DispatcherPage() {
       {/* Columna Derecha (40%) - Panel de Control Lateral */}
       <div className="flex w-full flex-col bg-slate-50 lg:w-[40%]">
         
-        {/* Toggle Nav */}
+        {/* Toggle Nav de 3 Pestañas */}
         <div className="flex border-b border-slate-200 bg-white">
+          <button
+            onClick={() => {
+              setRightPanelMode('free_trip');
+              setPreviewCoords(null);
+            }}
+            className={`flex-1 py-3 text-xs sm:text-sm font-bold transition-all ${
+              rightPanelMode === 'free_trip' 
+                ? 'border-b-2 border-vial-orange text-vial-orange bg-orange-50/20' 
+                : 'border-b-2 border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            🚕 Viaje Libre
+          </button>
           <button
             onClick={() => {
               setRightPanelMode('list');
               setPreviewCoords(null); // Clear preview when switching to operations list
             }}
-            className={`flex-1 py-3 text-sm font-bold transition-all ${
+            className={`flex-1 py-3 text-xs sm:text-sm font-bold transition-all ${
               rightPanelMode === 'list' 
-                ? 'border-b-2 border-vial-orange text-vial-orange' 
+                ? 'border-b-2 border-vial-orange text-vial-orange bg-orange-50/20' 
                 : 'border-b-2 border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -118,13 +132,13 @@ export default function DispatcherPage() {
               setRightPanelMode('dispatch');
               setActiveTripId(null); // Clear active trip so the new quote route can render on the map
             }}
-            className={`flex-1 py-3 text-sm font-bold transition-all ${
+            className={`flex-1 py-3 text-xs sm:text-sm font-bold transition-all ${
               rightPanelMode === 'dispatch' 
-                ? 'border-b-2 border-vial-orange text-vial-orange' 
+                ? 'border-b-2 border-vial-orange text-vial-orange bg-orange-50/20' 
                 : 'border-b-2 border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            Despachador Maestro
+            Despachador
           </button>
         </div>
 
@@ -186,6 +200,10 @@ export default function DispatcherPage() {
                 </div>
               )}
             </div>
+          </div>
+        ) : rightPanelMode === 'free_trip' ? (
+          <div className="flex-1 overflow-hidden">
+            <FreeTripTaximeter />
           </div>
         ) : (
           <div className="flex-1 overflow-hidden">

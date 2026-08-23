@@ -11,6 +11,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  setPersistence,
+  browserLocalPersistence,
   User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -74,10 +76,30 @@ import { db } from "@/lib/firebase";
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  // Inicialización instantánea desde caché local para evitar pantalla de login en móviles
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("travelapp_session_user");
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (e) {
+        console.warn("Error reading cached user session:", e);
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Configurar persistencia permanente en el navegador / PWA (tipo Uber / DiDi)
+    if (typeof window !== "undefined") {
+      setPersistence(auth, browserLocalPersistence).catch((err) => {
+        console.warn("Could not set local persistence:", err);
+      });
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         let role = deriveRole(firebaseUser);
@@ -100,18 +122,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!active) {
           await signOut(auth);
           setUser(null);
+          localStorage.removeItem("travelapp_session_user");
           document.cookie = "ta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
           alert("Tu cuenta ha sido desactivada por el administrador.");
         } else {
-          setUser({
+          const authUserData: AuthUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName,
             role,
-          });
+          };
+          setUser(authUserData);
+          // Persistir en localStorage y cookie de 1 año
+          localStorage.setItem("travelapp_session_user", JSON.stringify(authUserData));
+          document.cookie = "ta_session=1; path=/; max-age=31536000; SameSite=Lax";
         }
       } else {
         setUser(null);
+        localStorage.removeItem("travelapp_session_user");
       }
       setLoading(false);
     });
@@ -121,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase();
     try {
+      await setPersistence(auth, browserLocalPersistence);
       await signInWithEmailAndPassword(auth, normalizedEmail, password);
     } catch (err: any) {
       // Auto-registro inicial del administrador master (fernando@travelapp.ar) si la cuenta no existe en Firebase Auth aún
@@ -136,11 +165,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     }
-    document.cookie = "ta_session=1; path=/; SameSite=Lax";
+    // Cookie de sesión de 1 año (31536000 segundos) para que el teléfono no vuelva a pedir login
+    document.cookie = "ta_session=1; path=/; max-age=31536000; SameSite=Lax";
   }, []);
 
   const logout = useCallback(async () => {
     await signOut(auth);
+    localStorage.removeItem("travelapp_session_user");
     // Clear session cookie so middleware redirects unauthenticated requests
     document.cookie = "ta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
   }, []);

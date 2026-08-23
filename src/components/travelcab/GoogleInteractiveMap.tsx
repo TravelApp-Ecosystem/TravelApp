@@ -564,13 +564,14 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
             )}
           </div>
 
-          <div className="mt-4 flex gap-2">
+          {/* BOTONERA TÁCTIL GIGANTE DE ESTADOS DE VIAJE */}
+          <div className="mt-4 flex flex-col sm:flex-row gap-2.5">
             {activeTrip.status === "Buscando Chofer" && (
               <button
                 onClick={() => handleUpdateStatus("En Camino")}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-vial-orange py-2 text-center text-xs font-bold text-gray-950 hover:opacity-90 transition-all cursor-pointer"
+                className="w-full sm:flex-1 h-14 flex items-center justify-center gap-2 rounded-2xl bg-vial-orange text-center text-sm font-black uppercase tracking-wider text-gray-950 hover:brightness-110 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all cursor-pointer"
               >
-                <Navigation className="h-3.5 w-3.5 fill-gray-950" />
+                <Navigation className="h-5 w-5 fill-gray-950" />
                 Despachar Chofer
               </button>
             )}
@@ -578,19 +579,37 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
             {activeTrip.status === "En Camino" && (
               <button
                 onClick={() => handleUpdateStatus("En Viaje")}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 py-2 text-center text-xs font-bold text-white hover:bg-blue-500 transition-all cursor-pointer"
+                className="w-full sm:flex-1 h-14 flex items-center justify-center gap-2 rounded-2xl bg-blue-600 text-center text-sm font-black uppercase tracking-wider text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all cursor-pointer"
               >
-                <Play className="h-3.5 w-3.5 fill-white" />
+                <Play className="h-5 w-5 fill-white" />
                 Iniciar Viaje
               </button>
             )}
 
             {activeTrip.status === "En Viaje" && (
               <button
-                onClick={() => handleUpdateStatus("Completado")}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-green-600 py-2 text-center text-xs font-bold text-white hover:bg-green-500 transition-all cursor-pointer"
+                onClick={() => {
+                  handleUpdateStatus("Completado");
+                  // Disparo de emisión de recibo digital
+                  fetch('/api/receipt/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      tripId: activeTrip.id,
+                      passengerEmail: (activeTrip as any).passengerEmail || 'pasajero@travelapp.ar',
+                      passengerName: activeTrip.passengerName,
+                      amount: activeTrip.price || 2800,
+                      origin: activeTrip.origin,
+                      destination: activeTrip.destination,
+                      driverName: activeTrip.driverName || 'Conductor Asignado',
+                      paymentMethod: activeTrip.paymentMethod || 'Efectivo',
+                      date: new Date().toLocaleDateString('es-AR')
+                    })
+                  }).catch(console.error);
+                }}
+                className="w-full sm:flex-1 h-14 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 text-center text-sm font-black uppercase tracking-wider text-white hover:brightness-110 shadow-lg shadow-emerald-600/30 active:scale-[0.98] transition-all cursor-pointer"
               >
-                <CheckCircle className="h-3.5 w-3.5" />
+                <CheckCircle className="h-5 w-5" />
                 Finalizar Viaje
               </button>
             )}
