@@ -512,10 +512,13 @@ export default function ExperienceQuoterPage() {
 
     const sellerCommPax = Math.round(pvpPerPax * (sellerCommissionPercent / 100));
     const affiliateCommPax = Math.round(pvpPerPax * (affiliateCommissionPercent / 100));
-    const rewardsPointsCostPax = Math.round(pvpPerPax * 0.01); // 1% costo de emisión de puntos
-    const rewardsDiscountPax = Math.round(pvpPerPax * (rewardsDiscountPercent / 100));
+    
+    // Costo real de emisión de puntos Rewards por pasajero ($)
+    const rewardsPointsEarnedPax = Math.round(pvpPerPax * (financials.rewardsEarnMultiplier || 0.001));
+    const rewardsPointsCostPax = Math.round(rewardsPointsEarnedPax * (financials.rewardsPointValue || 1));
+    const rewardsDiscountPax = Math.round(pvpPerPax * ((financials.rewardsDiscountPercent || 0) / 100));
 
-    // Escenario 1: Venta Directa (Sin Afiliado)
+    // Escenario 1: Venta Directa (Sin Afiliado, acumula puntos)
     const netProfitDirectPax = Math.max(0, grossMarginAmountPax - sellerCommPax - rewardsPointsCostPax);
     const netProfitDirectPercent = pvpPerPax > 0 ? Math.round((netProfitDirectPax / pvpPerPax) * 100) : 0;
 
@@ -523,8 +526,8 @@ export default function ExperienceQuoterPage() {
     const netProfitAffiliatePax = Math.max(0, grossMarginAmountPax - sellerCommPax - affiliateCommPax - rewardsPointsCostPax);
     const netProfitAffiliatePercent = pvpPerPax > 0 ? Math.round((netProfitAffiliatePax / pvpPerPax) * 100) : 0;
 
-    // Escenario 3: Venta Promotor + Descuento Club Rewards
-    const netProfitRewardsPax = Math.max(0, grossMarginAmountPax - sellerCommPax - affiliateCommPax - rewardsDiscountPax - rewardsPointsCostPax);
+    // Escenario 3: Venta a Socio Club Rewards (Directa con Descuento Rewards + Puntos)
+    const netProfitRewardsPax = Math.max(0, grossMarginAmountPax - sellerCommPax - rewardsDiscountPax - rewardsPointsCostPax);
     const netProfitRewardsPercent = pvpPerPax > 0 ? Math.round((netProfitRewardsPax / pvpPerPax) * 100) : 0;
 
     // 6. TOTALES DE LA SALIDA COMPLETA (Base de Pasajeros)
@@ -552,12 +555,13 @@ export default function ExperienceQuoterPage() {
       const roomGrossMargin = Math.max(0, roomPvp - roomCostNet);
       const roomSellerComm = Math.round(roomPvp * (sellerCommissionPercent / 100));
       const roomAffiliateComm = Math.round(roomPvp * (affiliateCommissionPercent / 100));
-      const roomPointsCost = Math.round(roomPvp * 0.01);
-      const roomDiscount = Math.round(roomPvp * (rewardsDiscountPercent / 100));
+      const roomPointsEarned = Math.round(roomPvp * (financials.rewardsEarnMultiplier || 0.001));
+      const roomPointsCost = Math.round(roomPointsEarned * (financials.rewardsPointValue || 1));
+      const roomDiscount = Math.round(roomPvp * ((financials.rewardsDiscountPercent || 0) / 100));
 
       const roomNetDirect = Math.max(0, roomGrossMargin - roomSellerComm - roomPointsCost);
       const roomNetAffiliate = Math.max(0, roomGrossMargin - roomSellerComm - roomAffiliateComm - roomPointsCost);
-      const roomNetRewards = Math.max(0, roomGrossMargin - roomSellerComm - roomAffiliateComm - roomDiscount - roomPointsCost);
+      const roomNetRewards = Math.max(0, roomGrossMargin - roomSellerComm - roomDiscount - roomPointsCost);
 
       return {
         roomType: r.roomType,
@@ -567,6 +571,7 @@ export default function ExperienceQuoterPage() {
         grossMarginPax: roomGrossMargin,
         sellerCommPax: roomSellerComm,
         affiliateCommPax: roomAffiliateComm,
+        rewardsPointsEarned: roomPointsEarned,
         rewardsPointsCostPax: roomPointsCost,
         rewardsDiscountPax: roomDiscount,
         netProfitDirectPax: roomNetDirect,
@@ -574,6 +579,7 @@ export default function ExperienceQuoterPage() {
         netProfitRewardsPax: roomNetRewards,
         totalTripProfitDirect: roomNetDirect * basePax,
         totalTripProfitAffiliate: roomNetAffiliate * basePax,
+        totalTripProfitRewards: roomNetRewards * basePax,
         totalRevenueIfAll: roomPvp * basePax
       };
     });
@@ -1951,15 +1957,22 @@ export default function ExperienceQuoterPage() {
                     <span className="font-bold">-${tripFinancialAnalysis.affiliateCommPax.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center text-amber-300 pl-2 border-l-2 border-amber-500/40">
-                    <span>(-) Emisión Puntos Rewards (1%):</span>
+                    <span>(-) Costo Emisión Puntos ({tripFinancialAnalysis.rewardsPointsCostPax > 0 ? '$' + tripFinancialAnalysis.rewardsPointsCostPax.toLocaleString() : '$0'}):</span>
                     <span className="font-bold">-${tripFinancialAnalysis.rewardsPointsCostPax.toLocaleString()}</span>
                   </div>
+                  {financials.rewardsDiscountPercent > 0 && (
+                    <div className="flex justify-between items-center text-amber-400 pl-2 border-l-2 border-amber-500/40">
+                      <span>(-) Descuento Socio Rewards ({financials.rewardsDiscountPercent}%):</span>
+                      <span className="font-bold">-${tripFinancialAnalysis.rewardsDiscountPax.toLocaleString()}</span>
+                    </div>
+                  )}
                   
                   {/* RESULTADOS LÍQUIDOS POR ESCENARIO */}
                   <div className="pt-2 border-t border-slate-700/80 space-y-1.5">
+                    {/* 1. Venta Directa */}
                     <div className="bg-emerald-950/50 p-2 rounded-xl border border-emerald-500/30 flex justify-between items-center">
                       <div>
-                        <span className="text-[10px] font-black text-emerald-400 uppercase block">🟢 Ganancia Neta Venta Directa</span>
+                        <span className="text-[10px] font-black text-emerald-400 uppercase block">🟢 Ganancia Neta Directa</span>
                         <span className="text-[9px] text-emerald-300">Total salida: ${tripFinancialAnalysis.totalNetProfitDirect.toLocaleString()} {targetCurrency}</span>
                       </div>
                       <div className="text-right">
@@ -1968,14 +1981,27 @@ export default function ExperienceQuoterPage() {
                       </div>
                     </div>
 
+                    {/* 2. Venta con Afiliado */}
                     <div className="bg-blue-950/50 p-2 rounded-xl border border-blue-500/30 flex justify-between items-center">
                       <div>
-                        <span className="text-[10px] font-black text-blue-400 uppercase block">🔵 Ganancia Neta con Afiliado</span>
+                        <span className="text-[10px] font-black text-blue-400 uppercase block">🔵 Ganancia con Afiliado</span>
                         <span className="text-[9px] text-blue-300">Total salida: ${tripFinancialAnalysis.totalNetProfitAffiliate.toLocaleString()} {targetCurrency}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-sm font-black text-blue-300 block">+${tripFinancialAnalysis.netProfitAffiliatePax.toLocaleString()}</span>
                         <span className="text-[9px] font-bold text-blue-400">{tripFinancialAnalysis.netProfitAffiliatePercent}% neto</span>
+                      </div>
+                    </div>
+
+                    {/* 3. Venta Socio Club Rewards */}
+                    <div className="bg-amber-950/50 p-2 rounded-xl border border-amber-500/30 flex justify-between items-center">
+                      <div>
+                        <span className="text-[10px] font-black text-amber-400 uppercase block">🟡 Ganancia Socio Rewards (-{financials.rewardsDiscountPercent}%)</span>
+                        <span className="text-[9px] text-amber-300">Total salida: ${tripFinancialAnalysis.totalNetProfitRewards.toLocaleString()} {targetCurrency}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-black text-amber-300 block">+${tripFinancialAnalysis.netProfitRewardsPax.toLocaleString()}</span>
+                        <span className="text-[9px] font-bold text-amber-400">{tripFinancialAnalysis.netProfitRewardsPercent}% neto</span>
                       </div>
                     </div>
 
@@ -2196,96 +2222,146 @@ export default function ExperienceQuoterPage() {
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* MODAL 1: BALANCE FINANCIERO DE SALIDA PRESUPUESTADA           */}
+      {/* MODAL 1: BALANCE FINANCIERO DE SALIDA PRESUPUESTADA (A4 READY) */}
       {/* ------------------------------------------------------------- */}
       {showProfitAnalysisModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 max-h-[92vh] overflow-y-auto">
+          <style jsx global>{`
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 8mm 10mm 8mm 10mm;
+              }
+              html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                font-size: 9.5px !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+              .print-a4-sheet {
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                color: #0f172a !important;
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                z-index: 99999 !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+              }
+              .print-compact-table th, .print-compact-table td {
+                padding: 3px 5px !important;
+                font-size: 8.5px !important;
+              }
+            }
+          `}</style>
+
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-7 shadow-2xl space-y-4 animate-in zoom-in-95 max-h-[92vh] overflow-y-auto print-a4-sheet">
             
-            {/* Header del Informe (Con Botones de Acción en Pantalla) */}
-            <div className="flex items-start justify-between border-b border-slate-200 pb-5">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-tech-blue/10 text-tech-blue text-[10px] font-black uppercase tracking-wider">
-                    TravelApp Experiences · Control Financiero Presupuestado
+            {/* Header del Informe con Logo Institucional */}
+            <div className="border-b-2 border-slate-800 pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img src="/assets/travelapp_original.svg" alt="TravelApp Logo" className="h-8 w-auto object-contain" />
+                  <div className="h-6 w-px bg-slate-300"></div>
+                  <img src="/assets/experience_original.svg" alt="Experience Logo" className="h-6 w-auto object-contain" />
+                </div>
+                <div className="text-right">
+                  <span className="px-2.5 py-0.5 rounded-full bg-tech-blue/10 text-tech-blue text-[9px] font-black uppercase tracking-wider block">
+                    TravelApp Ecosystem · Auditoría Comercial
                   </span>
-                  <span className="text-xs text-slate-400 font-bold">
-                    ID Ref: {title ? title.slice(0, 8).toUpperCase() : 'EXP'}-{Date.now().toString().slice(-4)}
+                  <span className="text-[10px] text-slate-500 font-bold">
+                    Ref: {title ? title.slice(0, 8).toUpperCase() : 'EXP'}-{Date.now().toString().slice(-4)} · Fecha: {new Date().toLocaleDateString('es-AR')}
                   </span>
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Balance Financiero &amp; Rentabilidad de Salida
-                </h2>
-                <p className="text-xs text-slate-500 font-medium">
-                  {title} · Destino: <strong>{destination}</strong> · Salida: <strong>{departureDate}</strong> ({basePax} Pax de Base)
-                </p>
               </div>
 
-              {/* Botonera de control */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-tech-blue hover:bg-slate-900 text-white rounded-xl text-xs font-black transition shadow-md"
-                >
-                  <Printer className="h-4 w-4" /> Imprimir Balance
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowProfitAnalysisModal(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+              <div className="flex items-end justify-between mt-3">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                    Balance Financiero &amp; Presupuesto de Salida
+                  </h2>
+                  <p className="text-xs text-slate-600 font-semibold mt-0.5">
+                    {title} · Destino: <strong>{destination}</strong> · Salida: <strong>{departureDate}</strong> ({basePax} Pax de Base)
+                  </p>
+                </div>
+
+                {/* Botonera de control (oculta al imprimir) */}
+                <div className="flex items-center gap-2 no-print">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-tech-blue hover:bg-slate-900 text-white rounded-xl text-xs font-black transition shadow-md"
+                  >
+                    <Printer className="h-3.5 w-3.5" /> Imprimir Hoja A4
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowProfitAnalysisModal(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* 1. RESUMEN EJECUTIVO (KPIs) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Facturación Bruta ({basePax}p)</span>
-                <span className="text-lg font-black text-slate-900 mt-0.5 block">
+            {/* 1. RESUMEN EJECUTIVO (KPIs CONSOLIDADOS) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Facturación Bruta ({basePax}p)</span>
+                <span className="text-base font-black text-slate-900 block">
                   ${tripFinancialAnalysis.totalGrossRevenue.toLocaleString()} {targetCurrency}
                 </span>
-                <span className="text-[10px] text-slate-500 font-medium">PVP ${tripFinancialAnalysis.pvpPerPax.toLocaleString()} / pax</span>
+                <span className="text-[9px] text-slate-500 font-medium">PVP ${tripFinancialAnalysis.pvpPerPax.toLocaleString()} / pax</span>
               </div>
 
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Costos Operativos</span>
-                <span className="text-lg font-black text-slate-700 mt-0.5 block">
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Costos Operativos</span>
+                <span className="text-base font-black text-slate-700 block">
                   ${tripFinancialAnalysis.totalOperatingCost.toLocaleString()} {targetCurrency}
                 </span>
-                <span className="text-[10px] text-slate-500 font-medium">Fijos + Variables</span>
+                <span className="text-[9px] text-slate-500 font-medium">Fijos + Variables</span>
               </div>
 
-              <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200">
-                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider block">Ganancia Neta (Directa)</span>
-                <span className="text-lg font-black text-emerald-600 mt-0.5 block">
+              <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider block">Ganancia Neta (Directa)</span>
+                <span className="text-base font-black text-emerald-600 block">
                   +${tripFinancialAnalysis.totalNetProfitDirect.toLocaleString()} {targetCurrency}
                 </span>
-                <span className="text-[10px] text-emerald-700 font-bold">{tripFinancialAnalysis.netProfitDirectPercent}% neto (+${tripFinancialAnalysis.netProfitDirectPax.toLocaleString()}/pax)</span>
+                <span className="text-[9px] text-emerald-700 font-bold">{tripFinancialAnalysis.netProfitDirectPercent}% neto (+${tripFinancialAnalysis.netProfitDirectPax.toLocaleString()}/pax)</span>
               </div>
 
-              <div className="bg-blue-50 p-3.5 rounded-2xl border border-blue-200">
-                <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider block">Ganancia Neta (Afiliado)</span>
-                <span className="text-lg font-black text-blue-600 mt-0.5 block">
+              <div className="bg-blue-50 p-2.5 rounded-xl border border-blue-200">
+                <span className="text-[9px] font-black text-blue-700 uppercase tracking-wider block">Ganancia Neta (Afiliado)</span>
+                <span className="text-base font-black text-blue-600 block">
                   +${tripFinancialAnalysis.totalNetProfitAffiliate.toLocaleString()} {targetCurrency}
                 </span>
-                <span className="text-[10px] text-blue-700 font-bold">{tripFinancialAnalysis.netProfitAffiliatePercent}% neto (+${tripFinancialAnalysis.netProfitAffiliatePax.toLocaleString()}/pax)</span>
+                <span className="text-[9px] text-blue-700 font-bold">{tripFinancialAnalysis.netProfitAffiliatePercent}% neto (+${tripFinancialAnalysis.netProfitAffiliatePax.toLocaleString()}/pax)</span>
               </div>
             </div>
 
             {/* 2. CASCADA DE RENTABILIDAD CON MONTOS Y PORCENTAJES */}
-            <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-xs font-black uppercase text-emerald-400 tracking-wider">
+            <div className="bg-slate-900 text-white rounded-xl p-3.5 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
                   📊 Cascada Financiera de Utilidad Neta (Por Pasajero y Salida Completa)
                 </span>
-                <span className="text-[11px] text-slate-400">Base: {basePax} Pasajeros</span>
+                <span className="text-[10px] text-slate-400">Base: {basePax} Pasajeros</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center text-slate-300">
                     <span>PVP Sugerido al Pasajero:</span>
                     <span className="font-bold text-white">${tripFinancialAnalysis.pvpPerPax.toLocaleString()} {targetCurrency}</span>
@@ -2300,7 +2376,7 @@ export default function ExperienceQuoterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 bg-slate-800/80 p-3 rounded-xl border border-slate-750">
+                <div className="space-y-1 bg-slate-800/80 p-2.5 rounded-lg border border-slate-750 text-[10px]">
                   <div className="flex justify-between text-purple-300">
                     <span>(-) Comisión Vendedor Interno ({financials.sellerCommissionPercent || 3}%):</span>
                     <span className="font-bold">-${tripFinancialAnalysis.sellerCommPax.toLocaleString()} /pax</span>
@@ -2310,11 +2386,17 @@ export default function ExperienceQuoterPage() {
                     <span className="font-bold">-${tripFinancialAnalysis.affiliateCommPax.toLocaleString()} /pax</span>
                   </div>
                   <div className="flex justify-between text-amber-300">
-                    <span>(-) Emisión Puntos Rewards (1%):</span>
+                    <span>(-) Emisión Puntos Rewards:</span>
                     <span className="font-bold">-${tripFinancialAnalysis.rewardsPointsCostPax.toLocaleString()} /pax</span>
                   </div>
+                  {financials.rewardsDiscountPercent > 0 && (
+                    <div className="flex justify-between text-amber-400">
+                      <span>(-) Descuento Socio Rewards ({financials.rewardsDiscountPercent}%):</span>
+                      <span className="font-bold">-${tripFinancialAnalysis.rewardsDiscountPax.toLocaleString()} /pax</span>
+                    </div>
+                  )}
                   <div className="flex justify-between pt-1 border-t border-slate-700 font-bold text-emerald-300">
-                    <span>(=) Ganancia Líquida Final Agencia (Directa):</span>
+                    <span>(=) Ganancia Líquida Venta Directa:</span>
                     <span>+${tripFinancialAnalysis.netProfitDirectPax.toLocaleString()} ({tripFinancialAnalysis.netProfitDirectPercent}%)</span>
                   </div>
                 </div>
@@ -2322,14 +2404,14 @@ export default function ExperienceQuoterPage() {
             </div>
 
             {/* 3. ESTRUCTURA DE COSTOS DETALLADA (FIJOS VS VARIABLES) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
               {/* Costos Fijos */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2">
-                <div className="flex justify-between items-center border-b border-slate-200 pb-1.5 font-black text-slate-800">
+              <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-1.5">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-1 font-black text-slate-800">
                   <span>🏢 Costos Fijos Totales (Grupo)</span>
                   <span className="text-slate-900">${tripFinancialAnalysis.totalFixedCosts.toLocaleString()} {targetCurrency}</span>
                 </div>
-                <div className="space-y-1 text-slate-600">
+                <div className="space-y-0.5 text-slate-600 text-[10px]">
                   <div className="flex justify-between">
                     <span>Transporte Chárter ({transportType}):</span>
                     <span className="font-bold text-slate-800">
@@ -2353,13 +2435,13 @@ export default function ExperienceQuoterPage() {
                   </div>
                   {extraServices.filter(i => i.costType === 'grupal_fijo').length > 0 && (
                     <div className="flex justify-between">
-                      <span>Servicios Extras Fijos ({extraServices.filter(i => i.costType === 'grupal_fijo').length}):</span>
+                      <span>Extras Fijos ({extraServices.filter(i => i.costType === 'grupal_fijo').length}):</span>
                       <span className="font-bold text-slate-800">
                         ${extraServices.filter(i => i.costType === 'grupal_fijo').reduce((s, i) => s + convertAmountToTarget(i.netCost, i.currency, i.ivaRate), 0).toLocaleString()} {targetCurrency}
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-1 border-t border-slate-200 text-slate-500 font-bold">
+                  <div className="flex justify-between pt-0.5 border-t border-slate-200 text-slate-500 font-bold">
                     <span>Incidencia Fija por Pasajero:</span>
                     <span>${tripFinancialAnalysis.fixedCostPerPax.toLocaleString()} {targetCurrency} / pax</span>
                   </div>
@@ -2367,18 +2449,18 @@ export default function ExperienceQuoterPage() {
               </div>
 
               {/* Costos Variables */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-2">
-                <div className="flex justify-between items-center border-b border-slate-200 pb-1.5 font-black text-slate-800">
+              <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-1.5">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-1 font-black text-slate-800">
                   <span>👤 Costos Variables Unitarios (Por Pax)</span>
                   <span className="text-slate-900">${tripFinancialAnalysis.variableCostPerPax.toLocaleString()} {targetCurrency}</span>
                 </div>
-                <div className="space-y-1 text-slate-600">
+                <div className="space-y-0.5 text-slate-600 text-[10px]">
                   <div className="flex justify-between">
                     <span>Alojamiento Hoteles ({hotelsList.reduce((s, h) => s + h.nightsCount, 0)} Noches Base Dbl):</span>
                     <span className="font-bold text-slate-800">${calculateTotalLodgingForRoom('doble').toLocaleString()} {targetCurrency}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Comidas / Pensión Adicional ({foodPlanExtra.mealsCount} comidas):</span>
+                    <span>Comidas / Pensión ({foodPlanExtra.mealsCount} comidas):</span>
                     <span className="font-bold text-slate-800">
                       ${convertAmountToTarget((foodPlanExtra.unitPricePerMeal || 0) * (foodPlanExtra.mealsCount || 0), foodPlanExtra.currency, foodPlanExtra.ivaRate).toLocaleString()} {targetCurrency}
                     </span>
@@ -2397,7 +2479,7 @@ export default function ExperienceQuoterPage() {
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-1 border-t border-slate-200 text-slate-500 font-bold">
+                  <div className="flex justify-between pt-0.5 border-t border-slate-200 text-slate-500 font-bold">
                     <span>Subtotal Variables ({basePax} Pax):</span>
                     <span>${tripFinancialAnalysis.totalVariableCostsForGroup.toLocaleString()} {targetCurrency}</span>
                   </div>
@@ -2406,37 +2488,37 @@ export default function ExperienceQuoterPage() {
             </div>
 
             {/* 4. TABLA DE GANANCIA Y COMISIONES POR TIPO DE HABITACIÓN */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider">
-                  📈 Desglose Exhaustivo de Ganancia &amp; Comisiones por Tipo de Habitación
+                <h3 className="text-[10px] font-black uppercase text-slate-800 tracking-wider">
+                  📈 Desglose por Tipo de Habitación
                 </h3>
-                <span className="text-[11px] text-slate-500 font-medium">Moneda: {targetCurrency}</span>
+                <span className="text-[10px] text-slate-500 font-medium">Moneda: {targetCurrency}</span>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-100 font-black text-slate-700 uppercase tracking-wider text-[10px]">
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-[11px] text-left print-compact-table">
+                  <thead className="bg-slate-100 font-black text-slate-700 uppercase tracking-wider text-[9px]">
                     <tr>
-                      <th className="p-3">Habitación</th>
-                      <th className="p-3">Costo Neto</th>
-                      <th className="p-3 text-emerald-700">Margen Bruto</th>
-                      <th className="p-3 text-purple-700">Vendedor</th>
-                      <th className="p-3 text-blue-700">Afiliado</th>
-                      <th className="p-3 text-right">PVP Pax</th>
-                      <th className="p-3 text-right text-emerald-700 font-black">Ganancia Neta Salida</th>
+                      <th className="p-2">Habitación</th>
+                      <th className="p-2">Costo Neto</th>
+                      <th className="p-2 text-emerald-700">Margen Bruto</th>
+                      <th className="p-2 text-purple-700">Vendedor</th>
+                      <th className="p-2 text-blue-700">Afiliado</th>
+                      <th className="p-2 text-right">PVP Pax</th>
+                      <th className="p-2 text-right text-emerald-700 font-black">Ganancia Neta Salida</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                     {tripFinancialAnalysis.roomBreakdown.map((row) => (
                       <tr key={row.roomType} className="hover:bg-slate-50">
-                        <td className="p-3 font-bold text-slate-900">{row.roomLabel}</td>
-                        <td className="p-3">${row.costNetoPax.toLocaleString()}</td>
-                        <td className="p-3 text-slate-800 font-black">+${row.grossMarginPax.toLocaleString()}</td>
-                        <td className="p-3 text-purple-600">-${row.sellerCommPax.toLocaleString()}</td>
-                        <td className="p-3 text-blue-600">-${row.affiliateCommPax.toLocaleString()}</td>
-                        <td className="p-3 text-right font-black text-slate-900">${row.pvpPax.toLocaleString()}</td>
-                        <td className="p-3 text-right font-black text-emerald-700">+${row.totalTripProfitDirect.toLocaleString()}</td>
+                        <td className="p-2 font-bold text-slate-900">{row.roomLabel}</td>
+                        <td className="p-2">${row.costNetoPax.toLocaleString()}</td>
+                        <td className="p-2 text-slate-800 font-black">+${row.grossMarginPax.toLocaleString()}</td>
+                        <td className="p-2 text-purple-600">-${row.sellerCommPax.toLocaleString()}</td>
+                        <td className="p-2 text-blue-600">-${row.affiliateCommPax.toLocaleString()}</td>
+                        <td className="p-2 text-right font-black text-slate-900">${row.pvpPax.toLocaleString()}</td>
+                        <td className="p-2 text-right font-black text-emerald-700">+${row.totalTripProfitDirect.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2444,21 +2526,21 @@ export default function ExperienceQuoterPage() {
               </div>
             </div>
 
-            {/* 5. TOTALES CONSOLIDADOS Y FIRMAS DE CONFORMIDAD */}
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-1">
-                <span className="font-black text-slate-800 uppercase block text-[10px]">Observaciones Administrativas:</span>
-                <p className="text-slate-500 text-[11px] leading-relaxed">
+            {/* 5. TOTALES CONSOLIDADOS Y FIRMAS DE CONFORMIDAD (A4 FOOTER) */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-0.5">
+                <span className="font-black text-slate-800 uppercase block text-[9px]">Observaciones Administrativas:</span>
+                <p className="text-slate-500 text-[10px] leading-tight">
                   Presupuesto calculado a Tipo de Cambio oficial fijado a ${exchangeRate} ARS/USD.
-                  Las comisiones de vendedores y afiliados se liquidan contra reserva efectivamente señada o cancelada.
+                  Comisiones sujetas a liquidación contra reservas efectivamente señadas o canceladas.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-6 sm:pt-0">
-                <div className="border-t border-slate-300 pt-2 text-center text-[10px] text-slate-400 font-bold">
+              <div className="grid grid-cols-2 gap-3 pt-3 sm:pt-0">
+                <div className="border-t border-slate-300 pt-1.5 text-center text-[9px] text-slate-500 font-bold">
                   Firma Responsable Comercial
                 </div>
-                <div className="border-t border-slate-300 pt-2 text-center text-[10px] text-slate-400 font-bold">
+                <div className="border-t border-slate-300 pt-1.5 text-center text-[9px] text-slate-500 font-bold">
                   Firma Auditoría / Dirección
                 </div>
               </div>
@@ -2469,232 +2551,278 @@ export default function ExperienceQuoterPage() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* MODAL 2: CIERRE Y LIQUIDACIÓN REAL DE SALIDA (POST-OPERACIÓN) */}
+      {/* MODAL 2: CIERRE Y LIQUIDACIÓN REAL DE SALIDA (A4 READY)       */}
       {/* ------------------------------------------------------------- */}
       {showRealClosureModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 max-h-[92vh] overflow-y-auto">
+          <style jsx global>{`
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 8mm 10mm 8mm 10mm;
+              }
+              html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                font-size: 9.5px !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+              .print-a4-sheet {
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                color: #0f172a !important;
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                z-index: 99999 !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+              }
+            }
+          `}</style>
+
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-7 shadow-2xl space-y-4 animate-in zoom-in-95 max-h-[92vh] overflow-y-auto print-a4-sheet">
             
-            {/* Header del Cierre Real */}
-            <div className="flex items-start justify-between border-b border-slate-200 pb-5">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                    <Flag className="h-3 w-3 text-purple-600" /> Cierre Contable Real Post-Salida
+            {/* Header del Cierre Real con Logo Institucional */}
+            <div className="border-b-2 border-purple-900 pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img src="/assets/travelapp_original.svg" alt="TravelApp Logo" className="h-8 w-auto object-contain" />
+                  <div className="h-6 w-px bg-slate-300"></div>
+                  <img src="/assets/experience_original.svg" alt="Experience Logo" className="h-6 w-auto object-contain" />
+                </div>
+                <div className="text-right">
+                  <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[9px] font-black uppercase tracking-wider block">
+                    TravelApp Ecosystem · Cierre Real Definitivo
                   </span>
-                  <span className="text-xs text-slate-400 font-bold">
-                    Ref: {title ? title.slice(0, 8).toUpperCase() : 'EXP'}-REAL
+                  <span className="text-[10px] text-slate-500 font-bold">
+                    Ref: {title ? title.slice(0, 8).toUpperCase() : 'EXP'}-REAL · Fecha: {new Date().toLocaleDateString('es-AR')}
                   </span>
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Balance de Liquidación &amp; Cierre Real de Viaje
-                </h2>
-                <p className="text-xs text-slate-500 font-medium">
-                  {title} · Destino: <strong>{destination}</strong> · Salida: <strong>{departureDate}</strong>
-                </p>
               </div>
 
-              {/* Botonera de acciones */}
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSaveRealClosure}
-                  disabled={savingClosure}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-md"
-                >
-                  {savingClosure ? (
-                    <>Guardando Cierre...</>
-                  ) : closureSavedSuccess ? (
-                    <>
-                      <CheckCheck className="h-4 w-4" /> ¡Guardado con Éxito!
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4" /> Guardar Cierre Real
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-black transition shadow-md"
-                >
-                  <Printer className="h-4 w-4" /> Imprimir Balance Real
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowRealClosureModal(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+              <div className="flex items-end justify-between mt-3">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                    Balance de Liquidación &amp; Cierre Real de Salida
+                  </h2>
+                  <p className="text-xs text-slate-600 font-semibold mt-0.5">
+                    {title} · Destino: <strong>{destination}</strong> · Salida: <strong>{departureDate}</strong>
+                  </p>
+                </div>
+
+                {/* Botonera de acciones (oculta al imprimir) */}
+                <div className="flex flex-wrap items-center gap-2 no-print">
+                  <button
+                    type="button"
+                    onClick={handleSaveRealClosure}
+                    disabled={savingClosure}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-md"
+                  >
+                    {savingClosure ? (
+                      <>Guardando...</>
+                    ) : closureSavedSuccess ? (
+                      <>
+                        <CheckCheck className="h-3.5 w-3.5" /> ¡Guardado!
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-3.5 w-3.5" /> Guardar Cierre
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-black transition shadow-md"
+                  >
+                    <Printer className="h-3.5 w-3.5" /> Imprimir Hoja A4
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowRealClosureModal(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Mensaje de feedback de guardado */}
             {closureSavedSuccess && (
-              <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <div className="p-2.5 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in no-print">
                 <CheckCheck className="h-4 w-4 text-emerald-600" />
                 ¡El balance de cierre real ha sido guardado exitosamente en la base de datos contable de TravelApp!
               </div>
             )}
 
             {/* FORMULARIO DE CARGA DE NÚMEROS REALES */}
-            <div className="space-y-4 text-xs">
+            <div className="space-y-3 text-xs">
               
               {/* 1. Pasajeros Reales y Facturación Cobrada */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                <span className="font-black text-slate-800 uppercase block text-[11px]">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                <span className="font-black text-slate-800 uppercase block text-[10px]">
                   1. Pasajeros Reales &amp; Facturación Cobrada
                 </span>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Total Pasajeros Reales:</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Total Pasajeros Reales:</span>
                     <input
                       type="number"
                       value={realClosureForm.actualPaxCount}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualPaxCount: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-black text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-black text-slate-900 bg-white text-xs"
                     />
-                    <span className="text-[9px] text-slate-400">Presupuestados: {basePax}</span>
+                    <span className="text-[8px] text-slate-400">Presupuestados: {basePax}</span>
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Singles Reales:</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Singles Reales:</span>
                     <input
                       type="number"
                       value={realClosureForm.actualSinglesCount}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualSinglesCount: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Dobles Reales:</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Dobles Reales:</span>
                     <input
                       type="number"
                       value={realClosureForm.actualDoublesCount}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualDoublesCount: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Facturación Bruta Total ({targetCurrency}):</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Facturación Bruta Total ({targetCurrency}):</span>
                     <input
                       type="number"
                       value={realClosureForm.actualGrossRevenue}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualGrossRevenue: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-emerald-400 font-black text-emerald-900 bg-emerald-50/50"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-emerald-400 font-black text-emerald-900 bg-emerald-50/50 text-xs"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 2. Costos Operativos Reales Incurridos */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                <span className="font-black text-slate-800 uppercase block text-[11px]">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                <span className="font-black text-slate-800 uppercase block text-[10px]">
                   2. Costos Operativos Reales Incurridos (Pagos a Proveedores)
                 </span>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Transporte Chárter ({targetCurrency}):</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Transporte Chárter ({targetCurrency}):</span>
                     <input
                       type="number"
                       value={realClosureForm.actualTransportCost}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualTransportCost: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Hoteles / Alojamiento Total ({targetCurrency}):</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Hoteles / Alojamiento ({targetCurrency}):</span>
                     <input
                       type="number"
                       value={realClosureForm.actualLodgingCost}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualLodgingCost: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Comidas &amp; Pensión ({targetCurrency}):</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Comidas &amp; Pensión ({targetCurrency}):</span>
                     <input
                       type="number"
                       value={realClosureForm.actualFoodCost}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualFoodCost: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Asistencia Médica ({targetCurrency}):</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Asistencia Médica ({targetCurrency}):</span>
                     <input
                       type="number"
                       value={realClosureForm.actualAssistanceCost}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualAssistanceCost: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Coordinación &amp; Viáticos ({targetCurrency}):</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Coordinación &amp; Viáticos ({targetCurrency}):</span>
                     <input
                       type="number"
                       value={realClosureForm.actualCoordinationCost}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualCoordinationCost: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Excursiones &amp; Extras ({targetCurrency}):</span>
+                    <span className="text-[9px] text-slate-500 font-bold block">Excursiones &amp; Extras ({targetCurrency}):</span>
                     <input
                       type="number"
                       value={realClosureForm.actualExtraServicesCost}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualExtraServicesCost: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-white"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white text-xs"
                     />
                   </div>
                 </div>
               </div>
 
               {/* 3. Deducciones Comerciales Reales Liquidadas */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                <span className="font-black text-slate-800 uppercase block text-[11px]">
-                  3. Comisiones Liquidadas &amp; Beneficios Rewards Entregados
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                <span className="font-black text-slate-800 uppercase block text-[10px]">
+                  3. Comisiones Liquidadas &amp; Beneficios Rewards
                 </span>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <span className="text-[10px] text-purple-700 font-bold block">Comisión Vendedores Pagada:</span>
+                    <span className="text-[9px] text-purple-700 font-bold block">Comisión Vendedores Pagada:</span>
                     <input
                       type="number"
                       value={realClosureForm.actualSellerCommissionsPaid}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualSellerCommissionsPaid: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-purple-300 font-bold text-purple-900 bg-purple-50/50"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-purple-300 font-bold text-purple-900 bg-purple-50/50 text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-blue-700 font-bold block">Comisión Afiliados Pagada:</span>
+                    <span className="text-[9px] text-blue-700 font-bold block">Comisión Afiliados Pagada:</span>
                     <input
                       type="number"
                       value={realClosureForm.actualAffiliateCommissionsPaid}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualAffiliateCommissionsPaid: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-blue-300 font-bold text-blue-900 bg-blue-50/50"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-blue-300 font-bold text-blue-900 bg-blue-50/50 text-xs"
                     />
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-amber-700 font-bold block">Descuentos Rewards Otorgados:</span>
+                    <span className="text-[9px] text-amber-700 font-bold block">Descuentos Rewards Otorgados:</span>
                     <input
                       type="number"
                       value={realClosureForm.actualRewardsDiscountsGiven}
                       onChange={e => setRealClosureForm(p => ({ ...p, actualRewardsDiscountsGiven: Number(e.target.value) }))}
-                      className="w-full mt-1 p-2 rounded-xl border border-amber-300 font-bold text-amber-900 bg-amber-50/50"
+                      className="w-full mt-0.5 p-1.5 rounded-lg border border-amber-300 font-bold text-amber-900 bg-amber-50/50 text-xs"
                     />
                   </div>
                 </div>
@@ -2726,44 +2854,44 @@ export default function ExperienceQuoterPage() {
                   : 0;
 
                 return (
-                  <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-5 rounded-3xl border border-slate-800 space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                      <span className="text-xs font-black uppercase text-emerald-400 tracking-wider">
+                  <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
                         🏆 Balance Contable Definitivo de la Salida
                       </span>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[10px] text-slate-400">
                         {realClosureForm.actualPaxCount} Pasajeros Reales
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
-                        <span className="text-[10px] text-slate-400 uppercase font-black block">Facturación Real</span>
-                        <span className="text-base font-black text-white mt-0.5 block">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700">
+                        <span className="text-[9px] text-slate-400 uppercase font-black block">Facturación Real</span>
+                        <span className="text-sm font-black text-white mt-0.5 block">
                           ${Number(realClosureForm.actualGrossRevenue).toLocaleString()} {targetCurrency}
                         </span>
                       </div>
 
-                      <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
-                        <span className="text-[10px] text-slate-400 uppercase font-black block">Costos Reales Pagados</span>
-                        <span className="text-base font-black text-slate-300 mt-0.5 block">
+                      <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700">
+                        <span className="text-[9px] text-slate-400 uppercase font-black block">Costos Reales Pagados</span>
+                        <span className="text-sm font-black text-slate-300 mt-0.5 block">
                           ${totalActualCosts.toLocaleString()} {targetCurrency}
                         </span>
                       </div>
 
-                      <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
-                        <span className="text-[10px] text-purple-400 uppercase font-black block">Comisiones Liquidadas</span>
-                        <span className="text-base font-black text-purple-300 mt-0.5 block">
+                      <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700">
+                        <span className="text-[9px] text-purple-400 uppercase font-black block">Comisiones Liquidadas</span>
+                        <span className="text-sm font-black text-purple-300 mt-0.5 block">
                           -${totalCommissions.toLocaleString()} {targetCurrency}
                         </span>
                       </div>
 
-                      <div className="bg-emerald-950/80 p-3 rounded-2xl border border-emerald-500/40">
-                        <span className="text-[10px] text-emerald-400 uppercase font-black block">Ganancia Neta Real</span>
-                        <span className="text-base font-black text-emerald-300 mt-0.5 block">
+                      <div className="bg-emerald-950/80 p-2.5 rounded-xl border border-emerald-500/40">
+                        <span className="text-[9px] text-emerald-400 uppercase font-black block">Ganancia Neta Real</span>
+                        <span className="text-sm font-black text-emerald-300 mt-0.5 block">
                           +${netProfit.toLocaleString()} {targetCurrency}
                         </span>
-                        <span className="text-[9px] text-emerald-400 font-bold block">
+                        <span className="text-[8.5px] text-emerald-400 font-bold block">
                           {profitMargin}% neto (${profitPerPax.toLocaleString()} /pax)
                         </span>
                       </div>
@@ -2773,22 +2901,22 @@ export default function ExperienceQuoterPage() {
               })()}
 
               {/* 5. Observaciones Finales y Responsables */}
-              <div className="space-y-2">
-                <span className="font-bold text-slate-700 block text-[10px]">Observaciones &amp; Informe de Cierre:</span>
+              <div className="space-y-1">
+                <span className="font-bold text-slate-700 block text-[9px]">Observaciones &amp; Dictamen de Cierre:</span>
                 <textarea
                   value={realClosureForm.closureNotes}
                   onChange={e => setRealClosureForm(p => ({ ...p, closureNotes: e.target.value }))}
                   rows={2}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800 text-xs"
+                  className="w-full p-2 rounded-xl border border-slate-200 bg-slate-50 font-medium text-slate-800 text-xs"
                 />
               </div>
 
-              {/* Espacio de Firmas Contables */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-2 gap-6 pt-6">
-                <div className="border-t border-slate-300 pt-2 text-center text-[10px] text-slate-400 font-bold">
+              {/* Espacio de Firmas Contables (A4 Footer) */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-2 gap-4 pt-4">
+                <div className="border-t border-slate-300 pt-1.5 text-center text-[9px] text-slate-500 font-bold">
                   Firma Responsable de Operaciones
                 </div>
-                <div className="border-t border-slate-300 pt-2 text-center text-[10px] text-slate-400 font-bold">
+                <div className="border-t border-slate-300 pt-1.5 text-center text-[9px] text-slate-500 font-bold">
                   Firma Auditoría &amp; Gerencia General
                 </div>
               </div>
