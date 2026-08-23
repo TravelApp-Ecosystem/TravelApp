@@ -419,3 +419,46 @@ export function getTimeRemainingInfo(expiresAtStr?: string | null): { isExpired:
   return { isExpired: false, label: `⏱️ ${hours}h ${mins}m restantes`, urgencyClass: 'bg-blue-50 text-blue-700 border-blue-200' };
 }
 
+// Balance de Cierre y Liquidación Real de Salida Post-Viaje
+export interface TripClosureRealData {
+  id?: string;
+  quoteId?: string;
+  tripId?: string;
+  tripTitle: string;
+  destination: string;
+  departureDate: string;
+  returnDate?: string;
+  currency: CurrencyType;
+  // Pasajeros reales
+  budgetedPax: number;
+  actualPaxCount: number;
+  actualSinglesCount: number;
+  actualDoublesCount: number;
+  actualTriplesCount: number;
+  actualQuadsCount: number;
+  // Ingresos reales
+  actualGrossRevenue: number;
+  // Costos operativos reales incurridos
+  actualTransportCost: number;
+  actualLodgingCost: number;
+  actualFoodCost: number;
+  actualAssistanceCost: number;
+  actualCoordinationCost: number;
+  actualExtraServicesCost: number;
+  actualTotalOperatingCosts: number;
+  // Margen bruto real
+  actualGrossMargin: number;
+  // Deducciones comerciales reales
+  actualSellerCommissionsPaid: number;
+  actualAffiliateCommissionsPaid: number;
+  actualRewardsCostPaid: number;
+  actualRewardsDiscountsGiven: number;
+  // Resultado / Utilidad Neta Líquida Final
+  actualNetAgencyProfit: number;
+  actualProfitMarginPercent: number;
+  actualProfitPerPax: number;
+  closureNotes?: string;
+  closedBy?: string;
+  closedAt: string;
+}
+
