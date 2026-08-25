@@ -12,9 +12,33 @@ import { MUTariff } from '@/types/logistics';
 
 interface FreeTripTaximeterProps {
   onTripCompleted?: (tripData: any) => void;
+  isTaxiLicensed?: boolean;
 }
 
-export const FreeTripTaximeter: React.FC<FreeTripTaximeterProps> = ({ onTripCompleted }) => {
+export const FreeTripTaximeter: React.FC<FreeTripTaximeterProps> = ({ onTripCompleted, isTaxiLicensed = true }) => {
+  // Si el conductor no cuenta con licencia de Taxi municipal (SUTRAPPA)
+  if (!isTaxiLicensed) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-slate-900 text-white p-6 text-center space-y-4">
+        <div className="h-16 w-16 rounded-3xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-xl">
+          <ShieldCheck className="h-8 w-8" />
+        </div>
+        <div className="max-w-md space-y-2">
+          <span className="text-xs font-black uppercase tracking-widest text-vial-orange block">
+            Modalidad Restringida · Normativa Municipal
+          </span>
+          <h3 className="text-xl font-black text-white">Función Exclusiva para Taxis Habilitados</h3>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            La función de <strong>Viaje Libre (Taxímetro en Calle)</strong> está reservada exclusivamente para conductores con licencia municipal de Taxi (SUTRAPPA activa).
+          </p>
+          <p className="text-[11px] text-slate-400">
+            Tu cuenta está configurada para recibir y operar traslados programados a través del Despachador Central de TravelCab.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Estado del viaje: 'idle' (Libre) | 'running' (En Viaje) | 'completed' (Finalizado)
   const [tripState, setTripState] = useState<'idle' | 'running' | 'completed'>('idle');
 

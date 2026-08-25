@@ -6,7 +6,8 @@ import { TripCard } from '@/components/travelcab/TripCard';
 import { Trip, TripStatus } from '@/types/travelcab';
 import { UnifiedDispatcher } from '@/components/travelcab/UnifiedDispatcher';
 import { FreeTripTaximeter } from '@/components/travelcab/FreeTripTaximeter';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
+import { collection, onSnapshot, query, where, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import dynamic from 'next/dynamic';
 
@@ -25,15 +26,57 @@ const GoogleInteractiveMap = dynamic(
 );
 
 export default function DispatcherPage() {
+  const { user } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
-  const [rightPanelMode, setRightPanelMode] = useState<'list' | 'dispatch' | 'free_trip'>('free_trip');
+  const [rightPanelMode, setRightPanelMode] = useState<'list' | 'dispatch' | 'free_trip'>('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isTaxiLicensed, setIsTaxiLicensed] = useState<boolean>(true); // Por defecto true para admin
   const [previewCoords, setPreviewCoords] = useState<{
     originCoords: { lat: number; lng: number } | null;
     destinationCoords: { lat: number; lng: number } | null;
   } | null>(null);
+
+  // Verificar si el usuario es Administrador o Conductor con Licencia de Taxi (SUTRAPPA)
+  useEffect(() => {
+    if (!user) return;
+    
+    // 1. Administradores siempre tienen acceso completo
+    if (user.role === 'admin') {
+      setIsTaxiLicensed(true);
+      return;
+    }
+
+    // 2. Para otros roles / conductores, verificar licencia SUTRAPPA en Firestore
+    async function checkDriverTaxiLicense() {
+      try {
+        const qPartners = query(collection(db, 'partners'), where('email', '==', user?.email));
+        const snap = await getDocs(qPartners);
+        if (!snap.empty) {
+          const partnerData = snap.docs[0].data();
+          const hasTaxiLicense = Boolean(
+            partnerData?.sutrappa?.isActive || 
+            partnerData?.serviceType === 'mu' || 
+            partnerData?.category?.toLowerCase().includes('taxi') ||
+            partnerData?.vehicleType?.toLowerCase().includes('taxi')
+          );
+          setIsTaxiLicensed(hasTaxiLicense);
+          if (!hasTaxiLicense && rightPanelMode === 'free_trip') {
+            setRightPanelMode('list');
+          }
+        } else {
+          // Si no está registrado como taxi específico, no mostrar viaje libre
+          setIsTaxiLicensed(false);
+          if (rightPanelMode === 'free_trip') setRightPanelMode('list');
+        }
+      } catch (err) {
+        console.warn("Error verificando licencia de taxi:", err);
+      }
+    }
+
+    checkDriverTaxiLicense();
+  }, [user]);
 
   // Derivar activeTrip para evitar bucles infinitos en el useEffect
   const activeTrip = trips.find(t => t.id === activeTripId) || null;
@@ -99,21 +142,23 @@ export default function DispatcherPage() {
       {/* Columna Derecha (40%) - Panel de Control Lateral */}
       <div className="flex w-full flex-col bg-slate-50 lg:w-[40%]">
         
-        {/* Toggle Nav de 3 Pestañas */}
+        {/* Toggle Nav de Pestañas (Condicionado por Licencia de Taxi) */}
         <div className="flex border-b border-slate-200 bg-white">
-          <button
-            onClick={() => {
-              setRightPanelMode('free_trip');
-              setPreviewCoords(null);
-            }}
-            className={`flex-1 py-3 text-xs sm:text-sm font-bold transition-all ${
-              rightPanelMode === 'free_trip' 
-                ? 'border-b-2 border-vial-orange text-vial-orange bg-orange-50/20' 
-                : 'border-b-2 border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            🚕 Viaje Libre
-          </button>
+          {isTaxiLicensed && (
+            <button
+              onClick={() => {
+                setRightPanelMode('free_trip');
+                setPreviewCoords(null);
+              }}
+              className={`flex-1 py-3 text-xs sm:text-sm font-bold transition-all ${
+                rightPanelMode === 'free_trip' 
+                  ? 'border-b-2 border-vial-orange text-vial-orange bg-orange-50/20' 
+                  : 'border-b-2 border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              🚕 Viaje Libre (Taxi)
+            </button>
+          )}
           <button
             onClick={() => {
               setRightPanelMode('list');

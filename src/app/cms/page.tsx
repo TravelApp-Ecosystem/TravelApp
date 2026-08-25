@@ -486,37 +486,54 @@ const DEFAULT_REWARDS_CMS_DATA_FOR_CMS = {
   footer: { copyrightText: "© 2026 TravelApp Rewards. Una marca de TravelApp s.a.s." },
 };
 
+import { OverlappingCardCarousel } from '@/components/ui/OverlappingCardCarousel';
+
 const DEFAULT_APP_INICIO_CMS_DATA = {
   id: "block-1",
   blockTitle: "Novedades del Ecosistema",
   cards: [
     {
-      title: "TravelApp Rewards",
-      description: "Completá tu foto de perfil en el panel y ganá 150 puntos extra al instante para tu próximo canje.",
+      title: "150 Puntos Extra",
+      badge: "🎁 REWARDS",
+      subtitle: "Completá tu foto de perfil y sumá puntos gratis.",
+      description: "Completá tu foto de perfil y ganá 150 puntos extra al instante para tu próximo canje.",
+      ctaText: "Sumar Puntos",
       imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80",
       url: "https://travelapp.ar/rewards"
     },
     {
-      title: "Nuevas Experiencias",
-      description: "Ya podés agendar paseos de aventura y traslados rurales en las yungas tucumanas.",
+      title: "Yungas & Aventura",
+      badge: "🌿 EXPERIENCES",
+      subtitle: "Paseos de aventura y traslados rurales.",
+      description: "Agendá paseos de aventura y traslados rurales en las yungas tucumanas.",
+      ctaText: "Explorar",
       imageUrl: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80",
       url: "https://travelapp.ar/experiences"
     },
     {
-      title: "Travis AI Chatbot",
-      description: "Hablá con nuestro asistente inteligente de viajes para programar traslados con IA.",
+      title: "Travis Asistente IA",
+      badge: "🤖 CHATBOT 24/7",
+      subtitle: "Cotizá y programá tus viajes con inteligencia artificial.",
+      description: "Hablá con nuestro asistente inteligente de viajes para cotizar al instante.",
+      ctaText: "Chatear",
       imageUrl: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=600&q=80",
       url: "https://travelapp.ar/chatbot"
     },
     {
-      title: "Viajes Compartidos",
-      description: "Viajá con otros pasajeros en la misma dirección y ahorrá hasta un 40% del traslado.",
+      title: "Viajá Compartido 40% OFF",
+      badge: "👥 AHORRO",
+      subtitle: "Compartí tu ruta con otros pasajeros y pagá menos.",
+      description: "Viajá con otros pasajeros en la misma dirección y ahorrá hasta un 40%.",
+      ctaText: "Aprovechar",
       imageUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
       url: "https://travelapp.ar/share"
     },
     {
-      title: "Socio Conductor",
+      title: "Generá Ingresos con tu Auto",
+      badge: "🚗 CONDUCTORES",
+      subtitle: "Registrate en TravelCab con soporte local 24hs.",
       description: "Registrá tu auto o taxi y empezá a generar ingresos con soporte local certificado.",
+      ctaText: "Sumarme",
       imageUrl: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80",
       url: "https://travelapp.ar/conductor"
     }
@@ -528,14 +545,20 @@ const DEFAULT_APP_BENEFICIOS_CMS_DATA = {
   blockTitle: "Beneficios Rewards",
   cards: [
     {
-      title: "Descuento Gastronómico",
+      title: "20% OFF Gastronomía",
+      badge: "🍔 BENEFICIO",
+      subtitle: "Presentá tu QR en restaurantes adheridos.",
       description: "Obtené un 20% de descuento en restaurantes adheridos presentando tu código QR.",
+      ctaText: "Ver Locales",
       imageUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80",
       url: "https://travelapp.ar/rewards/food"
     },
     {
-      title: "Descuento Hotelería",
+      title: "15% OFF Hotelería",
+      badge: "🏨 HOTELES",
+      subtitle: "Ahorrá en estadías seleccionadas del Norte.",
       description: "Ahorrá hasta un 15% en estadías seleccionadas de TravelApp Experiences.",
+      ctaText: "Reservar",
       imageUrl: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80",
       url: "https://travelapp.ar/rewards/hotel"
     }
@@ -3339,8 +3362,8 @@ export default function CMSPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Tarjetas Promocionales de la App (Home)</h3>
-                <p className="text-xs text-slate-400 mt-1">Configura las tarjetas de novedades, promociones y enlaces a socios estratégicos del carrusel en la App Cliente.</p>
+                <h3 className="text-base font-extrabold text-slate-800">Tarjetas Flotantes de la App (Carrusel Superpuesto)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las tarjetas de novedades, promociones y beneficios con efecto de superposición dinámica (Swipe estilo Mercado Pago).</p>
               </div>
               <button
                 onClick={() => addAppCard('block1')}
@@ -3348,6 +3371,23 @@ export default function CMSPage() {
               >
                 <Plus className="h-3.5 w-3.5" /> Agregar Tarjeta
               </button>
+            </div>
+
+            {/* PREVISUALIZADOR EN VIVO ESTILO MERCADO PAGO */}
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-100 to-slate-200/60 p-4 shadow-inner">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                  <Eye className="h-3.5 w-3.5 text-amber-600" /> Vista Previa Interactiva (Simulador de Móvil)
+                </span>
+                <span className="text-[9px] font-bold text-slate-400">Deslizá con el mouse o dedo</span>
+              </div>
+              <div className="bg-white rounded-2xl p-2 shadow-md max-w-md mx-auto">
+                <OverlappingCardCarousel
+                  cards={data.block1.cards || []}
+                  title={data.block1.blockTitle || "Novedades del Ecosistema"}
+                  subtitle="Deslizá para descubrir promociones exclusivas"
+                />
+              </div>
             </div>
 
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -3376,15 +3416,49 @@ export default function CMSPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título de la Tarjeta</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título Principal (Corto y directo)</label>
                       <input
                         type="text"
                         value={card.title || ''}
                         onChange={(e) => updateAppCard('block1', idx, 'title', e.target.value)}
                         className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="Ej: 150 Puntos Extra"
                       />
                     </div>
                     <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Badge Superior (Etiqueta Flotante)</label>
+                      <input
+                        type="text"
+                        value={card.badge || ''}
+                        onChange={(e) => updateAppCard('block1', idx, 'badge', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="Ej: 🎁 REWARDS / 20% OFF"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Subtítulo Corto (1 línea)</label>
+                      <input
+                        type="text"
+                        value={card.subtitle || card.description || ''}
+                        onChange={(e) => {
+                          updateAppCard('block1', idx, 'subtitle', e.target.value);
+                          updateAppCard('block1', idx, 'description', e.target.value);
+                        }}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="Ej: Completá tu foto de perfil y sumá puntos gratis."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto del Botón CTA</label>
+                      <input
+                        type="text"
+                        value={card.ctaText || 'Ver Beneficio'}
+                        onChange={(e) => updateAppCard('block1', idx, 'ctaText', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="Ej: Sumar Puntos / Explorar"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 mb-1">Enlace / URL de redirección</label>
                       <input
                         type="text"
@@ -3395,16 +3469,7 @@ export default function CMSPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción / Contenido</label>
-                      <textarea
-                        rows={2}
-                        value={card.description || ''}
-                        onChange={(e) => updateAppCard('block1', idx, 'description', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de la Tarjeta (URL o subida)</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de Fondo de la Tarjeta</label>
                       <AppCardImageUploader blockKey="block1" idx={idx} value={card.imageUrl || ''} />
                       {card.imageUrl ? (
                         <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border border-slate-200">
@@ -3429,8 +3494,8 @@ export default function CMSPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Tarjetas de Beneficios Rewards (Home)</h3>
-                <p className="text-xs text-slate-400 mt-1">Configura las tarjetas del carrusel de beneficios directos de Rewards en la página principal de la App.</p>
+                <h3 className="text-base font-extrabold text-slate-800">Tarjetas de Beneficios Rewards (Carrusel Superpuesto)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura las tarjetas del carrusel de beneficios directos de Rewards con efecto de superposición dinámica (Swipe estilo Mercado Pago).</p>
               </div>
               <button
                 onClick={() => addAppCard('block2')}
@@ -3438,6 +3503,23 @@ export default function CMSPage() {
               >
                 <Plus className="h-3.5 w-3.5" /> Agregar Tarjeta
               </button>
+            </div>
+
+            {/* PREVISUALIZADOR EN VIVO ESTILO MERCADO PAGO */}
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-100 to-slate-200/60 p-4 shadow-inner">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                  <Eye className="h-3.5 w-3.5 text-amber-600" /> Vista Previa Interactiva (Simulador de Móvil)
+                </span>
+                <span className="text-[9px] font-bold text-slate-400">Deslizá con el mouse o dedo</span>
+              </div>
+              <div className="bg-white rounded-2xl p-2 shadow-md max-w-md mx-auto">
+                <OverlappingCardCarousel
+                  cards={data.block2.cards || []}
+                  title={data.block2.blockTitle || "Beneficios Rewards"}
+                  subtitle="Canjes y promociones exclusivas para miembros"
+                />
+              </div>
             </div>
 
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -3466,15 +3548,49 @@ export default function CMSPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título de la Tarjeta</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Título Principal</label>
                       <input
                         type="text"
                         value={card.title || ''}
                         onChange={(e) => updateAppCard('block2', idx, 'title', e.target.value)}
                         className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="Ej: 20% OFF Gastronomía"
                       />
                     </div>
                     <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Badge Superior</label>
+                      <input
+                        type="text"
+                        value={card.badge || ''}
+                        onChange={(e) => updateAppCard('block2', idx, 'badge', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="Ej: 🍔 BENEFICIO / 🏨 HOTELES"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Subtítulo Corto (1 línea)</label>
+                      <input
+                        type="text"
+                        value={card.subtitle || card.description || ''}
+                        onChange={(e) => {
+                          updateAppCard('block2', idx, 'subtitle', e.target.value);
+                          updateAppCard('block2', idx, 'description', e.target.value);
+                        }}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="Ej: Presentá tu QR en restaurantes adheridos."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto del Botón CTA</label>
+                      <input
+                        type="text"
+                        value={card.ctaText || 'Ver Beneficio'}
+                        onChange={(e) => updateAppCard('block2', idx, 'ctaText', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
+                        placeholder="Ej: Ver Locales / Reservar"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 mb-1">Enlace / URL de redirección</label>
                       <input
                         type="text"
@@ -3485,16 +3601,7 @@ export default function CMSPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Descripción / Contenido</label>
-                      <textarea
-                        rows={2}
-                        value={card.description || ''}
-                        onChange={(e) => updateAppCard('block2', idx, 'description', e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de la Tarjeta (URL o subida)</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de Fondo de la Tarjeta</label>
                       <AppCardImageUploader blockKey="block2" idx={idx} value={card.imageUrl || ''} />
                       {card.imageUrl ? (
                         <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border border-slate-200">
