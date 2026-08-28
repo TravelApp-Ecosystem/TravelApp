@@ -188,8 +188,8 @@ export default function ExperienceQuoterPage() {
     sellerCommissionPercent: 3, // 3% Comisión Vendedor Interno
     affiliateCommissionPercent: 5, // 5% Comisión de Promotor/Afiliado
     rewardsDiscountPercent: 12, // 12% Descuento Miembro Rewards
-    rewardsEarnMultiplier: scope === 'Nacional' ? 0.001 : 1, // 1 pt cada $1000 ARS en nac, o 1 pt por USD en int
-    rewardsPointValue: scope === 'Nacional' ? 15 : 0.012, // $15 ARS por punto o $0.012 USD por punto
+    rewardsEarnMultiplier: 0.00033333, // 1 pt cada $3.000 ARS (ej: $150.000 = 50 Pts)
+    rewardsPointValue: 175, // $175 ARS por punto al momento del canje
     exchangeRate: 1350,
     usdToArsPerceptionPercent: 30
   });
@@ -400,15 +400,15 @@ export default function ExperienceQuoterPage() {
       // Tarifa Socios Rewards (con descuento)
       const pvpRewards = Math.round(pvpTarget * (1 - (financials.rewardsDiscountPercent / 100)));
 
-      // Puntos que Acumula (según alcance)
-      const pointsEarned = scope === 'Nacional'
-        ? Math.round(pvpTarget * financials.rewardsEarnMultiplier)
-        : Math.round(pvpTarget * financials.rewardsEarnMultiplier);
+      // Puntos que Acumula (1 punto cada $3.000 ARS)
+      const pointsEarned = targetCurrency === 'ARS'
+        ? Math.max(10, Math.round(pvpTarget / 3000))
+        : Math.max(10, Math.round(pvpTarget / 3));
 
-      // Puntos Requeridos para Canje Total
-      const pointsRequiredForRedemption = financials.rewardsPointValue > 0
-        ? Math.round(pvpTarget / financials.rewardsPointValue)
-        : 0;
+      // Puntos Requeridos para Canje Total ($175 ARS por punto)
+      const pointsRequiredForRedemption = targetCurrency === 'ARS'
+        ? Math.round(pvpTarget / 175)
+        : Math.round((pvpTarget * exchangeRate) / 175);
 
       // Conversión Secundaria
       let pvpSecondary = 0;

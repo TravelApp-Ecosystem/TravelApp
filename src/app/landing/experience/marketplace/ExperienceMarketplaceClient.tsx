@@ -92,6 +92,8 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
   const [resStatus, setResStatus] = useState<"idle" | "success" | "error">("idle");
   const [createdResCode, setCreatedResCode] = useState("");
   const [createdTtlInfo, setCreatedTtlInfo] = useState<any>(null);
+  const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
+  const [pointConversionRate] = useState<number>(175); // $175 ARS por punto al canje
 
   // Capturar código de afiliado desde la URL (?ref=... o ?afiliado=...)
   useEffect(() => {
@@ -546,16 +548,11 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                             {formatPrice(tour.price, tour.currency)}
                           </span>
                         </div>
-                        {tour.priceRewards && (
-                          <div className="text-right">
-                            <span className="text-[10px] text-red-600 font-black block">
-                              Club Rewards: {formatPrice(tour.priceRewards, tour.currency)}
-                            </span>
-                            <span className="text-[9px] text-emerald-600 font-bold block">
-                              +{tour.pointsEarned || 350} pts
-                            </span>
-                          </div>
-                        )}
+                        <div className="text-right">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100/90 text-amber-900 text-[10px] font-black">
+                            ⭐ +{tour.pointsEarned || Math.max(10, Math.round((tour.price || 30000) / 3000))} pts Rewards
+                          </span>
+                        </div>
                       </div>
 
                       {/* Botonera de Acción Adaptativa */}
@@ -900,6 +897,60 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800"
                     />
                   </div>
+                </div>
+
+                {/* Canje de Puntos TravelApp Rewards */}
+                <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300 rounded-2xl p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-amber-950 flex items-center gap-1.5 text-xs">
+                      <Award className="h-4 w-4 text-amber-600" /> ¿Tenés Puntos Rewards para canjear?
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                      1 pto = ${pointConversionRate} ARS
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center space-x-1.5 bg-white border border-amber-300 rounded-xl px-2.5 py-1.5 w-40">
+                      <span className="text-[11px] font-bold text-slate-400">Usar:</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={Math.min(100, Math.floor(((tourToReserve.price * passengerCount) * 0.3) / pointConversionRate))}
+                        placeholder="0"
+                        value={pointsToRedeem || ''}
+                        onChange={(e) => setPointsToRedeem(Math.max(0, Number(e.target.value)))}
+                        className="w-full text-xs font-black text-slate-800 outline-none"
+                      />
+                      <span className="text-[10px] font-bold text-amber-600">pts</span>
+                    </div>
+
+                    <div className="flex-1 text-right">
+                      {pointsToRedeem > 0 ? (
+                        <div>
+                          <span className="text-xs font-black text-emerald-700 block">
+                            -${(pointsToRedeem * pointConversionRate).toLocaleString()} ARS Descuento
+                          </span>
+                          <span className="text-[9px] text-slate-400">
+                            ({pointsToRedeem} puntos canjeados)
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          Ingresá tus puntos acumulados
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {pointsToRedeem > 0 && (
+                    <div className="pt-2 border-t border-amber-200/70 flex justify-between items-center text-xs font-black text-slate-900">
+                      <span>Total con Descuento Rewards:</span>
+                      <span className="text-emerald-600 text-sm font-black">
+                        ${Math.max(0, (tourToReserve.price * passengerCount) - (pointsToRedeem * pointConversionRate)).toLocaleString()} {tourToReserve.currency}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {activeBookingAction === 'time_to_pay' && (
