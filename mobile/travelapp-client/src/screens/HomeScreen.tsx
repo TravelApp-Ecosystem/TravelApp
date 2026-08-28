@@ -16,6 +16,8 @@ import { Colors, Fonts, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY, API_BASE_URL } from
 import { TravelCabLogo, TravelAppLogo, TravelExperienceLogo } from '../components/BrandLogos';
 import { InteractiveMapView } from '../components/InteractiveMapView';
 
+import { OverlappingNativeCarousel } from '../components/OverlappingNativeCarousel';
+
 const { width, height } = Dimensions.get('window');
 
 interface CMSBlock {
@@ -23,9 +25,12 @@ interface CMSBlock {
   blockTitle: string;
   cards: {
     title: string;
+    badge?: string;
+    subtitle?: string;
     description: string;
     imageUrl: string;
     url: string;
+    ctaText?: string;
   }[];
 }
 
@@ -2212,62 +2217,28 @@ export default function HomeScreen() {
             )}
 
 
-            {/* Carruseles CMS de Novedades del Ecosistema y Beneficios Rewards */}
+            {/* Carruseles CMS de Novedades del Ecosistema y Beneficios Rewards (Estilo Mercado Pago / 3D Stacking) */}
             {requestFlowStep === 'idle' && (
-              <View style={{ gap: 16, marginTop: 12 }}>
+              <View style={{ marginTop: 6 }}>
                 {/* CMS: Novedades del Ecosistema */}
-                <View>
-                  <View style={styles.canvaSectionHeader}>
-                    <Text style={styles.canvaSectionTitle}>Novedades del Ecosistema</Text>
-                    <TouchableOpacity onPress={() => setActiveTab('experience')}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.canvaSectionVerMas}>Ver más</Text>
-                        <Ionicons name="arrow-forward" size={12} color={Colors.danger} style={{ marginLeft: 2 }} />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.canvaCarouselContent}>
-                    {cmsBlocks.flatMap(block => block.cards).map((card, idx) => (
-                      <TouchableOpacity key={idx} style={styles.canvaCarouselCard} onPress={() => Linking.openURL(card.url)}>
-                        <Image source={{ uri: card.imageUrl }} style={styles.canvaCarouselCardImg} />
-                        <View style={styles.canvaCarouselCardBody}>
-                          <Text style={styles.canvaCarouselCardTitle} numberOfLines={1}>{card.title}</Text>
-                          <Text style={styles.canvaCarouselCardDesc} numberOfLines={2}>{card.description}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
+                <OverlappingNativeCarousel
+                  cards={cmsBlocks.flatMap(block => block.cards)}
+                  title="Novedades del Ecosistema"
+                  subtitle="Deslizá para descubrir promociones exclusivas"
+                  badgeColor="#FF6B00"
+                  onSeeMore={() => setActiveTab('experience')}
+                />
 
                 {/* CMS: Beneficios Rewards */}
-                <View>
-                  <View style={styles.canvaSectionHeader}>
-                    <Text style={styles.canvaSectionTitle}>Beneficios Rewards</Text>
-                    <TouchableOpacity onPress={() => setActiveTab('rewards')}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={[styles.canvaSectionVerMas, { color: '#F59E0B' }]}>Ver más</Text>
-                        <Ionicons name="arrow-forward" size={12} color="#F59E0B" style={{ marginLeft: 2 }} />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.canvaCarouselContent}>
-                    {rewardsBlocks.length > 0 ? (
-                      rewardsBlocks.map((card, idx) => (
-                        <TouchableOpacity key={idx} style={styles.canvaCarouselCard} onPress={() => Linking.openURL(card.url || 'https://travelapp.ar/rewards')}>
-                          <Image source={{ uri: card.imageUrl }} style={styles.canvaCarouselCardImg} />
-                          <View style={styles.canvaCarouselCardBody}>
-                            <Text style={styles.canvaCarouselCardTitle} numberOfLines={1}>{card.title}</Text>
-                            <Text style={styles.canvaCarouselCardDesc} numberOfLines={2}>{card.description}</Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))
-                    ) : (
-                      <View style={styles.canvaCarouselCardPlaceholder}>
-                        <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary }}>Info Beneficios</Text>
-                      </View>
-                    )}
-                  </ScrollView>
-                </View>
+                {rewardsBlocks.length > 0 && (
+                  <OverlappingNativeCarousel
+                    cards={rewardsBlocks}
+                    title="Beneficios Rewards"
+                    subtitle="Canjes y descuentos exclusivos para miembros"
+                    badgeColor="#F59E0B"
+                    onSeeMore={() => setActiveTab('rewards')}
+                  />
+                )}
               </View>
             )}
           </View>

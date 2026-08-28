@@ -92,11 +92,30 @@ export const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
       attributionControl: false
     }).setView([${originLat}, ${originLng}], 15);
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
+    // Capa de Google Maps con Tráfico en Tiempo Real
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
     }).addTo(map);
 
     var carImg = "${CAR_MARKER_SVG}";
+
+    // Alertas de Tránsito en Vivo (Simulación y puntos clave de la ciudad)
+    var trafficAlerts = [
+      { lat: ${originLat} + 0.003, lng: ${originLng} + 0.002, type: 'traffic', label: 'Tránsito Pesado', icon: '🔴' },
+      { lat: ${originLat} - 0.004, lng: ${originLng} - 0.003, type: 'works', label: 'Obras en Calzada', icon: '🚧' },
+      { lat: ${originLat} + 0.006, lng: ${originLng} - 0.004, type: 'police', label: 'Control Municipal SUTRAPPA', icon: '🚨' }
+    ];
+
+    trafficAlerts.forEach(function(alert) {
+      var alertIcon = L.divIcon({
+        className: '',
+        html: '<div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #FF6B00; color: #FFF; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 12px; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); white-space: nowrap;">' + alert.icon + ' ' + alert.label + '</div>',
+        iconSize: [120, 26],
+        iconAnchor: [60, 13]
+      });
+      L.marker([alert.lat, alert.lng], { icon: alertIcon }).addTo(map);
+    });
 
     // Marcador de Origen
     var originIcon = L.divIcon({

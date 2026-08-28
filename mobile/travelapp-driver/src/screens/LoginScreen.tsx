@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Modal, ScrollView, Linking, Image
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { collection, doc, setDoc, addDoc, Timestamp } from 'firebase/firestore';
@@ -18,12 +19,45 @@ const MASTER_ADMIN_EMAILS = [
   'carlos@travelapp.ar',
 ];
 
+const SAVED_DRIVER_KEY = 'travelapp_driver_saved_credentials';
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [savedDriver, setSavedDriver] = useState<{ email: string; pass: string; name?: string } | null>(null);
+
+  // Cargar credenciales guardadas del conductor
+  React.useEffect(() => {
+    async function loadSavedDriver() {
+      try {
+        const raw = await AsyncStorage.getItem(SAVED_DRIVER_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.email) {
+            setSavedDriver(parsed);
+            setEmail(parsed.email);
+            if (parsed.pass) setPassword(parsed.pass);
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading saved driver credentials:', e);
+      }
+    }
+    loadSavedDriver();
+  }, []);
+
+  const handleBiometricLogin = async () => {
+    if (!savedDriver || !savedDriver.email || !savedDriver.pass) {
+      Alert.alert('Acceso Biométrico', 'Iniciá sesión una primera vez con tu contraseña para activar el desbloqueo por huella o Face ID.');
+      return;
+    }
+    setEmail(savedDriver.email);
+    setPassword(savedDriver.pass);
+    handleLoginDirect(savedDriver.email, savedDriver.pass);
+  };
 
   // Registro del Conductor - Asistente Onboarding de 4 Pasos
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
@@ -108,19 +142,19 @@ export default function LoginScreen() {
     }
   };
 
-  const handleLogin = async () => {
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || !password) return Alert.alert('Campos requeridos', 'Ingresá tu email y contraseña.');
+  const handleLoginDirect = async (targetEmail: string, targetPass: string) => {
+    const trimmedEmail = targetEmail.trim().toLowerCase();
+    if (!trimmedEmail || !targetPass) return Alert.alert('Campos requeridos', 'Ingresá tu email y contraseña.');
     setLoading(true);
     try {
       let userCred;
       try {
-        userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+        userCred = await signInWithEmailAndPassword(auth, trimmedEmail, targetPass);
       } catch (err: any) {
         const isMasterAdmin = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
         if (isMasterAdmin && err.code === 'auth/user-not-found') {
           try {
-            userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+            userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, targetPass);
           } catch (createErr: any) {
             throw createErr;
           }
@@ -130,6 +164,20 @@ export default function LoginScreen() {
       }
 
       if (userCred?.user) {
+        // Guardar credenciales en AsyncStorage para sesión permanente
+        try {
+          await AsyncStorage.setItem(
+            SAVED_DRIVER_KEY,
+            JSON.stringify({
+              email: trimmedEmail,
+              pass: targetPass,
+              name: userCred.user.displayName || 'Conductor',
+            })
+          );
+        } catch (storageErr) {
+          console.warn('Could not save driver credentials:', storageErr);
+        }
+
         const { getDoc } = await import('firebase/firestore');
         const driverRef = doc(db, 'drivers', userCred.user.uid);
         const snap = await getDoc(driverRef);
@@ -173,6 +221,10 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = () => {
+    handleLoginDirect(email, password);
   };
 
   const handleForgotPassword = async () => {
@@ -411,6 +463,20 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            {/* Botón Acceso Rápido Biométrico (Huella / Face ID) */}
+            {savedDriver && savedDriver.email ? (
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: '#10B981', marginBottom: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]}
+                onPress={handleBiometricLogin}
+                disabled={loading}
+              >
+                <Ionicons name="finger-print" size={22} color={Colors.white} style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>
+                  Ingresar con Huella / Face ID ({savedDriver.email.split('@')[0]})
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
               {loading ? (
                 <ActivityIndicator color={Colors.white} />

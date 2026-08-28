@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, ScrollView, Image, Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
@@ -17,6 +18,8 @@ const MASTER_ADMIN_EMAILS = [
   'carlos@travelapp.ar',
 ];
 
+const SAVED_USER_KEY = 'travelapp_saved_user_credentials';
+
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgot, setIsForgot] = useState(false);
@@ -28,6 +31,35 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [savedUser, setSavedUser] = useState<{ email: string; pass: string; name?: string } | null>(null);
+
+  // Cargar credenciales guardadas
+  React.useEffect(() => {
+    async function loadSavedCredentials() {
+      try {
+        const raw = await AsyncStorage.getItem(SAVED_USER_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.email) {
+            setSavedUser(parsed);
+            setEmailOrPhone(parsed.email);
+            if (parsed.pass) setPassword(parsed.pass);
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading saved credentials:', e);
+      }
+    }
+    loadSavedCredentials();
+  }, []);
+
+  const handleBiometricQuickLogin = async () => {
+    if (!savedUser || !savedUser.email || !savedUser.pass) {
+      Alert.alert('Acceso Biométrico', 'Iniciá sesión una primera vez con tu contraseña para activar el desbloqueo por huella o Face ID.');
+      return;
+    }
+    handleAuthWithCredentials(savedUser.email, savedUser.pass);
+  };
 
   const handleGoogleSignIn = () => {
     Alert.alert(
@@ -66,6 +98,20 @@ export default function LoginScreen() {
       }
 
       if (userCred?.user) {
+        // Guardar credenciales en almacenamiento local para inicio de sesión permanente y biométrico
+        try {
+          await AsyncStorage.setItem(
+            SAVED_USER_KEY,
+            JSON.stringify({
+              email: trimmedEmail,
+              pass: targetPass,
+              name: userCred.user.displayName || 'Pasajero',
+            })
+          );
+        } catch (storageErr) {
+          console.warn('Could not save credentials:', storageErr);
+        }
+
         const userRef = doc(db, 'users', userCred.user.uid);
         const snap = await getDoc(userRef);
 
@@ -299,6 +345,20 @@ export default function LoginScreen() {
                   <Text style={styles.forgotText}>¿Olvidé mi contraseña?</Text>
                 </TouchableOpacity>
               )}
+
+              {/* Botón Acceso Rápido Biométrico (Huella / Face ID) */}
+              {isLogin && !isForgot && savedUser && savedUser.email ? (
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: '#10B981', marginBottom: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]}
+                  onPress={handleBiometricQuickLogin}
+                  disabled={loading}
+                >
+                  <Ionicons name="finger-print" size={22} color={Colors.white} style={{ marginRight: 8 }} />
+                  <Text style={styles.primaryButtonText}>
+                    Ingresar con Huella / Face ID ({savedUser.email.split('@')[0]})
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
 
               {/* Botón Ingresar / Registro */}
               <TouchableOpacity

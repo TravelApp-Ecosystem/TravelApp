@@ -50,6 +50,10 @@ export default function DashboardScreen() {
   const [taxiFare, setTaxiFare] = useState(300.0);
   const [referralPassengerBonus, setReferralPassengerBonus] = useState(1500);
   const [referralDriverBonus, setReferralDriverBonus] = useState(2000);
+  const [freeTripPassengerEmail, setFreeTripPassengerEmail] = useState('');
+  const [freeTripPassengerPhone, setFreeTripPassengerPhone] = useState('');
+  const [freeTripPassengerName, setFreeTripPassengerName] = useState('');
+  const [sendingReceipt, setSendingReceipt] = useState(false);
 
   const appState = useRef(AppState.currentState);
   const [lastBackgroundTime, setLastBackgroundTime] = useState<number | null>(null);
@@ -628,21 +632,23 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Botón Viaje Libre / Taxímetro SUTRAPA (Habilitado para conductores y administradores) */}
-        <TouchableOpacity 
-          style={styles.taximeterBtn} 
-          onPress={() => {
-            setTaximeterStep('idle');
-            setTaxiSeconds(0);
-            setTaxiDistance(0.0);
-            setTaxiFare(300.0);
-            setTaximeterVisible(true);
-          }}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="calculator-outline" size={20} color={Colors.white} />
-          <Text style={styles.taximeterBtnText}>Modo Taxímetro (Viaje Libre / SUTRAPA)</Text>
-        </TouchableOpacity>
+        {/* Botón Viaje Libre / Taxímetro SUTRAPA (Habilitado exclusivamente para taxis y administradores) */}
+        {(vehicles.some(v => v.category?.toLowerCase().includes('taxi')) || (user?.email && (user.email.toLowerCase().includes('admin') || user.email.toLowerCase().includes('fer') || user.email.toLowerCase().includes('carlos') || user.email.toLowerCase().includes('edgar')))) && (
+          <TouchableOpacity 
+            style={[styles.taximeterBtn, { height: 56, justifyContent: 'center' }]} 
+            onPress={() => {
+              setTaximeterStep('idle');
+              setTaxiSeconds(0);
+              setTaxiDistance(0.0);
+              setTaxiFare(300.0);
+              setTaximeterVisible(true);
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="calculator-outline" size={24} color={Colors.white} style={{ marginRight: 8 }} />
+            <Text style={[styles.taximeterBtnText, { fontSize: 15, fontWeight: '800' }]}>Modo Taxímetro (Viaje Libre / SUTRAPPA)</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* MODAL DE TAXÍMETRO (VIAJE LIBRE) */}
@@ -660,12 +666,12 @@ export default function DashboardScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Ionicons name="calculator" size={24} color={Colors.primary} />
-              <Text style={styles.modalTitle}>Taxímetro Viaje Libre</Text>
+              <Text style={styles.modalTitle}>Taxímetro Viaje Libre (SUTRAPPA)</Text>
             </View>
 
             {taximeterStep === 'idle' && (
               <View style={{ width: '100%', gap: 12, alignItems: 'center' }}>
-                <Text style={styles.modalSubtitle}>Iniciá un viaje fuera de la plataforma calculando la tarifa según la ordenanza municipal vigente:</Text>
+                <Text style={styles.modalSubtitle}>Iniciá un viaje en calle calculando la tarifa según la ordenanza municipal vigente:</Text>
                 
                 <View style={styles.taxiRateBox}>
                   <View style={styles.taxiRateRow}>
@@ -677,20 +683,40 @@ export default function DashboardScreen() {
                     <Text style={styles.taxiRateValue}>$180.00 ARS</Text>
                   </View>
                   <View style={styles.taxiRateRow}>
-                    <Text style={styles.taxiRateLabel}>Valor por Minuto de Espera:</Text>
+                    <Text style={styles.taxiRateLabel}>Valor por Minuto:</Text>
                     <Text style={styles.taxiRateValue}>$50.00 ARS</Text>
                   </View>
                 </View>
 
+                {/* Datos del Pasajero para Recibo Opcional */}
+                <View style={{ width: '100%', gap: 8, marginTop: 4 }}>
+                  <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#64748B' }}>
+                    Email del Pasajero (Para Recibo Digital):
+                  </Text>
+                  <TextInput
+                    style={[styles.formInput, { height: 42, fontSize: 13 }]}
+                    placeholder="pasajero@gmail.com (Opcional)"
+                    placeholderTextColor={Colors.textMuted}
+                    value={freeTripPassengerEmail}
+                    onChangeText={setFreeTripPassengerEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                {/* Botón Gigante Iniciar Viaje */}
                 <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', backgroundColor: Colors.success, marginTop: 12 }]}
+                  style={[styles.saveFormBtn, { width: '100%', height: 60, backgroundColor: Colors.success, justifyContent: 'center', alignItems: 'center', marginTop: 12 }]}
                   onPress={() => setTaximeterStep('running')}
                 >
-                  <Text style={styles.saveFormText}>Iniciar Viaje</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="play" size={24} color={Colors.white} style={{ marginRight: 8 }} />
+                    <Text style={[styles.saveFormText, { fontSize: 18, fontWeight: '800' }]}>INICIAR VIAJE LIBRE</Text>
+                  </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  style={[styles.cancelFormBtn, { width: '100%' }]}
+                  style={[styles.cancelFormBtn, { width: '100%', height: 46, justifyContent: 'center' }]}
                   onPress={() => setTaximeterVisible(false)}
                 >
                   <Text style={styles.cancelFormText}>Cancelar</Text>
@@ -700,30 +726,34 @@ export default function DashboardScreen() {
 
             {taximeterStep === 'running' && (
               <View style={{ width: '100%', gap: 14, alignItems: 'center' }}>
-                <View style={styles.taxiLiveDisplay}>
-                  <Text style={styles.taxiLiveFare}>${taxiFare} ARS</Text>
-                  <Text style={styles.taxiLiveFareLabel}>Tarifa Estimada</Text>
+                <View style={[styles.taxiLiveDisplay, { paddingVertical: 18 }]}>
+                  <Text style={[styles.taxiLiveFare, { fontSize: 42 }]}>${taxiFare} ARS</Text>
+                  <Text style={styles.taxiLiveFareLabel}>Tarifa Acumulada en Vivo</Text>
                 </View>
 
                 <View style={styles.taxiLiveStats}>
                   <View style={styles.taxiLiveStatItem}>
-                    <Ionicons name="time-outline" size={20} color={Colors.primary} />
-                    <Text style={styles.taxiLiveStatVal}>{formatTaxiTime(taxiSeconds)}</Text>
+                    <Ionicons name="time-outline" size={24} color={Colors.primary} />
+                    <Text style={[styles.taxiLiveStatVal, { fontSize: 18 }]}>{formatTaxiTime(taxiSeconds)}</Text>
                     <Text style={styles.taxiLiveStatLabel}>Tiempo</Text>
                   </View>
                   <View style={styles.taxiLiveStatDivider} />
                   <View style={styles.taxiLiveStatItem}>
-                    <Ionicons name="resize-outline" size={20} color={Colors.accent} />
-                    <Text style={styles.taxiLiveStatVal}>{taxiDistance.toFixed(2)} km</Text>
+                    <Ionicons name="speedometer-outline" size={24} color={Colors.accent} />
+                    <Text style={[styles.taxiLiveStatVal, { fontSize: 18 }]}>{taxiDistance.toFixed(2)} km</Text>
                     <Text style={styles.taxiLiveStatLabel}>Distancia</Text>
                   </View>
                 </View>
 
+                {/* Botón Gigante Finalizar Viaje */}
                 <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', backgroundColor: Colors.danger, marginTop: 12 }]}
+                  style={[styles.saveFormBtn, { width: '100%', height: 64, backgroundColor: Colors.danger, justifyContent: 'center', alignItems: 'center', marginTop: 12 }]}
                   onPress={() => setTaximeterStep('summary')}
                 >
-                  <Text style={styles.saveFormText}>Finalizar Viaje</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="stop-circle" size={26} color={Colors.white} style={{ marginRight: 8 }} />
+                    <Text style={[styles.saveFormText, { fontSize: 18, fontWeight: '800' }]}>FINALIZAR VIAJE</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             )}
@@ -746,38 +776,74 @@ export default function DashboardScreen() {
                     <Text style={styles.taxiRateValue}>${Math.round((taxiSeconds / 60) * 50)} ARS</Text>
                   </View>
                   <View style={[styles.taxiRateRow, { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 6, marginTop: 4 }]}>
-                    <Text style={[styles.taxiRateLabel, { fontFamily: 'Quicksand-Bold', color: Colors.textPrimary }]}>Total a Cobrar:</Text>
-                    <Text style={[styles.taxiRateValue, { fontFamily: 'Quicksand-Bold', color: Colors.success, fontSize: 16 }]}>${taxiFare} ARS</Text>
+                    <Text style={[styles.taxiRateLabel, { fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, fontSize: 16 }]}>Total a Cobrar:</Text>
+                    <Text style={[styles.taxiRateValue, { fontFamily: 'Quicksand-Bold', color: Colors.success, fontSize: 20 }]}>${taxiFare} ARS</Text>
                   </View>
                 </View>
 
+                {/* Botón Cobrar y Enviar Recibo */}
                 <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', backgroundColor: Colors.primary, marginTop: 8 }]}
-                  onPress={() => {
+                  style={[styles.saveFormBtn, { width: '100%', height: 56, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', marginTop: 8 }]}
+                  disabled={sendingReceipt}
+                  onPress={async () => {
+                    setSendingReceipt(true);
+                    if (freeTripPassengerEmail) {
+                      try {
+                        await fetch('https://travelapp-five-nu.vercel.app/api/receipt/send', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            passengerName: freeTripPassengerName || 'Pasajero',
+                            passengerEmail: freeTripPassengerEmail,
+                            passengerPhone: freeTripPassengerPhone,
+                            driverName: user?.displayName || 'Conductor TravelCab',
+                            origin: 'Viaje Libre SUTRAPPA',
+                            destination: 'Destino Final',
+                            totalFare: taxiFare,
+                            distanceKm: Number(taxiDistance.toFixed(2)),
+                            durationMinutes: Math.round(taxiSeconds / 60),
+                            paymentMethod: 'Efectivo',
+                            breakdown: { baseFare: 300, distanceCost: Math.round(taxiDistance * 180), timeCost: Math.round((taxiSeconds / 60) * 50) }
+                          })
+                        });
+                      } catch (e) {
+                        console.warn('Error sending receipt:', e);
+                      }
+                    }
                     setTodayEarnings(prev => prev + taxiFare);
                     setTodayTrips(prev => prev + 1);
+                    setSendingReceipt(false);
                     setTaximeterVisible(false);
                     setTaximeterStep('idle');
-                    Alert.alert('Viaje Registrado', 'Los ingresos fueron sumados a tu recaudación diaria.');
+                    setFreeTripPassengerEmail('');
+                    setFreeTripPassengerPhone('');
+                    setFreeTripPassengerName('');
+                    Alert.alert('Viaje Finalizado 🚖', `Cobro de $${taxiFare} ARS registrado.${freeTripPassengerEmail ? ' Se envió el recibo por email.' : ''}`);
                   }}
                 >
-                  <Text style={styles.saveFormText}>Cobrar en Efectivo y Cerrar</Text>
+                  {sendingReceipt ? (
+                    <ActivityIndicator color={Colors.white} />
+                  ) : (
+                    <Text style={[styles.saveFormText, { fontSize: 16, fontWeight: '800' }]}>Cobrar y Emitir Recibo</Text>
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', backgroundColor: '#25D366' }]}
+                  style={[styles.saveFormBtn, { width: '100%', height: 48, backgroundColor: '#25D366', justifyContent: 'center', alignItems: 'center' }]}
                   onPress={async () => {
                     try {
                       await Share.share({
-                        message: `¡Hola! Gracias por viajar conmigo. Descargá la app del pasajero TravelApp, registrate usando mi código de referido CHOFER_${user.uid} y obtené un descuento de $${referralPassengerBonus} ARS en tu primer viaje: https://travelapp.ar/invite`
+                        message: `¡Hola! Gracias por viajar conmigo en TravelApp. Registrate usando mi código CHOFER_${user?.uid || 'APP'} y obtené un descuento de $${referralPassengerBonus} ARS: https://travelapp.ar/invite`
                       });
                     } catch (error) {
                       console.log("Error sharing referral:", error);
                     }
                   }}
                 >
-                  <Ionicons name="logo-whatsapp" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-                  <Text style={styles.saveFormText}>Enviar Invitación / Referido</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="logo-whatsapp" size={18} color={Colors.white} style={{ marginRight: 6 }} />
+                    <Text style={styles.saveFormText}>Enviar Invitación / WhatsApp</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             )}
