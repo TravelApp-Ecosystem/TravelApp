@@ -224,7 +224,10 @@ function RewardsSettingsContent() {
         >
           <Layers className="mr-2 h-4 w-4" />
           Categorías de Comercios
-        </button>      {/* Tab 1: Rules */}
+        </button>
+      </div>
+
+      {/* Tab 1: Rules */}
       {activeTab === 'rules' && (
         <div className="space-y-4">
           {/* Banner Informativo de Arquitectura de Puntos */}
