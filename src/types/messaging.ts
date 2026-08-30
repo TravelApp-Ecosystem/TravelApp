@@ -251,6 +251,9 @@ Operamos con: TravelCab (remises y transporte urbano), TravelExperiences (tours 
 
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
 
+export type NotificationAudioType = 'default' | 'driver_alert' | 'seatbelt_safety' | 'promo' | 'none';
+export type NotificationCategory = 'general' | 'travelcab' | 'promo' | 'safety' | 'maintenance';
+
 export interface BroadcastStats {
   targeted: number;
   sent: number;
@@ -265,6 +268,8 @@ export interface BroadcastCampaign {
   audience: BroadcastAudience;
   specificIds?: string[];   // IDs específicos si audience === 'specific'
   channel: MessageChannel | 'both';
+  soundAlert?: NotificationAudioType;
+  category?: NotificationCategory;
   status: BroadcastStatus;
   scheduledAt?: number;
   sentAt?: number;

@@ -9,7 +9,7 @@ import { db } from '@/lib/firebase';
 import {
   Conversation, Message, AutomatedMessage, BroadcastCampaign,
   MessageChannel, AUTOMATED_TRIGGER_LABELS, DEFAULT_AUTOMATED_MESSAGES,
-  AutomatedTrigger,
+  AutomatedTrigger, NotificationAudioType, NotificationCategory,
 } from '@/types/messaging';
 import { LeadDetailSlideOver } from '@/components/crm/LeadDetailSlideOver';
 import { Lead } from '@/types/crm';
@@ -747,9 +747,11 @@ function BroadcastPanel() {
   const [message, setMessage] = useState('');
   const [audience, setAudience] = useState<string>('all');
   const [channel, setChannel] = useState('push');
+  const [soundAlert, setSoundAlert] = useState<NotificationAudioType>('default');
+  const [category, setCategory] = useState<NotificationCategory>('general');
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [contacts, setContacts] = useState<{ id: string; name: string; phone?: string; role: string }[]>([]);
+  const [contacts, setContacts] = useState<{ id: string; name: string; phone?: string; role: string; email?: string }[]>([]);
   const [contactSearch, setContactSearch] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -766,20 +768,39 @@ function BroadcastPanel() {
     if (audience === 'specific') {
       const fetchContacts = async () => {
         try {
-          const snap = await getDocs(collection(db, 'conversations'));
-          const list = snap.docs.map(doc => {
+          const list: { id: string; name: string; phone?: string; role: string; email?: string }[] = [];
+          
+          // Cargar usuarios de 'users'
+          const usersSnap = await getDocs(collection(db, 'users'));
+          usersSnap.docs.forEach(doc => {
             const data = doc.data();
-            const p = data.participants?.find((part: any) => part.role === 'customer' || part.role === 'driver');
-            return {
-              id: data.manyChatSubscriberId || doc.id,
-              name: p?.name || 'Contacto Desconocido',
-              phone: p?.phone || '',
-              role: p?.role || 'customer'
-            };
-          }).filter((item, index, self) => 
+            list.push({
+              id: doc.id,
+              name: data.displayName || data.fullName || data.email?.split('@')[0] || 'Pasajero',
+              phone: data.phoneNumber || data.phone || '',
+              email: data.email || '',
+              role: 'customer'
+            });
+          });
+
+          // Cargar conductores de 'drivers'
+          const driversSnap = await getDocs(collection(db, 'drivers'));
+          driversSnap.docs.forEach(doc => {
+            const data = doc.data();
+            list.push({
+              id: doc.id,
+              name: data.name || data.fullName || 'Conductor TravelCab',
+              phone: data.phone || '',
+              email: data.email || '',
+              role: 'driver'
+            });
+          });
+
+          // Deduplicar
+          const uniqueList = list.filter((item, index, self) =>
             item.id && self.findIndex(t => t.id === item.id) === index
           );
-          setContacts(list);
+          setContacts(uniqueList);
         } catch (error) {
           console.error("Error cargando contactos:", error);
         }
@@ -801,6 +822,8 @@ function BroadcastPanel() {
           message: message.trim(), 
           audience, 
           channel,
+          soundAlert,
+          category,
           specificIds: audience === 'specific' ? selectedIds : undefined,
           scheduledAt
         }),
@@ -811,6 +834,8 @@ function BroadcastPanel() {
         setComposing(false); 
         setTitle(''); 
         setMessage(''); 
+        setSoundAlert('default');
+        setCategory('general');
         setScheduledTime('');
         setSelectedIds([]);
       }, 2000);
@@ -821,22 +846,38 @@ function BroadcastPanel() {
   };
 
   const AUDIENCE_OPTIONS = [
-    { value: 'all', label: '🌎 Todos', desc: 'Pasajeros y conductores' },
-    { value: 'passengers', label: '👤 Solo Pasajeros', desc: 'Usuarios del servicio' },
-    { value: 'drivers', label: '🚗 Solo Conductores', desc: 'Choferes activos' },
-    { value: 'specific', label: '🎯 Específico', desc: 'Por nombre/ID de usuario' },
+    { value: 'all', label: '🌎 Todos los Usuarios', desc: 'Pasajeros, Choferes y Afiliados' },
+    { value: 'passengers', label: '👤 Solo Pasajeros', desc: 'Clientes de la app' },
+    { value: 'drivers', label: '🚗 Solo Conductores', desc: 'Choferes activos de TravelCab' },
+    { value: 'specific', label: '🎯 Destinatario Específico', desc: 'Buscar por nombre, email o ID' },
+  ];
+
+  const SOUND_OPTIONS: { value: NotificationAudioType; label: string; desc: string }[] = [
+    { value: 'default', label: '🔔 Campana Estándar', desc: 'Notificación tradicional' },
+    { value: 'driver_alert', label: '🚨 Alerta Fuerte de Solicitud', desc: 'Tono agudo continuo para choferes' },
+    { value: 'seatbelt_safety', label: '🛡️ Locución de Cinturón', desc: 'Audio hablado de seguridad' },
+    { value: 'promo', label: '🎁 Audio Promocional', desc: 'Tono festivo para cupones' },
+    { value: 'none', label: '🔇 Silencioso', desc: 'Sin audio en el dispositivo' },
+  ];
+
+  const CATEGORY_OPTIONS: { value: NotificationCategory; label: string }[] = [
+    { value: 'general', label: 'ℹ️ General' },
+    { value: 'travelcab', label: '🚕 Tarifas & Viajes' },
+    { value: 'promo', label: '🎁 Promociones & Rewards' },
+    { value: 'safety', label: '🛡️ Seguridad & Protocolos' },
+    { value: 'maintenance', label: '🔧 Novedad del Sistema' },
   ];
 
   return (
     <div className="p-4 space-y-4 overflow-y-auto h-full">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-bold text-slate-800">Campañas & Broadcast</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Enviá mensajes segmentados a tu audiencia.</p>
+          <h3 className="font-bold text-slate-800">Centro de Notificaciones Push & Alertas Sonoras</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Enviá avisos masivos, segmentados o individuales con audio integrado.</p>
         </div>
         {!composing && (
           <button onClick={() => setComposing(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-tech-blue text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus className="h-3.5 w-3.5" /> Nueva Campaña
+            <Plus className="h-3.5 w-3.5" /> Nueva Notificación
           </button>
         )}
       </div>
@@ -844,25 +885,47 @@ function BroadcastPanel() {
       {composing && (
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
           <h4 className="font-semibold text-slate-800 text-sm flex items-center gap-2">
-            <Megaphone className="h-4 w-4 text-tech-blue" /> Nueva Campaña
+            <Megaphone className="h-4 w-4 text-tech-blue" /> Redactar Notificación & Alerta de Audio
           </h4>
-          <input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Título de la campaña..."
-            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-tech-blue/20"
-          />
-          <textarea
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            rows={4}
-            placeholder="Escribí el mensaje que van a recibir..."
-            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-tech-blue/20 resize-none"
-          />
+          
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 mb-1">Título</label>
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Ej: ¡Lluvia en la ciudad! Multiplicador activo 🌧️"
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-tech-blue/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1">Categoría</label>
+              <select
+                value={category}
+                onChange={e => setCategory(e.target.value as NotificationCategory)}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none bg-white font-medium"
+              >
+                {CATEGORY_OPTIONS.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">Mensaje / Cuerpo de la Notificación</label>
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              rows={3}
+              placeholder="Escribí el texto que aparecerá en los teléfonos..."
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-tech-blue/20 resize-none"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Audiencia</label>
+              <label className="block text-xs font-bold text-slate-500 mb-1">Audiencia Destino</label>
               <div className="space-y-1">
                 {AUDIENCE_OPTIONS.map(o => (
                   <label key={o.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${audience === o.value ? 'border-tech-blue bg-tech-blue/5' : 'border-slate-200 hover:bg-slate-55'}`}>
@@ -876,18 +939,14 @@ function BroadcastPanel() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Canal de Envío</label>
+              <label className="block text-xs font-bold text-slate-500 mb-1">Sonido / Alerta de Audio en Celular</label>
               <div className="space-y-1">
-                {[
-                  { value: 'push', label: '🔔 Solo Push (App)', desc: 'Notificación interna' },
-                  { value: 'whatsapp', label: '📱 Solo WhatsApp', desc: 'Requiere ManyChat' },
-                  { value: 'both', label: '⚡ Push + WhatsApp', desc: 'Máximo alcance' },
-                ].map(o => (
-                  <label key={o.value} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${channel === o.value ? 'border-tech-blue bg-tech-blue/5' : 'border-slate-200 hover:bg-slate-55'}`}>
-                    <input type="radio" name="channel" value={o.value} checked={channel === o.value} onChange={e => setChannel(e.target.value)} className="sr-only" />
+                {SOUND_OPTIONS.map(s => (
+                  <label key={s.value} className={`flex items-center gap-2 p-1.5 rounded-lg border cursor-pointer transition-all ${soundAlert === s.value ? 'border-tech-blue bg-tech-blue/5' : 'border-slate-200 hover:bg-slate-55'}`}>
+                    <input type="radio" name="soundAlert" value={s.value} checked={soundAlert === s.value} onChange={e => setSoundAlert(e.target.value as NotificationAudioType)} className="sr-only" />
                     <div>
-                      <div className="text-xs font-semibold text-slate-800">{o.label}</div>
-                      <div className="text-[10px] text-slate-400">{o.desc}</div>
+                      <div className="text-xs font-semibold text-slate-800">{s.label}</div>
+                      <div className="text-[10px] text-slate-400">{s.desc}</div>
                     </div>
                   </label>
                 ))}
@@ -984,14 +1043,24 @@ function BroadcastPanel() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-slate-800">{c.title}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.status === 'sent' ? 'bg-emerald-50 text-emerald-700' : c.status === 'scheduled' ? 'bg-indigo-50 text-indigo-700' : c.status === 'sending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-55'}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.status === 'sent' ? 'bg-emerald-50 text-emerald-700' : c.status === 'scheduled' ? 'bg-indigo-50 text-indigo-700' : c.status === 'sending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
                         {c.status === 'sent' ? '✅ Enviada' : c.status === 'scheduled' ? '📅 Programada' : c.status === 'sending' ? '⏳ Enviando' : c.status}
                       </span>
+                      {c.soundAlert && c.soundAlert !== 'none' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          {c.soundAlert === 'driver_alert' ? '🚨 Alerta Chofer' : c.soundAlert === 'seatbelt_safety' ? '🛡️ Locución Cinturón' : c.soundAlert === 'promo' ? '🎁 Audio Promo' : '🔔 Campana'}
+                        </span>
+                      )}
+                      {c.audience && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-700">
+                          {c.audience === 'drivers' ? '🚗 Solo Choferes' : c.audience === 'passengers' ? '👤 Solo Pasajeros' : c.audience === 'specific' ? '🎯 Específico' : '🌎 Todos'}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{c.message}</p>
                     
                     {c.status === 'scheduled' && c.scheduledAt && (
-                      <p className="text-[10px] text-indigo-650 font-semibold mt-1">
+                      <p className="text-[10px] text-indigo-600 font-semibold mt-1">
                         📅 Programada para: {new Date(c.scheduledAt).toLocaleString('es-AR')}
                       </p>
                     )}

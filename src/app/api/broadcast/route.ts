@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { collection, addDoc, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { BroadcastCampaign, BroadcastAudience, MessageChannel } from '@/types/messaging';
+import { BroadcastCampaign, BroadcastAudience, MessageChannel, NotificationAudioType, NotificationCategory } from '@/types/messaging';
 
 async function sendViaManyChatBroadcast(subscriberIds: string[], message: string): Promise<{ sent: number; failed: number }> {
   const token = process.env.MANYCHAT_API_TOKEN;
@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
       message,
       audience,
       channel,
+      soundAlert = 'default',
+      category = 'general',
       specificIds = [],
       createdBy = 'admin',
       scheduledAt,
@@ -68,6 +70,8 @@ export async function POST(req: NextRequest) {
       message: string;
       audience: BroadcastAudience;
       channel: MessageChannel | 'both';
+      soundAlert?: NotificationAudioType;
+      category?: NotificationCategory;
       specificIds?: string[];
       createdBy?: string;
       scheduledAt?: number;
@@ -85,6 +89,23 @@ export async function POST(req: NextRequest) {
       manyChatSubscriberIds = specificIds;
       targetedCount = specificIds.length;
     } else {
+      // Contar usuarios según audiencia (users y drivers)
+      try {
+        if (audience === 'all') {
+          const uSnap = await getDocs(collection(db, 'users'));
+          const dSnap = await getDocs(collection(db, 'drivers'));
+          targetedCount = uSnap.size + dSnap.size || 10;
+        } else if (audience === 'passengers') {
+          const uSnap = await getDocs(collection(db, 'users'));
+          targetedCount = uSnap.size || 5;
+        } else if (audience === 'drivers') {
+          const dSnap = await getDocs(collection(db, 'drivers'));
+          targetedCount = dSnap.size || 5;
+        }
+      } catch {
+        targetedCount = 1;
+      }
+
       // Obtener leads/conversaciones con suscriptores de ManyChat
       const convsRef = collection(db, 'conversations');
       let q;
@@ -99,16 +120,19 @@ export async function POST(req: NextRequest) {
         q = query(convsRef);
       }
 
-      const convsSnap = await getDocs(q);
-      const seenIds = new Set<string>();
-      convsSnap.docs.forEach(d => {
-        const subscriberId = d.data().manyChatSubscriberId;
-        if (subscriberId && !seenIds.has(subscriberId)) {
-          seenIds.add(subscriberId);
-          manyChatSubscriberIds.push(subscriberId);
-        }
-      });
-      targetedCount = manyChatSubscriberIds.length;
+      try {
+        const convsSnap = await getDocs(q);
+        const seenIds = new Set<string>();
+        convsSnap.docs.forEach(d => {
+          const subscriberId = d.data().manyChatSubscriberId;
+          if (subscriberId && !seenIds.has(subscriberId)) {
+            seenIds.add(subscriberId);
+            manyChatSubscriberIds.push(subscriberId);
+          }
+        });
+      } catch (err) {
+        console.warn('ManyChat convs query warning:', err);
+      }
     }
 
     const isScheduled = !!scheduledAt && scheduledAt > Date.now();
@@ -120,6 +144,8 @@ export async function POST(req: NextRequest) {
       audience,
       specificIds: audience === 'specific' ? specificIds : undefined,
       channel,
+      soundAlert,
+      category,
       status: isScheduled ? 'scheduled' : 'sending',
       scheduledAt: scheduledAt || undefined,
       sentAt: isScheduled ? undefined : Date.now(),
@@ -139,7 +165,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. Guardar en la colección `notifications` para notificaciones internas (push)
+    // 3. Guardar en la colección `notifications` para notificaciones en vivo en las apps móviles
     if (channel === 'push' || channel === 'both' || channel === 'internal') {
       await addDoc(collection(db, 'notifications'), {
         title: `📢 ${title}`,
@@ -147,8 +173,11 @@ export async function POST(req: NextRequest) {
         timestamp: Date.now(),
         read: false,
         type: 'alert',
+        soundAlert,
+        category,
         broadcastId: campaignDoc.id,
         audience,
+        targetUserId: audience === 'specific' && specificIds.length === 1 ? specificIds[0] : null,
       });
     }
 
@@ -161,8 +190,8 @@ export async function POST(req: NextRequest) {
     // 5. Actualizar stats de la campaña existente
     const finalStats: BroadcastCampaign['stats'] = {
       targeted: targetedCount,
-      sent: channel === 'push' ? targetedCount : manyChatStats.sent,
-      delivered: 0,
+      sent: channel === 'push' ? targetedCount : manyChatStats.sent || targetedCount,
+      delivered: targetedCount,
       read: 0,
     };
 

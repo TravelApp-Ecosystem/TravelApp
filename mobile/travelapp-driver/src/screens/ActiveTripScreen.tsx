@@ -8,6 +8,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { db, auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { InteractiveMapView } from '../components/InteractiveMapView';
+import { playSeatbeltSafetyPrompt } from '../lib/audioService';
 
 const STEPS = [
   { status: 'on_way', label: 'En camino al pasajero', action: 'Llegué al punto de encuentro', next: 'arrived' },
@@ -108,6 +109,9 @@ export default function ActiveTripScreen() {
         return;
       }
       await updateDoc(doc(db, 'trips', tripId), update);
+      if (nextStatus === 'in_progress') {
+        playSeatbeltSafetyPrompt();
+      }
       setShowPinModal(false);
       setInputPin('');
     } catch {

@@ -7,7 +7,7 @@ import {
   X, Plane, ArrowLeftRight, Building2, Phone, Mail, Percent, ShieldAlert,
   Search, Filter, Layers, SlidersHorizontal, Eye, Grid, ListFilter, XCircle,
   Calendar, Clock, Coins, ShieldCheck, Check, AlertTriangle, ChevronRight,
-  TrendingUp, Users, ArrowUpRight, Zap
+  TrendingUp, Users, ArrowUpRight, Zap, Volume2, Play
 } from 'lucide-react';
 import { Branch, ARCTariff, MUTariff, VehicleCategory, TransferTariff } from '@/types/logistics';
 import { MUTariffForm } from '@/components/travelcab/settings/MUTariffForm';
@@ -34,6 +34,10 @@ export default function TravelCabSettingsPage() {
   
   // System Config / Logistics States
   const [notificationSoundUrl, setNotificationSoundUrl] = useState('');
+  const [seatbeltPromptText, setSeatbeltPromptText] = useState('Por tu seguridad, es importante que te coloques el cinturón de seguridad y verifiques tu destino. ¡Buen viaje!');
+  const [seatbeltAudioUrl, setSeatbeltAudioUrl] = useState('');
+  const [arrivalPromptText, setArrivalPromptText] = useState('Has llegado a tu destino. ¡Muchas gracias por viajar con TravelApp! No olvides tus pertenencias.');
+  const [voiceGender, setVoiceGender] = useState<'female' | 'male'>('female');
   const [isSavingSystem, setIsSavingSystem] = useState(false);
   const [isLoadingSystem, setIsLoadingSystem] = useState(true);
   
@@ -141,7 +145,12 @@ export default function TravelCabSettingsPage() {
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'system_config', 'logistics'), (snap) => {
       if (snap.exists()) {
-        setNotificationSoundUrl(snap.data().notificationSoundUrl || '');
+        const data = snap.data();
+        setNotificationSoundUrl(data.notificationSoundUrl || '');
+        if (data.seatbeltPromptText) setSeatbeltPromptText(data.seatbeltPromptText);
+        if (data.seatbeltAudioUrl) setSeatbeltAudioUrl(data.seatbeltAudioUrl);
+        if (data.arrivalPromptText) setArrivalPromptText(data.arrivalPromptText);
+        if (data.voiceGender) setVoiceGender(data.voiceGender);
       }
       setIsLoadingSystem(false);
     }, (error) => {
@@ -155,9 +164,14 @@ export default function TravelCabSettingsPage() {
     setIsSavingSystem(true);
     try {
       await setDoc(doc(db, 'system_config', 'logistics'), {
-        notificationSoundUrl
+        notificationSoundUrl,
+        seatbeltPromptText,
+        seatbeltAudioUrl,
+        arrivalPromptText,
+        voiceGender,
+        updatedAt: Date.now()
       }, { merge: true });
-      alert('Configuración del sistema guardada con éxito.');
+      alert('Configuración de audios y locuciones guardada con éxito.');
     } catch (err) {
       console.error("Error saving system config:", err);
       alert('Error al guardar la configuración.');
@@ -1806,48 +1820,225 @@ export default function TravelCabSettingsPage() {
           </div>
         )}
 
-        {/* TAB DE CONFIGURACIÓN DEL SISTEMA */}
+        {/* TAB DE CONFIGURACIÓN DEL SISTEMA & AUDIOS */}
         {activeTab === 'system' && (
           <div className="lg:col-span-1">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-tech-blue flex items-center">
-                  <Settings className="mr-2 h-5 w-5 text-vial-orange" />
-                  Configuración del Sistema
-                </h3>
+                <div>
+                  <h3 className="text-lg font-bold text-tech-blue flex items-center">
+                    <Volume2 className="mr-2 h-5 w-5 text-vial-orange" />
+                    Centro de Audios, Locuciones & Alertas Sonoras
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Controlá los audios de la app, locuciones automáticas de seguridad y sonidos de solicitud en vivo.
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-6 max-w-2xl bg-slate-50 p-6 rounded-xl border border-slate-200">
-                <div>
-                  <h4 className="text-base font-bold text-tech-blue mb-1">Alertas y Notificaciones Sonoras</h4>
-                  <p className="text-sm text-slate-500 mb-4">
-                    Configura la pista de audio de notificación que se reproducirá en bucle en la aplicación del conductor al recibir solicitudes.
-                  </p>
+              <div className="space-y-6 max-w-3xl">
+                
+                {/* 1. SONIDO DE SOLICITUD DE VIAJE CHOFER */}
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600">
+                        <Volume2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">1. Alerta Sonora de Solicitud de Viaje (Chofer)</h4>
+                        <p className="text-xs text-slate-500">Tono que suena fuerte en bucle cuando el conductor recibe un viaje.</p>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                      URL del Audio de Notificación (MP3 / WAV)
+                      URL del Archivo de Audio (MP3 / WAV)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-tech-blue bg-white focus:border-vial-orange focus:outline-none transition-colors"
+                        placeholder="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+                        value={notificationSoundUrl}
+                        onChange={(e) => setNotificationSoundUrl(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = notificationSoundUrl || 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+                          const audio = new Audio(url);
+                          audio.play().catch(() => alert('No se pudo reproducir el audio. Verificá la URL.'));
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                      >
+                        <Play className="h-4 w-4" /> Escuchar
+                      </button>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setNotificationSoundUrl('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')}
+                        className="text-[11px] font-semibold text-tech-blue hover:underline bg-white px-2.5 py-1 rounded border border-slate-200"
+                      >
+                        ✨ Usar Radar Oficial TravelCab
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNotificationSoundUrl('https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3')}
+                        className="text-[11px] font-semibold text-tech-blue hover:underline bg-white px-2.5 py-1 rounded border border-slate-200"
+                      >
+                        🔔 Usar Campana Aguda
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. LOCUCIÓN DE CINTURÓN DE SEGURIDAD & SELECTOR DE VOZ */}
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">2. Locución de Seguridad al Iniciar el Viaje (Cinturón)</h4>
+                        <p className="text-xs text-slate-500">Audio o voz automática que suena en el auto cuando el viaje arranca.</p>
+                      </div>
+                    </div>
+
+                    {/* SELECTOR DE VOZ FEMENINA / MASCULINA */}
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-xs">
+                      <button
+                        type="button"
+                        onClick={() => setVoiceGender('female')}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                          voiceGender === 'female'
+                            ? 'bg-tech-blue text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        👩 Voz Femenina
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVoiceGender('male')}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                          voiceGender === 'male'
+                            ? 'bg-tech-blue text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        👨 Voz Masculina
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                      Texto de la Locución Hablada (Text-to-Speech)
+                    </label>
+                    <textarea
+                      rows={2}
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-800 bg-white focus:border-vial-orange focus:outline-none transition-colors resize-none"
+                      value={seatbeltPromptText}
+                      onChange={(e) => setSeatbeltPromptText(e.target.value)}
+                      placeholder="Por tu seguridad, es importante que te coloques el cinturón de seguridad y verifiques tu destino. ¡Buen viaje!"
+                    />
+                    <div className="flex items-center justify-between pt-1">
+                      <p className="text-[11px] text-slate-400">Podés editar cualquier palabra o tono del mensaje ({voiceGender === 'male' ? 'Voz Masculina activa' : 'Voz Femenina activa'}).</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if ('speechSynthesis' in window) {
+                            window.speechSynthesis.cancel();
+                            const utterance = new SpeechSynthesisUtterance(seatbeltPromptText);
+                            utterance.lang = 'es-AR';
+                            utterance.pitch = voiceGender === 'male' ? 0.8 : 1.15;
+                            utterance.rate = 0.95;
+                            window.speechSynthesis.speak(utterance);
+                          } else {
+                            alert('Tu navegador no soporta síntesis de voz.');
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                      >
+                        <Volume2 className="h-3.5 w-3.5" /> Probar Locución en Vivo ({voiceGender === 'male' ? '👨 Masculina' : '👩 Femenina'})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-200">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                      (Opcional) URL de Audio MP3 Grabado en Estudio
                     </label>
                     <input
                       type="text"
-                      className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-tech-blue bg-white focus:border-vial-orange focus:outline-none transition-colors"
-                      placeholder="https://example.com/sound.mp3"
-                      value={notificationSoundUrl}
-                      onChange={(e) => setNotificationSoundUrl(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-800 bg-white focus:border-vial-orange focus:outline-none transition-colors"
+                      placeholder="https://example.com/cinturon-seguridad.mp3"
+                      value={seatbeltAudioUrl}
+                      onChange={(e) => setSeatbeltAudioUrl(e.target.value)}
                     />
                   </div>
                 </div>
 
+                {/* 3. LOCUCIÓN DE LLEGADA A DESTINO */}
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800">3. Locución al Llegar a Destino</h4>
+                      <p className="text-xs text-slate-500">Aviso hablado al finalizar el recorrido.</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                      Texto de Despedida
+                    </label>
+                    <textarea
+                      rows={2}
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-800 bg-white focus:border-vial-orange focus:outline-none transition-colors resize-none"
+                      value={arrivalPromptText}
+                      onChange={(e) => setArrivalPromptText(e.target.value)}
+                      placeholder="Has llegado a tu destino. ¡Muchas gracias por viajar con TravelApp! No olvides tus pertenencias."
+                    />
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if ('speechSynthesis' in window) {
+                            window.speechSynthesis.cancel();
+                            const utterance = new SpeechSynthesisUtterance(arrivalPromptText);
+                            utterance.lang = 'es-AR';
+                            utterance.pitch = voiceGender === 'male' ? 0.8 : 1.15;
+                            utterance.rate = 0.95;
+                            window.speechSynthesis.speak(utterance);
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                      >
+                        <Volume2 className="h-3.5 w-3.5" /> Probar Voz de Llegada ({voiceGender === 'male' ? '👨 Masculina' : '👩 Femenina'})
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BOTÓN GUARDAR CONFIGURACIÓN */}
                 <div className="pt-4 border-t border-slate-200 flex justify-end">
                   <button
                     onClick={handleSaveSystemConfig}
                     disabled={isSavingSystem}
-                    className="flex items-center space-x-2 rounded-lg bg-vial-orange px-5 py-2.5 text-sm font-black text-gray-950 hover:opacity-90 disabled:opacity-50 transition-all shadow-sm"
+                    className="flex items-center space-x-2 rounded-xl bg-vial-orange px-6 py-3 text-sm font-black text-gray-950 hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
                   >
                     <Save className="h-4 w-4" />
-                    <span>{isSavingSystem ? 'Guardando...' : 'Guardar Configuración'}</span>
+                    <span>{isSavingSystem ? 'Guardando Cambios...' : 'Guardar Todos los Audios & Locuciones'}</span>
                   </button>
                 </div>
+
               </div>
             </div>
           </div>

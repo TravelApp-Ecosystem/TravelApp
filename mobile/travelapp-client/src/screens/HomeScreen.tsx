@@ -8,13 +8,14 @@ import MapView, { Marker, PROVIDER_GOOGLE, Polyline, UrlTile } from 'react-nativ
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../lib/firebase';
 import { Colors, Fonts, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY, API_BASE_URL } from '../lib/constants';
 import { TravelCabLogo, TravelAppLogo, TravelExperienceLogo } from '../components/BrandLogos';
 import { InteractiveMapView } from '../components/InteractiveMapView';
+import { playSeatbeltSafetyPrompt, playCustomVoiceNotification } from '../lib/audioService';
 
 import { OverlappingNativeCarousel } from '../components/OverlappingNativeCarousel';
 
@@ -218,6 +219,23 @@ export default function HomeScreen() {
   const [userPhone, setUserPhone] = useState<string>('');
   const [userPhotoURL, setUserPhotoURL] = useState<string>('');
   const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [supportModalVisible, setSupportModalVisible] = useState(false);
+  const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+
+  const handleSupportAction = (type: 'phone' | 'email' | 'whatsapp' | 'travis' | 'emergency') => {
+    setSupportModalVisible(false);
+    if (type === 'phone') {
+      Linking.openURL('tel:08102200018');
+    } else if (type === 'email') {
+      Linking.openURL('mailto:hola@travelapp.ar?subject=Consulta%20desde%20TravelApp%20Cliente');
+    } else if (type === 'whatsapp') {
+      Linking.openURL('https://wa.me/?text=Hola%20TravelApp%2C%20necesito%20atenci%C3%B3n%20al%20cliente%20con%20mi%20cuenta.');
+    } else if (type === 'travis') {
+      navigation.navigate('Chat');
+    } else if (type === 'emergency') {
+      Linking.openURL('tel:911');
+    }
+  };
 
   // Estados de Chat en Vivo (Conductor - Pasajero - Concorde 360)
   const [isChatModalVisible, setIsChatModalVisible] = useState(false);
@@ -935,6 +953,28 @@ export default function HomeScreen() {
       }
     }, (err) => console.log("Error fetching logistics config:", err));
 
+    // 8. Notificaciones push y alertas de audio en vivo desde el Dashboard Web
+    const lastNotifProcessed = { current: 0 };
+    const qNotifications = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), limit(1));
+    const unsubNotifications = onSnapshot(qNotifications, (snap) => {
+      if (!snap.empty) {
+        const notif = snap.docs[0].data();
+        const notifTime = notif.timestamp || 0;
+        if (notifTime > lastNotifProcessed.current && (Date.now() - notifTime < 30000)) {
+          lastNotifProcessed.current = notifTime;
+          const currentUserId = auth.currentUser?.uid;
+          if (notif.audience === 'all' || notif.audience === 'passengers' || (currentUserId && notif.targetUserId === currentUserId)) {
+            showOverlayNotification(notif.title + ': ' + notif.message);
+            if (notif.soundAlert === 'seatbelt_safety') {
+              playSeatbeltSafetyPrompt();
+            } else if (notif.soundAlert !== 'none' && notif.message) {
+              playCustomVoiceNotification(notif.message);
+            }
+          }
+        }
+      }
+    });
+
     return () => {
       unsubDrivers();
       unsubCategories();
@@ -943,6 +983,7 @@ export default function HomeScreen() {
       unsubExperiences();
       unsubTariffs();
       unsubLogistics();
+      unsubNotifications();
     };
   }, []);
 
@@ -1857,8 +1898,25 @@ export default function HomeScreen() {
       {/* HEADER DE INICIO (ESTILO AZUL TECH) */}
       {activeTab === 'home' && requestFlowStep === 'idle' && (
         <View style={[styles.canvaHeader, { paddingTop: insets.top > 0 ? insets.top + 12 : 36 }]}>
-          <View style={styles.canvaLogoRow}>
+          <View style={[styles.canvaLogoRow, { justifyContent: 'space-between', alignItems: 'center' }]}>
             <TravelCabLogo size={140} textColor={Colors.white} isAccentColor={true} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                style={styles.topSafetyIconBtn}
+                onPress={() => setSafetyModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="shield-checkmark" size={18} color="#EF4444" />
+                <Text style={styles.topSafetyIconText}>Seguridad</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.topSupportIconBtn}
+                onPress={() => setSupportModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="headset" size={18} color={Colors.accent} />
+              </TouchableOpacity>
+            </View>
           </View>
           
           <View style={styles.canvaUserGreetingBox}>
@@ -3128,6 +3186,42 @@ export default function HomeScreen() {
                 <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
               </TouchableOpacity>
 
+              {/* Botón Atención al Cliente */}
+              <TouchableOpacity 
+                style={[styles.dossierLaunchBtn, { backgroundColor: '#0A2A5B', paddingHorizontal: 14, justifyContent: 'space-between' }]}
+                onPress={() => setSupportModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(2,132,199,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="headset-outline" size={22} color="#38BDF8" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={[styles.dossierLaunchBtnText, { textAlign: 'left', fontSize: 14 }]}>Atención al Cliente 24/7</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: Fonts.medium }}>
+                    Teléfono 0810-220-0018 · WhatsApp · Email
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Botón Centro de Seguridad */}
+              <TouchableOpacity 
+                style={[styles.dossierLaunchBtn, { backgroundColor: '#0A2A5B', paddingHorizontal: 14, justifyContent: 'space-between' }]}
+                onPress={() => setSafetyModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="shield-checkmark-outline" size={22} color="#F87171" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={[styles.dossierLaunchBtnText, { textAlign: 'left', fontSize: 14 }]}>Centro de Seguridad & SOS</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: Fonts.medium }}>
+                    Grabación de Audio · 911 · PIN de Viaje
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+              </TouchableOpacity>
+
               {/* Cerrar Sesión */}
               <TouchableOpacity style={styles.logoutBtn} onPress={() => auth.signOut()}>
                 <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
@@ -3211,6 +3305,168 @@ export default function HomeScreen() {
               ) : (
                 <Ionicons name="send" size={18} color={Colors.white} />
               )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE ATENCIÓN AL CLIENTE 24/7 */}
+      <Modal
+        visible={supportModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSupportModalVisible(false)}
+      >
+        <View style={styles.supportModalOverlay}>
+          <View style={styles.supportModalContent}>
+            <View style={styles.supportModalHeader}>
+              <View style={styles.modalIconBadge}>
+                <Ionicons name="headset" size={26} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.supportModalTitle}>Atención al Cliente</Text>
+                <Text style={styles.supportModalSubtitle}>Estamos disponibles 24/7 para asistirte</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSupportModalVisible(false)} style={styles.supportModalCloseBtn}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.supportOptionsList}>
+              <TouchableOpacity
+                style={styles.supportChannelBtn}
+                onPress={() => handleSupportAction('phone')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.channelIconWrap, { backgroundColor: '#E0F2FE' }]}>
+                  <Ionicons name="call" size={22} color="#0284C7" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.channelTitle}>Teléfono de Atención</Text>
+                  <Text style={styles.channelValue}>0810-220-0018</Text>
+                  <Text style={styles.channelSub}>Llamada directa sin costo adicional</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.supportChannelBtn}
+                onPress={() => handleSupportAction('email')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.channelIconWrap, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="mail" size={22} color="#D97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.channelTitle}>Correo Electrónico</Text>
+                  <Text style={styles.channelValue}>hola@travelapp.ar</Text>
+                  <Text style={styles.channelSub}>Respuesta y seguimiento oficial</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.supportChannelBtn}
+                onPress={() => handleSupportAction('whatsapp')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.channelIconWrap, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="logo-whatsapp" size={22} color="#16A34A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.channelTitle}>WhatsApp Oficial</Text>
+                  <Text style={styles.channelValue}>Chat con Operador en Vivo</Text>
+                  <Text style={styles.channelSub}>Atención ágil e inmediata</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.supportChannelBtn}
+                onPress={() => handleSupportAction('travis')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.channelIconWrap, { backgroundColor: Colors.primary + '18' }]}>
+                  <Ionicons name="sparkles" size={22} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.channelTitle}>Asistente Virtual Travis AI</Text>
+                  <Text style={styles.channelValue}>Chat Inteligente 24/7</Text>
+                  <Text style={styles.channelSub}>Consultas sobre viajes, tarifas y cuenta</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.emergencySupportBtn}
+                onPress={() => handleSupportAction('emergency')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="alert-circle" size={20} color={Colors.white} />
+                <Text style={styles.emergencySupportText}>Línea de Emergencias 911</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE CENTRO DE SEGURIDAD & SOS */}
+      <Modal
+        visible={safetyModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSafetyModalVisible(false)}
+      >
+        <View style={styles.supportModalOverlay}>
+          <View style={styles.supportModalContent}>
+            <View style={styles.supportModalHeader}>
+              <View style={[styles.modalIconBadge, { backgroundColor: '#FEF2F2' }]}>
+                <Ionicons name="shield-checkmark" size={26} color={Colors.danger} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.supportModalTitle}>Centro de Seguridad</Text>
+                <Text style={styles.supportModalSubtitle}>Herramientas de protección en todo momento</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSafetyModalVisible(false)} style={styles.supportModalCloseBtn}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.safetyInfoCard}>
+              <View style={styles.safetyInfoRow}>
+                <Ionicons name="mic-circle" size={24} color={Colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.safetyInfoTitle}>Grabación de Audio en Cabina</Text>
+                  <Text style={styles.safetyInfoDesc}>Durante cualquier viaje activo podés activar el micrófono para respaldar el audio del recorrido con encriptación segura.</Text>
+                </View>
+              </View>
+
+              <View style={styles.safetyInfoRow}>
+                <Ionicons name="keypad" size={24} color={Colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.safetyInfoTitle}>Código PIN Anti-Impostores</Text>
+                  <Text style={styles.safetyInfoDesc}>Tu app genera un código de 4 dígitos para que el chofer verifique tu identidad antes de arrancar.</Text>
+                </View>
+              </View>
+
+              <View style={styles.safetyInfoRow}>
+                <Ionicons name="share-social" size={24} color="#16A34A" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.safetyInfoTitle}>Seguimiento en Vivo por WhatsApp</Text>
+                  <Text style={styles.safetyInfoDesc}>Compartí tu recorrido en tiempo real con familiares para que sigan el auto en el mapa desde cualquier navegador.</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.emergencySupportBtn}
+              onPress={() => {
+                setSafetyModalVisible(false);
+                Linking.openURL('tel:911');
+              }}
+            >
+              <Ionicons name="call" size={20} color={Colors.white} />
+              <Text style={styles.emergencySupportText}>Llamar al 911 Inmediatamente</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -4612,5 +4868,60 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand-Bold',
     color: Colors.textPrimary,
   },
+  topSafetyIconBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  topSafetyIconText: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Bold',
+    color: '#EF4444',
+  },
+  topSupportIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Modals de Soporte y Seguridad
+  supportModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  supportModalContent: { backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 },
+  supportModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  modalIconBadge: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
+  supportModalTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  supportModalSubtitle: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
+  supportModalCloseBtn: { padding: 4 },
+
+  supportOptionsList: { gap: 10 },
+  supportChannelBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#F8FAFC', padding: 14, borderRadius: 16,
+    borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  channelIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  channelTitle: { fontSize: 12, color: Colors.textSecondary, fontFamily: 'Quicksand-Bold' },
+  channelValue: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginTop: 1 },
+  channelSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: 'Quicksand-Regular' },
+
+  emergencySupportBtn: {
+    backgroundColor: Colors.danger, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 14, borderRadius: 14, marginTop: 6,
+  },
+  emergencySupportText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
+
+  safetyInfoCard: { backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 14 },
+  safetyInfoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  safetyInfoTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  safetyInfoDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, lineHeight: 16, fontFamily: 'Quicksand-Regular' },
 });
 

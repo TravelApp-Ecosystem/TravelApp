@@ -53,12 +53,16 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleSupportOption = (type: 'emergency' | 'whatsapp' | 'travis') => {
+  const handleSupportOption = (type: 'emergency' | 'whatsapp' | 'travis' | 'phone' | 'email') => {
     setSupportModalVisible(false);
     if (type === 'emergency') {
       Linking.openURL('tel:911');
+    } else if (type === 'phone') {
+      Linking.openURL('tel:08102200018');
+    } else if (type === 'email') {
+      Linking.openURL('mailto:hola@travelapp.ar?subject=Soporte%20Conductor%20TravelApp');
     } else if (type === 'whatsapp') {
-      Linking.openURL('https://wa.me/5491100000000?text=Hola,%20necesito%20soporte%20como%20conductor%20en%20TravelApp.');
+      Linking.openURL('https://wa.me/?text=Hola%2C%20necesito%20soporte%20como%20conductor%20en%20TravelApp.');
     } else if (type === 'travis') {
       Linking.openURL('https://travelapp.ar/support');
     }
@@ -264,6 +268,22 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.emergencyBtn} onPress={() => handleSupportOption('emergency')}>
               <Ionicons name="alert-circle" size={22} color="#FFFFFF" />
               <Text style={styles.emergencyBtnText}>Llamar al 911 (Emergencia)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.supportOptionBtn} onPress={() => handleSupportOption('phone')}>
+              <Ionicons name="call" size={20} color="#0284C7" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.supportOptionText}>Teléfono de Atención</Text>
+                <Text style={{ fontSize: 11, color: Colors.textMuted }}>0810-220-0018 (Llamada directa)</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.supportOptionBtn} onPress={() => handleSupportOption('email')}>
+              <Ionicons name="mail" size={20} color="#D97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.supportOptionText}>Correo Oficial</Text>
+                <Text style={{ fontSize: 11, color: Colors.textMuted }}>hola@travelapp.ar</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.supportOptionBtn} onPress={() => handleSupportOption('whatsapp')}>

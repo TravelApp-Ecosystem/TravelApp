@@ -9,6 +9,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { db, auth } from '../lib/firebase';
 import { Colors, API_BASE_URL } from '../lib/constants';
 import { InteractiveMapView } from '../components/InteractiveMapView';
+import { playTripRequestAlertSound, stopTripRequestAlertSound } from '../lib/audioService';
 
 const { width } = Dimensions.get('window');
 
@@ -29,19 +30,23 @@ export default function TripRequestScreen() {
   useEffect(() => {
     Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true }).start();
 
+    // Reproducir alerta sonora fuerte y vibración para el conductor
+    playTripRequestAlertSound();
+
     try {
-      // Vibración finita de aviso (sin bucle infinito)
-      Vibration.vibrate([0, 500, 250, 500], false);
+      Vibration.vibrate([0, 600, 300, 600, 300, 600], true);
     } catch (err) {
       console.warn("Vibration warning:", err);
     }
 
     return () => {
+      stopTripRequestAlertSound();
       Vibration.cancel();
     };
   }, []);
 
   const stopAlerts = async () => {
+    await stopTripRequestAlertSound();
     Vibration.cancel();
   };
 

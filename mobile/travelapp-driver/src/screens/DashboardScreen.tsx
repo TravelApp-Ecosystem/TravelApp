@@ -7,7 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { doc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +16,7 @@ import { db, auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { TravelCabLogo } from '../components/BrandLogos';
 import { InteractiveMapView } from '../components/InteractiveMapView';
+import { playTripRequestAlertSound, playSeatbeltSafetyPrompt, playCustomVoiceNotification } from '../lib/audioService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -335,10 +336,34 @@ export default function DashboardScreen() {
       }
     }, (err) => console.warn("Vehicles listener error:", err));
 
+    // Escuchar notificaciones y alertas de voz entrantes desde el Dashboard Web
+    const lastNotifProcessed = { current: 0 };
+    const qNotifications = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), limit(1));
+    const unsubNotifications = onSnapshot(qNotifications, (snap) => {
+      if (!snap.empty) {
+        const notif = snap.docs[0].data();
+        const notifTime = notif.timestamp || 0;
+        // Solo reproducir si es nueva (no escuchada previamente en esta sesión) y de los últimos 30 segundos
+        if (notifTime > lastNotifProcessed.current && (Date.now() - notifTime < 30000)) {
+          lastNotifProcessed.current = notifTime;
+          if (notif.audience === 'all' || notif.audience === 'drivers' || notif.targetUserId === user.uid) {
+            if (notif.soundAlert === 'driver_alert') {
+              playTripRequestAlertSound();
+            } else if (notif.soundAlert === 'seatbelt_safety') {
+              playSeatbeltSafetyPrompt();
+            } else if (notif.soundAlert !== 'none' && notif.message) {
+              playCustomVoiceNotification(notif.message);
+            }
+          }
+        }
+      }
+    });
+
     return () => {
       unsub();
       unsubPending();
       unsubVehicles();
+      unsubNotifications();
     };
   }, [isOnline, user?.uid]);
 

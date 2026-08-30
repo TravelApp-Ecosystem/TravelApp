@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  FlatList, KeyboardAvoidingView, Platform, ActivityIndicator,
+  FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -85,9 +85,39 @@ export default function ChatScreen() {
             <Text style={styles.travisAvatarText}>T</Text>
           </View>
           <View>
-            <Text style={styles.travisName}>Travis</Text>
-            <Text style={styles.travisStatus}>● En línea</Text>
+            <Text style={styles.travisName}>Travis AI · Soporte 24/7</Text>
+            <Text style={styles.travisStatus}>● En línea para ayudarte</Text>
           </View>
+        </View>
+      </View>
+
+      {/* Barra de Canales Directos */}
+      <View style={styles.directChannelsBar}>
+        <Text style={styles.channelsHint}>¿Atención con un asesor humano?</Text>
+        <View style={styles.channelsBtnsRow}>
+          <TouchableOpacity
+            style={styles.channelChip}
+            onPress={() => Linking.openURL('tel:08102200018')}
+          >
+            <Ionicons name="call" size={13} color="#0284C7" />
+            <Text style={styles.channelChipText}>0810-220-0018</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.channelChip, { borderColor: '#BBF7D0', backgroundColor: '#F0FDF4' }]}
+            onPress={() => Linking.openURL('https://wa.me/?text=Hola%20TravelApp%2C%20necesito%20asistencia%20con%20mi%20cuenta.')}
+          >
+            <Ionicons name="logo-whatsapp" size={13} color="#16A34A" />
+            <Text style={[styles.channelChipText, { color: '#16A34A' }]}>WhatsApp</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.channelChip, { borderColor: '#FDE68A', backgroundColor: '#FEFCE8' }]}
+            onPress={() => Linking.openURL('mailto:hola@travelapp.ar?subject=Consulta%20desde%20Chat%20TravelApp')}
+          >
+            <Ionicons name="mail" size={13} color="#D97706" />
+            <Text style={[styles.channelChipText, { color: '#D97706' }]}>Email</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -153,6 +183,30 @@ const styles = StyleSheet.create({
   travisAvatarText: { color: Colors.white, fontSize: 18, fontWeight: '800' },
   travisName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   travisStatus: { fontSize: 12, color: Colors.success },
+  directChannelsBar: {
+    backgroundColor: Colors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: 6,
+  },
+  channelsHint: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary },
+  channelsBtnsRow: { flexDirection: 'row', gap: 8 },
+  channelChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
+  channelChipText: { fontSize: 11, fontWeight: '700', color: '#0284C7' },
   messageList: { padding: 16, gap: 8, paddingBottom: 20 },
   bubble: {
     maxWidth: '80%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10, gap: 4,

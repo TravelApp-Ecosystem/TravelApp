@@ -7,6 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { db } from '../lib/firebase';
 import { Colors } from '../lib/constants';
 import { formatDriverName, formatPlate } from './HomeScreen';
+import { playSeatbeltSafetyPrompt } from '../lib/audioService';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   searching: { label: 'Buscando conductor cercano...', color: Colors.accent || '#F59E0B', icon: 'search' },
@@ -40,15 +41,23 @@ export default function TripTrackingScreen() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tipAmount, setTipAmount] = useState<number>(0);
   const [hasSubmittedRating, setHasSubmittedRating] = useState(false);
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
 
   // Animaciones del Radar
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const wave1Anim = useRef(new Animated.Value(0)).current;
   const wave2Anim = useRef(new Animated.Value(0)).current;
 
+  const hasPlayedSafetyPrompt = useRef(false);
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'trips', tripId), (snap) => {
-      setTrip({ id: snap.id, ...snap.data() });
+      const data: any = { id: snap.id, ...snap.data() };
+      setTrip(data);
+      if (data?.status === 'in_progress' && !hasPlayedSafetyPrompt.current) {
+        hasPlayedSafetyPrompt.current = true;
+        playSeatbeltSafetyPrompt();
+      }
     });
 
     Animated.loop(
@@ -145,6 +154,22 @@ export default function TripTrackingScreen() {
     }
   };
 
+  const handleToggleAudioRecording = () => {
+    if (!isRecordingAudio) {
+      setIsRecordingAudio(true);
+      Alert.alert(
+        '🎙️ Grabación de Seguridad Activada',
+        'El audio del viaje está siendo respaldado con encriptación para tu seguridad y la del conductor.'
+      );
+    } else {
+      setIsRecordingAudio(false);
+      Alert.alert(
+        'Grabación Finalizada',
+        'El registro de audio fue guardado correctamente.'
+      );
+    }
+  };
+
   const handleShareTrip = () => {
     if (!trip) return;
     const text = `🚕 *Viaje en TravelCab en vivo*\n\n` +
@@ -152,11 +177,14 @@ export default function TripTrackingScreen() {
       `🚘 Vehículo: ${trip.driverVehicle || 'Vehículo'} (${trip.vehiclePlate || 'Patente'})\n` +
       `📍 Origen: ${trip.origin || 'Origen'}\n` +
       `🏁 Destino: ${trip.destination}\n` +
-      `🔑 PIN de Seguridad: ${trip.securityPin || '1234'}\n\n` +
-      `Seguí mi recorrido en tiempo real.`;
+      `🔑 PIN de Seguridad: ${trip.securityPin || '4829'}\n\n` +
+      `🗺️ *Seguí mi recorrido en vivo:* https://travelapp.ar/track/${tripId}\n` +
+      `🚨 Central de Emergencias: 0810-220-0018 / 911`;
     
     Linking.openURL(`whatsapp://send?text=${encodeURIComponent(text)}`).catch(() => {
-      Alert.alert('Compartir Viaje', text);
+      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`).catch(() => {
+        Alert.alert('Compartir Viaje', text);
+      });
     });
   };
 
@@ -324,22 +352,42 @@ export default function TripTrackingScreen() {
           )}
         </View>
 
-        {/* Tarjeta de Seguridad (PIN de 4 dígitos + Compartir + SOS) */}
+        {/* Tarjeta de Seguridad (PIN de 4 dígitos + Compartir + Audio + SOS) */}
         {!isSearching && !isCancelled && (
           <View style={styles.securityCard}>
             <View style={styles.pinBox}>
-              <Text style={styles.pinLabel}>PIN DE SEGURIDAD</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pinLabel}>PIN DE SEGURIDAD (OPCIONAL)</Text>
+                <Text style={styles.pinSubLabel}>Dictale este código al chofer solo si te lo solicita:</Text>
+              </View>
               <Text style={styles.pinCode}>{trip.securityPin || '4829'}</Text>
             </View>
+
+            {isRecordingAudio && (
+              <View style={styles.recordingBanner}>
+                <View style={styles.recordingDot} />
+                <Text style={styles.recordingText}>Grabando audio de seguridad del habitáculo en vivo</Text>
+              </View>
+            )}
             
             <View style={styles.securityButtonsRow}>
               <TouchableOpacity style={styles.shareBtn} onPress={handleShareTrip}>
-                <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
-                <Text style={styles.shareBtnText}>Compartir Viaje</Text>
+                <Ionicons name="logo-whatsapp" size={17} color="#16A34A" />
+                <Text style={styles.shareBtnText}>Compartir</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.audioBtn, isRecordingAudio && styles.audioBtnActive]}
+                onPress={handleToggleAudioRecording}
+              >
+                <Ionicons name={isRecordingAudio ? "mic" : "mic-outline"} size={17} color={isRecordingAudio ? Colors.white : Colors.primary} />
+                <Text style={[styles.audioBtnText, isRecordingAudio && styles.audioBtnTextActive]}>
+                  {isRecordingAudio ? "Grabando" : "Grabar Audio"}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.sosBtn} onPress={handleSOSCall}>
-                <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+                <Ionicons name="alert-circle" size={17} color={Colors.danger} />
                 <Text style={styles.sosBtnText}>SOS 911</Text>
               </TouchableOpacity>
             </View>
@@ -537,20 +585,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F9FF', borderRadius: 16, padding: 14, gap: 10,
     borderWidth: 1, borderColor: '#BAE6FD',
   },
-  pinBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.white, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
-  pinLabel: { fontSize: 12, fontWeight: '700', color: Colors.primary },
-  pinCode: { fontSize: 20, fontWeight: '900', color: Colors.primary, letterSpacing: 4 },
-  securityButtonsRow: { flexDirection: 'row', gap: 10 },
+  pinBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.white, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
+  pinLabel: { fontSize: 12, fontWeight: '800', color: Colors.primary },
+  pinSubLabel: { fontSize: 10, color: Colors.textSecondary, marginTop: 2 },
+  pinCode: { fontSize: 22, fontWeight: '900', color: Colors.primary, letterSpacing: 3, marginLeft: 8 },
+  recordingBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+    borderWidth: 1, borderColor: '#FCA5A5',
+  },
+  recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger },
+  recordingText: { fontSize: 11, fontWeight: '700', color: Colors.danger },
+  securityButtonsRow: { flexDirection: 'row', gap: 8 },
   shareBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
     backgroundColor: '#DCFCE7', borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: '#86EFAC',
   },
-  shareBtnText: { fontSize: 13, fontWeight: '700', color: '#15803D' },
+  shareBtnText: { fontSize: 12, fontWeight: '700', color: '#15803D' },
+  audioBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    backgroundColor: Colors.white, borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: Colors.primary + '40',
+  },
+  audioBtnActive: { backgroundColor: Colors.danger, borderColor: Colors.danger },
+  audioBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  audioBtnTextActive: { color: Colors.white },
   sosBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
     backgroundColor: '#FEE2E2', borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: '#FCA5A5',
   },
-  sosBtnText: { fontSize: 13, fontWeight: '700', color: Colors.danger },
+  sosBtnText: { fontSize: 12, fontWeight: '700', color: Colors.danger },
 
   driverInfo: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

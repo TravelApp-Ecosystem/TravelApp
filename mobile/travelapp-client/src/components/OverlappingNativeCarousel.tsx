@@ -110,39 +110,40 @@ export const OverlappingNativeCarousel: React.FC<OverlappingNativeCarouselProps>
                 isFocused ? styles.cardFocused : styles.cardUnfocused,
               ]}
             >
-              {/* Imagen de Fondo */}
+              {/* Imagen de Fondo en Alta Calidad y 100% Nítida (Sin máscara de color) */}
               <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
-
-              {/* Degradado / Máscara Oscura para Contraste */}
-              <View style={styles.cardGradientMask} />
 
               {/* Contenido Superior: Badge & Contador */}
               <View style={styles.cardTopRow}>
-                <View style={[styles.badgePill, { backgroundColor: 'rgba(255, 255, 255, 0.25)' }]}>
-                  <Ionicons name="pricetag" size={11} color="#FFD166" style={{ marginRight: 4 }} />
-                  <Text style={styles.badgeText}>{displayBadge}</Text>
-                </View>
+                {item.title ? (
+                  <View style={[styles.badgePill, { backgroundColor: 'rgba(0, 0, 0, 0.45)' }]}>
+                    <Ionicons name="pricetag" size={11} color="#FFD166" style={{ marginRight: 4 }} />
+                    <Text style={styles.badgeText}>{displayBadge}</Text>
+                  </View>
+                ) : <View />}
 
                 <View style={styles.counterPill}>
                   <Text style={styles.counterText}>{index + 1}/{cards.length}</Text>
                 </View>
               </View>
 
-              {/* Contenido Inferior: Título, Subtítulo y Botón CTA */}
-              <View style={styles.cardBottomContainer}>
-                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-                {displaySubtitle ? (
-                  <Text style={styles.cardSubtitle} numberOfLines={2}>{displaySubtitle}</Text>
-                ) : null}
+              {/* Contenido Inferior: Título, Subtítulo y Botón CTA (Solo si hay texto definido) */}
+              {item.title ? (
+                <View style={styles.cardBottomContainer}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                  {displaySubtitle ? (
+                    <Text style={styles.cardSubtitle} numberOfLines={2}>{displaySubtitle}</Text>
+                  ) : null}
 
-                <View style={styles.ctaRow}>
-                  <View style={styles.ctaButton}>
-                    <Text style={styles.ctaButtonText}>{displayCta}</Text>
-                    <Ionicons name="arrow-forward" size={12} color={Colors.white} style={{ marginLeft: 4 }} />
+                  <View style={styles.ctaRow}>
+                    <View style={styles.ctaButton}>
+                      <Text style={styles.ctaButtonText}>{displayCta}</Text>
+                      <Ionicons name="arrow-forward" size={12} color={Colors.white} style={{ marginLeft: 4 }} />
+                    </View>
+                    <Text style={styles.footerBrand}>TravelApp</Text>
                   </View>
-                  <Text style={styles.footerBrand}>TravelApp Ecosystem</Text>
                 </View>
-              </View>
+              ) : null}
             </TouchableOpacity>
           );
         }}
@@ -211,23 +212,23 @@ const styles = StyleSheet.create({
     marginHorizontal: CARD_MARGIN,
     borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#F8FAFC',
     justifyContent: 'space-between',
     padding: 14,
     elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   cardFocused: {
     transform: [{ scale: 1.0 }],
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
   },
   cardUnfocused: {
-    transform: [{ scale: 0.94 }],
-    opacity: 0.88,
+    transform: [{ scale: 0.96 }],
+    opacity: 1.0,
   },
   cardImage: {
     position: 'absolute',
@@ -238,13 +239,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  cardGradientMask: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(11, 25, 44, 0.65)',
+  cardBottomContainer: {
+    zIndex: 2,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
   },
   cardTopRow: {
     flexDirection: 'row',
