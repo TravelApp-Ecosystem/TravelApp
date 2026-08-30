@@ -246,7 +246,11 @@ export default function TravelCabSettingsPage() {
         if (id === 'mu_active' || id === 'arc_active') {
           await deleteDoc(doc(db, 'tariffs', id)).catch(() => {});
         }
-        alert(`Tarifario "${name}" eliminado correctamente de Firestore.`);
+        // Actualizar el estado local inmediatamente
+        setMuTariffs(prev => prev.filter(t => t.id !== id));
+        setArcTariffs(prev => prev.filter(t => t.id !== id));
+        setTransferTariffs(prev => prev.filter(t => t.id !== id));
+        alert(`Tarifario "${name}" eliminado correctamente.`);
       } catch (err: any) {
         console.error("Error deleting tariff:", err);
         alert("Error al eliminar el tarifario: " + err.message);
@@ -256,11 +260,11 @@ export default function TravelCabSettingsPage() {
 
   const handleActivateTariff = async (tariff: any) => {
     try {
-      // 1. Activar este tarifario en Firestore
-      await updateDoc(doc(db, 'tariffs', tariff.id), { 
+      // 1. Activar este tarifario en Firestore con setDoc (merge: true) para evitar errores si no existe
+      await setDoc(doc(db, 'tariffs', tariff.id), { 
         isActive: true,
         updatedAt: Date.now()
-      });
+      }, { merge: true });
 
       // 2. Si es de categoría estándar, mantener sincronizado el alias de compatibilidad
       const categoryName = (tariff.category || 'estandar').toLowerCase();
@@ -273,6 +277,11 @@ export default function TravelCabSettingsPage() {
         }, { merge: true });
       }
 
+      // Actualizar estado local inmediatamente
+      setMuTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isActive: true } : t));
+      setArcTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isActive: true } : t));
+      setTransferTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isActive: true } : t));
+
       alert(`Tarifario "${tariff.name}" activado correctamente.`);
     } catch (err: any) {
       console.error("Error activating tariff:", err);
@@ -282,11 +291,11 @@ export default function TravelCabSettingsPage() {
 
   const handleDeactivateTariff = async (tariff: any) => {
     try {
-      // 1. Desactivar este tarifario en Firestore
-      await updateDoc(doc(db, 'tariffs', tariff.id), { 
+      // 1. Desactivar este tarifario en Firestore con setDoc (merge: true) para que NUNCA lance "No document to update"
+      await setDoc(doc(db, 'tariffs', tariff.id), { 
         isActive: false,
         updatedAt: Date.now()
-      });
+      }, { merge: true });
 
       // 2. Si es estándar, actualizar alias de compatibilidad de forma segura con setDoc(merge: true)
       const categoryName = (tariff.category || 'estandar').toLowerCase();
@@ -297,6 +306,11 @@ export default function TravelCabSettingsPage() {
           updatedAt: Date.now() 
         }, { merge: true });
       }
+
+      // Actualizar estado local inmediatamente
+      setMuTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isActive: false } : t));
+      setArcTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isActive: false } : t));
+      setTransferTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isActive: false } : t));
 
       alert(`Tarifario "${tariff.name}" desactivado correctamente.`);
     } catch (err: any) {
