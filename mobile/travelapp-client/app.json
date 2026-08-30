@@ -58,7 +58,8 @@
         {
           "androidGoogleMapsApiKey": "AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {
