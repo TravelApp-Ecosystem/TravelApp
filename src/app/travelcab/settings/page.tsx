@@ -4,7 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   Settings, MapPin, DollarSign, Plus, FileText, CheckCircle2, Trash2, Edit, 
   AlertCircle, Sparkles, Car, Star, Shield, Crown, RefreshCw, Save, Upload, 
-  X, Plane, ArrowLeftRight, Building2, Phone, Mail, Percent, ShieldAlert 
+  X, Plane, ArrowLeftRight, Building2, Phone, Mail, Percent, ShieldAlert,
+  Search, Filter, Layers, SlidersHorizontal, Eye, Grid, ListFilter, XCircle,
+  Calendar, Clock, Coins, ShieldCheck, Check, AlertTriangle, ChevronRight,
+  TrendingUp, Users, ArrowUpRight, Zap
 } from 'lucide-react';
 import { Branch, ARCTariff, MUTariff, VehicleCategory, TransferTariff } from '@/types/logistics';
 import { MUTariffForm } from '@/components/travelcab/settings/MUTariffForm';
@@ -20,6 +23,14 @@ export default function TravelCabSettingsPage() {
   const [activeTab, setActiveTab] = useState<'tariffs' | 'branches' | 'categories' | 'system'>('tariffs');
   const [tariffSubTab, setTariffSubTab] = useState<'mu' | 'arc' | 'transfers'>('mu');
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
+
+  // Master Tariff List States
+  const [tariffViewMode, setTariffViewMode] = useState<'split' | 'master'>('master');
+  const [searchTariffQuery, setSearchTariffQuery] = useState('');
+  const [filterTariffBranch, setFilterTariffBranch] = useState('all');
+  const [filterTariffType, setFilterTariffType] = useState('all');
+  const [filterTariffCategory, setFilterTariffCategory] = useState('all');
+  const [filterTariffStatus, setFilterTariffStatus] = useState('all'); // 'all' | 'active' | 'inactive'
   
   // System Config / Logistics States
   const [notificationSoundUrl, setNotificationSoundUrl] = useState('');
@@ -227,11 +238,15 @@ export default function TravelCabSettingsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteTariff = async (id: string, name: string, isActive: boolean) => {
-    if (confirm(`¿Estás seguro de que deseas eliminar el tarifario "${name}"? Esta acción no se puede deshacer.`)) {
+  const handleDeleteTariff = async (id: string, name: string, isActive?: boolean) => {
+    if (confirm(`¿Estás seguro de que deseas eliminar permanentemente el tarifario "${name}"? Esta acción no se puede deshacer.`)) {
       try {
         await deleteDoc(doc(db, 'tariffs', id));
-        alert("Tarifario eliminado correctamente de Firestore.");
+        // Si coincide con los alias de compatibilidad, limpiarlos de forma segura
+        if (id === 'mu_active' || id === 'arc_active') {
+          await deleteDoc(doc(db, 'tariffs', id)).catch(() => {});
+        }
+        alert(`Tarifario "${name}" eliminado correctamente de Firestore.`);
       } catch (err: any) {
         console.error("Error deleting tariff:", err);
         alert("Error al eliminar el tarifario: " + err.message);
@@ -241,31 +256,21 @@ export default function TravelCabSettingsPage() {
 
   const handleActivateTariff = async (tariff: any) => {
     try {
-      const batch = writeBatch(db);
-      const tariffsRef = collection(db, 'tariffs');
-      const q = query(tariffsRef, where('type', '==', tariff.type), where('category', '==', tariff.category || 'estandar'));
-      const querySnap = await getDocs(q);
-
-      querySnap.docs.forEach(docSnap => {
-        if (docSnap.id === 'mu_active' || docSnap.id === 'arc_active') return;
-
-        if (docSnap.id === tariff.id) {
-          batch.update(doc(db, 'tariffs', docSnap.id), { isActive: true });
-        } else {
-          batch.update(doc(db, 'tariffs', docSnap.id), { isActive: false });
-        }
+      // 1. Activar este tarifario en Firestore
+      await updateDoc(doc(db, 'tariffs', tariff.id), { 
+        isActive: true,
+        updatedAt: Date.now()
       });
 
-      await batch.commit();
-
+      // 2. Si es de categoría estándar, mantener sincronizado el alias de compatibilidad
       const categoryName = (tariff.category || 'estandar').toLowerCase();
-      if (categoryName === 'estandar' || categoryName === 'standard') {
+      if (categoryName === 'estandar' || categoryName === 'standard' || categoryName === 'std-001') {
         const activeDocId = tariff.type === 'mu' ? 'mu_active' : 'arc_active';
         await setDoc(doc(db, 'tariffs', activeDocId), {
           ...tariff,
           isActive: true,
           updatedAt: Date.now()
-        });
+        }, { merge: true });
       }
 
       alert(`Tarifario "${tariff.name}" activado correctamente.`);
@@ -277,12 +282,20 @@ export default function TravelCabSettingsPage() {
 
   const handleDeactivateTariff = async (tariff: any) => {
     try {
-      await updateDoc(doc(db, 'tariffs', tariff.id), { isActive: false });
+      // 1. Desactivar este tarifario en Firestore
+      await updateDoc(doc(db, 'tariffs', tariff.id), { 
+        isActive: false,
+        updatedAt: Date.now()
+      });
 
+      // 2. Si es estándar, actualizar alias de compatibilidad de forma segura con setDoc(merge: true)
       const categoryName = (tariff.category || 'estandar').toLowerCase();
-      if (categoryName === 'estandar' || categoryName === 'standard') {
+      if (categoryName === 'estandar' || categoryName === 'standard' || categoryName === 'std-001') {
         const activeDocId = tariff.type === 'mu' ? 'mu_active' : 'arc_active';
-        await updateDoc(doc(db, 'tariffs', activeDocId), { isActive: false });
+        await setDoc(doc(db, 'tariffs', activeDocId), { 
+          isActive: false, 
+          updatedAt: Date.now() 
+        }, { merge: true });
       }
 
       alert(`Tarifario "${tariff.name}" desactivado correctamente.`);
@@ -490,389 +503,897 @@ export default function TravelCabSettingsPage() {
       <div className="grid grid-cols-1 gap-8">
         
         {/* TABS DE TARIFARIOS */}
-        {activeTab === 'tariffs' && (
-          <div className="flex flex-col space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex space-x-2 rounded-xl bg-white p-1 border border-slate-200 shadow-sm">
-                <button
-                  onClick={() => {
-                    setTariffSubTab('mu');
-                    setEditingMUTariff(null);
-                  }}
-                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
-                    tariffSubTab === 'mu' ? 'bg-tech-blue text-white shadow' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  🏙️ Movilidad Urbana (MU)
-                </button>
-                <button
-                  onClick={() => {
-                    setTariffSubTab('arc');
-                    setEditingARCTariff(null);
-                  }}
-                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
-                    tariffSubTab === 'arc' ? 'bg-vial-orange text-gray-950 shadow' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  🚌 Rural Compartido (ARC)
-                </button>
-                <button
-                  onClick={() => {
-                    setTariffSubTab('transfers');
-                    setEditingTransferTariff(null);
-                  }}
-                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
-                    tariffSubTab === 'transfers' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  ✈️ Traslados Fijos
-                </button>
-              </div>
+        {activeTab === 'tariffs' && (() => {
+          const allTariffs = [...muTariffs, ...arcTariffs, ...transferTariffs];
+          const activeTariffsCount = allTariffs.filter(t => t.isActive).length;
+          
+          const filteredMasterTariffs = allTariffs.filter(t => {
+            if (filterTariffType !== 'all') {
+              if (filterTariffType === 'mu' && t.type !== 'mu') return false;
+              if (filterTariffType === 'arc' && t.type !== 'arc' && t.type !== 'aci') return false;
+              if (filterTariffType === 'transfers' && t.type !== 'transfers') return false;
+            }
+            if (filterTariffBranch !== 'all') {
+              const bIds = t.branchIds || ((t as any).branchId ? [(t as any).branchId] : []);
+              if (!bIds.includes('all') && !bIds.includes(filterTariffBranch)) {
+                return false;
+              }
+            }
+            if (filterTariffCategory !== 'all') {
+              if (t.category !== filterTariffCategory) return false;
+            }
+            if (filterTariffStatus === 'active' && !t.isActive) return false;
+            if (filterTariffStatus === 'inactive' && t.isActive) return false;
+            if (searchTariffQuery.trim()) {
+              const q = searchTariffQuery.toLowerCase();
+              const matchName = t.name?.toLowerCase().includes(q);
+              const matchCat = t.category?.toLowerCase().includes(q);
+              const matchType = t.type?.toLowerCase().includes(q);
+              const matchRoutes = (t as any).routes?.some((r: any) => 
+                r.mainOrigin?.toLowerCase().includes(q) || 
+                r.mainDestination?.toLowerCase().includes(q) ||
+                r.originName?.toLowerCase().includes(q) ||
+                r.destinationName?.toLowerCase().includes(q)
+              );
+              if (!matchName && !matchCat && !matchType && !matchRoutes) return false;
+            }
+            return true;
+          });
 
-              {/* Filtro por Sucursal */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500">Filtrar por Sucursal:</span>
-                <select
-                  value={selectedBranchFilter}
-                  onChange={(e) => setSelectedBranchFilter(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-tech-blue focus:outline-none"
-                >
-                  <option value="all">🌐 Todas las Sucursales</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>📍 {b.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+          return (
+            <div className="flex flex-col space-y-6">
+              {/* Barra Superior de Navegación de Vistas */}
+              <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setTariffViewMode('master')}
+                    className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                      tariffViewMode === 'master' 
+                        ? 'bg-tech-blue text-white shadow-md' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Grid className="h-4 w-4" />
+                    <span>📋 Panel Maestro de Tarifarios</span>
+                    <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-black ${tariffViewMode === 'master' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                      {filteredMasterTariffs.length}
+                    </span>
+                  </button>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Columna Izquierda: Formulario de Creación/Edición */}
-              <div className="lg:col-span-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h2 className="mb-6 text-xl font-bold text-tech-blue">
-                    {tariffSubTab === 'mu' 
-                      ? (editingMUTariff ? `Editar Tarifario MU: ${editingMUTariff.name}` : 'Crear Nuevo Tarifario MU (Urbano)') 
-                      : tariffSubTab === 'arc'
-                      ? (editingARCTariff ? `Editar Tarifario ARC: ${editingARCTariff.name}` : 'Crear Nuevo Tarifario ARC (Rural Compartido)')
-                      : (editingTransferTariff ? `Editar Traslado Fijo: ${editingTransferTariff.name}` : 'Crear Nuevo Traslado Fijo Punto a Punto')
-                    }
-                  </h2>
-                  {tariffSubTab === 'mu' ? (
-                    <MUTariffForm 
-                      editData={editingMUTariff} 
-                      onSubmitSuccess={() => setEditingMUTariff(null)} 
-                    />
-                  ) : tariffSubTab === 'arc' ? (
-                    <ARCTariffForm 
-                      editData={editingARCTariff} 
-                      onSubmitSuccess={() => setEditingARCTariff(null)} 
-                    />
-                  ) : (
-                    <TransferTariffForm
-                      editData={editingTransferTariff}
-                      onSubmitSuccess={() => setEditingTransferTariff(null)}
-                    />
-                  )}
+                  <button
+                    onClick={() => setTariffViewMode('split')}
+                    className={`flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                      tariffViewMode === 'split' 
+                        ? 'bg-vial-orange text-gray-950 shadow-md' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>📝 Editor / Crear Tarifario</span>
+                  </button>
+                </div>
+
+                {/* Métricas rápidas */}
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 border border-green-200 text-green-700 font-bold">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    {activeTariffsCount} Activos en Prod
+                  </span>
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-bold">
+                    <Building2 className="h-4 w-4 text-slate-500" />
+                    {branches.length} Sucursales
+                  </span>
                 </div>
               </div>
 
-              {/* Columna Derecha: Listado en tiempo real */}
-              <div className="lg:col-span-1">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm h-full">
-                  <h2 className="mb-4 text-lg font-bold text-tech-blue flex items-center justify-between">
-                    <span className="flex items-center">
-                      <FileText className="mr-2 h-5 w-5 text-slate-500" />
-                      Tarifarios Activos
-                    </span>
-                    <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                      {tariffSubTab === 'mu' ? filterTariffsByBranch(muTariffs).length : tariffSubTab === 'arc' ? filterTariffsByBranch(arcTariffs).length : filterTariffsByBranch(transferTariffs).length} registrados
-                    </span>
-                  </h2>
-                  
-                  <div className="space-y-4 max-h-[800px] overflow-y-auto pr-1 custom-scrollbar">
-                    {isLoadingTariffs ? (
-                      <div className="text-center py-8 text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
-                        <RefreshCw className="h-5 w-5 animate-spin text-vial-orange" />
-                        Cargando tarifarios desde Firestore...
+              {/* VISTA 1: PANEL MAESTRO EXPANDIDO CON TODOS LOS DETALLES */}
+              {tariffViewMode === 'master' && (
+                <div className="space-y-6">
+                  {/* Tarjetas de Resumen Logístico */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
+                      <div className="h-11 w-11 rounded-xl bg-tech-blue/10 flex items-center justify-center text-tech-blue">
+                        <FileText className="h-6 w-6" />
                       </div>
-                    ) : tariffSubTab === 'transfers' ? (
-                      filterTariffsByBranch(transferTariffs).length === 0 ? (
-                        <p className="text-sm text-slate-400 py-6 text-center">No hay traslados fijos para esta sucursal.</p>
-                      ) : (
-                        filterTariffsByBranch(transferTariffs).map(t => (
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Tarifarios</p>
+                        <p className="text-xl font-black text-tech-blue">{allTariffs.length}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
+                      <div className="h-11 w-11 rounded-xl bg-green-500/10 flex items-center justify-center text-green-600">
+                        <CheckCircle2 className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Activos en Producción</p>
+                        <p className="text-xl font-black text-green-600">{activeTariffsCount}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
+                      <div className="h-11 w-11 rounded-xl bg-vial-orange/10 flex items-center justify-center text-vial-orange">
+                        <Building2 className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sucursales Operativas</p>
+                        <p className="text-xl font-black text-tech-blue">{branches.filter(b => b.active).length}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
+                      <div className="h-11 w-11 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+                        <Car className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Categorías Activas</p>
+                        <p className="text-xl font-black text-tech-blue">{categories.length}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Barra de Filtros y Búsqueda Avanzada */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+                      {/* Input de Búsqueda */}
+                      <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nombre de tarifario, origen, destino, categoría..."
+                          value={searchTariffQuery}
+                          onChange={(e) => setSearchTariffQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 focus:outline-none focus:border-tech-blue bg-slate-50/50"
+                        />
+                        {searchTariffQuery && (
+                          <button
+                            onClick={() => setSearchTariffQuery('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Botón de Limpiar Filtros si hay alguno activo */}
+                      {(filterTariffBranch !== 'all' || filterTariffType !== 'all' || filterTariffCategory !== 'all' || filterTariffStatus !== 'all' || searchTariffQuery) && (
+                        <button
+                          onClick={() => {
+                            setFilterTariffBranch('all');
+                            setFilterTariffType('all');
+                            setFilterTariffCategory('all');
+                            setFilterTariffStatus('all');
+                            setSearchTariffQuery('');
+                          }}
+                          className="text-xs font-bold text-rose-500 hover:underline flex items-center gap-1 whitespace-nowrap"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          Limpiar Filtros
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Fila de Selectores de Filtro */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+                      {/* Filtro por Sucursal */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          🏢 Sucursal Asignada
+                        </label>
+                        <select
+                          value={filterTariffBranch}
+                          onChange={(e) => setFilterTariffBranch(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-tech-blue focus:outline-none focus:border-tech-blue"
+                        >
+                          <option value="all">🌐 Todas las Sucursales ({allTariffs.length})</option>
+                          {branches.map(b => {
+                            const count = allTariffs.filter(t => {
+                              const bIds = t.branchIds || ((t as any).branchId ? [(t as any).branchId] : []);
+                              return bIds.includes('all') || bIds.includes(b.id);
+                            }).length;
+                            return (
+                              <option key={b.id} value={b.id}>
+                                📍 {b.name} ({count})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+
+                      {/* Filtro por Tipo de Transporte */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          📑 Tipo de Modalidad
+                        </label>
+                        <select
+                          value={filterTariffType}
+                          onChange={(e) => setFilterTariffType(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-tech-blue focus:outline-none focus:border-tech-blue"
+                        >
+                          <option value="all">Todos los Tipos ({allTariffs.length})</option>
+                          <option value="mu">🏙️ Urbana (MU) ({muTariffs.length})</option>
+                          <option value="arc">🚌 Rural Troncal (ARC) ({arcTariffs.length})</option>
+                          <option value="transfers">✈️ Traslados Fijos ({transferTariffs.length})</option>
+                        </select>
+                      </div>
+
+                      {/* Filtro por Categoría */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          🏷️ Categoría de Auto
+                        </label>
+                        <select
+                          value={filterTariffCategory}
+                          onChange={(e) => setFilterTariffCategory(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-tech-blue focus:outline-none focus:border-tech-blue"
+                        >
+                          <option value="all">Todas las Categorías</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id}>
+                              🚗 {c.name} ({c.id})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Filtro por Estado */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          ⚡ Estado Operativo
+                        </label>
+                        <select
+                          value={filterTariffStatus}
+                          onChange={(e) => setFilterTariffStatus(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-tech-blue focus:outline-none focus:border-tech-blue"
+                        >
+                          <option value="all">Todos los Estados</option>
+                          <option value="active">🟢 Solo Activos ({activeTariffsCount})</option>
+                          <option value="inactive">⚪ Solo Inactivos ({allTariffs.length - activeTariffsCount})</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Listado de Tarjetas Detalladas */}
+                  {isLoadingTariffs ? (
+                    <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center gap-3">
+                      <RefreshCw className="h-8 w-8 text-vial-orange animate-spin" />
+                      <p className="text-sm font-bold text-slate-600">Sincronizando tarifarios con Firestore...</p>
+                    </div>
+                  ) : filteredMasterTariffs.length === 0 ? (
+                    <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-3">
+                      <AlertCircle className="h-10 w-10 text-slate-400 mx-auto" />
+                      <h4 className="text-base font-bold text-slate-700">No se encontraron tarifarios</h4>
+                      <p className="text-xs text-slate-400 max-w-md mx-auto">
+                        No hay tarifarios que coincidan con los filtros seleccionados. Prueba cambiando los criterios o crea uno nuevo.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setTariffViewMode('split');
+                          setEditingMUTariff(null);
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-tech-blue rounded-xl hover:bg-slate-800 shadow"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Crear Nuevo Tarifario
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {filteredMasterTariffs.map((t: any) => {
+                        const isMU = t.type === 'mu';
+                        const isARC = t.type === 'arc' || t.type === 'aci';
+                        const isTransfer = t.type === 'transfers';
+                        const assignedBranches = getBranchNames(t.branchIds || (t.branchId ? [t.branchId] : []));
+
+                        return (
                           <div
                             key={t.id}
-                            className={`rounded-xl border p-4 transition-all relative ${
+                            className={`bg-white rounded-2xl border transition-all shadow-sm overflow-hidden flex flex-col justify-between ${
                               t.isActive 
-                                ? 'border-indigo-500/30 bg-indigo-50/20 shadow-sm' 
-                                : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                                ? 'border-green-500/40 ring-1 ring-green-500/20' 
+                                : 'border-slate-200 opacity-90 hover:border-slate-300'
                             }`}
                           >
-                            <div className="flex justify-between items-start mb-2 pr-12">
-                              <div className="space-y-1">
-                                <h4 className="font-bold text-tech-blue text-sm flex items-center gap-1.5">
-                                  ✈️ {t.name}
-                                </h4>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {getBranchNames(t.branchIds).map((bName, i) => (
-                                    <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
-                                      {bName}
+                            {/* Cabecera de la Tarjeta */}
+                            <div className="p-5 border-b border-slate-100 bg-slate-50/40">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                      isMU ? 'bg-tech-blue/10 text-tech-blue' : isARC ? 'bg-vial-orange/15 text-gray-950' : 'bg-indigo-100 text-indigo-700'
+                                    }`}>
+                                      {isMU ? '🏙️ Urbana (MU)' : isARC ? '🚌 Rural Troncal (ARC)' : '✈️ Traslado Fijo'}
                                     </span>
-                                  ))}
-                                  <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded uppercase">
-                                    Cat: {t.category}
-                                  </span>
-                                </div>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">{t.routes?.length || 0} Rutas Fijas:</p>
-                                <div className="space-y-1 mt-1">
-                                  {t.routes?.map((r: any) => (
-                                    <div key={r.id} className="text-xs text-slate-700 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
-                                      <div className="flex justify-between items-center">
-                                        <span className="font-semibold">{r.originName} {r.isBidirectional ? '⇄' : '➔'} {r.destinationName}</span>
-                                        <span className="font-black text-indigo-600">${r.fixedPrice?.toLocaleString('es-AR')}</span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Acciones */}
-                            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-                              {!t.isActive ? (
-                                <button 
-                                  onClick={() => handleActivateTariff(t)}
-                                  className="text-[11px] font-bold text-indigo-600 hover:underline uppercase"
-                                >
-                                  Activar
-                                </button>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold text-green-600 uppercase flex items-center">
-                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activa
-                                  </span>
-                                  <button 
-                                    onClick={() => handleDeactivateTariff(t)}
-                                    className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
-                                  >
-                                    Desactivar
-                                  </button>
-                                </div>
-                              )}
-
-                              <div className="flex items-center space-x-2">
-                                <button 
-                                  onClick={() => handleEditTariff(t)}
-                                  className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
-                                  title="Editar"
-                                >
-                                  <Edit className="h-3.5 w-3.5" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                  title="Eliminar"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )
-                    ) : tariffSubTab === 'mu' ? (
-                      filterTariffsByBranch(muTariffs).length === 0 ? (
-                        <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios MU para esta sucursal.</p>
-                      ) : (
-                        filterTariffsByBranch(muTariffs).map(t => (
-                          <div 
-                            key={t.id} 
-                            className={`rounded-xl border p-4 transition-all relative ${
-                              t.isActive 
-                                ? 'border-green-500/30 bg-green-500/5 shadow-sm' 
-                                : 'border-slate-200 bg-slate-50 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start mb-2 pr-12">
-                              <div>
-                                <h4 className="font-bold text-tech-blue text-sm flex items-center gap-1.5">
-                                  {t.name}
-                                </h4>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {getBranchNames(t.branchIds).map((bName, i) => (
-                                    <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
-                                      {bName}
+                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-200 text-slate-800 uppercase tracking-wider">
+                                      Cat: {t.category || 'Estándar'}
                                     </span>
-                                  ))}
-                                  <span className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded uppercase">
-                                    Cat: {t.category}
-                                  </span>
+                                  </div>
+                                  <h3 className="text-lg font-bold text-tech-blue pt-1">{t.name}</h3>
+                                </div>
+
+                                {/* Badge Activo / Inactivo */}
+                                <div>
+                                  {t.isActive ? (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-green-500 text-white shadow-sm">
+                                      <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                      ACTIVO
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-600">
+                                      INACTIVO
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                              {t.isActive && (
-                                <span className="flex items-center text-[10px] font-extrabold text-green-600 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  Activo
-                                </span>
-                              )}
-                            </div>
-                            
-                            <div className="text-[11px] text-slate-600 space-y-1 mt-2 bg-white/70 p-2.5 rounded-lg border border-slate-200/60">
-                              <p className="font-bold text-slate-800">Bajada: ${t.baseFare} | KM: ${t.pricePerKm} | Min Viaje: ${t.travelMinutePrice}</p>
-                              <p>Mínimo: ${t.minimumFare} | Espera: ${t.waitMinutePrice}/min (Cortesía: {t.courtesyTimeMinutes}m)</p>
-                              <p className="font-semibold text-slate-500">
-                                Comisión: {t.commissionRate}% | IVA/IIBB/TEM s/com: {t.iva}% / {t.iibb}% / {t.taxMunicipal}%
-                              </p>
-                              {t.penalties && (
-                                <p className="text-[10px] text-rose-600 font-semibold pt-1 border-t border-slate-100">
-                                  Multa Cancelación Pasajero: ${t.penalties.cancelFixedFee} (Gracia: {t.penalties.cancelGracePeriodMinutes}m) | Multa Chofer: ${t.penalties.driverCancelPenaltyFee}
+
+                              {/* Sucursales Asignadas */}
+                              <div className="mt-3 pt-3 border-t border-slate-200/60">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                  🏢 Sucursales donde aplica:
                                 </p>
-                              )}
-                            </div>
-
-                            {/* Acciones */}
-                            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-                              {!t.isActive ? (
-                                <button 
-                                  onClick={() => handleActivateTariff(t)}
-                                  className="text-[11px] font-bold text-vial-orange hover:underline uppercase"
-                                >
-                                  Activar Tarifa
-                                </button>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold text-green-600 uppercase flex items-center">
-                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> En Producción
-                                  </span>
-                                  <button 
-                                    onClick={() => handleDeactivateTariff(t)}
-                                    className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
-                                  >
-                                    Desactivar
-                                  </button>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {assignedBranches.length > 0 ? (
+                                    assignedBranches.map((bName: string, i: number) => (
+                                      <span
+                                        key={i}
+                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${
+                                          bName.includes('Todas')
+                                            ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                                            : 'bg-slate-100 text-slate-800 border border-slate-200'
+                                        }`}
+                                      >
+                                        <MapPin className="h-3 w-3 text-slate-500" />
+                                        {bName}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-xs text-slate-400 italic">No asignado a ninguna sucursal</span>
+                                  )}
                                 </div>
-                              )}
-
-                              <div className="flex items-center space-x-2">
-                                <button 
-                                  onClick={() => handleEditTariff(t)}
-                                  className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
-                                  title="Editar"
-                                >
-                                  <Edit className="h-3.5 w-3.5" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                  title="Eliminar"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
                               </div>
                             </div>
-                          </div>
-                        ))
-                      )
-                    ) : (
-                      filterTariffsByBranch(arcTariffs).length === 0 ? (
-                        <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios ARC para esta sucursal.</p>
-                      ) : (
-                        filterTariffsByBranch(arcTariffs).map(t => (
-                          <div 
-                            key={t.id} 
-                            className={`rounded-xl border p-4 transition-all relative ${
-                              t.isActive 
-                                ? 'border-vial-orange/30 bg-vial-orange/5 shadow-sm' 
-                                : 'border-slate-200 bg-slate-50 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start mb-2 pr-12">
+
+                            {/* Cuerpo: Parámetros Económicos y Rutas */}
+                            <div className="p-5 space-y-4 text-xs">
+                              {/* 1. Valores de Viaje */}
                               <div>
-                                <h4 className="font-bold text-tech-blue text-sm">{t.name}</h4>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {getBranchNames(t.branchIds).map((bName, i) => (
-                                    <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
-                                      {bName}
-                                    </span>
-                                  ))}
-                                  <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded uppercase">
-                                    Cat: {t.category}
-                                  </span>
-                                </div>
-                              </div>
-                              {t.isActive && (
-                                <span className="flex items-center text-[10px] font-extrabold text-vial-orange bg-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  Activo
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="text-[11px] text-slate-600 space-y-1 mt-2 bg-white/70 p-2.5 rounded-lg border border-slate-200/60">
-                              <p className="font-bold text-slate-800">Rutas Troncales: {t.routes?.length || 0}</p>
-                              <div className="space-y-1 mt-1">
-                                {t.routes?.map((r: any) => (
-                                  <div key={r.id} className="text-xs text-slate-700 bg-white p-1.5 rounded border border-slate-200">
-                                    <div className="flex justify-between items-center">
-                                      <span>{r.mainOrigin} {r.isBidirectional ? '⇄' : '➔'} {r.mainDestination}</span>
-                                      <span className="font-bold text-vial-orange">${r.pricePerSeat?.toLocaleString('es-AR')}/cupo</span>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                  💵 Esquema de Precios al Pasajero
+                                </p>
+                                {isMU && (
+                                  <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                    <div>
+                                      <span className="text-[10px] text-slate-400 font-semibold block">Bajada Bandera</span>
+                                      <span className="text-sm font-black text-tech-blue">${t.baseFare?.toLocaleString('es-AR') || 0}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-slate-400 font-semibold block">Valor por KM</span>
+                                      <span className="text-sm font-black text-tech-blue">${t.pricePerKm?.toLocaleString('es-AR') || 0}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-slate-400 font-semibold block">Minuto en Viaje</span>
+                                      <span className="text-sm font-black text-tech-blue">${t.travelMinutePrice?.toLocaleString('es-AR') || 0}</span>
+                                    </div>
+                                    <div className="pt-2 border-t border-slate-200">
+                                      <span className="text-[10px] text-slate-400 font-semibold block">Tarifa Mínima</span>
+                                      <span className="text-xs font-black text-slate-800">${t.minimumFare?.toLocaleString('es-AR') || 0}</span>
+                                    </div>
+                                    <div className="pt-2 border-t border-slate-200">
+                                      <span className="text-[10px] text-slate-400 font-semibold block">Minuto Espera</span>
+                                      <span className="text-xs font-black text-slate-800">${t.waitMinutePrice?.toLocaleString('es-AR') || 0}</span>
+                                    </div>
+                                    <div className="pt-2 border-t border-slate-200">
+                                      <span className="text-[10px] text-slate-400 font-semibold block">Tiempo Cortesía</span>
+                                      <span className="text-xs font-black text-slate-800">{t.courtesyTimeMinutes || 3} min</span>
                                     </div>
                                   </div>
-                                ))}
-                              </div>
-                              <p className="font-semibold text-slate-500 pt-1">
-                                Comisión: {t.commissionRate}% | IVA/IIBB/TEM s/com: {t.iva}% / {t.iibb}% / {t.taxMunicipal}%
-                              </p>
-                            </div>
+                                )}
 
-                            {/* Acciones */}
-                            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-                              {!t.isActive ? (
-                                <button 
-                                  onClick={() => handleActivateTariff(t)}
-                                  className="text-[11px] font-bold text-vial-orange hover:underline uppercase"
-                                >
-                                  Activar Tarifa
-                                </button>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold text-vial-orange uppercase flex items-center">
-                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> En Producción
-                                  </span>
-                                  <button 
-                                    onClick={() => handleDeactivateTariff(t)}
-                                    className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
-                                  >
-                                    Desactivar
-                                  </button>
+                                {(isARC || isTransfer) && (
+                                  <div className="space-y-1.5">
+                                    <p className="text-[11px] font-bold text-slate-600 mb-1">
+                                      {t.routes?.length || 0} Rutas / Tramos Habilitados:
+                                    </p>
+                                    <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                                      {t.routes?.map((r: any, rIdx: number) => (
+                                        <div key={rIdx} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                                          <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+                                            <span>{r.mainOrigin || r.originName}</span>
+                                            <span className="text-vial-orange font-bold">{r.isBidirectional ? '⇄' : '➔'}</span>
+                                            <span>{r.mainDestination || r.destinationName}</span>
+                                          </div>
+                                          <span className="text-xs font-black text-tech-blue bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                                            ${(r.pricePerSeat || r.fixedPrice)?.toLocaleString('es-AR')} {isARC ? '/cupo' : 'fijo'}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 2. Condiciones Financieras e Impositivas */}
+                              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                                <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    💳 Finanzas Plataforma
+                                  </p>
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    Comisión: <strong className="text-tech-blue">{t.commissionRate || 15}%</strong>
+                                  </p>
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    Membresía Semanal: <strong>${t.weeklyMembership?.toLocaleString('es-AR') || 0}</strong>
+                                  </p>
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    Recargo Digital: <strong>{t.electronicPaymentFee || 0}%</strong>
+                                  </p>
+                                </div>
+
+                                <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    🏛️ Impuestos s/ Comisión
+                                  </p>
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    IVA: <strong>{t.iva || 0}%</strong>
+                                  </p>
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    IIBB: <strong>{t.iibb || 0}%</strong>
+                                  </p>
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    TEM / Municipal: <strong>{t.taxMunicipal || 0}%</strong>
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* 3. Penalidades */}
+                              {t.penalties && (
+                                <div className="bg-rose-50/60 p-2.5 rounded-xl border border-rose-200/60 text-[11px] text-rose-800 space-y-0.5">
+                                  <p className="font-bold flex items-center gap-1 text-rose-900">
+                                    <ShieldAlert className="h-3.5 w-3.5" />
+                                    Penalidades de Cancelación
+                                  </p>
+                                  <p>
+                                    Pasajero: Gracia {t.penalties.cancelGracePeriodMinutes || 0} min | Multa: ${t.penalties.cancelFixedFee || 0}
+                                  </p>
+                                  <p>
+                                    Multa Chofer: ${t.penalties.driverCancelPenaltyFee || 0} | Post-aceptación: {t.penalties.postAcceptanceCancelFeeValue || 0}%
+                                  </p>
                                 </div>
                               )}
+                            </div>
 
+                            {/* Footer: Acciones */}
+                            <div className="p-4 bg-slate-50 border-t border-slate-200/70 flex items-center justify-between">
+                              {/* Toggle Activar/Desactivar */}
+                              {!t.isActive ? (
+                                <button
+                                  onClick={() => handleActivateTariff(t)}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-sm transition-all"
+                                >
+                                  <Zap className="h-3.5 w-3.5" />
+                                  Activar en Producción
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleDeactivateTariff(t)}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all"
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  Desactivar
+                                </button>
+                              )}
+
+                              {/* Botones Editar y Eliminar */}
                               <div className="flex items-center space-x-2">
-                                <button 
-                                  onClick={() => handleEditTariff(t)}
-                                  className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
-                                  title="Editar"
+                                <button
+                                  onClick={() => {
+                                    handleEditTariff(t);
+                                    setTariffViewMode('split');
+                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-tech-blue bg-white border border-slate-200 hover:bg-slate-100 transition-all shadow-2xs"
                                 >
                                   <Edit className="h-3.5 w-3.5" />
+                                  Editar
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                  title="Eliminar"
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-white border border-red-200 hover:bg-red-50 transition-all shadow-2xs"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
+                                  Eliminar
                                 </button>
                               </div>
                             </div>
                           </div>
-                        ))
-                      )
-                    )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* VISTA 2: MODO SPLIT (EDITOR + FORMULARIO + LATERAL) */}
+              {tariffViewMode === 'split' && (
+                <div className="space-y-6">
+                  {/* Selector de Subtipo de Tarifario */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 rounded-xl border border-slate-200">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => {
+                          setTariffSubTab('mu');
+                          setEditingMUTariff(null);
+                        }}
+                        className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
+                          tariffSubTab === 'mu' ? 'bg-tech-blue text-white shadow' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        🏙️ Movilidad Urbana (MU)
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTariffSubTab('arc');
+                          setEditingARCTariff(null);
+                        }}
+                        className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
+                          tariffSubTab === 'arc' ? 'bg-vial-orange text-gray-950 shadow' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        🚌 Rural Compartido (ARC)
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTariffSubTab('transfers');
+                          setEditingTransferTariff(null);
+                        }}
+                        className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
+                          tariffSubTab === 'transfers' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        ✈️ Traslados Fijos
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => setTariffViewMode('master')}
+                      className="text-xs font-bold text-tech-blue hover:underline flex items-center gap-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Ver todos los tarifarios desplegados
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Columna Izquierda: Formulario de Creación/Edición */}
+                    <div className="lg:col-span-2">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 className="mb-6 text-xl font-bold text-tech-blue">
+                          {tariffSubTab === 'mu' 
+                            ? (editingMUTariff ? `Editar Tarifario MU: ${editingMUTariff.name}` : 'Crear Nuevo Tarifario MU (Urbano)') 
+                            : tariffSubTab === 'arc'
+                            ? (editingARCTariff ? `Editar Tarifario ARC: ${editingARCTariff.name}` : 'Crear Nuevo Tarifario ARC (Rural Compartido)')
+                            : (editingTransferTariff ? `Editar Traslado Fijo: ${editingTransferTariff.name}` : 'Crear Nuevo Traslado Fijo Punto a Punto')
+                          }
+                        </h2>
+                        {tariffSubTab === 'mu' ? (
+                          <MUTariffForm 
+                            editData={editingMUTariff} 
+                            onSubmitSuccess={() => setEditingMUTariff(null)} 
+                          />
+                        ) : tariffSubTab === 'arc' ? (
+                          <ARCTariffForm 
+                            editData={editingARCTariff} 
+                            onSubmitSuccess={() => setEditingARCTariff(null)} 
+                          />
+                        ) : (
+                          <TransferTariffForm
+                            editData={editingTransferTariff}
+                            onSubmitSuccess={() => setEditingTransferTariff(null)}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Columna Derecha: Listado en tiempo real */}
+                    <div className="lg:col-span-1">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm h-full">
+                        <h2 className="mb-4 text-lg font-bold text-tech-blue flex items-center justify-between">
+                          <span className="flex items-center">
+                            <FileText className="mr-2 h-5 w-5 text-slate-500" />
+                            Tarifarios Activos
+                          </span>
+                          <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                            {tariffSubTab === 'mu' ? filterTariffsByBranch(muTariffs).length : tariffSubTab === 'arc' ? filterTariffsByBranch(arcTariffs).length : filterTariffsByBranch(transferTariffs).length} registrados
+                          </span>
+                        </h2>
+                        
+                        <div className="space-y-4 max-h-[800px] overflow-y-auto pr-1 custom-scrollbar">
+                          {isLoadingTariffs ? (
+                            <div className="text-center py-8 text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
+                              <RefreshCw className="h-5 w-5 animate-spin text-vial-orange" />
+                              Cargando tarifarios desde Firestore...
+                            </div>
+                          ) : tariffSubTab === 'transfers' ? (
+                            filterTariffsByBranch(transferTariffs).length === 0 ? (
+                              <p className="text-sm text-slate-400 py-6 text-center">No hay traslados fijos para esta sucursal.</p>
+                            ) : (
+                              filterTariffsByBranch(transferTariffs).map(t => (
+                                <div
+                                  key={t.id}
+                                  className={`rounded-xl border p-4 transition-all relative ${
+                                    t.isActive 
+                                      ? 'border-indigo-500/30 bg-indigo-50/20 shadow-sm' 
+                                      : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start mb-2 pr-12">
+                                    <div className="space-y-1">
+                                      <h4 className="font-bold text-tech-blue text-sm flex items-center gap-1.5">
+                                        ✈️ {t.name}
+                                      </h4>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {getBranchNames(t.branchIds).map((bName, i) => (
+                                          <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                                            {bName}
+                                          </span>
+                                        ))}
+                                        <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded uppercase">
+                                          Cat: {t.category}
+                                        </span>
+                                      </div>
+                                      <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">{t.routes?.length || 0} Rutas Fijas:</p>
+                                      <div className="space-y-1 mt-1">
+                                        {t.routes?.map((r: any) => (
+                                          <div key={r.id} className="text-xs text-slate-700 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                                            <div className="flex justify-between items-center">
+                                              <span className="font-semibold">{r.originName} {r.isBidirectional ? '⇄' : '➔'} {r.destinationName}</span>
+                                              <span className="font-black text-indigo-600">${r.fixedPrice?.toLocaleString('es-AR')}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Acciones */}
+                                  <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+                                    {!t.isActive ? (
+                                      <button 
+                                        onClick={() => handleActivateTariff(t)}
+                                        className="text-[11px] font-bold text-indigo-600 hover:underline uppercase"
+                                      >
+                                        Activar
+                                      </button>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-green-600 uppercase flex items-center">
+                                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activa
+                                        </span>
+                                        <button 
+                                          onClick={() => handleDeactivateTariff(t)}
+                                          className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
+                                        >
+                                          Desactivar
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center space-x-2">
+                                      <button 
+                                        onClick={() => handleEditTariff(t)}
+                                        className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
+                                        title="Editar"
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
+                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                        title="Eliminar"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )
+                          ) : tariffSubTab === 'mu' ? (
+                            filterTariffsByBranch(muTariffs).length === 0 ? (
+                              <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios MU para esta sucursal.</p>
+                            ) : (
+                              filterTariffsByBranch(muTariffs).map(t => (
+                                <div 
+                                  key={t.id} 
+                                  className={`rounded-xl border p-4 transition-all relative ${
+                                    t.isActive 
+                                      ? 'border-green-500/30 bg-green-500/5 shadow-sm' 
+                                      : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start mb-2 pr-12">
+                                    <div>
+                                      <h4 className="font-bold text-tech-blue text-sm flex items-center gap-1.5">
+                                        {t.name}
+                                      </h4>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {getBranchNames(t.branchIds).map((bName, i) => (
+                                          <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                                            {bName}
+                                          </span>
+                                        ))}
+                                        <span className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded uppercase">
+                                          Cat: {t.category}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {t.isActive && (
+                                      <span className="flex items-center text-[10px] font-extrabold text-green-600 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                        Activo
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="text-[11px] text-slate-600 space-y-1 mt-2 bg-white/70 p-2.5 rounded-lg border border-slate-200/60">
+                                    <p className="font-bold text-slate-800">Bajada: ${t.baseFare} | KM: ${t.pricePerKm} | Min Viaje: ${t.travelMinutePrice}</p>
+                                    <p>Mínimo: ${t.minimumFare} | Espera: ${t.waitMinutePrice}/min (Cortesía: {t.courtesyTimeMinutes}m)</p>
+                                    <p className="font-semibold text-slate-500">
+                                      Comisión: {t.commissionRate}% | IVA/IIBB/TEM s/com: {t.iva}% / {t.iibb}% / {t.taxMunicipal}%
+                                    </p>
+                                    {t.penalties && (
+                                      <p className="text-[10px] text-rose-600 font-semibold pt-1 border-t border-slate-100">
+                                        Multa Cancelación Pasajero: ${t.penalties.cancelFixedFee} (Gracia: {t.penalties.cancelGracePeriodMinutes}m) | Multa Chofer: ${t.penalties.driverCancelPenaltyFee}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Acciones */}
+                                  <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+                                    {!t.isActive ? (
+                                      <button 
+                                        onClick={() => handleActivateTariff(t)}
+                                        className="text-[11px] font-bold text-vial-orange hover:underline uppercase"
+                                      >
+                                        Activar Tarifa
+                                      </button>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-green-600 uppercase flex items-center">
+                                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> En Producción
+                                        </span>
+                                        <button 
+                                          onClick={() => handleDeactivateTariff(t)}
+                                          className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
+                                        >
+                                          Desactivar
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center space-x-2">
+                                      <button 
+                                        onClick={() => handleEditTariff(t)}
+                                        className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
+                                        title="Editar"
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
+                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                        title="Eliminar"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )
+                          ) : (
+                            filterTariffsByBranch(arcTariffs).length === 0 ? (
+                              <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios ARC para esta sucursal.</p>
+                            ) : (
+                              filterTariffsByBranch(arcTariffs).map(t => (
+                                <div 
+                                  key={t.id} 
+                                  className={`rounded-xl border p-4 transition-all relative ${
+                                    t.isActive 
+                                      ? 'border-vial-orange/30 bg-vial-orange/5 shadow-sm' 
+                                      : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start mb-2 pr-12">
+                                    <div>
+                                      <h4 className="font-bold text-tech-blue text-sm">{t.name}</h4>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {getBranchNames(t.branchIds).map((bName, i) => (
+                                          <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                                            {bName}
+                                          </span>
+                                        ))}
+                                        <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded uppercase">
+                                          Cat: {t.category}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {t.isActive && (
+                                      <span className="flex items-center text-[10px] font-extrabold text-vial-orange bg-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                        Activo
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="text-[11px] text-slate-600 space-y-1 mt-2 bg-white/70 p-2.5 rounded-lg border border-slate-200/60">
+                                    <p className="font-bold text-slate-800">Rutas Troncales: {t.routes?.length || 0}</p>
+                                    <div className="space-y-1 mt-1">
+                                      {t.routes?.map((r: any) => (
+                                        <div key={r.id} className="text-xs text-slate-700 bg-white p-1.5 rounded border border-slate-200">
+                                          <div className="flex justify-between items-center">
+                                            <span>{r.mainOrigin} {r.isBidirectional ? '⇄' : '➔'} {r.mainDestination}</span>
+                                            <span className="font-bold text-vial-orange">${r.pricePerSeat?.toLocaleString('es-AR')}/cupo</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <p className="font-semibold text-slate-500 pt-1">
+                                      Comisión: {t.commissionRate}% | IVA/IIBB/TEM s/com: {t.iva}% / {t.iibb}% / {t.taxMunicipal}%
+                                    </p>
+                                  </div>
+
+                                  {/* Acciones */}
+                                  <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+                                    {!t.isActive ? (
+                                      <button 
+                                        onClick={() => handleActivateTariff(t)}
+                                        className="text-[11px] font-bold text-vial-orange hover:underline uppercase"
+                                      >
+                                        Activar Tarifa
+                                      </button>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-vial-orange uppercase flex items-center">
+                                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> En Producción
+                                        </span>
+                                        <button 
+                                          onClick={() => handleDeactivateTariff(t)}
+                                          className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
+                                        >
+                                          Desactivar
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center space-x-2">
+                                      <button 
+                                        onClick={() => handleEditTariff(t)}
+                                        className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
+                                        title="Editar"
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
+                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                        title="Eliminar"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* TABS DE CATEGORÍAS */}
         {activeTab === 'categories' && (
