@@ -77,11 +77,11 @@ export const OverlappingCardCarousel: React.FC<OverlappingCardCarouselProps> = (
       {(title || subtitle) && (
         <div className="flex items-center justify-between px-4 mb-3">
           <div>
-            <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-amber-500" />
+            <h3 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-1.5 drop-shadow-xs">
+              <Sparkles className="h-4 w-4 text-amber-400" />
               {title}
             </h3>
-            {subtitle && <p className="text-xs text-slate-500 font-medium">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-white/80 font-medium drop-shadow-2xs">{subtitle}</p>}
           </div>
 
           {/* Indicadores / Controles de navegación */}

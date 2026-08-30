@@ -2,17 +2,31 @@
 
 :root {
   --background: #f8fafc; /* Slate 50 background */
-  --foreground: #0a2a5b; /* Tech Blue foreground */
+  --foreground: #0a2a5b; /* Azul Corporativo */
   --font-quicksand: 'Quicksand', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-sans: var(--font-quicksand);
+
+  /* Brand Guidelines Colors */
+  --corp-blue: #0a2a5b;
+  --cab-orange: #ff5a19;
+  --rewards-gold: #e5a93b;
+  --experience-coral: #ff4f5a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-quicksand);
+  
+  /* Brand Tokens */
+  --color-corp-blue: #0a2a5b;
+  --color-cab-orange: #ff5a19;
+  --color-rewards-gold: #e5a93b;
+  --color-experience-coral: #ff4f5a;
+  
+  /* Backward-compatible aliases */
   --color-tech-blue: #0a2a5b;
-  --color-vial-orange: #ff6b00;
+  --color-vial-orange: #ff5a19;
 }
 
 body {
@@ -20,3 +34,4 @@ body {
   color: var(--foreground);
   font-family: 'Quicksand', var(--font-quicksand), system-ui, sans-serif;
 }
+

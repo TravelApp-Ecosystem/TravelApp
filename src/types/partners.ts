@@ -127,6 +127,16 @@ export interface DriverPartner {
   status: PartnerStatus;
   wallet: PartnerWallet;
 
+  // Logistics & Tariffs Assignment
+  branchIds?: string[];             // Sucursales donde está autorizado a operar (o ['all'])
+  allowedCategories?: string[];     // Categorías de servicio habilitadas (ej: ['taxi', 'estandar'], ['vip', 'premium'])
+  assignedTariffIds?: string[];     // Tarifarios específicos asignados
+  allowedServiceModes?: string[];   // Modalidades habilitadas: ['mu', 'arc', 'transfers']
+  planType?: 'commission' | 'membership'; // Plan de trabajo: Comisión o Membresía
+  maxNegativeBalance?: number;      // Límite de saldo negativo
+  currentCommissionBalance?: number;
+  enabledAt?: number;               // Timestamp de cuando fue habilitado
+
   // Fleet Supervisor Linkage
   fleetSupervisorId?: string;       // Employee ID of the Fleet Supervisor
   fleetSupervisorName?: string;     // Display name of the supervisor

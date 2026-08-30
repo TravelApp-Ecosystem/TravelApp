@@ -299,43 +299,46 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
   const enabledTabs = cmsData.enabledSearchTabs || DEFAULT_EXPERIENCE_CMS_DATA.enabledSearchTabs;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans overflow-x-hidden selection:bg-red-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-[#0A2A5B] font-sans overflow-x-hidden selection:bg-[#FF4F5A] selection:text-white">
       
       {/* 1. TOPBAR DE ANUNCIOS & PROMOS */}
       {cmsData.header?.announcementText && (
-        <div className="bg-gradient-to-r from-red-600 via-red-500 to-rose-600 text-white text-xs font-bold py-2 px-4 text-center tracking-wide flex items-center justify-center gap-2 shadow-sm">
-          <Sparkles className="h-3.5 w-3.5" />
+        <div className="bg-gradient-to-r from-[#0A2A5B] via-[#113875] to-[#0A2A5B] border-b border-white/10 text-white text-xs font-bold py-2.5 px-4 text-center tracking-wide flex items-center justify-center gap-2 shadow-sm">
+          <Sparkles className="h-3.5 w-3.5 text-[#E5A93B]" />
           <span>{cmsData.header.announcementText}</span>
           {affiliateRef && (
-            <span className="hidden md:inline-block bg-black/20 px-2.5 py-0.5 rounded-full text-[10px] uppercase font-black tracking-wider">
+            <span className="hidden md:inline-block bg-[#FF4F5A] px-2.5 py-0.5 rounded-full text-[10px] uppercase font-black tracking-wider text-white shadow-sm">
               Asesor: {affiliateRef}
             </span>
           )}
         </div>
       )}
 
-      {/* 2. NAVBAR GLASSMORFICO */}
-      <header className="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white shadow-xl">
+      {/* 2. NAVBAR GLASSMORFICO (AZUL CORPORATIVO #0A2A5B) */}
+      <header className="sticky top-0 z-50 bg-[#0A2A5B]/95 backdrop-blur-md border-b border-white/10 text-white shadow-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
-          <a href="#" className="flex items-center gap-2.5">
-            <img src="/assets/experience_blanco.svg" alt="TravelApp Experiences" className="h-9 w-auto object-contain" />
-          </a>
+          <Link href="/" className="flex items-center gap-2.5">
+            <img src="/assets/travelapp_blanco.svg" alt="TravelApp" className="h-8 sm:h-9 w-auto object-contain" />
+          </Link>
 
           {/* Nav Links */}
-          <nav className="hidden lg:flex items-center gap-8 text-xs font-black uppercase tracking-wider text-slate-300">
-            <a href="#destinos" className="hover:text-red-400 transition-colors">
+          <nav className="hidden lg:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-slate-200">
+            <a href="#destinos" className="hover:text-[#FF4F5A] transition-colors">
               Salidas Grupales
             </a>
-            <a href="#cruceros" className="hover:text-red-400 transition-colors">
-              Cruceros
+            <a href="#cruceros" className="hover:text-[#FF4F5A] transition-colors">
+              Cruceros &amp; Escapadas
             </a>
-            <a href="#beneficios" className="hover:text-red-400 transition-colors">
-              Club Rewards
+            <a href="#beneficios" className="hover:text-[#E5A93B] transition-colors flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-[#E5A93B]" /> Club Rewards
             </a>
-            <a href="#app" className="hover:text-red-400 transition-colors">
-              App del Pasajero
+            <Link href="/landing/travelcab" className="hover:text-[#FF5A19] transition-colors flex items-center gap-1">
+              <Car className="h-3.5 w-3.5 text-[#FF5A19]" /> TravelCab
+            </Link>
+            <a href="#app" className="hover:text-[#FF4F5A] transition-colors">
+              App Pasajero
             </a>
-            <a href="#afiliados" className="hover:text-red-400 transition-colors">
+            <a href="#afiliados" className="hover:text-[#FF4F5A] transition-colors">
               Afiliados
             </a>
           </nav>
@@ -344,13 +347,13 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           <div className="hidden sm:flex items-center gap-3">
             <a
               href={cmsData.header?.loginUrl || "/login"}
-              className="text-xs font-bold px-4 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition"
+              className="text-xs font-bold px-4 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition"
             >
               Ingresar a mi Viaje
             </a>
             <Link
               href={affiliateRef ? `/marketplace?ref=${affiliateRef}` : "/marketplace"}
-              className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition shadow-lg shadow-red-600/30 flex items-center gap-1.5"
+              className="px-5 py-2.5 rounded-xl bg-[#FF4F5A] hover:bg-[#e03e48] text-white font-bold text-xs transition shadow-lg shadow-[#FF4F5A]/30 flex items-center gap-1.5 cursor-pointer"
             >
               <Compass className="h-4 w-4" /> Explorar Catálogo 2026
             </Link>
@@ -360,7 +363,7 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           <button
             type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
+            className="lg:hidden p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10"
           >
             {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -368,23 +371,26 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
         {/* Menú Móvil */}
         {mobileOpen && (
-          <div className="lg:hidden bg-slate-900 border-b border-slate-800 px-6 py-4 space-y-3 animate-in slide-in-from-top">
-            <a href="#destinos" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-slate-300 py-1.5">
+          <div className="lg:hidden bg-[#0A2A5B] border-b border-white/10 px-6 py-4 space-y-3 animate-in slide-in-from-top text-white">
+            <a href="#destinos" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-slate-200 py-1.5 hover:text-[#FF4F5A]">
               Salidas Grupales
             </a>
-            <a href="#cruceros" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-slate-300 py-1.5">
-              Cruceros &amp; Travesías
+            <a href="#cruceros" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-slate-200 py-1.5 hover:text-[#FF4F5A]">
+              Cruceros &amp; Escapadas
             </a>
-            <a href="#beneficios" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-slate-300 py-1.5">
-              Club Rewards
+            <a href="#beneficios" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-[#E5A93B] py-1.5">
+              ⭐ Club Rewards
             </a>
-            <a href="#app" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-slate-300 py-1.5">
+            <Link href="/landing/travelcab" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-[#FF5A19] py-1.5">
+              🚕 Traslados TravelCab
+            </Link>
+            <a href="#app" onClick={() => setMobileOpen(false)} className="block text-xs font-bold text-slate-200 py-1.5 hover:text-[#FF4F5A]">
               App del Pasajero
             </a>
             <Link
               href={affiliateRef ? `/marketplace?ref=${affiliateRef}` : "/marketplace"}
               onClick={() => setMobileOpen(false)}
-              className="block w-full text-center py-3 rounded-xl bg-red-600 text-white font-black text-xs"
+              className="block w-full text-center py-3 rounded-xl bg-[#FF4F5A] text-white font-bold text-xs shadow-md"
             >
               Ver Todo el Catálogo
             </Link>
@@ -392,15 +398,16 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
         )}
       </header>
 
-      {/* 3. HERO SECTION 4K DE ALTO IMPACTO (SIN CAPAS OSCURAS INVASIVAS) */}
-      <section className="relative min-h-[620px] lg:min-h-[700px] flex items-center justify-center overflow-hidden bg-slate-900">
-        {/* Imagen de Fondo HD Nítida y Brillante */}
+      {/* 3. HERO SECTION 4K DE ALTO IMPACTO */}
+      <section className="relative min-h-[620px] lg:min-h-[700px] flex items-center justify-center overflow-hidden bg-[#0A2A5B]">
+        {/* Imagen de Fondo HD Nítida */}
         <div className="absolute inset-0 z-0">
           <img
             src={activeSlide?.bgImage || "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1920&q=80"}
             alt={activeSlide?.title}
             className="w-full h-full object-cover object-center transition-all duration-1000 transform scale-100"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0A2A5B] via-[#0A2A5B]/50 to-transparent"></div>
         </div>
 
         {/* Contenido Central del Hero con Card Translúcida Limpia */}
@@ -408,37 +415,37 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           
           {/* BANNER EDITABLE EN EL HERO (EJ: 12 CUOTAS SIN INTERÉS) */}
           {cmsData.heroPromoBanner?.enabled !== false && (
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-red-600/90 backdrop-blur-md text-white text-xs sm:text-sm font-black border border-white/30 shadow-2xl animate-pulse mx-auto">
-              <Sparkles className="h-4 w-4 text-amber-300 flex-shrink-0" />
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#FF4F5A]/95 backdrop-blur-md text-white text-xs sm:text-sm font-bold border border-white/30 shadow-2xl animate-pulse mx-auto">
+              <Sparkles className="h-4 w-4 text-[#E5A93B] flex-shrink-0" />
               <span>{cmsData.heroPromoBanner?.text || "🔥 12 Cuotas fijas sin interés en paquetes propios + Time-to-Pay"}</span>
             </div>
           )}
 
           {/* Tarjeta de Título Flotante HD */}
-          <div className="bg-slate-950/75 backdrop-blur-md p-6 sm:p-10 rounded-3xl border border-white/20 shadow-2xl space-y-4 max-w-4xl mx-auto text-white">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 text-[11px] font-black text-red-400 uppercase tracking-widest">
-              <Sparkles className="h-3 w-3 text-red-400" />
+          <div className="bg-[#0A2A5B]/85 backdrop-blur-md p-6 sm:p-10 rounded-3xl border border-white/20 shadow-2xl space-y-4 max-w-4xl mx-auto text-white">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 text-[11px] font-bold text-[#FF4F5A] uppercase tracking-widest">
+              <Sparkles className="h-3 w-3 text-[#FF4F5A]" />
               {activeSlide?.subtitle || "EXPERIENCIAS INOLVIDABLES"}
             </div>
 
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight text-white">
               {activeSlide?.title}
             </h1>
 
-            <p className="text-xs sm:text-base text-slate-200 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xs sm:text-base text-slate-200 max-w-2xl mx-auto leading-relaxed font-medium">
               {activeSlide?.text}
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link
                 href={affiliateRef ? `/marketplace?ref=${affiliateRef}` : "/marketplace"}
-                className="px-8 py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm transition shadow-xl shadow-red-600/40 flex items-center gap-2 transform hover:-translate-y-0.5"
+                className="px-8 py-3.5 rounded-2xl bg-[#FF4F5A] hover:bg-[#e03e48] text-white font-bold text-xs sm:text-sm transition shadow-xl shadow-[#FF4F5A]/40 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer"
               >
                 {activeSlide?.ctaText || "Ver Catálogo de Viajes"} <ArrowRight className="h-4 w-4" />
               </Link>
               <a
                 href="#buscador"
-                className="px-6 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm transition border border-white/20"
+                className="px-6 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm transition border border-white/20 cursor-pointer"
               >
                 Buscar por Destino
               </a>
@@ -466,16 +473,16 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 p-4 sm:p-6 space-y-5">
           
           {/* Pestañas de Servicios Habilitadas desde CMS */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100 text-xs font-black uppercase tracking-wider">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100 text-xs font-bold uppercase tracking-wider">
             {enabledTabs.paquetes !== false && (
               <button
                 type="button"
                 onClick={() => setSearchTab('paquetes')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap ${
-                  searchTab === 'paquetes' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+                  searchTab === 'paquetes' ? "bg-[#0A2A5B] text-white shadow-md" : "text-slate-500 hover:text-[#0A2A5B] hover:bg-slate-100"
                 }`}
               >
-                <Compass className="h-4 w-4 text-red-500" /> 🚍 Salidas &amp; Paquetes
+                <Compass className="h-4 w-4 text-[#FF4F5A]" /> 🚍 Salidas &amp; Paquetes
               </button>
             )}
 
@@ -483,11 +490,11 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <button
                 type="button"
                 onClick={() => setSearchTab('vuelos')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap ${
-                  searchTab === 'vuelos' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+                  searchTab === 'vuelos' ? "bg-[#0A2A5B] text-white shadow-md" : "text-slate-500 hover:text-[#0A2A5B] hover:bg-slate-100"
                 }`}
               >
-                <Plane className="h-4 w-4 text-red-500" /> ✈️ Vuelos (GDS)
+                <Plane className="h-4 w-4 text-[#FF4F5A]" /> ✈️ Vuelos (GDS)
               </button>
             )}
 
@@ -495,11 +502,11 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <button
                 type="button"
                 onClick={() => setSearchTab('hoteles')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap ${
-                  searchTab === 'hoteles' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+                  searchTab === 'hoteles' ? "bg-[#0A2A5B] text-white shadow-md" : "text-slate-500 hover:text-[#0A2A5B] hover:bg-slate-100"
                 }`}
               >
-                <Hotel className="h-4 w-4 text-red-500" /> 🏨 Hoteles
+                <Hotel className="h-4 w-4 text-[#FF4F5A]" /> 🏨 Hoteles
               </button>
             )}
 
@@ -507,11 +514,11 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <button
                 type="button"
                 onClick={() => setSearchTab('buses')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap ${
-                  searchTab === 'buses' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+                  searchTab === 'buses' ? "bg-[#0A2A5B] text-white shadow-md" : "text-slate-500 hover:text-[#0A2A5B] hover:bg-slate-100"
                 }`}
               >
-                <Bus className="h-4 w-4 text-red-500" /> 🚌 Micros de Línea
+                <Bus className="h-4 w-4 text-[#FF4F5A]" /> 🚌 Micros de Línea
               </button>
             )}
 
@@ -519,11 +526,11 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <button
                 type="button"
                 onClick={() => setSearchTab('civitatis')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap ${
-                  searchTab === 'civitatis' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+                  searchTab === 'civitatis' ? "bg-[#0A2A5B] text-white shadow-md" : "text-slate-500 hover:text-[#0A2A5B] hover:bg-slate-100"
                 }`}
               >
-                <Ticket className="h-4 w-4 text-red-500" /> 🎯 Tours Civitatis
+                <Ticket className="h-4 w-4 text-[#FF4F5A]" /> 🎯 Tours Civitatis
               </button>
             )}
 
@@ -531,11 +538,11 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <button
                 type="button"
                 onClick={() => setSearchTab('travelcab')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap ${
-                  searchTab === 'travelcab' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+                  searchTab === 'travelcab' ? "bg-[#0A2A5B] text-white shadow-md" : "text-slate-500 hover:text-[#0A2A5B] hover:bg-slate-100"
                 }`}
               >
-                <Car className="h-4 w-4 text-red-500" /> 🚕 Traslados TravelCab
+                <Car className="h-4 w-4 text-[#FF5A19]" /> 🚕 Traslados TravelCab
               </button>
             )}
           </div>
@@ -544,25 +551,25 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           {searchTab === 'paquetes' && (
             <form onSubmit={handlePackageSearch} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
               <div className="sm:col-span-2 space-y-1">
-                <span className="font-extrabold text-slate-500 block">¿A dónde querés viajar?</span>
-                <div className="flex items-center bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5">
-                  <MapPin className="h-4 w-4 text-red-500 mr-2 flex-shrink-0" />
+                <span className="font-bold text-slate-600 block">¿A dónde querés viajar?</span>
+                <div className="flex items-center bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 focus-within:border-[#FF4F5A] focus-within:ring-2 focus-within:ring-[#FF4F5A]/20 transition-all">
+                  <MapPin className="h-4 w-4 text-[#FF4F5A] mr-2 flex-shrink-0" />
                   <input
                     type="text"
                     value={searchDestination}
                     onChange={(e) => setSearchDestination(e.target.value)}
-                    placeholder="Ej: Salta, Cataratas, Mendoza, Caribe, Europa..."
-                    className="w-full bg-transparent font-bold text-slate-800 focus:outline-none"
+                    placeholder="Ej: Salta, Cataratas, Bariloche, Mendoza, Caribe..."
+                    className="w-full bg-transparent font-bold text-[#0A2A5B] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Temporada / Mes</span>
+                <span className="font-bold text-slate-600 block">Temporada / Mes</span>
                 <select
                   value={searchMonth}
                   onChange={(e) => setSearchMonth(e.target.value)}
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-3 font-bold text-slate-800 focus:outline-none"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-3 font-bold text-[#0A2A5B] focus:outline-none focus:border-[#FF4F5A] focus:ring-2 focus:ring-[#FF4F5A]/20 transition-all"
                 >
                   <option value="all">Todas las fechas</option>
                   <option value="verano">Verano 2026</option>
@@ -575,7 +582,7 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <div className="flex items-end">
                 <button
                   type="submit"
-                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition transform hover:scale-[1.02]"
+                  className="w-full py-3 bg-[#FF4F5A] hover:bg-[#e03e48] text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#FF4F5A]/30 transition transform hover:scale-[1.02] cursor-pointer"
                 >
                   <Search className="h-4 w-4" /> Buscar Experiencias
                 </button>
@@ -587,30 +594,30 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           {searchTab === 'vuelos' && (
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Origen</span>
+                <span className="font-bold text-slate-600 block">Origen</span>
                 <input
                   type="text"
                   value={flightOrigin}
                   onChange={(e) => setFlightOrigin(e.target.value)}
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-slate-800"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-[#0A2A5B]"
                 />
               </div>
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Destino</span>
+                <span className="font-bold text-slate-600 block">Destino</span>
                 <input
                   type="text"
                   value={flightDestination}
                   onChange={(e) => setFlightDestination(e.target.value)}
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-slate-800"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-[#0A2A5B]"
                 />
               </div>
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Fecha de Salida</span>
+                <span className="font-bold text-slate-600 block">Fecha de Salida</span>
                 <input
                   type="date"
                   value={flightDate}
                   onChange={(e) => setFlightDate(e.target.value)}
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-slate-800"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-[#0A2A5B]"
                 />
               </div>
               <div className="flex items-end">
@@ -618,9 +625,9 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
                   href={`https://wa.me/5493814188106?text=Hola!%20Quiero%20cotizar%20un%20vuelo%20de%20${encodeURIComponent(flightOrigin)}%20hacia%20${encodeURIComponent(flightDestination)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-md transition"
+                  className="w-full py-3 bg-[#0A2A5B] hover:bg-[#113875] text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
                 >
-                  <Plane className="h-4 w-4 text-red-500" /> Cotizar Vuelos (GDS)
+                  <Plane className="h-4 w-4 text-[#FF4F5A]" /> Cotizar Vuelos (GDS)
                 </a>
               </div>
             </div>
@@ -665,9 +672,9 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
                   href={`https://wa.me/5493814188106?text=Hola!%20Quiero%20cotizar%20hotel%20en%20${encodeURIComponent(hotelCity)}%20para%20${hotelGuests}%20personas`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-md transition"
+                  className="w-full py-3 bg-[#0A2A5B] hover:bg-[#113875] text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
                 >
-                  <Hotel className="h-4 w-4 text-red-500" /> Buscar Alojamiento
+                  <Hotel className="h-4 w-4 text-[#FF4F5A]" /> Buscar Alojamiento
                 </a>
               </div>
             </div>
@@ -677,21 +684,21 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           {searchTab === 'buses' && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Origen</span>
+                <span className="font-bold text-slate-600 block">Origen</span>
                 <input
                   type="text"
                   value={busOrigin}
                   onChange={(e) => setBusOrigin(e.target.value)}
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-slate-800"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-[#0A2A5B]"
                 />
               </div>
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Destino</span>
+                <span className="font-bold text-slate-600 block">Destino</span>
                 <input
                   type="text"
                   value={busDestination}
                   onChange={(e) => setBusDestination(e.target.value)}
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-slate-800"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-[#0A2A5B]"
                 />
               </div>
               <div className="flex items-end">
@@ -699,9 +706,9 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
                   href={`https://wa.me/5493814188106?text=Hola!%20Quiero%20comprar%20pasaje%20de%20bus%20de%20${encodeURIComponent(busOrigin)}%20a%20${encodeURIComponent(busDestination)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-md transition"
+                  className="w-full py-3 bg-[#0A2A5B] hover:bg-[#113875] text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
                 >
-                  <Bus className="h-4 w-4 text-red-500" /> Consultar Pasajes Unibus
+                  <Bus className="h-4 w-4 text-[#FF4F5A]" /> Consultar Pasajes Unibus
                 </a>
               </div>
             </div>
@@ -711,13 +718,13 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           {searchTab === 'civitatis' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Ciudad o Actividad</span>
+                <span className="font-bold text-slate-600 block">Ciudad o Actividad</span>
                 <input
                   type="text"
                   value={activityCity}
                   onChange={(e) => setActivityCity(e.target.value)}
                   placeholder="Ej: Mendoza, Ushuaia, Cancún, Roma..."
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-slate-800"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-[#0A2A5B]"
                 />
               </div>
               <div className="flex items-end">
@@ -725,9 +732,9 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
                   href={`https://wa.me/5493814188106?text=Hola!%20Quiero%20reservar%20excursiones%20y%20tours%20en%20${encodeURIComponent(activityCity)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-md transition"
+                  className="w-full py-3 bg-[#0A2A5B] hover:bg-[#113875] text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
                 >
-                  <Ticket className="h-4 w-4 text-red-500" /> Ver Tours Disponibles
+                  <Ticket className="h-4 w-4 text-[#FF4F5A]" /> Ver Tours Disponibles
                 </a>
               </div>
             </div>
@@ -737,29 +744,29 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           {searchTab === 'travelcab' && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Punto de Recogida</span>
+                <span className="font-bold text-slate-600 block">Punto de Recogida</span>
                 <input
                   type="text"
                   value={cabPickup}
                   onChange={(e) => setCabPickup(e.target.value)}
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-slate-800"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-[#0A2A5B]"
                 />
               </div>
               <div className="space-y-1">
-                <span className="font-extrabold text-slate-500 block">Destino</span>
+                <span className="font-bold text-slate-600 block">Destino</span>
                 <input
                   type="text"
                   value={cabDropoff}
                   onChange={(e) => setCabDropoff(e.target.value)}
-                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-slate-800"
+                  className="w-full bg-slate-50 rounded-2xl border border-slate-200 px-3 py-2.5 font-bold text-[#0A2A5B]"
                 />
               </div>
               <div className="flex items-end">
                 <Link
-                  href="/travelcab"
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-md transition"
+                  href="/landing/travelcab"
+                  className="w-full py-3 bg-[#FF5A19] hover:bg-[#e04e14] text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
                 >
-                  <Car className="h-4 w-4 text-red-500" /> Cotizar con TravelCab
+                  <Car className="h-4 w-4 text-white" /> Cotizar con TravelCab
                 </Link>
               </div>
             </div>
@@ -774,9 +781,9 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           {(cmsData.metrics || DEFAULT_EXPERIENCE_CMS_DATA.metrics).map((m: any, idx: number) => (
             <div
               key={idx}
-              className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm text-center space-y-2 hover:border-red-200 transition-colors"
+              className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm text-center space-y-2 hover:border-[#FF4F5A]/30 transition-colors"
             >
-              <span className="text-2xl sm:text-4xl font-black text-slate-900 block tracking-tight">
+              <span className="text-2xl sm:text-4xl font-bold text-[#0A2A5B] block tracking-tight">
                 {m.number}
               </span>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -787,14 +794,14 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
         </div>
       </section>
 
-      {/* 6. CARRUSEL HORIZONTAL DE SALIDAS DESTACADAS (HASTA 15 VIAJES PROPIOS + MAYORISTAS) */}
+      {/* 6. CARRUSEL HORIZONTAL DE SALIDAS DESTACADAS */}
       <section id="destinos" className="max-w-7xl mx-auto px-6 py-12 space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
-            <span className="text-xs font-black text-red-600 uppercase tracking-widest block">
+            <span className="text-xs font-bold text-[#FF4F5A] uppercase tracking-widest block">
               CATÁLOGO SELECCIONADO 2026
             </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-2xl sm:text-4xl font-bold text-[#0A2A5B] tracking-tight">
               Salidas Grupales, Circuitos &amp; Cruceros
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -808,7 +815,7 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <button
                 type="button"
                 onClick={() => scrollCarousel('left')}
-                className="h-10 w-10 rounded-full bg-white shadow-md border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center transition"
+                className="h-10 w-10 rounded-full bg-white shadow-md border border-slate-200 text-[#0A2A5B] hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
                 title="Anterior"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -816,7 +823,7 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <button
                 type="button"
                 onClick={() => scrollCarousel('right')}
-                className="h-10 w-10 rounded-full bg-white shadow-md border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center transition"
+                className="h-10 w-10 rounded-full bg-white shadow-md border border-slate-200 text-[#0A2A5B] hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
                 title="Siguiente"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -825,7 +832,7 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
             <Link
               href={affiliateRef ? `/marketplace?ref=${affiliateRef}` : "/marketplace"}
-              className="text-xs font-black px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-md transition flex items-center gap-1.5"
+              className="text-xs font-bold px-4 py-2 bg-[#FF4F5A] hover:bg-[#e03e48] text-white rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
             >
               Ver Todo el Catálogo <ChevronRight className="h-4 w-4" />
             </Link>
@@ -835,7 +842,7 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
         {/* Carrusel Horizontal Scrollable */}
         {loadingTrips ? (
           <div className="py-16 text-center">
-            <div className="h-8 w-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <div className="h-8 w-8 border-4 border-[#FF4F5A] border-t-transparent rounded-full animate-spin mx-auto"></div>
             <p className="text-xs font-bold text-slate-400 mt-2">Cargando salidas oficiales...</p>
           </div>
         ) : (
@@ -865,18 +872,18 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
                     {/* Badge de Tipología */}
                     <div className="absolute top-3 left-3">
                       {isPropia && (
-                        <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-md">
+                        <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-md">
                           Salida Propia Garantizada
                         </span>
                       )}
                       {isMayorista && (
-                        <span className="px-3 py-1 rounded-full bg-purple-600 text-white text-[10px] font-black uppercase tracking-wider shadow-md">
+                        <span className="px-3 py-1 rounded-full bg-[#0A2A5B] text-white text-[10px] font-bold uppercase tracking-wider shadow-md">
                           Circuito Mayorista
                         </span>
                       )}
                       {isCruise && (
-                        <span className="px-3 py-1 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider shadow-md flex items-center gap-1">
-                          <Ship className="h-3 w-3" /> Crucero
+                        <span className="px-3 py-1 rounded-full bg-[#0A2A5B] text-white text-[10px] font-bold uppercase tracking-wider shadow-md flex items-center gap-1">
+                          <Ship className="h-3 w-3 text-[#FF4F5A]" /> Crucero
                         </span>
                       )}
                     </div>
@@ -885,10 +892,10 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
                   {/* Cuerpo */}
                   <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
                     <div className="space-y-1.5">
-                      <span className="text-[10px] font-black text-red-600 uppercase tracking-widest block">
+                      <span className="text-[10px] font-bold text-[#FF4F5A] uppercase tracking-widest block">
                         {trip.location || trip.destination} · {trip.duration || `${trip.nightsCount || 4} Noches`}
                       </span>
-                      <h3 className="text-sm sm:text-base font-black text-slate-900 leading-snug group-hover:text-red-600 transition-colors line-clamp-1">
+                      <h3 className="text-sm sm:text-base font-bold text-[#0A2A5B] leading-snug group-hover:text-[#FF4F5A] transition-colors line-clamp-1">
                         {trip.title}
                       </h3>
                       <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
@@ -899,17 +906,17 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
                     <div className="pt-3 border-t border-slate-100 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-[10px] font-extrabold text-slate-400 uppercase block">Desde</span>
-                          <span className="text-base font-black text-slate-900">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Desde</span>
+                          <span className="text-base font-bold text-[#0A2A5B]">
                             {formatPrice(trip.price, trip.currency)}
                           </span>
                         </div>
                         {trip.priceRewards && (
                           <div className="text-right">
-                            <span className="text-[10px] font-black text-red-600 block">
+                            <span className="text-[10px] font-bold text-[#FF4F5A] block">
                               Club Rewards: {formatPrice(trip.priceRewards, trip.currency)}
                             </span>
-                            <span className="text-[9px] text-emerald-600 font-bold block">
+                            <span className="text-[9px] text-[#E5A93B] font-bold block">
                               +{trip.pointsEarned || 350} pts
                             </span>
                           </div>
@@ -918,7 +925,7 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
                       <Link
                         href={affiliateRef ? `/marketplace?ref=${affiliateRef}&q=${encodeURIComponent(trip.title)}` : `/marketplace?q=${encodeURIComponent(trip.title)}`}
-                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition text-center shadow-md block"
+                        className="w-full py-2.5 bg-[#0A2A5B] hover:bg-[#113875] text-white rounded-xl text-xs font-bold transition text-center shadow-md block cursor-pointer"
                       >
                         Reservar con Time-to-Pay
                       </Link>
@@ -932,12 +939,12 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
       </section>
 
       {/* 7. MOSAICO DE FORMATOS DE EXPERIENCIAS */}
-      <section className="bg-slate-900 text-white py-20 px-6">
+      <section className="bg-[#0A2A5B] text-white py-20 px-6">
         <div className="max-w-7xl mx-auto space-y-12">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <span className="text-xs font-black text-red-500 uppercase tracking-widest block">EXPERIENCIAS CURADAS</span>
-            <h2 className="text-2xl sm:text-4xl font-black tracking-tight">Formatos Diseñados para Cada Pasajero</h2>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <span className="text-xs font-bold text-[#FF4F5A] uppercase tracking-widest block">EXPERIENCIAS CURADAS</span>
+            <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-white">Formatos Diseñados para Cada Pasajero</h2>
+            <p className="text-xs sm:text-sm text-slate-200 font-medium">
               Desde escapadas grupales acompañadas hasta cruceros y circuitos por el mundo.
             </p>
           </div>
@@ -973,17 +980,17 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               return (
                 <div
                   key={i}
-                  className="bg-slate-800 rounded-3xl overflow-hidden border border-slate-700 shadow-xl group hover:border-red-500 transition-colors"
+                  className="bg-[#113875]/80 rounded-3xl overflow-hidden border border-white/10 shadow-xl group hover:border-[#FF4F5A] transition-colors"
                 >
                   <div className="h-44 overflow-hidden relative">
                     <img src={card.image} alt={card.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute top-3 right-3 h-9 w-9 rounded-xl bg-slate-900/80 backdrop-blur-md flex items-center justify-center text-red-500">
+                    <div className="absolute top-3 right-3 h-9 w-9 rounded-xl bg-[#0A2A5B]/90 backdrop-blur-md flex items-center justify-center text-[#FF4F5A]">
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>
-                  <div className="p-5 space-y-1.5">
-                    <h4 className="font-black text-sm text-white group-hover:text-red-400 transition-colors">{card.title}</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">{card.sub}</p>
+                  <div className="p-5 space-y-1.5 text-white">
+                    <h4 className="font-bold text-sm text-white group-hover:text-[#FF4F5A] transition-colors">{card.title}</h4>
+                    <p className="text-xs text-slate-200 leading-relaxed">{card.sub}</p>
                   </div>
                 </div>
               );
@@ -994,34 +1001,34 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
       {/* 8. CLUB REWARDS & BENEFICIOS */}
       <section id="beneficios" className="max-w-7xl mx-auto px-6 py-20">
-        <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 rounded-3xl text-white p-8 sm:p-12 border border-slate-800 shadow-2xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+        <div className="bg-gradient-to-br from-[#0A2A5B] via-[#0F356E] to-[#0A2A5B] rounded-3xl text-white p-8 sm:p-12 border border-white/10 shadow-2xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           <div className="space-y-6">
-            <span className="px-3.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-black uppercase tracking-wider">
+            <span className="px-3.5 py-1 rounded-full bg-[#E5A93B]/20 border border-[#E5A93B]/40 text-[#E5A93B] text-xs font-bold uppercase tracking-wider">
               {cmsData.rewardsBlock?.badgeText || "ECOSISTEMA CLUB REWARDS"}
             </span>
 
-            <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-4xl font-bold tracking-tight leading-tight text-white">
               {cmsData.rewardsBlock?.title || "Viajá, Acumulá Puntos & Disfrutá Más"}
             </h2>
 
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
               {cmsData.rewardsBlock?.subtitle}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 flex items-center gap-3">
-                <Car className="h-5 w-5 text-red-400 flex-shrink-0" />
+              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 flex items-center gap-3">
+                <Car className="h-5 w-5 text-[#FF5A19] flex-shrink-0" />
                 <span>Canjeable por traslados oficiales en <strong>TravelCab</strong></span>
               </div>
-              <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 flex items-center gap-3">
-                <Ticket className="h-5 w-5 text-amber-400 flex-shrink-0" />
+              <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10 flex items-center gap-3">
+                <Ticket className="h-5 w-5 text-[#E5A93B] flex-shrink-0" />
                 <span>Descuentos en cuotas de tus próximas vacaciones</span>
               </div>
             </div>
 
             <Link
               href="/landing/rewards"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-500/20"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#E5A93B] hover:bg-[#d4982e] text-[#0A2A5B] font-bold text-xs transition shadow-lg shadow-[#E5A93B]/20 cursor-pointer"
             >
               Conocer Beneficios Club Rewards <ArrowRight className="h-4 w-4" />
             </Link>
@@ -1041,11 +1048,11 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
       <section id="app" className="bg-slate-100/80 py-20 px-6 border-y border-slate-200">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
-            <span className="text-xs font-black text-red-600 uppercase tracking-widest block">TECNOLOGÍA A BORDO</span>
-            <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            <span className="text-xs font-bold text-[#FF4F5A] uppercase tracking-widest block">TECNOLOGÍA A BORDO</span>
+            <h2 className="text-2xl sm:text-4xl font-bold text-[#0A2A5B] tracking-tight">
               Toda la Información de tu Viaje en la App Móvil
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
               Al contratar cualquier salida con TravelApp Experience, accedés a tu portal digital exclusivo para consultar cada detalle en tiempo real:
             </p>
 
@@ -1071,24 +1078,24 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
           <div className="flex justify-center">
             {/* Mockup Smartphone */}
-            <div className="w-72 bg-slate-900 p-4 rounded-[40px] shadow-2xl border-4 border-slate-800 space-y-3">
-              <div className="h-4 w-28 bg-slate-800 rounded-full mx-auto"></div>
-              <div className="bg-slate-950 rounded-[32px] p-4 text-white space-y-4 text-xs">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="font-black text-[10px] text-red-500">TRAVELAPP MÓVIL</span>
+            <div className="w-72 bg-[#0A2A5B] p-4 rounded-[40px] shadow-2xl border-4 border-[#0F356E] space-y-3">
+              <div className="h-4 w-28 bg-white/20 rounded-full mx-auto"></div>
+              <div className="bg-[#020617] rounded-[32px] p-4 text-white space-y-4 text-xs">
+                <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                  <span className="font-bold text-[10px] text-[#FF4F5A]">TRAVELAPP MÓVIL</span>
                   <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
                 </div>
-                <div className="bg-slate-900 p-3 rounded-2xl space-y-1">
-                  <span className="text-[10px] text-slate-400 block font-bold uppercase">Viaje Activo</span>
-                  <div className="font-black text-sm text-white">Norte Argentino Fascinante</div>
+                <div className="bg-[#0A2A5B] p-3 rounded-2xl space-y-1">
+                  <span className="text-[10px] text-slate-300 block font-bold uppercase">Viaje Activo</span>
+                  <div className="font-bold text-sm text-white">Norte Argentino Fascinante</div>
                   <span className="text-[10px] text-emerald-400 font-bold block">Butaca #14 · Cama Superior</span>
                 </div>
-                <div className="bg-slate-900 p-3 rounded-2xl space-y-1">
-                  <span className="text-[10px] text-slate-400 block font-bold uppercase">Coordinador Asignado</span>
+                <div className="bg-[#0A2A5B] p-3 rounded-2xl space-y-1">
+                  <span className="text-[10px] text-slate-300 block font-bold uppercase">Coordinador Asignado</span>
                   <div className="font-bold text-xs text-white">Marcos Vignola</div>
-                  <span className="text-[10px] text-slate-400 block">+54 9 381 555-6667</span>
+                  <span className="text-[10px] text-slate-300 block">+54 9 381 555-6667</span>
                 </div>
-                <div className="p-3 bg-red-600 text-white rounded-2xl text-center font-black text-xs">
+                <div className="p-3 bg-[#FF4F5A] text-white rounded-2xl text-center font-bold text-xs shadow-md">
                   Ver Voucher &amp; Asistencia SOS
                 </div>
               </div>
@@ -1100,8 +1107,8 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
       {/* 10. TESTIMONIOS REALES & COMUNIDAD */}
       <section className="max-w-7xl mx-auto px-6 py-20 space-y-12">
         <div className="text-center space-y-2 max-w-2xl mx-auto">
-          <span className="text-xs font-black text-red-600 uppercase tracking-widest block">RESEÑAS VERIFICADAS</span>
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Lo que Dicen Nuestros Pasajeros</h2>
+          <span className="text-xs font-bold text-[#FF4F5A] uppercase tracking-widest block">RESEÑAS VERIFICADAS</span>
+          <h2 className="text-2xl sm:text-4xl font-bold text-[#0A2A5B] tracking-tight">Lo que Dicen Nuestros Pasajeros</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1111,9 +1118,9 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4 flex flex-col justify-between hover:shadow-xl transition-shadow"
             >
               <div className="space-y-3">
-                <div className="flex items-center gap-1 text-amber-400">
+                <div className="flex items-center gap-1 text-[#E5A93B]">
                   {Array.from({ length: t.rating || 5 }).map((_, si) => (
-                    <Star key={si} className="h-4 w-4 fill-amber-400" />
+                    <Star key={si} className="h-4 w-4 fill-[#E5A93B]" />
                   ))}
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed italic">
@@ -1124,8 +1131,8 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
               <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
                 <img src={t.avatar} alt={t.name} className="h-10 w-10 rounded-full object-cover border border-slate-200" />
                 <div>
-                  <div className="font-black text-xs text-slate-900">{t.name}</div>
-                  <div className="text-[10px] text-slate-400">{t.location} · {t.trip}</div>
+                  <div className="font-bold text-xs text-[#0A2A5B]">{t.name}</div>
+                  <div className="text-[10px] text-slate-400 font-medium">{t.location} · {t.trip}</div>
                 </div>
               </div>
             </div>
@@ -1135,22 +1142,22 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
       {/* 11. CONVERTITE EN PROMOTOR / AFILIADO OFICIAL */}
       <section id="afiliados" className="max-w-7xl mx-auto px-6 pb-20">
-        <div className="bg-gradient-to-r from-red-600 to-rose-700 rounded-3xl text-white p-8 sm:p-12 shadow-2xl flex flex-wrap items-center justify-between gap-6">
+        <div className="bg-gradient-to-r from-[#0A2A5B] via-[#113875] to-[#FF4F5A] rounded-3xl text-white p-8 sm:p-12 shadow-2xl flex flex-wrap items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
-            <span className="text-xs font-black uppercase tracking-widest bg-black/20 px-3 py-1 rounded-full inline-block">
+            <span className="text-xs font-bold uppercase tracking-widest bg-white/15 px-3 py-1 rounded-full inline-block text-white">
               RED DE PROMOTORES OFICIALES
             </span>
-            <h3 className="text-2xl sm:text-3xl font-black tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               ¿Querés Vender Viajes y Ganar Comisiones?
             </h3>
-            <p className="text-xs sm:text-sm text-red-100 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-100 leading-relaxed font-medium">
               Sumate a la red de promotores y afiliados de TravelApp Experience. Compartí tu enlace personalizado y cobrá comisiones automáticas por cada reserva.
             </p>
           </div>
 
           <Link
             href="/afiliados"
-            className="px-8 py-4 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-black text-xs transition shadow-xl transform hover:scale-105"
+            className="px-8 py-4 rounded-2xl bg-white text-[#0A2A5B] hover:bg-slate-100 font-bold text-xs transition shadow-xl transform hover:scale-105 cursor-pointer"
           >
             Registrarme como Afiliado
           </Link>
@@ -1158,16 +1165,16 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
       </section>
 
       {/* 12. FOOTER INSTITUCIONAL COMPLETO CON QR DE ARCA */}
-      <footer className="bg-slate-950 text-white border-t border-slate-800 pt-16 pb-12 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-slate-800 text-xs">
+      <footer className="bg-[#0A2A5B] text-white border-t border-white/10 pt-16 pb-12 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-white/10 text-xs">
           
           {/* Columna 1: Marca & Resumen */}
           <div className="space-y-4">
             <img src="/assets/experience_blanco.svg" alt="TravelApp Experiences" className="h-8 w-auto object-contain" />
-            <p className="text-slate-400 leading-relaxed">
+            <p className="text-slate-300 leading-relaxed font-medium">
               Especialistas en turismo grupal, cruceros internacionales y experiencias curadas por Argentina y el mundo.
             </p>
-            <div className="flex items-center gap-3 text-slate-400">
+            <div className="flex items-center gap-3 text-slate-300">
               <a href={cmsData.redesSociales?.facebook} target="_blank" rel="noreferrer" className="hover:text-white transition">Facebook</a>
               <a href={cmsData.redesSociales?.instagram} target="_blank" rel="noreferrer" className="hover:text-white transition">Instagram</a>
               <a href={cmsData.redesSociales?.whatsapp} target="_blank" rel="noreferrer" className="hover:text-white transition">WhatsApp</a>
@@ -1176,20 +1183,20 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
           {/* Columna 2: Enlaces Rápidos */}
           <div className="space-y-3">
-            <span className="font-black text-white uppercase tracking-wider block">Explorar</span>
-            <ul className="space-y-2 text-slate-400 font-medium">
-              <li><Link href="/marketplace" className="hover:text-white transition">Catálogo de Salidas 2026</Link></li>
-              <li><a href="#destinos" className="hover:text-white transition">Viajes Grupales</a></li>
-              <li><a href="#cruceros" className="hover:text-white transition">Cruceros Internacionales</a></li>
-              <li><Link href="/landing/rewards" className="hover:text-white transition">Club Rewards</Link></li>
-              <li><Link href="/travelcab" className="hover:text-white transition">Traslados TravelCab</Link></li>
+            <span className="font-bold text-white uppercase tracking-wider block">Explorar</span>
+            <ul className="space-y-2 text-slate-300 font-medium">
+              <li><Link href="/marketplace" className="hover:text-[#FF4F5A] transition">Catálogo de Salidas 2026</Link></li>
+              <li><a href="#destinos" className="hover:text-[#FF4F5A] transition">Viajes Grupales</a></li>
+              <li><a href="#cruceros" className="hover:text-[#FF4F5A] transition">Cruceros Internacionales</a></li>
+              <li><Link href="/landing/rewards" className="hover:text-[#E5A93B] transition">Club Rewards</Link></li>
+              <li><Link href="/landing/travelcab" className="hover:text-[#FF5A19] transition">Traslados TravelCab</Link></li>
             </ul>
           </div>
 
           {/* Columna 3: Contacto & Sucursales */}
           <div className="space-y-3">
-            <span className="font-black text-white uppercase tracking-wider block">Atención al Pasajero</span>
-            <ul className="space-y-2 text-slate-400 font-medium">
+            <span className="font-bold text-white uppercase tracking-wider block">Atención al Pasajero</span>
+            <ul className="space-y-2 text-slate-300 font-medium">
               <li>Casa Central: San Miguel de Tucumán</li>
               <li>WhatsApp Comercial: +54 9 381 418-8106</li>
               <li>Horario: Lunes a Sábados 09:00 a 20:00 hs</li>
@@ -1199,8 +1206,8 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
           {/* Columna 4: Seguridad & QR ARCA / AFIP */}
           <div className="space-y-3">
-            <span className="font-black text-white uppercase tracking-wider block">Seguridad &amp; Fiscal</span>
-            <div className="space-y-3 text-slate-400 text-[11px]">
+            <span className="font-bold text-white uppercase tracking-wider block">Seguridad &amp; Fiscal</span>
+            <div className="space-y-3 text-slate-300 text-[11px] font-medium">
               <p>Agencia Oficial Habilitada por Ministerio de Turismo y Deportes de la Nación.</p>
               
               {/* Sello Fiscal ARCA QR */}
@@ -1215,12 +1222,12 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
 
         </div>
 
-        <div className="max-w-7xl mx-auto pt-8 flex flex-wrap items-center justify-between gap-4 text-[11px] text-slate-500">
+        <div className="max-w-7xl mx-auto pt-8 flex flex-wrap items-center justify-between gap-4 text-[11px] text-slate-400">
           <p>{cmsData.footer?.copyrightText || "© 2026 TravelApp Experiences. Una marca de TravelApp s.a.s."}</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-slate-400">Términos y Condiciones</a>
-            <a href="#" className="hover:text-slate-400">Políticas de Cancelación</a>
-            <a href="#" className="hover:text-slate-400">Privacidad de Datos</a>
+            <a href="#" className="hover:text-white transition">Términos y Condiciones</a>
+            <a href="#" className="hover:text-white transition">Políticas de Cancelación</a>
+            <a href="#" className="hover:text-white transition">Privacidad de Datos</a>
           </div>
         </div>
       </footer>
@@ -1228,7 +1235,7 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
       {/* Travis Omnichannel Live Chat */}
       <TravisOmnichannelWidget
         businessUnit="Experiences"
-        primaryColor="#dc2626"
+        primaryColor="#FF4F5A"
         brandName="TravelApp Experiences"
         whatsappUrl={cmsData.redesSociales?.whatsapp || "https://wa.me/5493814188106"}
         instagramUrl={cmsData.redesSociales?.instagram || "https://instagram.com/travelapp.ar"}

@@ -1,23 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Settings, MapPin, DollarSign, Plus, FileText, CheckCircle2, Trash2, Edit, AlertCircle, Sparkles, Car, Star, Shield, Crown, RefreshCw, Save, Upload, X, Plane } from 'lucide-react';
+import { 
+  Settings, MapPin, DollarSign, Plus, FileText, CheckCircle2, Trash2, Edit, 
+  AlertCircle, Sparkles, Car, Star, Shield, Crown, RefreshCw, Save, Upload, 
+  X, Plane, ArrowLeftRight, Building2, Phone, Mail, Percent, ShieldAlert 
+} from 'lucide-react';
 import { Branch, ARCTariff, MUTariff, VehicleCategory, TransferTariff } from '@/types/logistics';
 import { MUTariffForm } from '@/components/travelcab/settings/MUTariffForm';
 import { ARCTariffForm } from '@/components/travelcab/settings/ARCTariffForm';
 import { TransferTariffForm } from '@/components/travelcab/settings/TransferTariffForm';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, writeBatch, query, where } from 'firebase/firestore';
+import { 
+  collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, 
+  writeBatch, query, where, addDoc 
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-
-// Mock Sucursales para mantener compatibilidad
-const mockBranches: Branch[] = [
-  { id: '1', name: 'Sucursal Retiro', location: 'CABA', enabledARCRouteIds: ['r1', 'r2'] },
-  { id: '2', name: 'Sucursal Pilar', location: 'GBA Norte', enabledARCRouteIds: ['r3'] },
-];
 
 export default function TravelCabSettingsPage() {
   const [activeTab, setActiveTab] = useState<'tariffs' | 'branches' | 'categories' | 'system'>('tariffs');
   const [tariffSubTab, setTariffSubTab] = useState<'mu' | 'arc' | 'transfers'>('mu');
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
   
   // System Config / Logistics States
   const [notificationSoundUrl, setNotificationSoundUrl] = useState('');
@@ -29,10 +31,12 @@ export default function TravelCabSettingsPage() {
   const [arcTariffs, setArcTariffs] = useState<ARCTariff[]>([]);
   const [transferTariffs, setTransferTariffs] = useState<TransferTariff[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   
   // Loading states
   const [isLoadingTariffs, setIsLoadingTariffs] = useState(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
 
   // Edit / Form States
   const [editingMUTariff, setEditingMUTariff] = useState<MUTariff | null>(null);
@@ -51,11 +55,24 @@ export default function TravelCabSettingsPage() {
   });
   const [showCategoryForm, setShowCategoryForm] = useState(false);
 
+  // Branch form state
+  const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [branchForm, setBranchForm] = useState({
+    name: '',
+    code: '',
+    city: '',
+    province: '',
+    address: '',
+    phone: '',
+    email: '',
+    active: true
+  });
+  const [showBranchModal, setShowBranchModal] = useState(false);
+
   // 1. Escuchar Tarifarios en tiempo real
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'tariffs'), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
-      // Filtrar localmente por tipo (ilimitados)
       setMuTariffs(list.filter(t => t.type === 'mu' && t.id !== 'mu_active'));
       setArcTariffs(list.filter(t => (t.type === 'arc' || t.type === 'aci') && t.id !== 'arc_active'));
       setTransferTariffs(list.filter(t => t.type === 'transfers'));
@@ -66,7 +83,6 @@ export default function TravelCabSettingsPage() {
     });
     return unsub;
   }, []);
-
 
   // 2. Escuchar Categorías en tiempo real
   useEffect(() => {
@@ -81,7 +97,34 @@ export default function TravelCabSettingsPage() {
     return unsub;
   }, []);
 
-  // 3. Escuchar Configuración de Logística y Sonidos
+  // 3. Escuchar Sucursales en tiempo real
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'branches'), (snapshot) => {
+      const list = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        name: docSnap.data().name || 'Sucursal',
+        code: docSnap.data().code || '',
+        city: docSnap.data().city || '',
+        province: docSnap.data().province || '',
+        address: docSnap.data().address || '',
+        phone: docSnap.data().phone || '',
+        email: docSnap.data().email || '',
+        active: docSnap.data().active !== undefined ? docSnap.data().active : true,
+        activeMUTariffId: docSnap.data().activeMUTariffId,
+        activeARCTariffId: docSnap.data().activeARCTariffId,
+        activeTransferTariffId: docSnap.data().activeTransferTariffId,
+        createdAt: docSnap.data().createdAt || Date.now()
+      } as Branch));
+      setBranches(list);
+      setIsLoadingBranches(false);
+    }, (error) => {
+      console.error("Error listening to branches:", error);
+      setIsLoadingBranches(false);
+    });
+    return unsub;
+  }, []);
+
+  // 4. Escuchar Configuración de Logística y Sonidos
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'system_config', 'logistics'), (snap) => {
       if (snap.exists()) {
@@ -110,7 +153,7 @@ export default function TravelCabSettingsPage() {
     }
   };
 
-  // 3. Detectar parámetros de la URL para redirección profunda (Sidebar links)
+  // 5. Detectar parámetros de la URL para redirección profunda
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -122,6 +165,7 @@ export default function TravelCabSettingsPage() {
         if (actionParam === 'new') {
           setEditingMUTariff(null);
           setEditingARCTariff(null);
+          setEditingTransferTariff(null);
         }
       } else if (tabParam === 'categories') {
         setActiveTab('categories');
@@ -151,16 +195,35 @@ export default function TravelCabSettingsPage() {
     }
   }, [editingCategory]);
 
-  // 4. Acciones CRUD Tarifas
+  // Sincronizar formulario de sucursales en modo edición
+  useEffect(() => {
+    if (editingBranch) {
+      setBranchForm({
+        name: editingBranch.name || '',
+        code: editingBranch.code || '',
+        city: editingBranch.city || '',
+        province: editingBranch.province || '',
+        address: editingBranch.address || '',
+        phone: editingBranch.phone || '',
+        email: editingBranch.email || '',
+        active: editingBranch.active !== undefined ? editingBranch.active : true
+      });
+      setShowBranchModal(true);
+    }
+  }, [editingBranch]);
+
+  // 6. Acciones CRUD Tarifas
   const handleEditTariff = (tariff: any) => {
     if (tariff.type === 'mu') {
       setEditingMUTariff(tariff);
       setTariffSubTab('mu');
+    } else if (tariff.type === 'transfers') {
+      setEditingTransferTariff(tariff);
+      setTariffSubTab('transfers');
     } else {
       setEditingARCTariff(tariff);
       setTariffSubTab('arc');
     }
-    // Scroll al formulario
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -168,10 +231,7 @@ export default function TravelCabSettingsPage() {
     if (confirm(`¿Estás seguro de que deseas eliminar el tarifario "${name}"? Esta acción no se puede deshacer.`)) {
       try {
         await deleteDoc(doc(db, 'tariffs', id));
-        alert("Tarifario eliminado correctamente.");
-        if (isActive) {
-          alert("Alerta: Has eliminado un tarifario ACTIVO. Recuerda activar otro de inmediato.");
-        }
+        alert("Tarifario eliminado correctamente de Firestore.");
       } catch (err: any) {
         console.error("Error deleting tariff:", err);
         alert("Error al eliminar el tarifario: " + err.message);
@@ -186,7 +246,6 @@ export default function TravelCabSettingsPage() {
       const q = query(tariffsRef, where('type', '==', tariff.type), where('category', '==', tariff.category || 'estandar'));
       const querySnap = await getDocs(q);
 
-      // Desactivar todos los demás del mismo tipo y misma categoría
       querySnap.docs.forEach(docSnap => {
         if (docSnap.id === 'mu_active' || docSnap.id === 'arc_active') return;
 
@@ -199,7 +258,6 @@ export default function TravelCabSettingsPage() {
 
       await batch.commit();
 
-      // Guardar copia en el doc de acceso directo rápido de fallback si es el estándar
       const categoryName = (tariff.category || 'estandar').toLowerCase();
       if (categoryName === 'estandar' || categoryName === 'standard') {
         const activeDocId = tariff.type === 'mu' ? 'mu_active' : 'arc_active';
@@ -210,7 +268,7 @@ export default function TravelCabSettingsPage() {
         });
       }
 
-      alert(`Tarifario "${tariff.name}" para la categoría "${tariff.category || 'estandar'}" activado correctamente.`);
+      alert(`Tarifario "${tariff.name}" activado correctamente.`);
     } catch (err: any) {
       console.error("Error activating tariff:", err);
       alert("Error al activar tarifario: " + err.message);
@@ -221,7 +279,6 @@ export default function TravelCabSettingsPage() {
     try {
       await updateDoc(doc(db, 'tariffs', tariff.id), { isActive: false });
 
-      // Desactivar también el doc de referencia rápida si corresponde
       const categoryName = (tariff.category || 'estandar').toLowerCase();
       if (categoryName === 'estandar' || categoryName === 'standard') {
         const activeDocId = tariff.type === 'mu' ? 'mu_active' : 'arc_active';
@@ -235,7 +292,7 @@ export default function TravelCabSettingsPage() {
     }
   };
 
-  // 5. Acciones CRUD Categorías
+  // 7. Acciones CRUD Categorías
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryForm.id.trim() || !categoryForm.name.trim()) {
@@ -243,7 +300,6 @@ export default function TravelCabSettingsPage() {
       return;
     }
 
-    // Limpiar ID (minúsculas, sin espacios)
     const categoryId = categoryForm.id.trim().toLowerCase().replace(/\s+/g, '-');
 
     try {
@@ -281,10 +337,79 @@ export default function TravelCabSettingsPage() {
     }
   };
 
+  // 8. Acciones CRUD Sucursales
+  const handleSaveBranch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!branchForm.name.trim()) {
+      alert("Por favor ingresa el nombre de la sucursal.");
+      return;
+    }
+
+    try {
+      const payload: Partial<Branch> = {
+        name: branchForm.name.trim(),
+        code: branchForm.code.trim().toUpperCase(),
+        city: branchForm.city.trim(),
+        province: branchForm.province.trim(),
+        address: branchForm.address.trim(),
+        phone: branchForm.phone.trim(),
+        email: branchForm.email.trim(),
+        active: branchForm.active,
+        createdAt: editingBranch?.createdAt || Date.now()
+      };
+
+      if (editingBranch) {
+        await setDoc(doc(db, 'branches', editingBranch.id), payload, { merge: true });
+        alert("Sucursal actualizada correctamente.");
+      } else {
+        await addDoc(collection(db, 'branches'), payload);
+        alert("Sucursal creada correctamente.");
+      }
+
+      setBranchForm({
+        name: '', code: '', city: '', province: '', address: '', phone: '', email: '', active: true
+      });
+      setEditingBranch(null);
+      setShowBranchModal(false);
+    } catch (err: any) {
+      console.error("Error saving branch:", err);
+      alert("Error al guardar sucursal: " + err.message);
+    }
+  };
+
+  const handleDeleteBranch = async (id: string, name: string) => {
+    if (confirm(`¿Estás seguro de eliminar la sucursal "${name}"?`)) {
+      try {
+        await deleteDoc(doc(db, 'branches', id));
+        alert("Sucursal eliminada.");
+      } catch (err: any) {
+        console.error("Error deleting branch:", err);
+        alert("Error al eliminar sucursal: " + err.message);
+      }
+    }
+  };
+
+  const getBranchNames = (branchIds?: string[]) => {
+    if (!branchIds || branchIds.length === 0 || branchIds.includes('all')) {
+      return ['🌐 Todas las Sucursales'];
+    }
+    return branchIds.map(bId => {
+      const found = branches.find(b => b.id === bId);
+      return found ? `📍 ${found.name}` : `📍 Sucursal #${bId}`;
+    });
+  };
+
+  const filterTariffsByBranch = (list: any[]) => {
+    if (selectedBranchFilter === 'all') return list;
+    return list.filter(t => {
+      if (!t.branchIds || t.branchIds.length === 0 || t.branchIds.includes('all')) return true;
+      return t.branchIds.includes(selectedBranchFilter);
+    });
+  };
+
   const renderCategoryIcon = (iconName?: string) => {
     if (!iconName) return <Car className="h-5 w-5 text-slate-400" />;
     
-    // Check if it's a URL or base64 image data
     if (iconName.startsWith('http') || iconName.startsWith('data:image')) {
       return (
         <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 bg-white">
@@ -304,18 +429,18 @@ export default function TravelCabSettingsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-50">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-tech-blue flex items-center">
             <Settings className="mr-3 h-8 w-8 text-vial-orange" />
             Configuración Logística
           </h1>
-          <p className="mt-2 text-slate-500">Gestión de sucursales, categorías dinámicas y tarifarios reales.</p>
+          <p className="mt-2 text-slate-500">Gestión centralizada de tarifarios reales, sucursales y categorías.</p>
         </div>
       </div>
 
       {/* Tabs Principales */}
-      <div className="mb-6 flex border-b border-slate-200">
+      <div className="mb-6 flex border-b border-slate-200 overflow-x-auto">
         <button
           onClick={() => setActiveTab('tariffs')}
           className={`flex items-center space-x-2 border-b-2 px-6 py-3 font-semibold transition-colors ${
@@ -346,8 +471,8 @@ export default function TravelCabSettingsPage() {
               : 'border-transparent text-slate-500 hover:text-slate-600'
           }`}
         >
-          <MapPin className="h-5 w-5" />
-          <span>Sucursales</span>
+          <Building2 className="h-5 w-5" />
+          <span>Sucursales ({branches.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('system')}
@@ -367,52 +492,69 @@ export default function TravelCabSettingsPage() {
         {/* TABS DE TARIFARIOS */}
         {activeTab === 'tariffs' && (
           <div className="flex flex-col space-y-6">
-            <div className="flex space-x-2 rounded-lg bg-white/50 p-1 border border-slate-200 w-fit">
-              <button
-                onClick={() => {
-                  setTariffSubTab('mu');
-                  setEditingMUTariff(null);
-                }}
-                className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-                  tariffSubTab === 'mu' ? 'bg-slate-100 text-tech-blue shadow-sm' : 'text-slate-500 hover:text-slate-600'
-                }`}
-              >
-                Tarifas MU (Movilidad Urbana)
-              </button>
-              <button
-                onClick={() => {
-                  setTariffSubTab('arc');
-                  setEditingARCTariff(null);
-                }}
-                className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-                  tariffSubTab === 'arc' ? 'bg-vial-orange text-gray-950 shadow-sm' : 'text-slate-500 hover:text-slate-600'
-                }`}
-              >
-                Tarifas ARC (Compartido)
-              </button>
-              <button
-                onClick={() => {
-                  setTariffSubTab('transfers');
-                  setEditingTransferTariff(null);
-                }}
-                className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-                  tariffSubTab === 'transfers' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-600'
-                }`}
-              >
-                ✈️ Traslados Punto a Punto (Fijos)
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex space-x-2 rounded-xl bg-white p-1 border border-slate-200 shadow-sm">
+                <button
+                  onClick={() => {
+                    setTariffSubTab('mu');
+                    setEditingMUTariff(null);
+                  }}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
+                    tariffSubTab === 'mu' ? 'bg-tech-blue text-white shadow' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  🏙️ Movilidad Urbana (MU)
+                </button>
+                <button
+                  onClick={() => {
+                    setTariffSubTab('arc');
+                    setEditingARCTariff(null);
+                  }}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
+                    tariffSubTab === 'arc' ? 'bg-vial-orange text-gray-950 shadow' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  🚌 Rural Compartido (ARC)
+                </button>
+                <button
+                  onClick={() => {
+                    setTariffSubTab('transfers');
+                    setEditingTransferTariff(null);
+                  }}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${
+                    tariffSubTab === 'transfers' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  ✈️ Traslados Fijos
+                </button>
+              </div>
+
+              {/* Filtro por Sucursal */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Filtrar por Sucursal:</span>
+                <select
+                  value={selectedBranchFilter}
+                  onChange={(e) => setSelectedBranchFilter(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-tech-blue focus:outline-none"
+                >
+                  <option value="all">🌐 Todas las Sucursales</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>📍 {b.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Columna Izquierda: Formulario de Creación/Edición */}
               <div className="lg:col-span-2">
-                <div className="rounded-xl border border-slate-200 bg-white/40 p-6 shadow-lg">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <h2 className="mb-6 text-xl font-bold text-tech-blue">
                     {tariffSubTab === 'mu' 
-                      ? (editingMUTariff ? `Editar Tarifario MU: ${editingMUTariff.name}` : 'Crear Tarifario MU') 
+                      ? (editingMUTariff ? `Editar Tarifario MU: ${editingMUTariff.name}` : 'Crear Nuevo Tarifario MU (Urbano)') 
                       : tariffSubTab === 'arc'
-                      ? (editingARCTariff ? `Editar Tarifario ARC: ${editingARCTariff.name}` : 'Crear Tarifario ARC')
-                      : (editingTransferTariff ? `Editar Traslado Fijo: ${editingTransferTariff.name}` : 'Crear Traslado Punto a Punto (Fijo)')
+                      ? (editingARCTariff ? `Editar Tarifario ARC: ${editingARCTariff.name}` : 'Crear Nuevo Tarifario ARC (Rural Compartido)')
+                      : (editingTransferTariff ? `Editar Traslado Fijo: ${editingTransferTariff.name}` : 'Crear Nuevo Traslado Fijo Punto a Punto')
                     }
                   </h2>
                   {tariffSubTab === 'mu' ? (
@@ -436,28 +578,33 @@ export default function TravelCabSettingsPage() {
 
               {/* Columna Derecha: Listado en tiempo real */}
               <div className="lg:col-span-1">
-                <div className="rounded-xl border border-slate-200 bg-white/40 p-6 shadow-lg h-full">
-                  <h2 className="mb-6 text-xl font-bold text-tech-blue flex items-center">
-                    <FileText className="mr-2 h-5 w-5 text-slate-500" />
-                    Tarifarios en Firestore
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm h-full">
+                  <h2 className="mb-4 text-lg font-bold text-tech-blue flex items-center justify-between">
+                    <span className="flex items-center">
+                      <FileText className="mr-2 h-5 w-5 text-slate-500" />
+                      Tarifarios Activos
+                    </span>
+                    <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                      {tariffSubTab === 'mu' ? filterTariffsByBranch(muTariffs).length : tariffSubTab === 'arc' ? filterTariffsByBranch(arcTariffs).length : filterTariffsByBranch(transferTariffs).length} registrados
+                    </span>
                   </h2>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[800px] overflow-y-auto pr-1 custom-scrollbar">
                     {isLoadingTariffs ? (
                       <div className="text-center py-8 text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
                         <RefreshCw className="h-5 w-5 animate-spin text-vial-orange" />
                         Cargando tarifarios desde Firestore...
                       </div>
                     ) : tariffSubTab === 'transfers' ? (
-                      transferTariffs.length === 0 ? (
-                        <p className="text-sm text-slate-400 py-6 text-center">No hay traslados fijos creados aún.</p>
+                      filterTariffsByBranch(transferTariffs).length === 0 ? (
+                        <p className="text-sm text-slate-400 py-6 text-center">No hay traslados fijos para esta sucursal.</p>
                       ) : (
-                        transferTariffs.map(t => (
+                        filterTariffsByBranch(transferTariffs).map(t => (
                           <div
                             key={t.id}
-                            className={`rounded-lg border p-4 transition-all relative ${
+                            className={`rounded-xl border p-4 transition-all relative ${
                               t.isActive 
-                                ? 'border-indigo-500/30 bg-indigo-50/20 shadow-inner' 
+                                ? 'border-indigo-500/30 bg-indigo-50/20 shadow-sm' 
                                 : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                             }`}
                           >
@@ -466,40 +613,83 @@ export default function TravelCabSettingsPage() {
                                 <h4 className="font-bold text-tech-blue text-sm flex items-center gap-1.5">
                                   ✈️ {t.name}
                                 </h4>
-                                <p className="text-[11px] font-bold text-slate-500 uppercase">{t.routes?.length || 0} Rutas Fijas Configuradas:</p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {getBranchNames(t.branchIds).map((bName, i) => (
+                                    <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                                      {bName}
+                                    </span>
+                                  ))}
+                                  <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded uppercase">
+                                    Cat: {t.category}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">{t.routes?.length || 0} Rutas Fijas:</p>
                                 <div className="space-y-1 mt-1">
-                                  {t.routes?.map(r => (
-                                    <div key={r.id} className="text-xs text-slate-600 bg-white/80 p-1.5 rounded border border-slate-200/50">
-                                      📍 {r.originName || 'Origen'} ➔ 📍 {r.destinationName || 'Destino'}
-                                      <p className="font-extrabold text-indigo-600 mt-0.5">${r.fixedPrice?.toLocaleString('es-AR') || 0} ARS</p>
+                                  {t.routes?.map((r: any) => (
+                                    <div key={r.id} className="text-xs text-slate-700 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                                      <div className="flex justify-between items-center">
+                                        <span className="font-semibold">{r.originName} {r.isBidirectional ? '⇄' : '➔'} {r.destinationName}</span>
+                                        <span className="font-black text-indigo-600">${r.fixedPrice?.toLocaleString('es-AR')}</span>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
                               </div>
                             </div>
-                            <div className="absolute top-4 right-4 flex items-center gap-1">
-                              <button
-                                onClick={() => setEditingTransferTariff(t)}
-                                className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
-                                title="Editar Traslado"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
+
+                            {/* Acciones */}
+                            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+                              {!t.isActive ? (
+                                <button 
+                                  onClick={() => handleActivateTariff(t)}
+                                  className="text-[11px] font-bold text-indigo-600 hover:underline uppercase"
+                                >
+                                  Activar
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-green-600 uppercase flex items-center">
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activa
+                                  </span>
+                                  <button 
+                                    onClick={() => handleDeactivateTariff(t)}
+                                    className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
+                                  >
+                                    Desactivar
+                                  </button>
+                                </div>
+                              )}
+
+                              <div className="flex items-center space-x-2">
+                                <button 
+                                  onClick={() => handleEditTariff(t)}
+                                  className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))
                       )
                     ) : tariffSubTab === 'mu' ? (
-
-                      muTariffs.length === 0 ? (
-                        <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios MU creados aún.</p>
+                      filterTariffsByBranch(muTariffs).length === 0 ? (
+                        <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios MU para esta sucursal.</p>
                       ) : (
-                        muTariffs.map(t => (
+                        filterTariffsByBranch(muTariffs).map(t => (
                           <div 
                             key={t.id} 
-                            className={`rounded-lg border p-4 transition-all relative ${
+                            className={`rounded-xl border p-4 transition-all relative ${
                               t.isActive 
-                                ? 'border-green-500/30 bg-green-500/5 shadow-inner' 
+                                ? 'border-green-500/30 bg-green-500/5 shadow-sm' 
                                 : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                             }`}
                           >
@@ -508,9 +698,16 @@ export default function TravelCabSettingsPage() {
                                 <h4 className="font-bold text-tech-blue text-sm flex items-center gap-1.5">
                                   {t.name}
                                 </h4>
-                                <span className="inline-block mt-0.5 text-[9px] font-bold bg-slate-200/70 text-slate-600 px-2 py-0.5 rounded">
-                                  Categoría: {t.category}
-                                </span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {getBranchNames(t.branchIds).map((bName, i) => (
+                                    <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                                      {bName}
+                                    </span>
+                                  ))}
+                                  <span className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded uppercase">
+                                    Cat: {t.category}
+                                  </span>
+                                </div>
                               </div>
                               {t.isActive && (
                                 <span className="flex items-center text-[10px] font-extrabold text-green-600 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -519,20 +716,21 @@ export default function TravelCabSettingsPage() {
                               )}
                             </div>
                             
-                            <div className="text-[11px] text-slate-500 space-y-1 mt-2">
-                              <p>Bajada: ${t.baseFare} | KM: ${t.pricePerKm}</p>
-                              <p>Minuto viaje: ${t.travelMinutePrice} | Minuto espera: ${t.waitMinutePrice}</p>
-                              <p>Mínimo: ${t.minimumFare}</p>
-                              <p className="font-semibold text-slate-600">
-                                IVA: {t.iva}% | IIBB: {t.iibb}% | Munic: {t.taxMunicipal}%
+                            <div className="text-[11px] text-slate-600 space-y-1 mt-2 bg-white/70 p-2.5 rounded-lg border border-slate-200/60">
+                              <p className="font-bold text-slate-800">Bajada: ${t.baseFare} | KM: ${t.pricePerKm} | Min Viaje: ${t.travelMinutePrice}</p>
+                              <p>Mínimo: ${t.minimumFare} | Espera: ${t.waitMinutePrice}/min (Cortesía: {t.courtesyTimeMinutes}m)</p>
+                              <p className="font-semibold text-slate-500">
+                                Comisión: {t.commissionRate}% | IVA/IIBB/TEM s/com: {t.iva}% / {t.iibb}% / {t.taxMunicipal}%
                               </p>
-                              <p className="font-semibold text-slate-600">
-                                Comisión: {t.commissionRate}% | Memb: ${t.weeklyMembership}/sem
-                              </p>
+                              {t.penalties && (
+                                <p className="text-[10px] text-rose-600 font-semibold pt-1 border-t border-slate-100">
+                                  Multa Cancelación Pasajero: ${t.penalties.cancelFixedFee} (Gracia: {t.penalties.cancelGracePeriodMinutes}m) | Multa Chofer: ${t.penalties.driverCancelPenaltyFee}
+                                </p>
+                              )}
                             </div>
 
-                            {/* Acciones de la Tarjeta */}
-                            <div className="mt-4 pt-3 border-t border-slate-200/50 flex items-center justify-between">
+                            {/* Acciones */}
+                            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
                               {!t.isActive ? (
                                 <button 
                                   onClick={() => handleActivateTariff(t)}
@@ -547,7 +745,7 @@ export default function TravelCabSettingsPage() {
                                   </span>
                                   <button 
                                     onClick={() => handleDeactivateTariff(t)}
-                                    className="text-[11px] font-bold text-rose-500 hover:underline uppercase"
+                                    className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
                                   >
                                     Desactivar
                                   </button>
@@ -557,14 +755,14 @@ export default function TravelCabSettingsPage() {
                               <div className="flex items-center space-x-2">
                                 <button 
                                   onClick={() => handleEditTariff(t)}
-                                  className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200/50 rounded transition-colors"
+                                  className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
                                   title="Editar"
                                 >
                                   <Edit className="h-3.5 w-3.5" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50/50 rounded transition-colors"
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                                   title="Eliminar"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -575,24 +773,31 @@ export default function TravelCabSettingsPage() {
                         ))
                       )
                     ) : (
-                      arcTariffs.length === 0 ? (
-                        <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios ARC creados aún.</p>
+                      filterTariffsByBranch(arcTariffs).length === 0 ? (
+                        <p className="text-sm text-slate-400 py-6 text-center">No hay tarifarios ARC para esta sucursal.</p>
                       ) : (
-                        arcTariffs.map(t => (
+                        filterTariffsByBranch(arcTariffs).map(t => (
                           <div 
                             key={t.id} 
-                            className={`rounded-lg border p-4 transition-all relative ${
+                            className={`rounded-xl border p-4 transition-all relative ${
                               t.isActive 
-                                ? 'border-vial-orange/30 bg-vial-orange/5 shadow-inner' 
+                                ? 'border-vial-orange/30 bg-vial-orange/5 shadow-sm' 
                                 : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                             }`}
                           >
                             <div className="flex justify-between items-start mb-2 pr-12">
                               <div>
                                 <h4 className="font-bold text-tech-blue text-sm">{t.name}</h4>
-                                <span className="inline-block mt-0.5 text-[9px] font-bold bg-slate-200/70 text-slate-600 px-2 py-0.5 rounded">
-                                  Categoría: {t.category}
-                                </span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {getBranchNames(t.branchIds).map((bName, i) => (
+                                    <span key={i} className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                                      {bName}
+                                    </span>
+                                  ))}
+                                  <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded uppercase">
+                                    Cat: {t.category}
+                                  </span>
+                                </div>
                               </div>
                               {t.isActive && (
                                 <span className="flex items-center text-[10px] font-extrabold text-vial-orange bg-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -601,18 +806,25 @@ export default function TravelCabSettingsPage() {
                               )}
                             </div>
 
-                            <div className="text-[11px] text-slate-500 space-y-1 mt-2">
-                              <p>Rutas definidas: {t.routes?.length || 0}</p>
-                              <p className="font-semibold text-slate-600">
-                                IVA: {t.iva}% | IIBB: {t.iibb}% | Munic: {t.taxMunicipal}%
-                              </p>
-                              <p className="font-semibold text-slate-600">
-                                Tarjeta: {t.electronicPaymentFee}% | Plataforma: {t.commissionRate}%
+                            <div className="text-[11px] text-slate-600 space-y-1 mt-2 bg-white/70 p-2.5 rounded-lg border border-slate-200/60">
+                              <p className="font-bold text-slate-800">Rutas Troncales: {t.routes?.length || 0}</p>
+                              <div className="space-y-1 mt-1">
+                                {t.routes?.map((r: any) => (
+                                  <div key={r.id} className="text-xs text-slate-700 bg-white p-1.5 rounded border border-slate-200">
+                                    <div className="flex justify-between items-center">
+                                      <span>{r.mainOrigin} {r.isBidirectional ? '⇄' : '➔'} {r.mainDestination}</span>
+                                      <span className="font-bold text-vial-orange">${r.pricePerSeat?.toLocaleString('es-AR')}/cupo</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="font-semibold text-slate-500 pt-1">
+                                Comisión: {t.commissionRate}% | IVA/IIBB/TEM s/com: {t.iva}% / {t.iibb}% / {t.taxMunicipal}%
                               </p>
                             </div>
 
-                            {/* Acciones de la Tarjeta */}
-                            <div className="mt-4 pt-3 border-t border-slate-200/50 flex items-center justify-between">
+                            {/* Acciones */}
+                            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
                               {!t.isActive ? (
                                 <button 
                                   onClick={() => handleActivateTariff(t)}
@@ -627,7 +839,7 @@ export default function TravelCabSettingsPage() {
                                   </span>
                                   <button 
                                     onClick={() => handleDeactivateTariff(t)}
-                                    className="text-[11px] font-bold text-rose-500 hover:underline uppercase"
+                                    className="text-[10px] font-bold text-rose-500 hover:underline uppercase"
                                   >
                                     Desactivar
                                   </button>
@@ -637,14 +849,14 @@ export default function TravelCabSettingsPage() {
                               <div className="flex items-center space-x-2">
                                 <button 
                                   onClick={() => handleEditTariff(t)}
-                                  className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200/50 rounded transition-colors"
+                                  className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded transition-colors"
                                   title="Editar"
                                 >
                                   <Edit className="h-3.5 w-3.5" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteTariff(t.id, t.name, !!t.isActive)}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50/50 rounded transition-colors"
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                                   title="Eliminar"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -665,17 +877,15 @@ export default function TravelCabSettingsPage() {
         {/* TABS DE CATEGORÍAS */}
         {activeTab === 'categories' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Columna Izquierda: Formulario Categorías */}
             <div className="lg:col-span-1">
-              <div className="rounded-xl border border-slate-200 bg-white/40 p-6 shadow-lg">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="mb-6 text-xl font-bold text-tech-blue">
                   {editingCategory ? `Editar Categoría: ${editingCategory.name}` : 'Crear Categoría'}
                 </h2>
                 
                 <form onSubmit={handleSaveCategory} className="space-y-4">
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-500">ID / Código de Categoría</label>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">ID / Código</label>
                     <input 
                       type="text" 
                       required
@@ -683,111 +893,56 @@ export default function TravelCabSettingsPage() {
                       disabled={!!editingCategory}
                       value={categoryForm.id}
                       onChange={(e) => setCategoryForm({...categoryForm, id: e.target.value})}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-60"
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none disabled:opacity-60"
                     />
-                    <p className="text-[10px] text-slate-400 mt-1">Este ID debe ser único, en minúsculas y sin espacios (se guardará como ej: 'estandar').</p>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-500">Nombre Público</label>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Nombre Comercial</label>
                     <input 
                       type="text" 
                       required
                       placeholder="Ej. TravelCab VIP"
                       value={categoryForm.name}
                       onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-500">Descripción Comercial</label>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Descripción</label>
                     <textarea 
                       rows={3}
                       placeholder="Ej. Autos de alta gama con chofer corporativo."
                       value={categoryForm.description}
                       onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-500">Tiempo de Arribo Promedio (ETA)</label>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Tiempo de Arribo (ETA)</label>
                     <input 
                       type="text" 
                       required
                       placeholder="Ej. 3 - 5 min"
                       value={categoryForm.eta}
                       onChange={(e) => setCategoryForm({...categoryForm, eta: e.target.value})}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
                     />
                   </div>
 
-                  <div className="space-y-1.5 bg-slate-50/50 p-3 rounded-xl border border-slate-200/50">
-                    <label className="block text-xs font-semibold text-slate-500">Imagen de Categoría (URL o Archivo)</label>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={categoryForm.icon || ''}
-                          onChange={(e) => setCategoryForm({...categoryForm, icon: e.target.value})}
-                          placeholder="Ingresa la URL de la imagen o ícono..."
-                          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:border-vial-orange text-tech-blue"
-                        />
-                        <label className="flex cursor-pointer items-center justify-center gap-1 text-[11px] font-bold text-tech-blue border border-tech-blue bg-white hover:bg-tech-blue/5 px-3 py-2 rounded-lg transition-all shadow-sm">
-                          <Upload className="h-3.5 w-3.5" />
-                          Subir Archivo
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setCategoryForm({...categoryForm, icon: reader.result as string});
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
-                        </label>
-                      </div>
-                      {categoryForm.icon && (
-                        <div className="relative w-24 h-16 rounded-lg border border-slate-200 overflow-hidden bg-slate-100 flex-shrink-0 group">
-                          {categoryForm.icon.startsWith('http') || categoryForm.icon.startsWith('data:image') ? (
-                            <img src={categoryForm.icon} alt="Preview" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="flex items-center justify-center h-full bg-slate-100 text-xs font-bold text-slate-500">
-                              {categoryForm.icon}
-                            </div>
-                          )}
-                          <button 
-                            type="button" 
-                            onClick={() => setCategoryForm({...categoryForm, icon: ''})}
-                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-100 transition-opacity"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-500">Asientos Disponibles (Capacidad)</label>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Capacidad Asientos</label>
                     <input 
                       type="number" 
                       min="1"
                       max="12"
                       required
-                      placeholder="Ej. 4 o 8"
                       value={categoryForm.seats}
                       onChange={(e) => setCategoryForm({...categoryForm, seats: Number(e.target.value)})}
-                      className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
                     />
-                    <p className="text-[10px] text-slate-400 mt-1">Capacidad máxima de pasajeros. Especialmente útil para calcular disponibilidad en el Auto Rural Compartido (ARC).</p>
                   </div>
 
                   <div className="flex pt-2 gap-2">
@@ -798,14 +953,14 @@ export default function TravelCabSettingsPage() {
                           setEditingCategory(null);
                           setCategoryForm({ id: '', name: '', description: '', eta: '3 - 5 min', icon: 'Car', seats: 4 });
                         }}
-                        className="flex-1 rounded-md border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                        className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
                       >
                         Cancelar
                       </button>
                     )}
                     <button 
                       type="submit" 
-                      className="flex-1 flex items-center justify-center rounded-md bg-vial-orange px-4 py-2 text-xs font-extrabold text-gray-950 hover:opacity-90 shadow"
+                      className="flex-1 flex items-center justify-center rounded-lg bg-vial-orange px-4 py-2 text-xs font-extrabold text-gray-950 hover:opacity-90 shadow"
                     >
                       <Save className="mr-1 h-3.5 w-3.5" />
                       {editingCategory ? "Actualizar" : "Crear Categoría"}
@@ -815,121 +970,297 @@ export default function TravelCabSettingsPage() {
               </div>
             </div>
 
-            {/* Columna Derecha: Listado Categorías */}
             <div className="lg:col-span-2">
-              <div className="rounded-xl border border-slate-200 bg-white/40 p-6 shadow-lg">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="mb-6 text-xl font-bold text-tech-blue flex items-center">
                   <Car className="mr-2 h-5 w-5 text-slate-500" />
-                  Categorías Creadas en Firestore
+                  Categorías en Firestore ({categories.length})
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {isLoadingCategories ? (
-                    <div className="col-span-2 text-center py-12 text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
-                      <RefreshCw className="h-5 w-5 animate-spin text-vial-orange" />
-                      Cargando categorías...
-                    </div>
-                  ) : categories.length === 0 ? (
-                    <div className="col-span-2 text-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-slate-400 text-sm font-semibold">
-                      No hay categorías configuradas. Crea una a la izquierda.
-                    </div>
-                  ) : (
-                    categories.map(cat => (
-                      <div 
-                        key={cat.id} 
-                        className="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-200 px-2.5 py-1 text-xs font-extrabold text-tech-blue">
-                              {renderCategoryIcon(cat.icon)}
-                              {cat.name}
-                            </span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">
-                              ID: {cat.id}
-                            </span>
-                          </div>
-                          
-                          <p className="text-xs text-slate-500 leading-relaxed font-semibold mb-3">
-                            {cat.description || 'Sin descripción comercial cargada.'}
-                          </p>
-                        </div>
-                        
-                        <div className="pt-3 border-t border-slate-200 flex justify-between items-center text-xs">
-                          <span className="font-bold text-slate-400 flex items-center gap-3">
-                            <span>ETA: <span className="text-tech-blue font-extrabold">{cat.eta}</span></span>
-                            <span>|</span>
-                            <span>Asientos: <span className="text-[#ff6b00] font-extrabold">{cat.seats || 4}</span></span>
+                  {categories.map(cat => (
+                    <div 
+                      key={cat.id} 
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-slate-300 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-200 px-2.5 py-1 text-xs font-extrabold text-tech-blue">
+                            {renderCategoryIcon(cat.icon)}
+                            {cat.name}
                           </span>
-                          
-                          <div className="flex space-x-2">
-                            <button 
-                              onClick={() => setEditingCategory(cat)}
-                              className="p-1 text-slate-400 hover:text-tech-blue hover:bg-slate-200 rounded"
-                              title="Editar"
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                              className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">
+                            ID: {cat.id}
+                          </span>
                         </div>
+                        <p className="text-xs text-slate-500 font-semibold mb-3">
+                          {cat.description || 'Sin descripción comercial cargada.'}
+                        </p>
                       </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* TAB DE SUCURSALES (Mock) */}
-        {activeTab === 'branches' && (
-          <div className="lg:col-span-1">
-             <div className="rounded-xl border border-slate-200 bg-white/50 p-6 shadow-lg">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-bold text-tech-blue flex items-center">
-                    Sucursales Activas
-                  </h3>
-                  <button className="flex items-center space-x-2 rounded-md bg-vial-orange px-4 py-2 text-sm font-medium text-gray-950 hover:opacity-90 transition-colors">
-                    <Plus className="h-4 w-4" />
-                    <span>Agregar Sucursal</span>
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {mockBranches.map(branch => (
-                    <div key={branch.id} className="rounded-lg border border-slate-200 bg-slate-50 p-5 hover:border-slate-300 transition-colors">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h4 className="text-base font-bold text-tech-blue">{branch.name}</h4>
-                          <p className="text-sm text-slate-500">{branch.location}</p>
-                        </div>
-                        <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-1 text-xs font-medium text-green-500">
-                          Activa
+                      
+                      <div className="pt-3 border-t border-slate-200 flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-500">
+                          ETA: <span className="text-tech-blue">{cat.eta}</span> | Asientos: <span className="text-vial-orange">{cat.seats || 4}</span>
                         </span>
-                      </div>
-                      <div className="pt-4 border-t border-slate-200 flex justify-between items-center">
-                         <p className="text-xs text-slate-500">Rutas ARC Habilitadas: <span className="font-medium text-slate-600">{branch.enabledARCRouteIds.length}</span></p>
-                         <button className="text-sm font-medium text-vial-orange hover:opacity-80 transition-colors">Editar</button>
+                        
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => setEditingCategory(cat)}
+                            className="p-1 text-slate-400 hover:text-tech-blue rounded"
+                            title="Editar"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                            className="p-1 text-slate-400 hover:text-red-500 rounded"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-             </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB DE SUCURSALES (REAL FIRESTORE) */}
+        {activeTab === 'branches' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div>
+                <h3 className="text-lg font-bold text-tech-blue flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-vial-orange" />
+                  Sucursales Operativas de la Red
+                </h3>
+                <p className="text-xs text-slate-500">Sedes habilitadas para la asignación de choferes y tarifarios específicos.</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setEditingBranch(null);
+                  setBranchForm({ name: '', code: '', city: '', province: '', address: '', phone: '', email: '', active: true });
+                  setShowBranchModal(true);
+                }}
+                className="flex items-center space-x-2 rounded-xl bg-vial-orange px-4 py-2.5 text-xs font-extrabold text-gray-950 hover:opacity-90 shadow-sm transition-all"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Agregar Nueva Sucursal</span>
+              </button>
+            </div>
+
+            {/* Listado de Sucursales */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {isLoadingBranches ? (
+                <div className="col-span-3 text-center py-12 text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
+                  <RefreshCw className="h-5 w-5 animate-spin text-vial-orange" />
+                  Cargando sucursales...
+                </div>
+              ) : branches.length === 0 ? (
+                <div className="col-span-3 text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-white text-slate-400 text-sm font-semibold">
+                  No hay sucursales creadas. Haz clic en "Agregar Nueva Sucursal".
+                </div>
+              ) : (
+                branches.map(branch => (
+                  <div key={branch.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="text-base font-black text-tech-blue">{branch.name}</h4>
+                          <span className="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                            {branch.code || 'SUC-00'}
+                          </span>
+                        </div>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                          branch.active ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          {branch.active ? 'Activa' : 'Inactiva'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-600 mb-4">
+                        <p className="flex items-center gap-1.5 text-slate-700 font-semibold">
+                          <MapPin className="h-3.5 w-3.5 text-vial-orange flex-shrink-0" />
+                          {branch.address ? `${branch.address}, ` : ''}{branch.city || 'Ciudad'}{branch.province ? `, ${branch.province}` : ''}
+                        </p>
+                        {branch.phone && (
+                          <p className="flex items-center gap-1.5 text-slate-500">
+                            <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            {branch.phone}
+                          </p>
+                        )}
+                        {branch.email && (
+                          <p className="flex items-center gap-1.5 text-slate-500">
+                            <Mail className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            {branch.email}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                      <span className="text-[11px] font-bold text-slate-400">
+                        Tarifas asociadas: {muTariffs.filter(t => t.branchIds?.includes(branch.id)).length + arcTariffs.filter(t => t.branchIds?.includes(branch.id)).length}
+                      </span>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setEditingBranch(branch)}
+                          className="p-1.5 text-slate-400 hover:text-tech-blue hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Editar Sucursal"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteBranch(branch.id, branch.name)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Eliminar Sucursal"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Crear/Editar Sucursal */}
+            {showBranchModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+                  <div className="bg-slate-50 p-5 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="font-bold text-tech-blue">
+                      {editingBranch ? 'Editar Sucursal' : 'Nueva Sucursal Operativa'}
+                    </h3>
+                    <button onClick={() => setShowBranchModal(false)} className="text-slate-400 hover:text-slate-600">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  
+                  <form onSubmit={handleSaveBranch} className="p-5 space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Nombre de la Sucursal</label>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="Ej. Sucursal Tucumán Centro"
+                        value={branchForm.name}
+                        onChange={e => setBranchForm({ ...branchForm, name: e.target.value })}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-tech-blue outline-none focus:border-vial-orange"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Código / Sigla</label>
+                        <input 
+                          type="text" 
+                          placeholder="Ej. SUC-TUC-01"
+                          value={branchForm.code}
+                          onChange={e => setBranchForm({ ...branchForm, code: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-tech-blue uppercase outline-none focus:border-vial-orange"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Provincia</label>
+                        <input 
+                          type="text" 
+                          placeholder="Ej. Tucumán"
+                          value={branchForm.province}
+                          onChange={e => setBranchForm({ ...branchForm, province: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-tech-blue outline-none focus:border-vial-orange"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Ciudad / Localidad</label>
+                        <input 
+                          type="text" 
+                          placeholder="Ej. San Miguel de Tucumán"
+                          value={branchForm.city}
+                          onChange={e => setBranchForm({ ...branchForm, city: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-tech-blue outline-none focus:border-vial-orange"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Dirección / Sede</label>
+                        <input 
+                          type="text" 
+                          placeholder="Ej. 25 de Mayo 450"
+                          value={branchForm.address}
+                          onChange={e => setBranchForm({ ...branchForm, address: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-tech-blue outline-none focus:border-vial-orange"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Teléfono</label>
+                        <input 
+                          type="tel" 
+                          placeholder="Ej. +54 381 4123456"
+                          value={branchForm.phone}
+                          onChange={e => setBranchForm({ ...branchForm, phone: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-tech-blue outline-none focus:border-vial-orange"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Email de Contacto</label>
+                        <input 
+                          type="email" 
+                          placeholder="Ej. tucuman@travelapp.ar"
+                          value={branchForm.email}
+                          onChange={e => setBranchForm({ ...branchForm, email: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-tech-blue outline-none focus:border-vial-orange"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <input 
+                        type="checkbox"
+                        id="branchActive"
+                        checked={branchForm.active}
+                        onChange={e => setBranchForm({ ...branchForm, active: e.target.checked })}
+                        className="rounded text-vial-orange focus:ring-vial-orange"
+                      />
+                      <label htmlFor="branchActive" className="text-xs font-bold text-slate-700 cursor-pointer">
+                        Sucursal Activa para Operaciones y Despacho
+                      </label>
+                    </div>
+
+                    <div className="flex gap-2 justify-end pt-4 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setShowBranchModal(false)}
+                        className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-vial-orange px-5 py-2 text-xs font-extrabold text-gray-950 hover:opacity-90 shadow-sm"
+                      >
+                        {editingBranch ? 'Guardar Cambios' : 'Crear Sucursal'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* TAB DE CONFIGURACIÓN DEL SISTEMA */}
         {activeTab === 'system' && (
           <div className="lg:col-span-1">
-            <div className="rounded-xl border border-slate-200 bg-white/50 p-6 shadow-lg">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-bold text-tech-blue flex items-center">
                   <Settings className="mr-2 h-5 w-5 text-vial-orange" />
@@ -937,11 +1268,11 @@ export default function TravelCabSettingsPage() {
                 </h3>
               </div>
 
-              <div className="space-y-6 max-w-2xl bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+              <div className="space-y-6 max-w-2xl bg-slate-50 p-6 rounded-xl border border-slate-200">
                 <div>
                   <h4 className="text-base font-bold text-tech-blue mb-1">Alertas y Notificaciones Sonoras</h4>
                   <p className="text-sm text-slate-500 mb-4">
-                    Configura la pista de audio de notificación que se reproducirá en bucle en la aplicación del conductor al recibir solicitudes, y como alerta emergente en la aplicación del pasajero.
+                    Configura la pista de audio de notificación que se reproducirá en bucle en la aplicación del conductor al recibir solicitudes.
                   </p>
 
                   <div className="space-y-2">
@@ -950,14 +1281,11 @@ export default function TravelCabSettingsPage() {
                     </label>
                     <input
                       type="text"
-                      className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-tech-blue placeholder-slate-400 focus:border-vial-orange focus:outline-none transition-colors"
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-tech-blue bg-white focus:border-vial-orange focus:outline-none transition-colors"
                       placeholder="https://example.com/sound.mp3"
                       value={notificationSoundUrl}
                       onChange={(e) => setNotificationSoundUrl(e.target.value)}
                     />
-                    <p className="text-xs text-slate-400">
-                      Proporciona un enlace directo a un archivo de sonido público (ej. hospedado en Firebase Storage, AWS S3 o similar).
-                    </p>
                   </div>
                 </div>
 

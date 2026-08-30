@@ -657,6 +657,8 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         name: name,
         description: description,
         eta: eta,
+        icon: categoryObj?.icon || '',
+        category: tariff.category,
         baseRate: tariff.baseFare,
         multiplier: tariff.category === 'premium' ? 1.45 : tariff.category === 'vip' ? 1.6 : 1.0,
         tariff: tariff
@@ -718,21 +720,26 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
     let basePricePerSeat = 0;
     
     if (modality === 'ARC') {
-      // Intentar buscar una ruta que coincida en el tarifario de ARC
+      // Intentar buscar una ruta que coincida en el tarifario de ARC (directa o inversa si es bidireccional)
       let arcRoutePrice: number | null = null;
       if (tariff.routes && Array.isArray(tariff.routes)) {
-        const originLower = pickupLocation.toLowerCase();
-        const destLower = dropoffLocation.toLowerCase();
+        const originLower = pickupLocation.toLowerCase().trim();
+        const destLower = dropoffLocation.toLowerCase().trim();
         
         const matchedRoute = tariff.routes.find((r: any) => {
           const routeOrigin = (r.mainOrigin || '').toLowerCase().trim();
           const routeDest = (r.mainDestination || '').toLowerCase().trim();
           
-          return (
-            routeOrigin && routeDest &&
-            (originLower.includes(routeOrigin) || routeOrigin.includes(originLower)) &&
-            (destLower.includes(routeDest) || routeDest.includes(destLower))
-          );
+          if (!routeOrigin || !routeDest) return false;
+          
+          const isDirect = (originLower.includes(routeOrigin) || routeOrigin.includes(originLower)) &&
+                           (destLower.includes(routeDest) || routeDest.includes(destLower));
+                           
+          const isInverse = r.isBidirectional !== false &&
+                            (originLower.includes(routeDest) || routeDest.includes(originLower)) &&
+                            (destLower.includes(routeOrigin) || routeOrigin.includes(destLower));
+                            
+          return isDirect || isInverse;
         });
         
         if (matchedRoute) {
@@ -744,40 +751,62 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         basePricePerSeat = arcRoutePrice;
       } else {
         // Fallback a cálculo basado en distancia si no hay coincidencia exacta de ruta
-        const baseFare = 400;
-        const pricePerKm = 320;
-        const travelMinutePrice = 80;
+        const baseFare = tariff.baseFare || 800;
+        const pricePerKm = tariff.pricePerKm || 380;
+        const travelMinutePrice = tariff.travelMinutePrice || 100;
         basePricePerSeat = baseFare + (distance * pricePerKm) + (duration * travelMinutePrice);
       }
+      
+      basePricePerSeat = basePricePerSeat * selectedSeats;
     } else {
-      // Modo MU
-      const baseFare = tariff.baseFare || vehicle.baseRate || 580;
-      const pricePerKm = tariff.pricePerKm || (vehicle.id === 'premium' ? 680 : 480);
-      const travelMinutePrice = tariff.travelMinutePrice || (vehicle.id === 'premium' ? 160 : 120);
-      basePricePerSeat = baseFare + (distance * pricePerKm) + (duration * travelMinutePrice);
+      // Modo MU (Movilidad Urbana)
+      const baseFare = tariff.baseFare || 1200;
+      const pricePerKm = tariff.pricePerKm || 480;
+      const travelMinutePrice = tariff.travelMinutePrice || 120;
+      const minimumFare = tariff.minimumFare || 2800;
+      
+      const calculated = baseFare + (distance * pricePerKm) + (duration * travelMinutePrice);
+      basePricePerSeat = Math.max(minimumFare, Math.round(calculated));
     }
     
-    const iva = tariff.iva !== undefined ? tariff.iva : 21;
-    const iibb = tariff.iibb !== undefined ? tariff.iibb : 3.5;
-    const taxMunicipal = tariff.taxMunicipal !== undefined ? tariff.taxMunicipal : 1.5;
-    const totalTaxesPct = iva + iibb + taxMunicipal;
+    // APLICAR TARIFA ESPECIAL (DÍAS Y HORARIOS ESPECÍFICOS) SOBRE EL CÁLCULO TOTAL DEL VIAJE
+    if (tariff.specialRates && Array.isArray(tariff.specialRates) && basePricePerSeat > 0) {
+      const DAYS_MAP = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const now = new Date();
+      const currentDay = DAYS_MAP[now.getDay()];
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      
+      for (const sr of tariff.specialRates) {
+        const days = sr.daysOfWeek || [];
+        const dayMatches = days.includes('Todos los días') || days.includes(currentDay);
+        if (!dayMatches) continue;
+        
+        const [startH, startM] = (sr.startTime || '00:00').split(':').map(Number);
+        const [endH, endM] = (sr.endTime || '23:59').split(':').map(Number);
+        const sMin = (startH || 0) * 60 + (startM || 0);
+        const eMin = (endH || 23) * 60 + (endM || 59);
+        
+        let matches = false;
+        if (sMin <= eMin) {
+          matches = currentMin >= sMin && currentMin <= eMin;
+        } else {
+          matches = currentMin >= sMin || currentMin <= eMin;
+        }
+        
+        if (matches && sr.percentageModifier) {
+          basePricePerSeat = Math.round(basePricePerSeat * (1 + sr.percentageModifier / 100));
+          break;
+        }
+      }
+    }
     
-    let taxedPrice = basePricePerSeat * (1 + totalTaxesPct / 100);
-    
+    // Si el pago es digital/tarjeta, aplicar recargo de pasarela si está configurado
     if (paymentMethod === 'Tarjeta' || paymentMethod === 'Billetera Virtual') {
       const cardFeePct = tariff.electronicPaymentFee !== undefined ? tariff.electronicPaymentFee : 5;
-      taxedPrice = taxedPrice * (1 + cardFeePct / 100);
+      basePricePerSeat = basePricePerSeat * (1 + cardFeePct / 100);
     }
     
-    let finalPrice = Math.round(taxedPrice);
-    const minimumFare = tariff.minimumFare || (vehicle.id === 'premium' ? (modality === 'ARC' ? 2500 : 3800) : (modality === 'ARC' ? 1800 : 2800));
-    finalPrice = Math.max(minimumFare, finalPrice);
-    
-    if (modality === 'ARC') {
-      finalPrice = finalPrice * selectedSeats;
-    }
-    
-    return finalPrice;
+    return Math.round(basePricePerSeat);
   };
 
   const formatCurrency = (amount: number) => {
@@ -1185,27 +1214,27 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
           <nav className="hidden md:flex items-center gap-6 bg-slate-100/80 px-4 py-1.5 rounded-full border border-slate-200/40">
             <button
               onClick={() => setViewMode('passenger')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                 viewMode === 'passenger' 
-                  ? 'bg-tech-blue text-white shadow-sm' 
-                  : 'text-slate-600 hover:text-tech-blue'
+                  ? 'bg-[#0A2A5B] text-white shadow-sm' 
+                  : 'text-slate-600 hover:text-[#0A2A5B]'
               }`}
             >
               Usuarios
             </button>
             <button
               onClick={() => setViewMode('driver')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                 viewMode === 'driver' 
-                  ? 'bg-tech-blue text-white shadow-sm' 
-                  : 'text-slate-600 hover:text-tech-blue'
+                  ? 'bg-[#0A2A5B] text-white shadow-sm' 
+                  : 'text-slate-600 hover:text-[#0A2A5B]'
               }`}
             >
               Conductores
             </button>
             <a
               href="#rewards-summary"
-              className="px-4 py-1.5 rounded-full text-xs font-bold text-slate-600 hover:text-tech-blue transition-all"
+              className="px-4 py-1.5 rounded-full text-xs font-bold text-slate-600 hover:text-[#0A2A5B] transition-all"
             >
               Rewards
             </a>
@@ -1214,14 +1243,13 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
           <div className="hidden md:flex items-center gap-3">
             <a
               href="/login"
-              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-tech-blue text-sm font-bold transition-colors cursor-pointer bg-white"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-[#0A2A5B] text-sm font-bold transition-colors cursor-pointer bg-white"
             >
               Ingresar
             </a>
             <div className="relative group">
               <button
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl text-white bg-vial-orange px-5 py-2.5 text-sm font-bold hover:brightness-110 shadow-md transition-all cursor-pointer"
-                style={{ backgroundColor: '#ff6b00' }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl text-white bg-[#FF5A19] hover:bg-[#e04e14] px-5 py-2.5 text-sm font-bold shadow-md transition-all cursor-pointer"
               >
                 Registrarse
                 <ChevronRight className="h-4 w-4 rotate-90" />
@@ -1229,13 +1257,13 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
               <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white border border-slate-200/60 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 overflow-hidden transform origin-top-right scale-95 group-hover:scale-100">
                 <button
                   onClick={() => { setPRegStep(1); setPRegData({ firstName: '', lastName: '', email: '', phone: '', photoUrl: '' }); setRegisterModal({ isOpen: true, role: 'passenger' }); }}
-                  className="w-full text-left block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-vial-orange border-b border-slate-100 transition-colors"
+                  className="w-full text-left block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-[#FF5A19] border-b border-slate-100 transition-colors cursor-pointer"
                 >
                   Soy Pasajero
                 </button>
                 <button
                   onClick={() => { setDRegStep(0); setDRegSubmitted(false); setRegisterModal({ isOpen: true, role: 'driver' }); }}
-                  className="w-full text-left block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-vial-orange transition-colors"
+                  className="w-full text-left block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-[#FF5A19] transition-colors cursor-pointer"
                 >
                   Soy Conductor
                 </button>
@@ -1290,8 +1318,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
               </a>
               <button
                 onClick={() => { setPRegStep(1); setRegisterModal({ isOpen: true, role: 'passenger' }); setMobileMenuOpen(false); }}
-                className="w-full text-center block rounded-xl py-2.5 text-sm font-bold text-white shadow-md bg-vial-orange"
-                style={{ backgroundColor: '#ff6b00' }}
+                className="w-full text-center block rounded-xl py-2.5 text-sm font-bold text-white shadow-md bg-[#FF5A19] hover:bg-[#e04e14]"
               >
                 Registro Pasajero
               </button>
@@ -1326,21 +1353,21 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
           })()
         }}
       >
-        <div className="absolute top-0 right-0 -z-5 h-[400px] w-[400px] rounded-full bg-vial-orange/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -z-5 h-[300px] w-[300px] rounded-full bg-tech-blue/20 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 -z-5 h-[400px] w-[400px] rounded-full bg-[#FF5A19]/15 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -z-5 h-[300px] w-[300px] rounded-full bg-[#0A2A5B]/30 blur-3xl pointer-events-none" />
 
         <div className="mx-auto max-w-7xl relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
             
             <div className="lg:col-span-6 xl:col-span-7 space-y-6 text-center lg:text-left">
-              <span className="inline-flex items-center rounded-full bg-vial-orange/20 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-vial-orange ring-1 ring-vial-orange/30 animate-pulse">
+              <span className="inline-flex items-center rounded-full bg-[#FF5A19]/20 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-[#FF5A19] ring-1 ring-[#FF5A19]/30 animate-pulse">
                 {viewMode === 'passenger' 
                   ? (cmsData.pasajeroHero?.badge || DEFAULT_CMS_DATA.pasajeroHero.badge)
                   : (cmsData.conductorHero?.badge || DEFAULT_CMS_DATA.conductorHero.badge)
                 }
               </span>
               
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-tight">
                 {viewMode === 'passenger' 
                   ? (cmsData.pasajeroHero?.title || DEFAULT_CMS_DATA.pasajeroHero.title)
                   : (cmsData.conductorHero?.title || DEFAULT_CMS_DATA.conductorHero.title)
@@ -1358,18 +1385,16 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                 {viewMode === 'passenger' ? (
                   <a 
                     href="#web-dispatcher-card"
-                    className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-vial-orange px-8 py-4 text-center font-extrabold text-white hover:brightness-110 shadow-lg shadow-vial-orange/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
-                    style={{ backgroundColor: '#ff6b00' }}
+                    className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-[#FF5A19] hover:bg-[#e04e14] px-8 py-4 text-center font-bold text-white shadow-lg shadow-[#FF5A19]/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
                   >
                     Pedir Viaje Ahora
                   </a>
                 ) : (
                   <button 
                     onClick={() => { setDRegStep(0); setDRegSubmitted(false); setRegisterModal({ isOpen: true, role: 'driver' }); }}
-                    className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-vial-orange px-8 py-4 text-center font-extrabold text-white hover:brightness-110 shadow-lg shadow-vial-orange/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
-                    style={{ backgroundColor: '#ff6b00' }}
+                    className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-[#FF5A19] hover:bg-[#e04e14] px-8 py-4 text-center font-bold text-white shadow-lg shadow-[#FF5A19]/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
                   >
-                    {cmsData.conductorHero?.ctaText || DEFAULT_CMS_DATA.conductorHero.ctaText}
+                    Postularme como Conductor
                   </button>
                 )}
                 
@@ -1705,22 +1730,54 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                     <div className="space-y-3">
                       {vehiclesList.map((vehicle: any) => {
                         const price = getCalculatedPriceForVehicle(vehicle);
+                        const carImg = vehicle.icon && (vehicle.icon.startsWith('http') || vehicle.icon.startsWith('/') || vehicle.icon.startsWith('data:'))
+                          ? vehicle.icon
+                          : (vehicle.category || vehicle.id || '').toLowerCase().includes('rural') || modality === 'ARC'
+                            ? '/assets/landing_rural.svg'
+                            : (vehicle.category || vehicle.id || '').toLowerCase().includes('vip') || (vehicle.category || vehicle.id || '').toLowerCase().includes('premium')
+                              ? '/assets/landing_premium.svg'
+                              : (vehicle.category || vehicle.id || '').toLowerCase().includes('plus')
+                                ? '/assets/landing_plus.svg'
+                                : (vehicle.category || vehicle.id || '').toLowerCase().includes('taxi')
+                                  ? '/assets/landing_taxi.svg'
+                                  : '/assets/landing_estandar.svg';
+
                         return (
                           <button
                             key={vehicle.id}
                             onClick={() => handleSelectVehicle(vehicle)}
-                            className="w-full text-left p-4 rounded-2xl border border-slate-200/80 bg-white hover:border-vial-orange hover:shadow-lg transition-all flex items-center justify-between group"
+                            className="w-full text-left p-4 rounded-3xl border-2 border-slate-200/80 bg-white hover:border-vial-orange hover:shadow-xl transition-all flex flex-col group relative overflow-hidden space-y-3 cursor-pointer"
                           >
-                            <div className="space-y-1 pr-3 flex-1">
+                            {/* Header de la tarjeta */}
+                            <div className="flex items-center justify-between w-full">
                               <div className="flex items-center gap-2">
-                                <span className="font-extrabold text-slate-800 text-sm">{vehicle.name}</span>
-                                <span className="text-[9px] font-black uppercase text-emerald-600 bg-emerald-100/50 px-2 py-0.5 rounded-full tracking-wider">{vehicle.eta}</span>
+                                <span className="font-black text-slate-800 text-sm sm:text-base">{vehicle.name}</span>
+                                <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full tracking-wider">
+                                  {vehicle.eta}
+                                </span>
                               </div>
-                              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{vehicle.description}</p>
+                              <div className="text-right">
+                                <span className="text-lg sm:text-xl font-black text-tech-blue group-hover:text-vial-orange transition-colors">
+                                  {formatCurrency(price)}
+                                </span>
+                              </div>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-lg font-black text-tech-blue group-hover:text-vial-orange transition-colors">{formatCurrency(price)}</p>
-                              <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">{paymentMethod}</span>
+
+                            {/* Imagen de Auto Grande que llega casi a los márgenes de la tarjeta */}
+                            <div className="w-full h-24 sm:h-28 flex items-center justify-center -my-1 px-1">
+                              <img 
+                                src={carImg} 
+                                alt={vehicle.name} 
+                                className="w-full h-full object-contain filter drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+                              />
+                            </div>
+
+                            {/* Pie de la tarjeta */}
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                              <p className="text-[11px] text-slate-500 font-medium line-clamp-1 flex-1 pr-2">{vehicle.description}</p>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded-md flex-shrink-0">
+                                {paymentMethod}
+                              </span>
                             </div>
                           </button>
                         );
@@ -3219,8 +3276,8 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                   
                   <button
                     onClick={handleDriverNext}
-                    className="flex items-center gap-1.5 rounded-xl text-white px-5 py-2 text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all"
-                    style={{ backgroundColor: dRegStep === 3 ? '#059669' : '#ff6b00' }}
+                    className="flex items-center gap-1.5 rounded-xl text-white px-5 py-2 text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+                    style={{ backgroundColor: dRegStep === 3 ? '#059669' : '#FF5A19' }}
                   >
                     {dRegStep === 3 ? 'Completar Registro' : 'Siguiente'}
                   </button>
@@ -3232,6 +3289,15 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
           </div>
         </div>
       )}
+
+      {/* Travis Omnichannel Live Chat */}
+      <TravisOmnichannelWidget
+        businessUnit="TravelCab"
+        primaryColor="#FF5A19"
+        brandName="TravelCab"
+        whatsappUrl={cmsData.dispatcher?.whatsappConfig?.phone ? `https://wa.me/${cmsData.dispatcher.whatsappConfig.phone}` : "https://wa.me/5493814188106"}
+        instagramUrl="https://instagram.com/travelcab.ar"
+      />
 
     </div>
   );
