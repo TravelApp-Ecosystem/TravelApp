@@ -14,7 +14,7 @@ import { MUTariffForm } from '@/components/travelcab/settings/MUTariffForm';
 import { ARCTariffForm } from '@/components/travelcab/settings/ARCTariffForm';
 import { TransferTariffForm } from '@/components/travelcab/settings/TransferTariffForm';
 import { 
-  collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, updateDoc, 
+  collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, getDoc, updateDoc, 
   writeBatch, query, where, addDoc 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -83,9 +83,11 @@ export default function TravelCabSettingsPage() {
   // 1. Escuchar Tarifarios en tiempo real
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'tariffs'), (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
-      setMuTariffs(list.filter(t => t.type === 'mu' && t.id !== 'mu_active'));
-      setArcTariffs(list.filter(t => (t.type === 'arc' || t.type === 'aci') && t.id !== 'arc_active'));
+      const list = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }) as any)
+        .filter(t => !t.id.endsWith('_active') && t.id !== 'mu_active' && t.id !== 'arc_active' && t.id !== 'transfers_active');
+      setMuTariffs(list.filter(t => t.type === 'mu'));
+      setArcTariffs(list.filter(t => (t.type === 'arc' || t.type === 'aci')));
       setTransferTariffs(list.filter(t => t.type === 'transfers'));
       setIsLoadingTariffs(false);
     }, (error) => {
@@ -242,14 +244,26 @@ export default function TravelCabSettingsPage() {
     if (confirm(`¿Estás seguro de que deseas eliminar permanentemente el tarifario "${name}"? Esta acción no se puede deshacer.`)) {
       try {
         await deleteDoc(doc(db, 'tariffs', id));
-        // Si coincide con los alias de compatibilidad, limpiarlos de forma segura
-        if (id === 'mu_active' || id === 'arc_active') {
+        
+        // Limpiar alias de compatibilidad si coinciden
+        if (id === 'mu_active' || id === 'arc_active' || id === 'transfers_active') {
           await deleteDoc(doc(db, 'tariffs', id)).catch(() => {});
+        } else {
+          // Limpiar alias si tienen este mismo ID o nombre referenciado
+          const muActiveDoc = await getDoc(doc(db, 'tariffs', 'mu_active')).catch(() => null);
+          if (muActiveDoc && muActiveDoc.exists() && (muActiveDoc.data()?.id === id || muActiveDoc.data()?.name === name)) {
+            await deleteDoc(doc(db, 'tariffs', 'mu_active')).catch(() => {});
+          }
+          const arcActiveDoc = await getDoc(doc(db, 'tariffs', 'arc_active')).catch(() => null);
+          if (arcActiveDoc && arcActiveDoc.exists() && (arcActiveDoc.data()?.id === id || arcActiveDoc.data()?.name === name)) {
+            await deleteDoc(doc(db, 'tariffs', 'arc_active')).catch(() => {});
+          }
         }
+        
         // Actualizar el estado local inmediatamente
-        setMuTariffs(prev => prev.filter(t => t.id !== id));
-        setArcTariffs(prev => prev.filter(t => t.id !== id));
-        setTransferTariffs(prev => prev.filter(t => t.id !== id));
+        setMuTariffs(prev => prev.filter(t => t.id !== id && t.name !== name));
+        setArcTariffs(prev => prev.filter(t => t.id !== id && t.name !== name));
+        setTransferTariffs(prev => prev.filter(t => t.id !== id && t.name !== name));
         alert(`Tarifario "${name}" eliminado correctamente.`);
       } catch (err: any) {
         console.error("Error deleting tariff:", err);
