@@ -119,6 +119,7 @@ export const getSidebarConfig = (pathname: string) => {
         { id: 'travelcab-create-service', label: 'Crear Servicio', href: '/travelcab/settings?tab=tariffs&action=new', icon: PlusCircle },
         { id: 'travelcab-create-category', label: 'Crear Categoría', href: '/travelcab/settings?tab=categories&action=new', icon: PlusCircle },
         { id: 'settings', label: 'Gestión de Tarifas', href: '/travelcab/settings', icon: DollarSign },
+        { id: 'audio-settings', label: 'Audios y Locuciones', href: '/travelcab/settings?tab=system', icon: Megaphone },
         { id: 'security', label: 'Seguridad del Ecosistema', href: '/travelcab/security', icon: ShieldAlert },
       ]
     };

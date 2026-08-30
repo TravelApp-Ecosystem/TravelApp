@@ -203,6 +203,8 @@ export default function TravelCabSettingsPage() {
         }
       } else if (tabParam === 'branches') {
         setActiveTab('branches');
+      } else if (tabParam === 'system' || tabParam === 'audio') {
+        setActiveTab('system');
       }
     }
   }, [typeof window !== "undefined" ? window.location.search : '']);
@@ -537,8 +539,8 @@ export default function TravelCabSettingsPage() {
               : 'border-transparent text-slate-500 hover:text-slate-600'
           }`}
         >
-          <Settings className="h-5 w-5" />
-          <span>Configuración Sistema</span>
+          <Volume2 className="h-5 w-5" />
+          <span>Audios y Locuciones</span>
         </button>
       </div>
 
