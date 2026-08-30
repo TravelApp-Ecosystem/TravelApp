@@ -181,13 +181,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Quicksand-Bold',
     fontWeight: '800',
-    color: '#0B192C',
+    color: '#FFFFFF',
     letterSpacing: -0.2,
   },
   sectionSubtitle: {
     fontSize: 11,
     fontFamily: 'Quicksand-Medium',
-    color: '#64748B',
+    color: 'rgba(255, 255, 255, 0.85)',
     marginTop: 1,
   },
   seeMoreBtn: {

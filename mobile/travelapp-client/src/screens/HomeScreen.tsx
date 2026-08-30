@@ -1673,28 +1673,53 @@ export default function HomeScreen() {
                   categories.slice(0, 4).map(cat => {
                     const isSelected = selectedCategory === cat.name;
                     const fare = calculateFare(cat.name);
-                    const categoryImage = cat.imageUrl || cat.iconImage || cat.image || (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:') || cat.icon.length > 30 || cat.icon.includes('/') || cat.icon.includes(';') || cat.icon.includes('+') || cat.icon.includes('=')) ? cat.icon : null);
+                    const catLower = (cat.name || cat.id || '').toLowerCase();
+                    const localCarImage = catLower.includes('taxi')
+                      ? require('../../assets/landing_taxi.png')
+                      : catLower.includes('vip') || catLower.includes('premium')
+                        ? require('../../assets/landing_premium.png')
+                        : catLower.includes('plus')
+                          ? require('../../assets/landing_plus.png')
+                          : catLower.includes('rural') || catLower.includes('arc')
+                            ? require('../../assets/landing_rural.png')
+                            : require('../../assets/landing_estandar.png');
+                    
+                    const remoteImage = cat.imageUrl || cat.iconImage || cat.image || (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:') || cat.icon.length > 30 || cat.icon.includes('/') || cat.icon.includes(';') || cat.icon.includes('+') || cat.icon.includes('=')) ? cat.icon : null);
+
                     return (
                       <TouchableOpacity 
                         key={cat.id} 
+                        activeOpacity={0.9}
                         style={[styles.canvaCategoryBtn, isSelected && styles.canvaCategoryBtnActive]}
                         onPress={() => setSelectedCategory(cat.name)}
                       >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                          {categoryImage ? (
-                            <Image source={{ uri: categoryImage }} style={{ width: 42, height: 32, resizeMode: 'contain' }} />
-                          ) : (
-                            <View style={styles.categoryIconCircle}>
-                              <Ionicons 
-                                name={getSafeIoniconsName(cat.icon, 'car-outline')} 
-                                size={20} 
-                                color={Colors.accent} 
-                              />
+                        {/* Header: Nombre, ETA y Precio */}
+                        <View style={styles.canvaCategoryHeaderRow}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.canvaCategoryName}>{cat.name}</Text>
+                            <View style={styles.canvaEtaBadge}>
+                              <Text style={styles.canvaEtaText}>{cat.eta || '3-5 min'}</Text>
                             </View>
-                          )}
-                          <Text style={styles.canvaCategoryName}>{cat.name}</Text>
+                          </View>
+                          <Text style={styles.canvaCategoryPrice}>${fare.toLocaleString('es-AR')}</Text>
                         </View>
-                        <Text style={styles.canvaCategoryPrice}>${fare}</Text>
+
+                        {/* Imagen Grande de Auto que llega casi a los bordes de la tarjeta */}
+                        <View style={styles.canvaCarImageContainer}>
+                          <Image 
+                            source={remoteImage ? { uri: remoteImage } : localCarImage} 
+                            style={styles.canvaCarImage} 
+                            resizeMode="contain" 
+                          />
+                        </View>
+
+                        {/* Footer: Descripción y método de pago */}
+                        <View style={styles.canvaCategoryFooterRow}>
+                          <Text style={styles.canvaCategoryDesc} numberOfLines={1}>
+                            {cat.description || 'Sedán moderno, climatizado y confortable'}
+                          </Text>
+                          <Text style={styles.canvaEtaText}>Efectivo / MP</Text>
+                        </View>
                       </TouchableOpacity>
                     );
                   })
@@ -3688,12 +3713,19 @@ const styles = StyleSheet.create({
   canvaCarouselCardDesc: { fontSize: 9, fontFamily: 'Quicksand-Regular', color: '#94A3B8', lineHeight: 12 },
   canvaCarouselCardPlaceholder: { width: 140, height: 130, backgroundColor: '#071A3C', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1E293B' },
   
-  canvaPricingTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: '#0A2A5B', marginBottom: 14, textAlign: 'center' },
-  canvaCategoryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FF7A00', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
-  canvaCategoryBtnActive: { borderWidth: 2, borderColor: '#0A2A5B' },
+  canvaPricingTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', fontWeight: '800', color: Colors.white, marginBottom: 14, textAlign: 'center' },
+  canvaCategoryBtn: { flexDirection: 'column', alignItems: 'center', backgroundColor: '#FF7A00', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.18, shadowRadius: 5, elevation: 3, marginBottom: 10 },
+  canvaCategoryBtnActive: { borderWidth: 2.5, borderColor: '#0A2A5B', backgroundColor: '#FF6B00' },
+  canvaCategoryHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 },
+  canvaCategoryName: { fontSize: 15, fontFamily: 'Quicksand-Bold', fontWeight: '800', color: Colors.white },
+  canvaCategoryPrice: { fontSize: 17, fontFamily: 'Quicksand-Bold', fontWeight: '800', color: Colors.white },
+  canvaCarImageContainer: { width: '100%', height: 75, alignItems: 'center', justifyContent: 'center', marginVertical: 2 },
+  canvaCarImage: { width: '100%', height: '100%' },
+  canvaEtaBadge: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: 6 },
+  canvaEtaText: { fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  canvaCategoryFooterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', paddingTop: 4, marginTop: 2 },
+  canvaCategoryDesc: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: 'rgba(255,255,255,0.9)', flex: 1, marginRight: 8 },
   categoryIconCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
-  canvaCategoryName: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.white },
-  canvaCategoryPrice: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.white },
   
   canvaAgendaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FF7A00', borderRadius: 12, paddingVertical: 10, marginTop: 12 },
   canvaAgendaBtnText: { color: '#FF7A00', fontSize: 13, fontFamily: 'Quicksand-Bold' },
