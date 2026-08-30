@@ -15,6 +15,7 @@ export const TransferTariffForm: React.FC<TransferTariffFormProps> = ({ editData
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<Partial<TransferTariff>>({
     name: '',
@@ -130,6 +131,8 @@ export const TransferTariffForm: React.FC<TransferTariffFormProps> = ({ editData
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!formData.name?.trim()) {
       alert("Por favor ingresa un nombre identificador para el tarifario.");
       return;
@@ -139,7 +142,16 @@ export const TransferTariffForm: React.FC<TransferTariffFormProps> = ({ editData
       return;
     }
 
+    setIsSubmitting(true);
     try {
+      let finalId = formData.id?.trim() || '';
+      const isEditing = Boolean(finalId);
+      
+      if (!isEditing) {
+        const newDocRef = doc(collection(db, 'tariffs'));
+        finalId = newDocRef.id;
+      }
+
       const tariffData: TransferTariff = {
         name: formData.name.trim(),
         branchIds: formData.branchIds && formData.branchIds.length > 0 ? formData.branchIds : ['all'],
@@ -154,19 +166,16 @@ export const TransferTariffForm: React.FC<TransferTariffFormProps> = ({ editData
         specialRates: formData.specialRates || [],
         type: 'transfers',
         isActive: formData.isActive ?? true,
-        id: formData.id || '',
+        id: finalId,
       };
 
-      let finalId = formData.id;
-      if (finalId) {
-        await setDoc(doc(db, 'tariffs', finalId), { ...tariffData, updatedAt: Date.now() });
-      } else {
-        const docRef = await addDoc(collection(db, 'tariffs'), { ...tariffData, updatedAt: Date.now() });
-        finalId = docRef.id;
-        await setDoc(doc(db, 'tariffs', finalId), { ...tariffData, id: finalId, updatedAt: Date.now() });
-      }
+      await setDoc(doc(db, 'tariffs', finalId), {
+        ...tariffData,
+        updatedAt: Date.now(),
+        ...(isEditing ? {} : { createdAt: Date.now() })
+      });
 
-      alert(formData.id ? "Tarifario de Traslados actualizado exitosamente" : "Tarifario de Traslados creado exitosamente");
+      alert(isEditing ? "Tarifario de Traslados actualizado exitosamente" : "Tarifario de Traslados creado exitosamente");
 
       if (onSubmitSuccess) {
         onSubmitSuccess();
@@ -174,6 +183,8 @@ export const TransferTariffForm: React.FC<TransferTariffFormProps> = ({ editData
     } catch (error: any) {
       console.error("Error saving Transfer tariff:", error);
       alert("Hubo un error al guardar el tarifario: " + error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -572,10 +583,11 @@ export const TransferTariffForm: React.FC<TransferTariffFormProps> = ({ editData
         )}
         <button
           type="submit"
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-5 py-2.5 rounded-lg transition-colors shadow-md"
+          disabled={isSubmitting}
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-5 py-2.5 rounded-lg transition-colors shadow-md disabled:opacity-50"
         >
           <Save size={18} />
-          {formData.id ? "Actualizar Tarifario Traslados" : "Guardar Tarifario Traslados"}
+          {isSubmitting ? "Guardando..." : formData.id ? "Actualizar Tarifario Traslados" : "Guardar Tarifario Traslados"}
         </button>
       </div>
     </form>

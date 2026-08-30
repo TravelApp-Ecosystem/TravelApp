@@ -87,9 +87,18 @@ export default function TravelCabSettingsPage() {
   // 1. Escuchar Tarifarios en tiempo real
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'tariffs'), (snapshot) => {
-      const list = snapshot.docs
+      const rawList = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }) as any)
         .filter(t => !t.id.endsWith('_active') && t.id !== 'mu_active' && t.id !== 'arc_active' && t.id !== 'transfers_active');
+      
+      const uniqueMap = new Map<string, any>();
+      rawList.forEach(t => {
+        if (t.id && !uniqueMap.has(t.id)) {
+          uniqueMap.set(t.id, t);
+        }
+      });
+      const list = Array.from(uniqueMap.values());
+
       setMuTariffs(list.filter(t => t.type === 'mu'));
       setArcTariffs(list.filter(t => (t.type === 'arc' || t.type === 'aci')));
       setTransferTariffs(list.filter(t => t.type === 'transfers'));

@@ -15,10 +15,11 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<Partial<ARCTariff>>({
     name: '',
-    branchIds: [],
+    branchIds: ['all'],
     category: '',
     iva: 21,
     iibb: 3.5,
@@ -59,7 +60,7 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
     if (editData) {
       setFormData({
         ...editData,
-        branchIds: editData.branchIds ?? [],
+        branchIds: editData.branchIds ?? ['all'],
         iva: editData.iva ?? 21,
         iibb: editData.iibb ?? 3.5,
         taxMunicipal: editData.taxMunicipal ?? 1.5,
@@ -72,7 +73,7 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
     } else {
       setFormData({
         name: '',
-        branchIds: [],
+        branchIds: ['all'],
         category: '',
         iva: 21,
         iibb: 3.5,
@@ -81,7 +82,7 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
         commissionRate: 15,
         weeklyMembership: 5000,
         routes: [],
-        specialRates: []
+        specialRates: [],
       });
     }
   }, [editData]);
@@ -89,11 +90,7 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
   const toggleBranch = (branchId: string) => {
     const current = formData.branchIds || [];
     if (branchId === 'all') {
-      if (current.includes('all')) {
-        setFormData({ ...formData, branchIds: [] });
-      } else {
-        setFormData({ ...formData, branchIds: ['all'] });
-      }
+      setFormData({ ...formData, branchIds: ['all'] });
       return;
     }
 
@@ -110,7 +107,7 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
 
   const handleAddRoute = () => {
     const newRoute: ARCRoute = {
-      id: `route-${Date.now()}`,
+      id: Date.now().toString(),
       mainOrigin: '',
       mainDestination: '',
       pricePerSeat: 0,
@@ -132,6 +129,8 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!formData.name?.trim()) {
       alert("Por favor ingresa un nombre para el tarifario.");
       return;
@@ -141,7 +140,16 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
       return;
     }
 
+    setIsSubmitting(true);
     try {
+      let finalId = formData.id?.trim() || '';
+      const isEditing = Boolean(finalId);
+      
+      if (!isEditing) {
+        const newDocRef = doc(collection(db, 'tariffs'));
+        finalId = newDocRef.id;
+      }
+
       const tariffData: ARCTariff = {
         name: formData.name.trim(),
         branchIds: formData.branchIds && formData.branchIds.length > 0 ? formData.branchIds : ['all'],
@@ -156,24 +164,17 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
         specialRates: formData.specialRates || [],
         type: 'arc',
         isActive: formData.isActive ?? true,
-        id: formData.id || '',
+        id: finalId,
       };
 
-      let finalId = formData.id;
-      if (finalId) {
-        await setDoc(doc(db, 'tariffs', finalId), { ...tariffData, updatedAt: Date.now() });
-      } else {
-        const docRef = await addDoc(collection(db, 'tariffs'), { ...tariffData, updatedAt: Date.now() });
-        finalId = docRef.id;
-        await setDoc(doc(db, 'tariffs', finalId), { ...tariffData, id: finalId, updatedAt: Date.now() });
-      }
+      // Guardar exactamente un solo documento atómico
+      await setDoc(doc(db, 'tariffs', finalId), {
+        ...tariffData,
+        updatedAt: Date.now(),
+        ...(isEditing ? {} : { createdAt: Date.now() })
+      });
 
-      // Si este tarifario se marca activo, actualizar el doc arc_active de fallback
-      if (tariffData.isActive && (tariffData.category === 'estandar' || tariffData.category === 'standard')) {
-        await setDoc(doc(db, 'tariffs', 'arc_active'), { ...tariffData, id: finalId, isActive: true, updatedAt: Date.now() });
-      }
-
-      alert(formData.id ? "Tarifario ARC actualizado exitosamente en Firestore" : "Tarifario ARC creado exitosamente en Firestore");
+      alert(isEditing ? "Tarifario ARC actualizado exitosamente en Firestore" : "Tarifario ARC creado exitosamente en Firestore");
 
       if (onSubmitSuccess) {
         onSubmitSuccess();
@@ -181,6 +182,8 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
     } catch (error: any) {
       console.error("Error saving ARC tariff:", error);
       alert("Hubo un error al guardar el tarifario: " + error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -574,9 +577,13 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
             Cancelar Edición
           </button>
         )}
-        <button type="submit" className="flex items-center rounded-lg bg-vial-orange px-5 py-2.5 text-sm font-extrabold text-gray-950 hover:opacity-90 shadow-md">
+        <button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="flex items-center rounded-lg bg-vial-orange px-5 py-2.5 text-sm font-extrabold text-gray-950 hover:opacity-90 shadow-md disabled:opacity-50"
+        >
           <Save className="mr-2 h-4 w-4" />
-          {formData.id ? "Actualizar Tarifario ARC" : "Guardar Tarifario ARC"}
+          {isSubmitting ? "Guardando..." : formData.id ? "Actualizar Tarifario ARC" : "Guardar Tarifario ARC"}
         </button>
       </div>
     </form>

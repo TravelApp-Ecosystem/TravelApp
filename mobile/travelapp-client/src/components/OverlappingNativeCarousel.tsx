@@ -280,9 +280,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand-SemiBold',
     fontWeight: '700',
   },
-  cardBottomContainer: {
-    zIndex: 2,
-  },
   cardTitle: {
     color: Colors.white,
     fontSize: 17,
