@@ -1188,6 +1188,7 @@ export default function HomeScreen() {
 
     try {
       const estimatedPrice = calculateFare(selectedCategory);
+      const randomPin = String(Math.floor(1000 + Math.random() * 9000));
       const tripData: any = {
         passengerId: user.uid,
         userName: firstName,
@@ -1201,6 +1202,7 @@ export default function HomeScreen() {
         estimatedDurationMins: routeDuration || 0,
         serviceType: selectedCategory,
         estimatedPrice,
+        securityPin: randomPin,
         paymentMethod: selectedPayment,
         paymentStatus: selectedPayment === 'Efectivo' ? 'pending' : 'awaiting_payment',
         status: 'searching',
@@ -1619,6 +1621,39 @@ export default function HomeScreen() {
                     <Image source={{ uri: driverDetails.carPhoto }} style={styles.carPhotoTrackingImg} />
                   </View>
                 ) : null}
+
+                {/* PIN de Seguridad para abordar (Opcional) */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: '#F0FDF4',
+                  borderWidth: 1.5,
+                  borderColor: '#86EFAC',
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  marginTop: 10
+                }}>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#15803D' }}>
+                      🔑 PIN DE ABORDAJE (OPCIONAL)
+                    </Text>
+                    <Text style={{ fontSize: 10, fontFamily: 'Quicksand-Medium', color: '#166534', marginTop: 1 }}>
+                      Dictáselo al chofer solo si te lo solicita antes de arrancar.
+                    </Text>
+                  </View>
+                  <View style={{
+                    backgroundColor: '#16A34A',
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                  }}>
+                    <Text style={{ fontSize: 15, fontFamily: 'Quicksand-Bold', color: '#FFFFFF', letterSpacing: 2 }}>
+                      {activeTrip?.securityPin || '4829'}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               {/* Controles de Viaje (Fila Horizontal) */}
