@@ -10,6 +10,7 @@ import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Colors, Fonts } from '../lib/constants';
 import { TravelCabLogo, TravelAppLogo } from '../components/BrandLogos';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 const MASTER_ADMIN_EMAILS = [
   'fernando@travelapp.ar',
@@ -58,6 +59,29 @@ export default function LoginScreen() {
       Alert.alert('Acceso Biométrico', 'Iniciá sesión una primera vez con tu contraseña para activar el desbloqueo por huella o Face ID.');
       return;
     }
+
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (hasHardware && isEnrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: `Autenticación Biométrica TravelApp (${savedUser.name || savedUser.email.split('@')[0]})`,
+          cancelLabel: 'Cancelar',
+          disableDeviceFallback: false,
+        });
+
+        if (!result.success) {
+          if (result.error !== 'user_cancel' && result.error !== 'app_cancel') {
+            Alert.alert('Autenticación fallida', 'No se reconoció la huella o rostro. Podés ingresar tu clave manualmente.');
+          }
+          return;
+        }
+      }
+    } catch (bioErr) {
+      console.log('Biometric auth error/skipped:', bioErr);
+    }
+
     handleAuthWithCredentials(savedUser.email, savedUser.pass);
   };
 

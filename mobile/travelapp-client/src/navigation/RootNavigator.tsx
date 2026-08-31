@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import firebase from 'firebase/compat/app';
+import { User, onAuthStateChanged } from 'firebase/auth';
 import { ActivityIndicator, View } from 'react-native';
 import { auth } from '../lib/firebase';
 import { Colors } from '../lib/constants';
@@ -19,11 +19,11 @@ import CompleteProfileScreen from '../screens/CompleteProfileScreen';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const [user, setUser] = useState<firebase.User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });

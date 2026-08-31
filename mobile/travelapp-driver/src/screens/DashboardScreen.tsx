@@ -729,19 +729,20 @@ export default function DashboardScreen() {
                   />
                 </View>
 
-                {/* Botón Gigante Iniciar Viaje */}
+                {/* Botón Gigante Iniciar Viaje (Verde Separado) */}
                 <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', height: 60, backgroundColor: Colors.success, justifyContent: 'center', alignItems: 'center', marginTop: 12 }]}
+                  style={[styles.saveFormBtn, { width: '100%', height: 62, backgroundColor: '#16A34A', justifyContent: 'center', alignItems: 'center', marginTop: 14, borderRadius: 16, elevation: 4 }]}
                   onPress={() => setTaximeterStep('running')}
+                  activeOpacity={0.85}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="play" size={24} color={Colors.white} style={{ marginRight: 8 }} />
-                    <Text style={[styles.saveFormText, { fontSize: 18, fontWeight: '800' }]}>INICIAR VIAJE LIBRE</Text>
+                    <Ionicons name="play-circle" size={26} color={Colors.white} style={{ marginRight: 8 }} />
+                    <Text style={[styles.saveFormText, { fontSize: 18, fontWeight: '800', letterSpacing: 0.5 }]}>INICIAR VIAJE LIBRE</Text>
                   </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  style={[styles.cancelFormBtn, { width: '100%', height: 46, justifyContent: 'center' }]}
+                  style={[styles.cancelFormBtn, { width: '100%', height: 44, justifyContent: 'center', marginTop: 14 }]}
                   onPress={() => setTaximeterVisible(false)}
                 >
                   <Text style={styles.cancelFormText}>Cancelar</Text>
@@ -770,21 +771,22 @@ export default function DashboardScreen() {
                   </View>
                 </View>
 
-                {/* Botón Gigante Finalizar Viaje */}
+                {/* Botón Gigante Finalizar Viaje (Rojo Separado) */}
                 <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', height: 64, backgroundColor: Colors.danger, justifyContent: 'center', alignItems: 'center', marginTop: 12 }]}
+                  style={[styles.saveFormBtn, { width: '100%', height: 68, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center', marginTop: 24, borderRadius: 16, elevation: 5 }]}
                   onPress={() => setTaximeterStep('summary')}
+                  activeOpacity={0.85}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="stop-circle" size={26} color={Colors.white} style={{ marginRight: 8 }} />
-                    <Text style={[styles.saveFormText, { fontSize: 18, fontWeight: '800' }]}>FINALIZAR VIAJE</Text>
+                    <Ionicons name="stop-circle" size={28} color={Colors.white} style={{ marginRight: 8 }} />
+                    <Text style={[styles.saveFormText, { fontSize: 19, fontWeight: '800', letterSpacing: 0.5 }]}>FINALIZAR VIAJE</Text>
                   </View>
                 </TouchableOpacity>
               </View>
             )}
 
             {taximeterStep === 'summary' && (
-              <View style={{ width: '100%', gap: 12, alignItems: 'center' }}>
+              <View style={{ width: '100%', gap: 10, alignItems: 'center' }}>
                 <Text style={styles.modalSubtitle}>Detalle del viaje libre completado:</Text>
 
                 <View style={styles.taxiRateBox}>
@@ -806,70 +808,126 @@ export default function DashboardScreen() {
                   </View>
                 </View>
 
-                {/* Botón Cobrar y Enviar Recibo */}
-                <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', height: 56, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', marginTop: 8 }]}
-                  disabled={sendingReceipt}
-                  onPress={async () => {
-                    setSendingReceipt(true);
-                    if (freeTripPassengerEmail) {
-                      try {
-                        await fetch('https://travelapp-five-nu.vercel.app/api/receipt/send', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            passengerName: freeTripPassengerName || 'Pasajero',
-                            passengerEmail: freeTripPassengerEmail,
-                            passengerPhone: freeTripPassengerPhone,
-                            driverName: user?.displayName || 'Conductor TravelCab',
-                            origin: 'Viaje Libre SUTRAPPA',
-                            destination: 'Destino Final',
-                            totalFare: taxiFare,
-                            distanceKm: Number(taxiDistance.toFixed(2)),
-                            durationMinutes: Math.round(taxiSeconds / 60),
-                            paymentMethod: 'Efectivo',
-                            breakdown: { baseFare: 300, distanceCost: Math.round(taxiDistance * 180), timeCost: Math.round((taxiSeconds / 60) * 50) }
-                          })
-                        });
-                      } catch (e) {
-                        console.warn('Error sending receipt:', e);
-                      }
-                    }
-                    setTodayEarnings(prev => prev + taxiFare);
-                    setTodayTrips(prev => prev + 1);
-                    setSendingReceipt(false);
-                    setTaximeterVisible(false);
-                    setTaximeterStep('idle');
-                    setFreeTripPassengerEmail('');
-                    setFreeTripPassengerPhone('');
-                    setFreeTripPassengerName('');
-                    Alert.alert('Viaje Finalizado 🚖', `Cobro de $${taxiFare} ARS registrado.${freeTripPassengerEmail ? ' Se envió el recibo por email.' : ''}`);
-                  }}
-                >
-                  {sendingReceipt ? (
-                    <ActivityIndicator color={Colors.white} />
-                  ) : (
-                    <Text style={[styles.saveFormText, { fontSize: 16, fontWeight: '800' }]}>Cobrar y Emitir Recibo</Text>
-                  )}
-                </TouchableOpacity>
+                {/* Campos opcionales para enviar recibo */}
+                <View style={{ width: '100%', gap: 6, marginTop: 4 }}>
+                  <TextInput
+                    style={[styles.formInput, { height: 40, fontSize: 12 }]}
+                    placeholder="Email pasajero (ej. usuario@gmail.com)"
+                    placeholderTextColor={Colors.textMuted}
+                    value={freeTripPassengerEmail}
+                    onChangeText={setFreeTripPassengerEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  <TextInput
+                    style={[styles.formInput, { height: 40, fontSize: 12 }]}
+                    placeholder="WhatsApp pasajero (ej. 3814123456)"
+                    placeholderTextColor={Colors.textMuted}
+                    value={freeTripPassengerPhone}
+                    onChangeText={setFreeTripPassengerPhone}
+                    keyboardType="phone-pad"
+                  />
+                </View>
 
-                <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', height: 48, backgroundColor: '#25D366', justifyContent: 'center', alignItems: 'center' }]}
-                  onPress={async () => {
-                    try {
-                      await Share.share({
-                        message: `¡Hola! Gracias por viajar conmigo en TravelApp. Registrate usando mi código CHOFER_${user?.uid || 'APP'} y obtené un descuento de $${referralPassengerBonus} ARS: https://travelapp.ar/invite`
-                      });
-                    } catch (error) {
-                      console.log("Error sharing referral:", error);
-                    }
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="logo-whatsapp" size={18} color={Colors.white} style={{ marginRight: 6 }} />
-                    <Text style={styles.saveFormText}>Enviar Invitación / WhatsApp</Text>
-                  </View>
-                </TouchableOpacity>
+                {/* Opciones de Recibo Digital (Email o WhatsApp con Link de descarga) */}
+                <View style={{ width: '100%', gap: 8, marginTop: 6 }}>
+                  {/* Botón WhatsApp */}
+                  <TouchableOpacity 
+                    style={[styles.saveFormBtn, { width: '100%', height: 48, backgroundColor: '#25D366', justifyContent: 'center', alignItems: 'center', borderRadius: 12 }]}
+                    onPress={async () => {
+                      const receiptMsg = 
+                        `🧾 *RECIBO OFICIAL DE VIAJE - TRAVELAPP*\n\n` +
+                        `🚗 *Conductor:* ${user?.displayName || 'Conductor TravelCab'}\n` +
+                        `💰 *Total:* $${taxiFare} ARS\n` +
+                        `⏱️ *Tiempo:* ${formatTaxiTime(taxiSeconds)} | 📏 *Distancia:* ${taxiDistance.toFixed(2)} km\n` +
+                        `📍 *Servicio:* Viaje Libre / SUTRAPPA\n` +
+                        `📅 *Fecha:* ${new Date().toLocaleDateString('es-AR')}\n\n` +
+                        `📲 *Descargá TravelApp en tu celular para pedir tu próximo viaje:* \n` +
+                        `👉 https://travelapp.ar/descargar`;
+
+                      if (freeTripPassengerPhone) {
+                        const cleanPhone = freeTripPassengerPhone.replace(/\D/g, '');
+                        Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(receiptMsg)}`).catch(() => {
+                          Share.share({ message: receiptMsg });
+                        });
+                      } else {
+                        Linking.openURL(`https://wa.me/?text=${encodeURIComponent(receiptMsg)}`).catch(() => {
+                          Share.share({ message: receiptMsg });
+                        });
+                      }
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="logo-whatsapp" size={19} color={Colors.white} style={{ marginRight: 6 }} />
+                      <Text style={[styles.saveFormText, { fontSize: 14, fontWeight: '700' }]}>Enviar Recibo por WhatsApp</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Botón Email */}
+                  {freeTripPassengerEmail ? (
+                    <TouchableOpacity 
+                      style={[styles.saveFormBtn, { width: '100%', height: 46, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center', borderRadius: 12 }]}
+                      disabled={sendingReceipt}
+                      onPress={async () => {
+                        setSendingReceipt(true);
+                        try {
+                          await fetch('https://travelapp-five-nu.vercel.app/api/receipt/send', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              passengerName: freeTripPassengerName || 'Pasajero',
+                              passengerEmail: freeTripPassengerEmail,
+                              passengerPhone: freeTripPassengerPhone,
+                              driverName: user?.displayName || 'Conductor TravelCab',
+                              origin: 'Viaje Libre SUTRAPPA',
+                              destination: 'Destino Final',
+                              totalFare: taxiFare,
+                              distanceKm: Number(taxiDistance.toFixed(2)),
+                              durationMinutes: Math.round(taxiSeconds / 60),
+                              paymentMethod: 'Efectivo',
+                              appDownloadUrl: 'https://travelapp.ar/descargar',
+                              breakdown: { baseFare: 300, distanceCost: Math.round(taxiDistance * 180), timeCost: Math.round((taxiSeconds / 60) * 50) }
+                            })
+                          });
+                          Alert.alert('Recibo Enviado 📧', `Enviamos el comprobante digital con enlace de descarga a ${freeTripPassengerEmail}`);
+                        } catch (e) {
+                          console.warn('Error sending receipt:', e);
+                        } finally {
+                          setSendingReceipt(false);
+                        }
+                      }}
+                    >
+                      {sendingReceipt ? (
+                        <ActivityIndicator color={Colors.white} />
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Ionicons name="mail" size={18} color={Colors.white} style={{ marginRight: 6 }} />
+                          <Text style={[styles.saveFormText, { fontSize: 14, fontWeight: '700' }]}>Enviar Recibo por Email</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {/* Botón Cobrar y Finalizar */}
+                  <TouchableOpacity 
+                    style={[styles.saveFormBtn, { width: '100%', height: 52, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', borderRadius: 14, marginTop: 4 }]}
+                    onPress={() => {
+                      setTodayEarnings(prev => prev + taxiFare);
+                      setTodayTrips(prev => prev + 1);
+                      setTaximeterVisible(false);
+                      setTaximeterStep('idle');
+                      setFreeTripPassengerEmail('');
+                      setFreeTripPassengerPhone('');
+                      setFreeTripPassengerName('');
+                      Alert.alert('Viaje Finalizado 🚖', `Cobro de $${taxiFare} ARS registrado exitosamente.`);
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="checkmark-circle" size={22} color={Colors.white} style={{ marginRight: 6 }} />
+                      <Text style={[styles.saveFormText, { fontSize: 16, fontWeight: '800' }]}>Cobrar y Finalizar</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
