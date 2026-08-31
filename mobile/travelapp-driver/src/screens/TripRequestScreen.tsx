@@ -70,12 +70,11 @@ export default function TripRequestScreen() {
       const driverCarPhoto = driverData?.activeVehicle?.photoUrl || undefined;
 
       const isMercadoPago = trip?.paymentMethod === 'Mercado Pago';
+      let paymentSuccess = false;
+      let payData: any = null;
+
       if (isMercadoPago) {
-        let paymentSuccess = false;
-        let payData: any = null;
-
         const endpoints = [`${API_BASE_URL}/api/checkout/process-debit`];
-
         for (const url of endpoints) {
           try {
             const payResponse = await fetch(url, {
@@ -99,63 +98,34 @@ export default function TripRequestScreen() {
             console.log(`Failed to connect to ${url}`);
           }
         }
-
-        if (paymentSuccess) {
-          await updateDoc(doc(db, 'trips', trip.id), {
-            status: 'accepted',
-            driverId: user.uid,
-            driverName,
-            driverPhone,
-            driverRating,
-            vehicleModel,
-            vehiclePlate,
-            driverProfilePhoto,
-            driverCarPhoto,
-            acceptedAt: Timestamp.now(),
-            paymentStatus: 'paid',
-            paymentId: payData?.paymentId
-          });
-          navigation.navigate('ActiveTrip', { tripId: trip.id });
-        } else {
-          Alert.alert(
-            'Cobro Rechazado',
-            'No se pudo debitar el saldo de Mercado Pago del pasajero. El viaje se cambió a cobro en EFECTIVO.',
-            [{ text: 'Entendido', onPress: async () => {
-              await updateDoc(doc(db, 'trips', trip.id), {
-                status: 'accepted',
-                driverId: user.uid,
-                driverName,
-                driverPhone,
-                driverRating,
-                vehicleModel,
-                vehiclePlate,
-                driverProfilePhoto,
-                driverCarPhoto,
-                acceptedAt: Timestamp.now(),
-                paymentMethod: 'Efectivo',
-                paymentStatus: 'pending'
-              });
-              navigation.navigate('ActiveTrip', { tripId: trip.id });
-            }}]
-          );
-        }
-      } else {
-        await updateDoc(doc(db, 'trips', trip.id), {
-          status: 'accepted',
-          driverId: user.uid,
-          driverName,
-          driverPhone,
-          driverRating,
-          vehicleModel,
-          vehiclePlate,
-          driverProfilePhoto,
-          driverCarPhoto,
-          acceptedAt: Timestamp.now(),
-        });
-        navigation.navigate('ActiveTrip', { tripId: trip.id });
       }
-    } catch (err) {
-      Alert.alert('Error', 'No se pudo aceptar el viaje. Intentá nuevamente.');
+
+      const updatePayload: any = {
+        status: 'accepted',
+        driverId: user.uid,
+        driverName: driverName || 'Socio Conductor',
+        driverPhone: driverPhone || '+5491100000000',
+        driverRating: Number(driverRating || 5.0),
+        vehicleModel: vehicleModel || 'Fiat Cronos (Gris Plata)',
+        vehiclePlate: vehiclePlate || 'AF 123 JK',
+        acceptedAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        paymentMethod: trip?.paymentMethod || 'Efectivo',
+        paymentStatus: (isMercadoPago && paymentSuccess) ? 'paid' : 'pending',
+      };
+
+      if (driverData?.photoUrl) updatePayload.driverProfilePhoto = driverData.photoUrl;
+      if (driverData?.activeVehicle?.photoUrl) updatePayload.driverCarPhoto = driverData.activeVehicle.photoUrl;
+      if (isMercadoPago && paymentSuccess && payData?.paymentId) {
+        updatePayload.paymentId = payData.paymentId;
+      }
+      if (trip?.pin) updatePayload.pin = trip.pin;
+
+      await updateDoc(doc(db, 'trips', trip.id), updatePayload);
+      navigation.navigate('ActiveTrip', { tripId: trip.id });
+    } catch (err: any) {
+      console.error("Error accepting trip:", err);
+      Alert.alert('Error', 'No se pudo aceptar el viaje: ' + (err?.message || 'Intentá nuevamente.'));
     } finally {
       setLoading(false);
     }

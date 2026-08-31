@@ -64,7 +64,7 @@ export default function ProfileScreen() {
     if (type === 'phone') {
       Linking.openURL('tel:08102200018');
     } else if (type === 'email') {
-      Linking.openURL('mailto:hola@travelapp.ar?subject=Consulta%20desde%20TravelApp%20Cliente');
+      Linking.openURL('mailto:soporte@travelapp.ar?subject=Consulta%20desde%20TravelApp%20Cliente');
     } else if (type === 'whatsapp') {
       Linking.openURL('https://wa.me/?text=Hola%20TravelApp%2C%20necesito%20atenci%C3%B3n%20al%20cliente%20con%20mi%20cuenta.');
     } else if (type === 'travis') {
@@ -250,7 +250,7 @@ export default function ProfileScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.channelTitle}>Correo Electrónico</Text>
-                  <Text style={styles.channelValue}>hola@travelapp.ar</Text>
+                  <Text style={styles.channelValue}>soporte@travelapp.ar</Text>
                   <Text style={styles.channelSub}>Respuesta y seguimiento oficial</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />

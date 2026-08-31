@@ -670,7 +670,7 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                     WhatsApp
                   </a>
                   <a
-                    href="mailto:hola@travelapp.ar"
+                    href="mailto:soporte@travelapp.ar"
                     onClick={() => setContactDropdownOpen(false)}
                     className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold hover:bg-slate-50 transition-colors"
                   >
@@ -736,7 +736,7 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                   <Phone className="h-4 w-4" /> WhatsApp
                 </a>
                 <a
-                  href="mailto:hola@travelapp.ar"
+                  href="mailto:soporte@travelapp.ar"
                   onClick={() => setMobileOpen(false)}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-white/20 bg-white/10 py-3 text-sm font-bold text-white"
                 >
@@ -1661,10 +1661,10 @@ export default function EcosistemaLanding({ initialCms }: { initialCms?: any }) 
                 </li>
                 <li>
                   <a
-                    href="mailto:hola@travelapp.ar"
+                    href="mailto:soporte@travelapp.ar"
                     className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-semibold"
                   >
-                    <Mail className="h-3.5 w-3.5 text-orange-500" /> hola@travelapp.ar
+                    <Mail className="h-3.5 w-3.5 text-orange-500" /> soporte@travelapp.ar
                   </a>
                 </li>
                 <li>

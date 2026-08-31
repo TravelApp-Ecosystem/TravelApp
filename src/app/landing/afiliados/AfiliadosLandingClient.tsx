@@ -711,8 +711,8 @@ export default function AfiliadosLandingClient() {
                   </a>
                 </li>
                 <li>
-                  <a href="mailto:hola@travelapp.ar" className="inline-flex items-center gap-2 text-slate-300 hover:text-white font-semibold">
-                    <Mail className="h-3.5 w-3.5 text-[#EF4444]" /> hola@travelapp.ar
+                  <a href="mailto:soporte@travelapp.ar" className="inline-flex items-center gap-2 text-slate-300 hover:text-white font-semibold">
+                    <Mail className="h-3.5 w-3.5 text-[#EF4444]" /> soporte@travelapp.ar
                   </a>
                 </li>
                 <li>

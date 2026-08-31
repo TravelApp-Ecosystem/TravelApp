@@ -60,7 +60,7 @@ export default function ProfileScreen() {
     } else if (type === 'phone') {
       Linking.openURL('tel:08102200018');
     } else if (type === 'email') {
-      Linking.openURL('mailto:hola@travelapp.ar?subject=Soporte%20Conductor%20TravelApp');
+      Linking.openURL('mailto:soporte@travelapp.ar?subject=Soporte%20Conductor%20TravelApp');
     } else if (type === 'whatsapp') {
       Linking.openURL('https://wa.me/?text=Hola%2C%20necesito%20soporte%20como%20conductor%20en%20TravelApp.');
     } else if (type === 'travis') {
@@ -282,7 +282,7 @@ export default function ProfileScreen() {
               <Ionicons name="mail" size={20} color="#D97706" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.supportOptionText}>Correo Oficial</Text>
-                <Text style={{ fontSize: 11, color: Colors.textMuted }}>hola@travelapp.ar</Text>
+                <Text style={{ fontSize: 11, color: Colors.textMuted }}>soporte@travelapp.ar</Text>
               </View>
             </TouchableOpacity>
 

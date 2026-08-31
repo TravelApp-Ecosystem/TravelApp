@@ -113,7 +113,7 @@ export default function ChatScreen() {
 
           <TouchableOpacity
             style={[styles.channelChip, { borderColor: '#FDE68A', backgroundColor: '#FEFCE8' }]}
-            onPress={() => Linking.openURL('mailto:hola@travelapp.ar?subject=Consulta%20desde%20Chat%20TravelApp')}
+            onPress={() => Linking.openURL('mailto:soporte@travelapp.ar?subject=Consulta%20desde%20Chat%20TravelApp')}
           >
             <Ionicons name="mail" size={13} color="#D97706" />
             <Text style={[styles.channelChipText, { color: '#D97706' }]}>Email</Text>

@@ -227,7 +227,7 @@ export default function HomeScreen() {
     if (type === 'phone') {
       Linking.openURL('tel:08102200018');
     } else if (type === 'email') {
-      Linking.openURL('mailto:hola@travelapp.ar?subject=Consulta%20desde%20TravelApp%20Cliente');
+      Linking.openURL('mailto:soporte@travelapp.ar?subject=Consulta%20desde%20TravelApp%20Cliente');
     } else if (type === 'whatsapp') {
       Linking.openURL('https://wa.me/?text=Hola%20TravelApp%2C%20necesito%20atenci%C3%B3n%20al%20cliente%20con%20mi%20cuenta.');
     } else if (type === 'travis') {
@@ -937,10 +937,12 @@ export default function HomeScreen() {
       }
     });
 
-    // 6. Tarifarios activos
-    const qTariffs = query(collection(db, 'tariffs'), where('isActive', '==', true));
-    const unsubTariffs = onSnapshot(qTariffs, (snap) => {
-      setActiveTariffs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    // 6. Tarifarios activos sincronizados en tiempo real con el Dashboard Web
+    const unsubTariffs = onSnapshot(collection(db, 'tariffs'), (snap) => {
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }) as any)
+        .filter(t => t.isActive !== false && !t.id.endsWith('_active'));
+      setActiveTariffs(list);
     }, (err) => console.log("Error fetching active tariffs:", err));
 
     // 7. Configuración de sonido y logística
@@ -1369,32 +1371,73 @@ export default function HomeScreen() {
     ]);
   };
 
-  // Cálculo de tarifa real usando tarifario o fallback
+  // Cálculo de tarifa real usando tarifario o fallback sincronizado 1:1 con el Dashboard Web
   const calculateFare = (categoryName: string) => {
+    const norm = (s: any) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const targetNorm = norm(categoryName);
+
     // 1. Encontrar la categoría seleccionada
-    const selectedCat = categories.find(c => c.name === categoryName) || { id: 'cat-1', basePrice: 400, multiplier: 1 };
+    const selectedCat = categories.find(c => norm(c.name) === targetNorm || norm(c.id) === targetNorm) || { id: targetNorm, name: categoryName, basePrice: 400, multiplier: 1 };
     
-    // 2. Buscar si hay una tarifa activa de Firestore para esta categoría
-    const matchedTariff = activeTariffs.find((t: any) => t.category === selectedCat.id || t.category === categoryName);
+    // 2. Buscar si hay una tarifa activa de Firestore para esta categoría o la estándar por defecto
+    const matchedTariff = 
+      activeTariffs.find((t: any) => norm(t.category) === norm(selectedCat.id) || norm(t.category) === targetNorm) ||
+      activeTariffs.find((t: any) => norm(t.category).includes('estandar') || norm(t.category).includes('standard')) ||
+      activeTariffs[0];
+
+    const distance = routeDistance > 0 ? routeDistance : 1;
+    const duration = routeDuration > 0 ? routeDuration : Math.round(distance * 2);
+
     if (!matchedTariff) {
-      // Si no hay tarifa activa en la BD, calcular en base al fallback y la distancia estimada
-      const distance = routeDistance > 0 ? routeDistance : 1; // Mínimo 1 km
-      const pricePerKm = categoryName === 'Premium' ? 550 : categoryName === 'Taxi' ? 450 : 350;
-      const baseFare = categoryName === 'Premium' ? 600 : categoryName === 'Taxi' ? 450 : 350;
+      // Fallback si la base de datos no tiene tarifarios creados aún
+      const baseFare = targetNorm.includes('prem') ? 600 : targetNorm.includes('tax') ? 450 : 400;
+      const pricePerKm = targetNorm.includes('prem') ? 550 : targetNorm.includes('tax') ? 450 : 350;
       return Math.round(baseFare + pricePerKm * distance);
     }
 
-    // 3. Si hay tarifa activa en la BD, usar sus valores reales
-    const baseFare = matchedTariff.baseFare || 300;
-    const pricePerKm = matchedTariff.pricePerKm || 180;
-    const travelMinutePrice = matchedTariff.travelMinutePrice || 50;
-    const minimumFare = matchedTariff.minimumFare || 450;
+    // 3. Usar valores del tarifario real configurado en el Dashboard
+    const baseFare = Number(matchedTariff.baseFare || 0);
+    const pricePerKm = Number(matchedTariff.pricePerKm || 0);
+    const travelMinutePrice = Number(matchedTariff.travelMinutePrice || 0);
+    const minimumFare = Number(matchedTariff.minimumFare || 0);
 
-    const distance = routeDistance > 0 ? routeDistance : 1;
-    const duration = routeDuration > 0 ? routeDuration : 2;
+    const calculatedFare = baseFare + (pricePerKm * distance) + (travelMinutePrice * duration);
+    let base = Math.max(minimumFare, Math.round(calculatedFare));
 
-    const computedFare = baseFare + (pricePerKm * distance) + (travelMinutePrice * duration);
-    return Math.max(minimumFare, Math.round(computedFare));
+    // Aplicar recargo de tarifa especial (días y horarios / nocturno) si está configurado
+    if (matchedTariff.specialRates && Array.isArray(matchedTariff.specialRates) && base > 0) {
+      const DAYS_MAP = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+      const now = new Date();
+      const currentDay = DAYS_MAP[now.getDay()];
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+
+      for (const sr of matchedTariff.specialRates) {
+        if (!sr.active) continue;
+        const days = (sr.daysOfWeek || []).map((d: string) => norm(d));
+        if (days.length === 0 || days.includes(currentDay) || days.includes('todos')) {
+          const [startH, startM] = (sr.startTime || '00:00').split(':').map(Number);
+          const [endH, endM] = (sr.endTime || '23:59').split(':').map(Number);
+          const startTotal = startH * 60 + startM;
+          const endTotal = endH * 60 + endM;
+
+          const isInTime = startTotal <= endTotal
+            ? (currentMin >= startTotal && currentMin <= endTotal)
+            : (currentMin >= startTotal || currentMin <= endTotal);
+
+          if (isInTime && sr.percentageModifier) {
+            base = Math.round(base * (1 + Number(sr.percentageModifier) / 100));
+            break;
+          }
+        }
+      }
+    }
+
+    // Aplicar recargo por pago electrónico si no es Efectivo
+    if (selectedPayment !== 'Efectivo' && matchedTariff.electronicPaymentFee) {
+      base = Math.round(base * (1 + Number(matchedTariff.electronicPaymentFee) / 100));
+    }
+
+    return Math.max(minimumFare, base);
   };
 
   const getDaysRemaining = (dateStr: string) => {
@@ -3359,7 +3402,7 @@ export default function HomeScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.channelTitle}>Correo Electrónico</Text>
-                  <Text style={styles.channelValue}>hola@travelapp.ar</Text>
+                  <Text style={styles.channelValue}>soporte@travelapp.ar</Text>
                   <Text style={styles.channelSub}>Respuesta y seguimiento oficial</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
