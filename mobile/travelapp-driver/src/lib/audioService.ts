@@ -1,7 +1,16 @@
-import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
+import { Vibration } from 'react-native';
 
-let alertSoundInstance: Audio.Sound | null = null;
+const getAudio = () => {
+  try {
+    const expoAv = require('expo-av');
+    return expoAv?.Audio || null;
+  } catch {
+    return null;
+  }
+};
+
+let alertSoundInstance: any = null;
 let isAlertPlaying = false;
 
 /**
@@ -13,12 +22,22 @@ export async function playTripRequestAlertSound(customAudioUrl?: string): Promis
     if (isAlertPlaying) return;
     isAlertPlaying = true;
 
-    // Configurar modo de audio para sonar con volumen alto incluso en silencio
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      shouldDuckAndroid: true,
-    });
+    // Vibración persistente de solicitud entrante
+    Vibration.vibrate([0, 500, 200, 500, 200, 500], true);
+
+    // Configurar modo de audio si el módulo está disponible
+    const Audio = getAudio();
+    if (Audio) {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (modeErr) {
+        console.log('Audio mode set skipped:', modeErr);
+      }
+    }
 
     // Locución hablada de alerta inmediata
     Speech.stop();
@@ -28,20 +47,22 @@ export async function playTripRequestAlertSound(customAudioUrl?: string): Promis
       pitch: 1.0,
     });
 
-    // Intentar reproducir sonido de timbre/campana o URL personalizada cargada en el dashboard
-    try {
-      if (alertSoundInstance) {
-        await alertSoundInstance.unloadAsync();
+    // Intentar reproducir sonido de timbre/campana o URL personalizada
+    if (Audio) {
+      try {
+        if (alertSoundInstance) {
+          await alertSoundInstance.unloadAsync();
+        }
+        const soundUri = customAudioUrl || 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: soundUri },
+          { shouldPlay: true, isLooping: true, volume: 1.0 }
+        );
+        alertSoundInstance = sound;
+        await alertSoundInstance.playAsync();
+      } catch (soundErr) {
+        console.log('Audio Sound create fallback to speech:', soundErr);
       }
-      const soundUri = customAudioUrl || 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: soundUri },
-        { shouldPlay: true, isLooping: true, volume: 1.0 }
-      );
-      alertSoundInstance = sound;
-      await alertSoundInstance.playAsync();
-    } catch (soundErr) {
-      console.log('Audio Sound create fallback to speech:', soundErr);
     }
   } catch (err) {
     console.warn('Error playing trip request alert sound:', err);
@@ -54,6 +75,7 @@ export async function playTripRequestAlertSound(customAudioUrl?: string): Promis
 export async function stopTripRequestAlertSound(): Promise<void> {
   try {
     isAlertPlaying = false;
+    Vibration.cancel();
     Speech.stop();
     if (alertSoundInstance) {
       await alertSoundInstance.stopAsync();
@@ -77,7 +99,8 @@ export async function playSeatbeltSafetyPrompt(
   voiceGender: 'female' | 'male' = 'female'
 ): Promise<void> {
   try {
-    if (customAudioUrl) {
+    const Audio = getAudio();
+    if (customAudioUrl && Audio) {
       try {
         const { sound } = await Audio.Sound.createAsync(
           { uri: customAudioUrl },
@@ -86,7 +109,7 @@ export async function playSeatbeltSafetyPrompt(
         await sound.playAsync();
         return;
       } catch (e) {
-        console.log('Custom seatbelt audio play failed, falling back to speech:', e);
+        console.log('Custom seatbelt audio play fallback to speech:', e);
       }
     }
 
@@ -108,6 +131,7 @@ export async function playSeatbeltSafetyPrompt(
 export function playCustomVoiceNotification(text: string, voiceGender: 'female' | 'male' = 'female'): void {
   try {
     if (!text) return;
+    Vibration.vibrate([0, 300, 150, 300]);
     Speech.stop();
     Speech.speak(text, {
       language: 'es-AR',

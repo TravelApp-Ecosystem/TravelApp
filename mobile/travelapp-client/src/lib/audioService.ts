@@ -1,5 +1,14 @@
-import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
+import { Vibration } from 'react-native';
+
+const getAudio = () => {
+  try {
+    const expoAv = require('expo-av');
+    return expoAv?.Audio || null;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Reproduce la locución de seguridad al iniciar el viaje (Cinturón de seguridad) en la app del Pasajero.
@@ -13,7 +22,8 @@ export async function playSeatbeltSafetyPrompt(
   voiceGender: 'female' | 'male' = 'female'
 ): Promise<void> {
   try {
-    if (customAudioUrl) {
+    const Audio = getAudio();
+    if (customAudioUrl && Audio) {
       try {
         const { sound } = await Audio.Sound.createAsync(
           { uri: customAudioUrl },
@@ -22,7 +32,7 @@ export async function playSeatbeltSafetyPrompt(
         await sound.playAsync();
         return;
       } catch (e) {
-        console.log('Custom seatbelt audio play failed in client, falling back to speech:', e);
+        console.log('Custom seatbelt audio play fallback to speech:', e);
       }
     }
 
@@ -44,6 +54,7 @@ export async function playSeatbeltSafetyPrompt(
 export function playCustomVoiceNotification(text: string, voiceGender: 'female' | 'male' = 'female'): void {
   try {
     if (!text) return;
+    Vibration.vibrate([0, 250, 100, 250]);
     Speech.stop();
     Speech.speak(text, {
       language: 'es-AR',
