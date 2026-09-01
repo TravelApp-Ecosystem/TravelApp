@@ -605,6 +605,14 @@ export default function DashboardScreen() {
           <Ionicons name="menu" size={28} color={Colors.primary} />
         </TouchableOpacity>
 
+        {/* Botón Acceso Rápido a Mi Agenda */}
+        <TouchableOpacity 
+          style={[styles.menuButton, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A', borderWidth: 1 }]}
+          onPress={() => navigation.navigate('Schedule')}
+        >
+          <Ionicons name="calendar" size={22} color="#D97706" />
+        </TouchableOpacity>
+
         <TouchableOpacity 
           style={styles.revenueCard}
           onPress={() => navigation.navigate('Wallet')}
@@ -963,6 +971,7 @@ export default function DashboardScreen() {
             <ScrollView contentContainerStyle={styles.drawerMenuItems}>
               {[
                 { label: 'Mi Perfil', icon: 'person-outline', action: () => handleMenuNavigation('Profile') },
+                { label: 'Mi Agenda de Traslados', icon: 'calendar-outline', action: () => handleMenuNavigation('Schedule') },
                 { label: 'Mis Vehículos', icon: 'car-sport-outline', action: () => { setMenuVisible(false); setVehicleModalVisible(true); } },
                 { label: 'Mi Billetera', icon: 'wallet-outline', action: () => handleMenuNavigation('Wallet') },
                 { label: 'Historial de viajes', icon: 'time-outline', action: () => handleMenuNavigation('History') },

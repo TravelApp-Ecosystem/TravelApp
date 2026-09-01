@@ -1189,10 +1189,13 @@ export default function HomeScreen() {
     try {
       const estimatedPrice = calculateFare(selectedCategory);
       const randomPin = String(Math.floor(1000 + Math.random() * 9000));
+      const cat = activeSubMode === 'traslados' ? 'TRANSFER' : activeSubMode === 'interurbano' ? 'ARC' : 'MU';
+      const isTripScheduled = isScheduled || Boolean(scheduleDate && scheduleTime);
+
       const tripData: any = {
         passengerId: user.uid,
         userName: firstName,
-        passengerPhone: '',
+        passengerPhone: userPhone || '',
         origin,
         destination,
         originCoords: originCoords ? { lat: originCoords.latitude, lng: originCoords.longitude } : null,
@@ -1201,6 +1204,11 @@ export default function HomeScreen() {
         estimatedDistanceKm: routeDistance || 0,
         estimatedDurationMins: routeDuration || 0,
         serviceType: selectedCategory,
+        serviceCategory: cat,
+        isScheduled: isTripScheduled,
+        scheduledDate: isTripScheduled ? scheduleDate : null,
+        scheduledTime: isTripScheduled ? scheduleTime : null,
+        scheduledDateTime: isTripScheduled && scheduleDate && scheduleTime ? new Date(`${scheduleDate}T${scheduleTime}:00`) : null,
         estimatedPrice,
         securityPin: randomPin,
         paymentMethod: selectedPayment,
