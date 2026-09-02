@@ -6,11 +6,22 @@ import {
   Sparkles, Ticket, Image as ImageIcon, Send, ShieldCheck,
   CheckCircle2, AlertCircle, Clock, Users, ArrowLeft, Plus,
   Trash2, RefreshCw, Eye, Download, Car, MapPin, DollarSign,
-  Phone, Smartphone, Award, FileText, Lock, Unlock, Calendar
+  Phone, Smartphone, Award, FileText, Lock, Unlock, Calendar,
+  Edit, X, PlusCircle, Check, Luggage, Sun, Plane, Bus, Compass
 } from 'lucide-react';
-import { collection, onSnapshot, query, doc, updateDoc, setDoc, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, setDoc, deleteDoc, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ContractedTrip, VoucherDoc, LivePhotoItem, ItineraryDay } from '@/types/experiences';
+
+const PRESET_COVERS = [
+  { name: 'Bariloche & Lagos', url: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1200&auto=format&fit=crop' },
+  { name: 'Mendoza Bodegas', url: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1200&auto=format&fit=crop' },
+  { name: 'Jujuy & Purmamarca', url: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=1200&auto=format&fit=crop' },
+  { name: 'Cataratas del Iguazú', url: 'https://images.unsplash.com/photo-1589553416260-f586c8f1514f?q=80&w=1200&auto=format&fit=crop' },
+  { name: 'Ushuaia & Fin del Mundo', url: 'https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?q=80&w=1200&auto=format&fit=crop' },
+  { name: 'Salta & Cafayate', url: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?q=80&w=1200&auto=format&fit=crop' },
+  { name: 'Caribe / Playa', url: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?q=80&w=1200&auto=format&fit=crop' },
+];
 
 export default function MyTripManagementPage() {
   const [activeTab, setActiveTab] = useState<'vouchers' | 'photos' | 'broadcast' | 'excursions' | 'checkin' | 'passengers'>('vouchers');
@@ -19,6 +30,61 @@ export default function MyTripManagementPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Modal de Carga / Edición de Viaje Propio
+  const [isTripModalOpen, setIsTripModalOpen] = useState(false);
+  const [editingTripId, setEditingTripId] = useState<string | null>(null);
+  const [tripModalTab, setTripModalTab] = useState<'general' | 'coordinator' | 'services' | 'itinerary' | 'recommendations'>('general');
+  const [isSavingTrip, setIsSavingTrip] = useState(false);
+
+  // Estado del Formulario de Viaje Propio
+  const [tripForm, setTripForm] = useState({
+    title: '',
+    destination: '',
+    tourCode: '',
+    reservationCode: '',
+    tripType: 'salida_propia' as 'salida_propia' | 'operador_mayorista',
+    departureDate: '',
+    returnDate: '',
+    dates: '',
+    departureOrigin: 'San Miguel de Tucumán',
+    coverImage: PRESET_COVERS[0].url,
+    weatherCity: '',
+    weatherTemp: 20,
+    weatherCondition: 'Soleado y agradable',
+    totalAmount: 450000,
+    paidAmount: 200000,
+    currency: 'ARS' as 'ARS' | 'USD',
+    coordName: 'Lucas Benítez',
+    coordPhone: '+54 9 381 611-2233',
+    coordAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop',
+    coordBio: 'Coordinador experto en destinos nacionales y logística de grupos.',
+    assistProvider: 'Assist Card Argentina',
+    assistPolicy: 'AC-ARG-99201-TRV',
+    assistPhone24h: '+54 11 5555-8000',
+    assistPdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    operatorName: 'TravelApp Salidas Propias',
+    operatorEmergencyPhone: '+54 9 381 400-9999',
+    services: [
+      'Bus Cama Ejecutivo con servicio a bordo',
+      'Alojamiento con Desayuno buffet incluido',
+      'Asistencia Médica Assist Card 24hs',
+      'Coordinador permanente y guías locales'
+    ],
+    newServiceInput: '',
+    itinerary: [
+      { dayNumber: 1, title: 'Partida y Noche en Ruta', timeSlot: '19:00 hs', location: 'Terminal de Partida', description: 'Encuentro en la terminal y salida hacia el destino con servicio a bordo.' },
+      { dayNumber: 2, title: 'Llegada y Check-in en Hotel', timeSlot: '12:00 hs', location: 'Hotel Principal', description: 'Arribo al destino, check-in en las habitaciones y tarde libre para recorrer.' },
+      { dayNumber: 3, title: 'Excursión y Recorrido Guiado', timeSlot: '09:30 hs', location: 'Atractivos Principales', description: 'Recorrido por los puntos turísticos más emblemáticos con guía oficial.' },
+    ],
+    recommendations: [
+      'Llevar calzado deportivo cómodo o zapatillas de trekking.',
+      'Ropa en capas adecuada según el pronóstico climático.',
+      'DNI físico original vigente obligatorio para el viaje.',
+      'Protector solar y botella térmica para agua.'
+    ],
+    newRecInput: '',
+  });
 
   // Form States
   // 1. Voucher form
@@ -484,6 +550,330 @@ export default function MyTripManagementPage() {
     }
   };
 
+  // Handlers para Carga y Edición de Viaje Propio
+  const handleOpenNewTripModal = () => {
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    setEditingTripId(null);
+    setTripModalTab('general');
+    setTripForm({
+      title: '',
+      destination: '',
+      tourCode: `TRV-EXP-PROPIO-${randomNum}`,
+      reservationCode: `RES-${randomNum}-TRV`,
+      tripType: 'salida_propia',
+      departureDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+      returnDate: new Date(Date.now() + 22 * 86400000).toISOString().split('T')[0],
+      dates: '15 al 22 de Octubre 2026',
+      departureOrigin: 'San Miguel de Tucumán',
+      coverImage: PRESET_COVERS[0].url,
+      weatherCity: '',
+      weatherTemp: 22,
+      weatherCondition: 'Soleado con cielo despejado',
+      totalAmount: 450000,
+      paidAmount: 150000,
+      currency: 'ARS',
+      coordName: 'Lucas Benítez',
+      coordPhone: '+54 9 381 611-2233',
+      coordAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop',
+      coordBio: 'Coordinador experto en destinos nacionales y logística de grupos.',
+      assistProvider: 'Assist Card Argentina',
+      assistPolicy: 'AC-ARG-99201-TRV',
+      assistPhone24h: '+54 11 5555-8000',
+      assistPdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      operatorName: 'TravelApp Salidas Propias',
+      operatorEmergencyPhone: '+54 9 381 400-9999',
+      services: [
+        'Bus Cama Ejecutivo con servicio a bordo',
+        'Alojamiento en Hotel c/ Desayuno buffet',
+        'Asistencia Médica Assist Card 24hs',
+        'Coordinador permanente y guías locales'
+      ],
+      newServiceInput: '',
+      itinerary: [
+        { dayNumber: 1, title: 'Partida y Noche en Ruta', timeSlot: '19:00 hs', location: 'Terminal de Partida', description: 'Encuentro en la terminal y salida hacia el destino con servicio a bordo.' },
+        { dayNumber: 2, title: 'Llegada y Check-in en Hotel', timeSlot: '12:00 hs', location: 'Hotel Principal', description: 'Arribo al destino, check-in en las habitaciones y tarde libre para recorrer.' },
+        { dayNumber: 3, title: 'Excursión Principal Guiada', timeSlot: '09:30 hs', location: 'Atractivos Principales', description: 'Recorrido por los puntos turísticos más emblemáticos con guía oficial.' },
+      ],
+      recommendations: [
+        'Llevar calzado deportivo cómodo o zapatillas de trekking.',
+        'Ropa en capas adecuada según el pronóstico climático.',
+        'DNI físico original vigente obligatorio para el viaje.'
+      ],
+      newRecInput: '',
+    });
+    setIsTripModalOpen(true);
+  };
+
+  const handleOpenEditTripModal = (trip: ContractedTrip) => {
+    setEditingTripId(trip.id);
+    setTripModalTab('general');
+    setTripForm({
+      title: trip.title || '',
+      destination: trip.destination || '',
+      tourCode: trip.tourCode || '',
+      reservationCode: trip.reservationCode || '',
+      tripType: trip.tripType || 'salida_propia',
+      departureDate: trip.departureDate || '',
+      returnDate: trip.returnDate || '',
+      dates: trip.dates || '',
+      departureOrigin: trip.departureOrigin || 'San Miguel de Tucumán',
+      coverImage: trip.coverImage || trip.imageUrl || PRESET_COVERS[0].url,
+      weatherCity: trip.weather?.city || trip.destination || '',
+      weatherTemp: trip.weather?.temperature || 20,
+      weatherCondition: trip.weather?.condition || 'Soleado',
+      totalAmount: trip.payment?.totalAmount || 0,
+      paidAmount: trip.payment?.paidAmount || 0,
+      currency: (trip.payment?.currency as any) || 'ARS',
+      coordName: trip.coordinator?.name || 'Lucas Benítez',
+      coordPhone: trip.coordinator?.phone || '+54 9 381 611-2233',
+      coordAvatar: trip.coordinator?.avatar || '',
+      coordBio: trip.coordinator?.bio || '',
+      assistProvider: trip.travelAssistance?.provider || 'Assist Card Argentina',
+      assistPolicy: trip.travelAssistance?.policyNumber || 'AC-ARG-99201-TRV',
+      assistPhone24h: trip.travelAssistance?.emergencyPhone24h || '+54 11 5555-8000',
+      assistPdfUrl: trip.travelAssistance?.voucherPdfUrl || '',
+      operatorName: trip.operatorDetails?.operatorName || 'TravelApp',
+      operatorEmergencyPhone: trip.operatorDetails?.emergencyPhone24h || '+54 9 381 400-9999',
+      services: trip.services && trip.services.length > 0 ? [...trip.services] : [
+        'Bus Cama Ejecutivo con servicio a bordo',
+        'Alojamiento con Desayuno incluido',
+        'Asistencia Médica Assist Card 24hs'
+      ],
+      newServiceInput: '',
+      itinerary: trip.itinerary && trip.itinerary.length > 0 ? trip.itinerary.map((it, idx) => ({
+        dayNumber: it.dayNumber || (idx + 1),
+        title: it.title || `Día ${idx + 1}`,
+        timeSlot: it.timeSlot || '09:00 hs',
+        location: it.location || trip.destination,
+        description: it.description || ''
+      })) : [
+        { dayNumber: 1, title: 'Salida hacia destino', timeSlot: '19:00 hs', location: 'Terminal', description: 'Partida con servicio a bordo.' }
+      ],
+      recommendations: trip.recommendations && trip.recommendations.length > 0 ? [...trip.recommendations] : [
+        'Llevar calzado deportivo cómodo.',
+        'DNI físico original vigente obligatorio.'
+      ],
+      newRecInput: '',
+    });
+    setIsTripModalOpen(true);
+  };
+
+  const handleSaveTrip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tripForm.title || !tripForm.destination || !tripForm.tourCode || !tripForm.departureDate) {
+      alert('Por favor completa los campos requeridos (Título, Destino, Código de Tour y Fecha de Salida).');
+      return;
+    }
+
+    setIsSavingTrip(true);
+    try {
+      const tripId = editingTripId || `trip_${tripForm.tourCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`;
+      
+      const tripPayload: Partial<ContractedTrip> = {
+        id: tripId,
+        title: tripForm.title,
+        destination: tripForm.destination,
+        tourCode: tripForm.tourCode,
+        reservationCode: tripForm.reservationCode || `RES-${Math.floor(10000 + Math.random() * 90000)}-TRV`,
+        tourId: tripId,
+        tripType: tripForm.tripType,
+        departureDate: tripForm.departureDate,
+        returnDate: tripForm.returnDate || tripForm.departureDate,
+        dates: tripForm.dates || `${tripForm.departureDate} al ${tripForm.returnDate || tripForm.departureDate}`,
+        departureOrigin: tripForm.departureOrigin,
+        coverImage: tripForm.coverImage,
+        imageUrl: tripForm.coverImage,
+        weather: {
+          city: tripForm.weatherCity || tripForm.destination.split(',')[0],
+          temperature: Number(tripForm.weatherTemp) || 20,
+          condition: tripForm.weatherCondition || 'Soleado',
+          conditionCode: 'sunny',
+          humidity: 60,
+          windSpeed: '12 km/h',
+          forecast: [
+            { day: 'D1', temp: Number(tripForm.weatherTemp) || 20, icon: 'sunny' },
+            { day: 'D2', temp: (Number(tripForm.weatherTemp) || 20) + 1, icon: 'sunny' },
+            { day: 'D3', temp: (Number(tripForm.weatherTemp) || 20) - 1, icon: 'partly-sunny' },
+          ]
+        },
+        coordinator: {
+          name: tripForm.coordName,
+          phone: tripForm.coordPhone,
+          avatar: tripForm.coordAvatar,
+          bio: tripForm.coordBio
+        },
+        travelAssistance: {
+          provider: tripForm.assistProvider,
+          policyNumber: tripForm.assistPolicy,
+          emergencyPhone24h: tripForm.assistPhone24h,
+          voucherPdfUrl: tripForm.assistPdfUrl
+        },
+        services: tripForm.services,
+        itinerary: tripForm.itinerary,
+        recommendations: tripForm.recommendations,
+        operatorDetails: tripForm.tripType === 'operador_mayorista' ? {
+          operatorName: tripForm.operatorName,
+          emergencyPhone24h: tripForm.operatorEmergencyPhone,
+        } : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (!editingTripId) {
+        // Inicializar datos base si es nuevo viaje
+        tripPayload.userId = 'admin_travelapp';
+        tripPayload.userName = 'Pasajero Demo';
+        tripPayload.userEmail = 'pasajero@travelapp.com';
+        tripPayload.userPhone = '+54 9 381 555-1234';
+        tripPayload.createdAt = new Date().toISOString();
+        tripPayload.payment = {
+          currency: tripForm.currency,
+          totalAmount: Number(tripForm.totalAmount) || 450000,
+          paidAmount: Number(tripForm.paidAmount) || 150000,
+          status: 'Señada',
+          paymentsHistory: [
+            { date: new Date().toISOString().split('T')[0], amount: Number(tripForm.paidAmount) || 150000, method: 'Seña Inicial', concept: 'Reserva Confirmada' }
+          ]
+        };
+        tripPayload.passengers = [
+          { fullName: 'Pasajero Titular', dni: '35.123.456', isTitular: true, seat: 'Butaca 12 (Planta Alta)', roomType: 'Doble Standard' }
+        ];
+        tripPayload.vouchers = [
+          { id: `vouc_${Date.now()}`, name: `Póliza ${tripForm.assistProvider}`, type: 'asistencia', url: tripForm.assistPdfUrl, unlockHoursBefore: 0 }
+        ];
+        tripPayload.webCheckIn = {
+          enabled: true,
+          isCompleted: false,
+          doorPickupRequested: false
+        };
+        tripPayload.termsAccepted = {
+          accepted: false
+        };
+        tripPayload.communityPrivacy = {
+          hideProfile: false
+        };
+        tripPayload.photos = [tripForm.coverImage];
+        tripPayload.livePhotos = [];
+        tripPayload.emergencyContacts = [
+          { label: 'Guardia Operativa TravelApp', phone: '+54 9 381 400-9999' },
+          { label: tripForm.assistProvider, phone: tripForm.assistPhone24h }
+        ];
+      }
+
+      // Guardar en contracted_trips
+      await setDoc(doc(db, 'contracted_trips', tripId), tripPayload, { merge: true });
+
+      // Guardar también en experiences para catálogo / marketplace
+      await setDoc(doc(db, 'experiences', tripId), {
+        id: tripId,
+        title: tripForm.title,
+        location: tripForm.destination,
+        price: Number(tripForm.totalAmount) || 450000,
+        currency: tripForm.currency,
+        priceRewards: Math.round((Number(tripForm.totalAmount) || 450000) * 0.8),
+        pointsEarned: Math.round((Number(tripForm.totalAmount) || 450000) * 0.05),
+        tripType: tripForm.tripType === 'salida_propia' ? 'Grupal' : 'Mayorista',
+        transportation: 'Bus Cama Ejecutivo',
+        departureDate: tripForm.departureDate,
+        departureOrigin: tripForm.departureOrigin,
+        services: tripForm.services,
+        imageUrl: tripForm.coverImage,
+        description: `${tripForm.title} - ${tripForm.destination}. Salida desde ${tripForm.departureOrigin}.`,
+        availability: 'Disponible',
+        tourCode: tripForm.tourCode,
+      }, { merge: true });
+
+      setIsTripModalOpen(false);
+      showNotificationSuccess(`🎉 Salida "${tripForm.title}" guardada y sincronizada con éxito.`);
+    } catch (err: any) {
+      console.error('Error saving trip:', err);
+      alert('Error al guardar viaje: ' + err.message);
+    } finally {
+      setIsSavingTrip(false);
+    }
+  };
+
+  const handleDeleteTrip = async (tripId: string, tripTitle: string) => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente la salida "${tripTitle}"?`)) return;
+    try {
+      await deleteDoc(doc(db, 'contracted_trips', tripId));
+      await deleteDoc(doc(db, 'experiences', tripId));
+      if (selectedTrip?.id === tripId) {
+        setSelectedTrip(null);
+      }
+      showNotificationSuccess('🗑️ Salida eliminada de la base de datos.');
+    } catch (err: any) {
+      alert('Error al eliminar: ' + err.message);
+    }
+  };
+
+  // Helper de servicios e itinerario
+  const handleAddService = () => {
+    if (!tripForm.newServiceInput.trim()) return;
+    setTripForm(p => ({
+      ...p,
+      services: [...p.services, p.newServiceInput.trim()],
+      newServiceInput: ''
+    }));
+  };
+
+  const handleRemoveService = (index: number) => {
+    setTripForm(p => ({
+      ...p,
+      services: p.services.filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleAddItineraryDay = () => {
+    const nextDayNum = tripForm.itinerary.length + 1;
+    setTripForm(p => ({
+      ...p,
+      itinerary: [
+        ...p.itinerary,
+        {
+          dayNumber: nextDayNum,
+          title: `Día ${nextDayNum}: Actividad en Destino`,
+          timeSlot: '09:00 hs',
+          location: tripForm.destination || 'Destino',
+          description: 'Descripción de actividades del día.'
+        }
+      ]
+    }));
+  };
+
+  const handleRemoveItineraryDay = (index: number) => {
+    setTripForm(p => ({
+      ...p,
+      itinerary: p.itinerary.filter((_, idx) => idx !== index).map((day, idx) => ({
+        ...day,
+        dayNumber: idx + 1
+      }))
+    }));
+  };
+
+  const handleUpdateItineraryDay = (index: number, field: string, value: any) => {
+    setTripForm(p => {
+      const updated = [...p.itinerary];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...p, itinerary: updated };
+    });
+  };
+
+  const handleAddRecommendation = () => {
+    if (!tripForm.newRecInput.trim()) return;
+    setTripForm(p => ({
+      ...p,
+      recommendations: [...p.recommendations, p.newRecInput.trim()],
+      newRecInput: ''
+    }));
+  };
+
+  const handleRemoveRecommendation = (index: number) => {
+    setTripForm(p => ({
+      ...p,
+      recommendations: p.recommendations.filter((_, idx) => idx !== index)
+    }));
+  };
+
   // Filtrado de viajes por búsqueda
   const filteredTrips = tripsList.filter(t => 
     (t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -518,22 +908,29 @@ export default function MyTripManagementPage() {
                 Gestor Operativo "Mi Viaje"
               </h1>
               <p className="text-sm text-slate-400">
-                Administrá vouchers a 72hs, fotos en vivo, notificaciones push, opcionales y traslados TravelCab para tus pasajeros.
+                Carga y edita salidas propias, vouchers a 72hs, fotos en vivo, notificaciones push y traslados TravelCab.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleOpenNewTripModal}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20"
+            >
+              <PlusCircle className="w-4 h-4" />
+              + Cargar Nuevo Viaje Propio
+            </button>
             <button
               onClick={handleSeedSampleTrips}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20"
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20"
             >
               <Sparkles className="w-4 h-4" />
-              Sincronizar Viajes Demo
+              Sincronizar Demos
             </button>
             <Link
               href="/experiences/catalog"
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-sm font-medium transition-colors"
             >
               <Ticket className="w-4 h-4" />
               Catálogo
@@ -559,13 +956,22 @@ export default function MyTripManagementPage() {
                 <Ticket className="w-4 h-4 text-emerald-400" />
                 Salidas & Reservas Activas ({tripsList.length})
               </h3>
-              <button 
-                onClick={() => window.location.reload()}
-                className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
-                title="Refrescar lista"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleOpenNewTripModal}
+                  className="p-1 hover:bg-emerald-500/20 rounded text-emerald-400 hover:text-emerald-300"
+                  title="Cargar nuevo viaje"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                  title="Refrescar lista"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             <input
@@ -579,7 +985,7 @@ export default function MyTripManagementPage() {
             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
               {filteredTrips.length === 0 ? (
                 <div className="p-6 text-center text-slate-500 text-sm">
-                  No se encontraron salidas. Hacé clic en "Sincronizar Viajes Demo" para cargar ejemplos.
+                  No se encontraron salidas. Hacé clic en "+ Cargar Nuevo Viaje Propio" para crear uno.
                 </div>
               ) : (
                 filteredTrips.map((trip) => {
@@ -661,6 +1067,23 @@ export default function MyTripManagementPage() {
                       <Calendar className="w-4 h-4 text-emerald-400" />
                       {selectedTrip.dates} ({selectedTrip.departureOrigin} ➔ {selectedTrip.destination})
                     </p>
+
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        onClick={() => handleOpenEditTripModal(selectedTrip)}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors"
+                      >
+                        <Edit className="w-3.5 h-3.5 text-emerald-400" />
+                        Editar Datos del Viaje
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTrip(selectedTrip.id, selectedTrip.title)}
+                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-semibold border border-rose-500/30 flex items-center gap-1.5 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Eliminar Salida
+                      </button>
+                    </div>
                   </div>
 
                   {/* Estado Financiero Rápido */}
@@ -1217,11 +1640,695 @@ export default function MyTripManagementPage() {
             <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
               <Ticket className="w-12 h-12 mx-auto text-slate-600 mb-3" />
               <p className="text-base font-semibold text-slate-300">Seleccioná una salida o reserva para gestionar "Mi Viaje"</p>
-              <p className="text-xs text-slate-500 mt-1">O hacé clic en "Sincronizar Viajes Demo" para inicializar las salidas de prueba.</p>
+              <p className="text-xs text-slate-500 mt-1">O hacé clic en "+ Cargar Nuevo Viaje Propio" para crear una salida desde cero.</p>
             </div>
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL: CARGAR / EDITAR VIAJE PROPIO (SALIDA PROPIA)                      */}
+      {/* ========================================================================= */}
+      {isTripModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full my-8 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+            {/* Header del Modal */}
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <Luggage className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {editingTripId ? '✏️ Modificar Información de Salida / Viaje' : '✨ Cargar Nuevo Viaje Propio (Salida Propia)'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Completá los detalles para sincronizarlos en tiempo real con la App Móvil de clientes y el Catálogo web.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsTripModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Pestañas del Formulario */}
+            <div className="flex border-b border-slate-800 bg-slate-950/80 px-6 gap-2 overflow-x-auto">
+              {[
+                { id: 'general', label: '1. General & Fechas', icon: MapPin },
+                { id: 'coordinator', label: '2. Coordinación & Asistencia', icon: ShieldCheck },
+                { id: 'itinerary', label: '3. Itinerario Día por Día', icon: Calendar },
+                { id: 'services', label: '4. Servicios & Equipaje', icon: Luggage },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = tripModalTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setTripModalTab(tab.id as any)}
+                    className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs border-b-2 transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Cuerpo del Formulario */}
+            <form onSubmit={handleSaveTrip} className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* TAB 1: GENERAL & FECHAS */}
+              {tripModalTab === 'general' && (
+                <div className="space-y-5">
+                  {/* Tipo de Viaje */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 mb-2">Tipo de Viaje / Salida</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className={`p-3.5 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${
+                        tripForm.tripType === 'salida_propia'
+                          ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-300'
+                          : 'bg-slate-950 border-slate-800 text-slate-400'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="tripType"
+                          value="salida_propia"
+                          checked={tripForm.tripType === 'salida_propia'}
+                          onChange={() => setTripForm(p => ({ ...p, tripType: 'salida_propia' }))}
+                          className="hidden"
+                        />
+                        <div className="w-4 h-4 rounded-full border border-indigo-400 flex items-center justify-center">
+                          {tripForm.tripType === 'salida_propia' && <div className="w-2 h-2 rounded-full bg-indigo-400" />}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-white">🌟 Salida Propia TravelApp</div>
+                          <div className="text-[11px] text-slate-400">Coordinador propio, bus exclusivo y control total.</div>
+                        </div>
+                      </label>
+
+                      <label className={`p-3.5 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${
+                        tripForm.tripType === 'operador_mayorista'
+                          ? 'bg-amber-500/10 border-amber-500/50 text-amber-300'
+                          : 'bg-slate-950 border-slate-800 text-slate-400'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="tripType"
+                          value="operador_mayorista"
+                          checked={tripForm.tripType === 'operador_mayorista'}
+                          onChange={() => setTripForm(p => ({ ...p, tripType: 'operador_mayorista' }))}
+                          className="hidden"
+                        />
+                        <div className="w-4 h-4 rounded-full border border-amber-400 flex items-center justify-center">
+                          {tripForm.tripType === 'operador_mayorista' && <div className="w-2 h-2 rounded-full bg-amber-400" />}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-white">✈️ Paquete Operador Mayorista</div>
+                          <div className="text-[11px] text-slate-400">Aéreos PNR, vouchers con candado 72hs.</div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Título y Destino */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Título / Nombre del Viaje *</label>
+                      <input
+                        type="text"
+                        required
+                        value={tripForm.title}
+                        onChange={(e) => setTripForm(p => ({ ...p, title: e.target.value }))}
+                        placeholder="Ej: Bariloche Mágico & Circuito Chico"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Destino Principal *</label>
+                      <input
+                        type="text"
+                        required
+                        value={tripForm.destination}
+                        onChange={(e) => setTripForm(p => ({ ...p, destination: e.target.value }))}
+                        placeholder="Ej: San Carlos de Bariloche, Río Negro"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Códigos de Identificación */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Código de Tour (Marketplace) *</label>
+                      <input
+                        type="text"
+                        required
+                        value={tripForm.tourCode}
+                        onChange={(e) => setTripForm(p => ({ ...p, tourCode: e.target.value }))}
+                        placeholder="TRV-EXP-BARILOCHE-2026"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Código de Reserva Interno</label>
+                      <input
+                        type="text"
+                        value={tripForm.reservationCode}
+                        onChange={(e) => setTripForm(p => ({ ...p, reservationCode: e.target.value }))}
+                        placeholder="RES-89241-TRV"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-indigo-400 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Origen de Partida</label>
+                      <input
+                        type="text"
+                        value={tripForm.departureOrigin}
+                        onChange={(e) => setTripForm(p => ({ ...p, departureOrigin: e.target.value }))}
+                        placeholder="San Miguel de Tucumán"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fechas */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Fecha de Salida *</label>
+                      <input
+                        type="date"
+                        required
+                        value={tripForm.departureDate}
+                        onChange={(e) => setTripForm(p => ({ ...p, departureDate: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Fecha de Regreso</label>
+                      <input
+                        type="date"
+                        value={tripForm.returnDate}
+                        onChange={(e) => setTripForm(p => ({ ...p, returnDate: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Texto de Fechas (App)</label>
+                      <input
+                        type="text"
+                        value={tripForm.dates}
+                        onChange={(e) => setTripForm(p => ({ ...p, dates: e.target.value }))}
+                        placeholder="15 al 22 de Septiembre 2026"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Precio y Finanzas */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Moneda</label>
+                      <select
+                        value={tripForm.currency}
+                        onChange={(e) => setTripForm(p => ({ ...p, currency: e.target.value as any }))}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="ARS">ARS ($ Pesos Argentinos)</option>
+                        <option value="USD">USD ($ Dólares)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Precio Total por Pasajero</label>
+                      <input
+                        type="number"
+                        value={tripForm.totalAmount}
+                        onChange={(e) => setTripForm(p => ({ ...p, totalAmount: Number(e.target.value) }))}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Monto Pagado / Señado Inicial</label>
+                      <input
+                        type="number"
+                        value={tripForm.paidAmount}
+                        onChange={(e) => setTripForm(p => ({ ...p, paidAmount: Number(e.target.value) }))}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-indigo-400 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Selector de Portada con Presets */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 mb-2">Imagen de Portada (Presets o URL)</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                      {PRESET_COVERS.map((preset, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setTripForm(p => ({ ...p, coverImage: preset.url }))}
+                          className={`p-1.5 rounded-xl border cursor-pointer transition-all flex flex-col items-center text-center ${
+                            tripForm.coverImage === preset.url
+                              ? 'bg-emerald-500/20 border-emerald-500'
+                              : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <img src={preset.url} alt={preset.name} className="w-full h-16 object-cover rounded-lg mb-1" />
+                          <span className="text-[11px] font-medium text-slate-300 line-clamp-1">{preset.name}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={tripForm.coverImage}
+                      onChange={(e) => setTripForm(p => ({ ...p, coverImage: e.target.value }))}
+                      placeholder="https://..."
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  {/* Clima Inicial Estimado */}
+                  <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
+                      <Sun className="w-4 h-4" /> Widget de Clima Inicial
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1">Ciudad Destino</label>
+                        <input
+                          type="text"
+                          value={tripForm.weatherCity}
+                          onChange={(e) => setTripForm(p => ({ ...p, weatherCity: e.target.value }))}
+                          placeholder="Ej: Bariloche"
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1">Temperatura Promedio (°C)</label>
+                        <input
+                          type="number"
+                          value={tripForm.weatherTemp}
+                          onChange={(e) => setTripForm(p => ({ ...p, weatherTemp: Number(e.target.value) }))}
+                          placeholder="18"
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1">Condición</label>
+                        <input
+                          type="text"
+                          value={tripForm.weatherCondition}
+                          onChange={(e) => setTripForm(p => ({ ...p, weatherCondition: e.target.value }))}
+                          placeholder="Soleado con brisa andina"
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: COORDINADOR & ASISTENCIA */}
+              {tripModalTab === 'coordinator' && (
+                <div className="space-y-6">
+                  {/* Coordinador a Cargo */}
+                  <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-bold text-white">
+                      <Users className="w-4 h-4 text-emerald-400" />
+                      Coordinador a Cargo del Viaje (Salida Propia)
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Nombre y Apellido</label>
+                        <input
+                          type="text"
+                          value={tripForm.coordName}
+                          onChange={(e) => setTripForm(p => ({ ...p, coordName: e.target.value }))}
+                          placeholder="Lucas Benítez"
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Teléfono / WhatsApp Directo</label>
+                        <input
+                          type="text"
+                          value={tripForm.coordPhone}
+                          onChange={(e) => setTripForm(p => ({ ...p, coordPhone: e.target.value }))}
+                          placeholder="+54 9 381 611-2233"
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Foto / Avatar URL</label>
+                        <input
+                          type="text"
+                          value={tripForm.coordAvatar}
+                          onChange={(e) => setTripForm(p => ({ ...p, coordAvatar: e.target.value }))}
+                          placeholder="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300"
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Biografía / Presentación</label>
+                        <input
+                          type="text"
+                          value={tripForm.coordBio}
+                          onChange={(e) => setTripForm(p => ({ ...p, coordBio: e.target.value }))}
+                          placeholder="Coordinador experto en destinos patagónicos con 8 años en TravelApp."
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Asistencia Médica al Viajero */}
+                  <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-bold text-white">
+                      <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                      Cobertura y Póliza de Asistencia al Viajero (Assist Card / Universal)
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Compañía Aseguradora</label>
+                        <input
+                          type="text"
+                          value={tripForm.assistProvider}
+                          onChange={(e) => setTripForm(p => ({ ...p, assistProvider: e.target.value }))}
+                          placeholder="Assist Card Argentina"
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Número de Póliza / Voucher</label>
+                        <input
+                          type="text"
+                          value={tripForm.assistPolicy}
+                          onChange={(e) => setTripForm(p => ({ ...p, assistPolicy: e.target.value }))}
+                          placeholder="AC-ARG-99201-TRV"
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-indigo-300 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Teléfono Central de Emergencias 24hs</label>
+                        <input
+                          type="text"
+                          value={tripForm.assistPhone24h}
+                          onChange={(e) => setTripForm(p => ({ ...p, assistPhone24h: e.target.value }))}
+                          placeholder="+54 11 5555-8000"
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">URL del Voucher PDF Oficial</label>
+                        <input
+                          type="text"
+                          value={tripForm.assistPdfUrl}
+                          onChange={(e) => setTripForm(p => ({ ...p, assistPdfUrl: e.target.value }))}
+                          placeholder="https://..."
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operador Mayorista Específico */}
+                  {tripForm.tripType === 'operador_mayorista' && (
+                    <div className="bg-slate-950/60 border border-amber-500/30 p-5 rounded-2xl space-y-4">
+                      <div className="flex items-center gap-2 text-sm font-bold text-amber-300">
+                        <Plane className="w-4 h-4 text-amber-400" />
+                        Datos del Operador Mayorista
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-400 mb-1">Nombre del Operador Mayorista</label>
+                          <input
+                            type="text"
+                            value={tripForm.operatorName}
+                            onChange={(e) => setTripForm(p => ({ ...p, operatorName: e.target.value }))}
+                            placeholder="Ej: Julia Tours / Tip Group / Logan"
+                            className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-400 mb-1">Teléfono de Guardia Operador 24hs</label>
+                          <input
+                            type="text"
+                            value={tripForm.operatorEmergencyPhone}
+                            onChange={(e) => setTripForm(p => ({ ...p, operatorEmergencyPhone: e.target.value }))}
+                            placeholder="+54 9 11 9999-8888"
+                            className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-amber-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: ITINERARIO DÍA POR DÍA */}
+              {tripModalTab === 'itinerary' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Cronograma e Itinerario Día por Día</h4>
+                      <p className="text-xs text-slate-400">Los pasajeros podrán desplegar y seguir cada jornada desde su App móvil.</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddItineraryDay}
+                      className="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      + Agregar Día
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {tripForm.itinerary.map((day, idx) => (
+                      <div key={idx} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            Día {day.dayNumber}
+                          </span>
+
+                          {tripForm.itinerary.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItineraryDay(idx)}
+                              className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                              title="Eliminar día"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="md:col-span-2">
+                            <label className="block text-[11px] text-slate-400 mb-1">Título de la Jornada / Excursión</label>
+                            <input
+                              type="text"
+                              value={day.title}
+                              onChange={(e) => handleUpdateItineraryDay(idx, 'title', e.target.value)}
+                              placeholder="Ej: Circuito Chico y Cerro Campanario"
+                              className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">Horario de Encuentro / Salida</label>
+                            <input
+                              type="text"
+                              value={day.timeSlot}
+                              onChange={(e) => handleUpdateItineraryDay(idx, 'timeSlot', e.target.value)}
+                              placeholder="09:30 hs"
+                              className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-emerald-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1">Descripción de Actividades</label>
+                          <textarea
+                            rows={2}
+                            value={day.description}
+                            onChange={(e) => handleUpdateItineraryDay(idx, 'description', e.target.value)}
+                            placeholder="Detallá los lugares a visitar, recomendaciones puntuales y paradas técnicas..."
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: SERVICIOS & EQUIPAJE */}
+              {tripModalTab === 'services' && (
+                <div className="space-y-6">
+                  {/* Servicios Incluidos */}
+                  <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        Servicios Incluidos en el Paquete
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Se mostrarán en la sección "Servicios Contratados" de la App.</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={tripForm.newServiceInput}
+                        onChange={(e) => setTripForm(p => ({ ...p, newServiceInput: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddService(); } }}
+                        placeholder="Ej: Bus Cama Ejecutivo con servicio a bordo..."
+                        className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddService}
+                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Agregar
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {tripForm.services.map((svc, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                          <span className="text-xs text-slate-200 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            {svc}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveService(idx)}
+                            className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recomendaciones de Equipaje & Documentación */}
+                  <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Luggage className="w-4 h-4 text-indigo-400" />
+                        Recomendaciones de Viaje & Equipaje
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Tips de vestimenta, clima, calzado y documentación obligatoria.</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={tripForm.newRecInput}
+                        onChange={(e) => setTripForm(p => ({ ...p, newRecInput: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRecommendation(); } }}
+                        placeholder="Ej: Llevar calzado deportivo y campera rompevientos..."
+                        className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddRecommendation}
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Agregar
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {tripForm.recommendations.map((rec, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                          <span className="text-xs text-slate-200 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                            {rec}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRecommendation(idx)}
+                            className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Footer de Acciones del Modal */}
+              <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setIsTripModalOpen(false)}
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Cancelar
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={isSavingTrip}
+                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+                  >
+                    {isSavingTrip ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Guardando en Base de Datos...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        {editingTripId ? 'Actualizar Información de Salida' : 'Publicar Salida Propia'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

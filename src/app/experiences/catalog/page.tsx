@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Palmtree, DatabaseZap, Plus, Edit, Trash2, X, Save, Upload, HelpCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Palmtree, DatabaseZap, Plus, Edit, Trash2, X, Save, Upload, HelpCircle, Smartphone } from 'lucide-react';
 import { collection, onSnapshot, setDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Tour } from '@/types/experiences';
@@ -197,6 +198,14 @@ export default function ExperienceCatalogPage() {
         </div>
         
         <div className="flex items-center gap-3">
+          <Link
+            href="/experiences/my-trip-mgmt"
+            className="flex items-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 shadow-sm transition-all"
+          >
+            <Smartphone className="mr-2 h-4 w-4" />
+            + Cargar Salida Propia ("Mi Viaje")
+          </Link>
+
           {tours.length === 0 && (
             <button 
               onClick={handleSeedTours}
@@ -213,7 +222,7 @@ export default function ExperienceCatalogPage() {
             className="flex items-center rounded-xl bg-tech-blue px-5 py-2.5 text-sm font-bold text-white hover:bg-tech-blue/90 shadow-lg transition-all"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Nuevo Viaje
+            Nuevo Tour Rápido
           </button>
         </div>
       </div>
