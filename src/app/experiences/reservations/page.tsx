@@ -434,6 +434,14 @@ export default function ExperiencesReservationsPage() {
         {/* Acciones Superiores */}
         <div className="flex items-center gap-3">
           <Link
+            href="/experiences/my-trip-mgmt"
+            className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition shadow-sm flex items-center gap-1.5"
+          >
+            <Smartphone className="h-4 w-4" />
+            Gestor "Mi Viaje" (App)
+          </Link>
+
+          <Link
             href="/experiences/quoter"
             className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 transition shadow-sm flex items-center gap-1.5"
           >

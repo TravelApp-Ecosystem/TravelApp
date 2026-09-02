@@ -309,7 +309,7 @@ export default function HomeScreen() {
   const [hasPurchasedOrganizedTrip, setHasPurchasedOrganizedTrip] = useState(false);
   const [contractedTrip, setContractedTrip] = useState<any | null>(null);
   const [experienceMainTab, setExperienceMainTab] = useState<'catalog' | 'trip'>('catalog');
-  const [activeTripSubTab, setActiveTripSubTab] = useState<'itinerary' | 'payments' | 'group' | 'gallery'>('itinerary');
+  const [activeTripSubTab, setActiveTripSubTab] = useState<'itinerary' | 'vouchers' | 'payments' | 'group' | 'checkin' | 'gallery' | 'sos'>('itinerary');
   const [expandedDay, setExpandedDay] = useState<number | null>(1); // Acordeón de itinerario
   const [travisQuery, setTravisQuery] = useState('');
   const [travisAnswer, setTravisAnswer] = useState('');
@@ -323,6 +323,24 @@ export default function HomeScreen() {
   const [isQrModalVisible, setIsQrModalVisible] = useState(false);
   const [rewardsSubTab, setRewardsSubTab] = useState<'canje' | 'beneficios'>('canje');
   const [selectedBenefit, setSelectedBenefit] = useState<any | null>(null);
+
+  // Estados de Comunidad y Muro Social del Viaje
+  const [communityPosts, setCommunityPosts] = useState<any[]>([]);
+  const [communityPostInput, setCommunityPostInput] = useState('');
+  const [isPostingCommunity, setIsPostingCommunity] = useState(false);
+  const [hideCommunityProfile, setHideCommunityProfile] = useState(false);
+
+  // Estados de Web Check-In 48h y Traslado TravelCab
+  const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
+  const [checkInPickupAddress, setCheckInPickupAddress] = useState('');
+  const [checkInPickupTime, setCheckInPickupTime] = useState('');
+  const [checkInPickupNotes, setCheckInPickupNotes] = useState('');
+  const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false);
+
+  // Estados de Términos y Condiciones, Vouchers y SOS
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [isSosModalOpen, setIsSosModalOpen] = useState(false);
+  const [selectedVoucherDoc, setSelectedVoucherDoc] = useState<any | null>(null);
 
   // Datos extendidos de Perfil para TravelApp Experience
   const [passport, setPassport] = useState('');
@@ -540,31 +558,168 @@ export default function HomeScreen() {
     }
   };
   useEffect(() => {
-    if (user?.uid) {
-      const q = query(collection(db, 'contracted_trips'), where('userId', '==', user.uid));
-      const unsubTrip = onSnapshot(q, (snap) => {
-        if (!snap.empty) {
-          const tripDoc = snap.docs[0];
-          const data = { id: tripDoc.id, ...tripDoc.data() } as any;
-          setContractedTrip(data);
-          setExcursionsList(data.optionalExcursions || []);
-          
-          // Suscribirse a los mensajes del grupo de este viaje
-          const unsubMessages = onSnapshot(collection(db, 'contracted_trips', tripDoc.id, 'group_messages'), (msgSnap) => {
-            const msgs = msgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            msgs.sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0));
-            setGroupMessages(msgs);
-          });
-          return () => unsubMessages();
-        } else {
-          setContractedTrip(null);
-          setExcursionsList([]);
-          setGroupMessages([]);
-        }
+    let unsubTrip: (() => void) | null = null;
+    let unsubMessages: (() => void) | null = null;
+    let unsubCommunity: (() => void) | null = null;
+
+    const attachSubcollections = (tripId: string) => {
+      if (unsubMessages) unsubMessages();
+      if (unsubCommunity) unsubCommunity();
+
+      unsubMessages = onSnapshot(collection(db, 'contracted_trips', tripId, 'group_messages'), (msgSnap) => {
+        const msgs = msgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        msgs.sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0));
+        setGroupMessages(msgs);
       });
-      return unsubTrip;
-    }
-  }, [user?.uid]);
+
+      unsubCommunity = onSnapshot(collection(db, 'contracted_trips', tripId, 'community_feed'), (commSnap) => {
+        const posts = commSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        posts.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+        setCommunityPosts(posts);
+      });
+    };
+
+    // Consultar viajes en Firestore
+    const q = query(collection(db, 'contracted_trips'));
+    unsubTrip = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        // Buscar primero el viaje del usuario logueado o tomar el primero disponible
+        const userTripDoc = snap.docs.find(d => {
+          const data = d.data();
+          return data.userId === user?.uid || data.userEmail === user?.email;
+        }) || snap.docs[0];
+
+        const data = { id: userTripDoc.id, ...userTripDoc.data() } as any;
+        setContractedTrip(data);
+        setHasPurchasedOrganizedTrip(true);
+        setExcursionsList(data.optionalExcursions || []);
+        setHideCommunityProfile(data.communityPrivacy?.hideProfile || false);
+
+        if (data.webCheckIn) {
+          setCheckInPickupAddress(data.webCheckIn.pickupAddress || '');
+          setCheckInPickupTime(data.webCheckIn.pickupTime || '');
+          setCheckInPickupNotes(data.webCheckIn.pickupNotes || '');
+        }
+
+        attachSubcollections(userTripDoc.id);
+      } else {
+        // Fallback viaje demo si Firestore no tiene viajes aún
+        const fallbackTrip: any = {
+          id: 'demo_trip_bariloche',
+          tripType: 'salida_propia',
+          title: 'Bariloche Mágico & Circuito Chico',
+          destination: 'San Carlos de Bariloche, Río Negro',
+          reservationCode: 'RES-89241-TRV',
+          tourCode: 'TRV-EXP-BARILOCHE-2026',
+          departureDate: '2026-09-15',
+          returnDate: '2026-09-22',
+          dates: '15 al 22 de Septiembre 2026',
+          departureOrigin: 'San Miguel de Tucumán',
+          imageUrl: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1200&auto=format&fit=crop',
+          weather: {
+            city: 'Bariloche',
+            temperature: 12,
+            condition: 'Soleado con brisa andina',
+            humidity: 55,
+            forecast: [
+              { day: 'Lun', temp: 12, icon: 'sunny' },
+              { day: 'Mar', temp: 10, icon: 'partly-sunny' },
+              { day: 'Mié', temp: 8, icon: 'snow' },
+              { day: 'Jue', temp: 11, icon: 'cloudy' },
+              { day: 'Vie', temp: 13, icon: 'sunny' },
+            ]
+          },
+          payment: {
+            currency: 'ARS',
+            totalAmount: 650000,
+            paidAmount: 450000,
+            status: 'Señada',
+            paymentsHistory: [
+              { date: '01/08/2026', amount: 200000, method: 'Transferencia Bancaria', concept: 'Seña Inicial 30%' },
+              { date: '20/08/2026', amount: 250000, method: 'Mercado Pago (Tarjeta)', concept: 'Cuota 1 Refuerzo' },
+            ]
+          },
+          passengers: [
+            { fullName: user?.displayName || 'Fernando Ríncola', dni: '38.450.912', isTitular: true, seat: 'Butaca 12 (Planta Alta)', roomType: 'Doble Matrimonial', dietaryRestrictions: 'Ninguna' },
+            { fullName: 'María Elena Torres', dni: '39.812.304', isTitular: false, seat: 'Butaca 13 (Planta Alta)', roomType: 'Doble Matrimonial', dietaryRestrictions: 'Vegetariana' },
+          ],
+          services: [
+            'Bus Cama Ejecutivo con servicio a bordo',
+            '7 Noches en Hotel Edelweiss 4★ c/ Desayuno Buffet',
+            'Circuito Chico y Cerro Campanario con ascenso incluido',
+            'Asistencia Médica Assist Card Cobertura $100.000 USD',
+            'Coordinador permanente y guía local de Parques Nacionales'
+          ],
+          itinerary: [
+            { dayNumber: 1, title: 'Partida y Noche en Ruta', description: 'Salida 19:00 hs desde Terminal de Tucumán. Cena caliente y snacks a bordo.', timeSlot: '19:00 hs', location: 'Terminal Tucumán' },
+            { dayNumber: 2, title: 'Llegada a Bariloche & Check-in', description: 'Arribo al mediodía. Alojamiento en Hotel Edelweiss. Tarde libre en el Centro Cívico.', timeSlot: '13:00 hs', location: 'Hotel Edelweiss' },
+            { dayNumber: 3, title: 'Circuito Chico y Cerro Campanario', description: 'Ascenso en aerosilla a la mejor vista panorámica del mundo según National Geographic.', timeSlot: '09:30 hs', location: 'Cerro Campanario' },
+            { dayNumber: 4, title: 'Día Libre o Navegación Isla Victoria', description: 'Excursión lacustre opcional a Puerto Blest y Cascada de los Cántaros.', timeSlot: '10:00 hs', location: 'Puerto Pañuelo' },
+          ],
+          coordinator: {
+            name: 'Lucas Benítez',
+            phone: '+5493816112233',
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop',
+            bio: 'Coordinador experto en destinos patagónicos con 8 años en TravelApp.'
+          },
+          optionalExcursions: [
+            { id: 'exc_puerto_blest', title: 'Navegación Puerto Blest & Cascada', description: 'Paseo en catamarán de alta tecnología por el Lago Nahuel Huapi.', price: 65, currency: 'USD', pointsPrice: 1200, imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400&auto=format&fit=crop', paid: false },
+            { id: 'exc_cerro_catedral', title: 'Tour de Nieve en Cerro Catedral', description: 'Traslado y pases de ascenso a la cumbre de esquí más grande de Sudamérica.', price: 45, currency: 'USD', pointsPrice: 900, imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=400&auto=format&fit=crop', paid: true },
+          ],
+          vouchers: [
+            { id: 'vouc_1', name: 'Voucher Póliza Asistencia Médica Assist Card', type: 'asistencia', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', unlockHoursBefore: 0 },
+            { id: 'vouc_2', name: 'Voucher Alojamiento Hotel Edelweiss', type: 'hotel', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', unlockHoursBefore: 72 },
+          ],
+          travelAssistance: {
+            provider: 'Assist Card Argentina',
+            policyNumber: 'AC-ARG-99201-TRV',
+            voucherPdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            emergencyPhone24h: '+54 11 5555-8000'
+          },
+          webCheckIn: {
+            enabled: true,
+            isCompleted: false,
+            doorPickupRequested: true,
+            pickupAddress: 'Av. Aconquija 1820, Yerba Buena, Tucumán',
+            pickupTime: '17:30 hs (15/09/2026)',
+            pickupNotes: '2 valijas grandes y 1 bolso de mano. Llevar vehículo con baúl amplio.'
+          },
+          termsAccepted: {
+            accepted: true,
+            acceptedAt: '01/08/2026 14:22',
+            acceptedBy: user?.displayName || 'Fernando Ríncola'
+          },
+          photos: [
+            'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop',
+          ],
+          livePhotos: [
+            { id: 'lp_1', url: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=800&auto=format&fit=crop', caption: 'Llegada al Mirador del Lago Moreno', uploadedAt: '11:30 hs', uploadedBy: 'Lucas Benítez (Coordinador)' }
+          ],
+          recommendations: [
+            'Llevar calzado de trekking o zapatillas antideslizantes para las caminatas.',
+            'Ropa en capas ("efecto cebolla"): remera térmica, buzo polar y campera rompevientos.',
+            'Protector solar y lentes UV (la radiación en montaña y nieve es alta).',
+            'DNI físico original vigente obligatorio para el abordaje.'
+          ],
+          emergencyContacts: [
+            { label: 'Guardia Operativa TravelApp 24hs', phone: '+54 9 381 400-9999' },
+            { label: 'Assist Card Central Emergencias', phone: '+54 11 5555-8000' }
+          ]
+        };
+        setContractedTrip(fallbackTrip);
+        setHasPurchasedOrganizedTrip(true);
+        setExcursionsList(fallbackTrip.optionalExcursions || []);
+      }
+    });
+
+    return () => {
+      if (unsubTrip) unsubTrip();
+      if (unsubMessages) unsubMessages();
+      if (unsubCommunity) unsubCommunity();
+    };
+  }, [user?.uid, user?.email]);
 
   // Escuchar viajes de TravelCab del usuario en tiempo real
   useEffect(() => {
@@ -773,7 +928,182 @@ export default function HomeScreen() {
     }, 2000);
   };
 
-  // Cargar ubicación GPS inicial
+  // Helper de Cuenta Regresiva de Salida
+  const calculateTripCountdown = (departureDateStr?: string) => {
+    if (!departureDateStr) return { days: 0, hours: 0, mins: 0, isPast: false, label: 'Salida Próxima' };
+    const depTime = new Date(departureDateStr).getTime();
+    const nowTime = Date.now();
+    const diffMs = depTime - nowTime;
+
+    if (diffMs <= 0) {
+      return { days: 0, hours: 0, mins: 0, isPast: true, label: '¡Salida en Curso / Viajando!' };
+    }
+
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    return { days, hours, mins, isPast: false, label: `Faltan ${days} días ${hours}h ${mins}m` };
+  };
+
+  // Helper de Desbloqueo Inteligente de Vouchers (72hs)
+  const isVoucherUnlocked = (unlockHoursBefore: number = 72, departureDateStr?: string) => {
+    if (unlockHoursBefore === 0 || !departureDateStr) return true;
+    const depTime = new Date(departureDateStr).getTime();
+    const unlockTime = depTime - (unlockHoursBefore * 60 * 60 * 1000);
+    return Date.now() >= unlockTime;
+  };
+
+  // Helper de Desbloqueo de Web Check-In 48h
+  const isCheckInUnlocked = (departureDateStr?: string) => {
+    if (!departureDateStr) return true;
+    const depTime = new Date(departureDateStr).getTime();
+    const unlockTime = depTime - (48 * 60 * 60 * 1000);
+    return Date.now() >= unlockTime;
+  };
+
+  // Alternar privacidad de perfil en el muro del grupo
+  const handleToggleCommunityPrivacy = async (hide: boolean) => {
+    setHideCommunityProfile(hide);
+    if (!contractedTrip?.id) return;
+    try {
+      await updateDoc(doc(db, 'contracted_trips', contractedTrip.id), {
+        'communityPrivacy.hideProfile': hide
+      });
+    } catch (e) {
+      console.log('Error updating community privacy:', e);
+    }
+  };
+
+  // Publicar mensaje en el muro comunitario del viaje
+  const handlePostCommunityMessage = async () => {
+    const text = communityPostInput.trim();
+    if (!text || !contractedTrip?.id) return;
+    setIsPostingCommunity(true);
+    try {
+      const commRef = doc(collection(db, 'contracted_trips', contractedTrip.id, 'community_feed'), `post_${Date.now()}`);
+      await setDoc(commRef, {
+        id: commRef.id,
+        userId: user?.uid || 'pax_demo',
+        userName: hideCommunityProfile ? 'Pasajero Anónimo' : (user?.displayName || firstName || 'Pasajero'),
+        userAvatar: hideCommunityProfile ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200' : (user?.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200'),
+        content: text,
+        timestamp: Date.now(),
+        likes: 0,
+        hideProfile: hideCommunityProfile,
+        createdAt: new Date().toISOString()
+      });
+      setCommunityPostInput('');
+    } catch (e) {
+      console.error('Error posting to community feed:', e);
+      Alert.alert('Error', 'No se pudo publicar tu mensaje en la comunidad.');
+    } finally {
+      setIsPostingCommunity(false);
+    }
+  };
+
+  // Guardar Web Check-In 48h y solicitud de traslado TravelCab
+  const handleSaveWebCheckIn = async () => {
+    if (!contractedTrip?.id) return;
+    setIsSubmittingCheckIn(true);
+    try {
+      const checkInData = {
+        enabled: true,
+        isCompleted: true,
+        completedAt: new Date().toISOString(),
+        doorPickupRequested: !!checkInPickupAddress,
+        pickupAddress: checkInPickupAddress,
+        pickupTime: checkInPickupTime,
+        pickupNotes: checkInPickupNotes
+      };
+
+      await updateDoc(doc(db, 'contracted_trips', contractedTrip.id), {
+        webCheckIn: checkInData,
+        updatedAt: new Date().toISOString()
+      });
+
+      setContractedTrip((prev: any) => ({ ...prev, webCheckIn: checkInData }));
+      setIsCheckInModalOpen(false);
+      Alert.alert(
+        '¡Check-In Realizado con Éxito!',
+        checkInPickupAddress
+          ? 'Tu pase de abordaje está confirmado y el móvil de TravelCab vendrá a buscarte en el horario pactado a tu domicilio.'
+          : 'Tu pase de abordaje ha sido confirmado para la salida.'
+      );
+    } catch (e) {
+      console.error('Error saving check-in:', e);
+      Alert.alert('Error', 'No se pudo registrar el check-in.');
+    } finally {
+      setIsSubmittingCheckIn(false);
+    }
+  };
+
+  // Firma y Aceptación Digital de Condiciones Generales
+  const handleSignTerms = async () => {
+    if (!contractedTrip?.id) return;
+    try {
+      const termsData = {
+        accepted: true,
+        acceptedAt: new Date().toISOString(),
+        acceptedBy: user?.displayName || firstName || 'Pasajero Titular'
+      };
+      await updateDoc(doc(db, 'contracted_trips', contractedTrip.id), {
+        termsAccepted: termsData,
+        updatedAt: new Date().toISOString()
+      });
+      setContractedTrip((prev: any) => ({ ...prev, termsAccepted: termsData }));
+      setIsTermsModalOpen(false);
+      Alert.alert('Condiciones Aceptadas', 'Has firmado digitalmente las Condiciones Generales de Viaje.');
+    } catch (e) {
+      console.error('Error signing terms:', e);
+    }
+  };
+
+  // Canjear Excursión Opcional con Puntos Rewards
+  const handleRedeemPointsForExcursion = async (excursion: any) => {
+    const requiredPoints = excursion.pointsPrice || (excursion.price * 20);
+    if (rewardsPoints < requiredPoints) {
+      Alert.alert(
+        'Puntos Insuficientes',
+        `Esta excursión requiere ${requiredPoints} puntos y tenés ${rewardsPoints} puntos disponibles.`
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Confirmar Canje Rewards',
+      `¿Deseas canjear ${requiredPoints} puntos Rewards por la actividad "${excursion.title}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Canjear Ahora',
+          onPress: async () => {
+            try {
+              if (contractedTrip?.id) {
+                const tripRef = doc(db, 'contracted_trips', contractedTrip.id);
+                const updatedExc = (contractedTrip.optionalExcursions || []).map((exc: any) => {
+                  if (exc.id === excursion.id) {
+                    return { ...exc, paid: true, paymentMethod: 'Puntos Rewards' };
+                  }
+                  return exc;
+                });
+                await updateDoc(tripRef, { optionalExcursions: updatedExc });
+              }
+
+              const userRef = doc(db, 'users', user.uid);
+              await updateDoc(userRef, {
+                rewardsPoints: rewardsPoints - requiredPoints
+              });
+
+              Alert.alert('¡Canje Exitoso!', `Has obtenido "${excursion.title}". El voucher fue asignado a tu viaje.`);
+            } catch (e) {
+              console.error('Error redeeming points:', e);
+            }
+          }
+        }
+      ]
+    );
+  };
   useEffect(() => {
     const getGPS = async () => {
       try {
@@ -2529,7 +2859,7 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* SECCIÓN B: MI EXPERIENCIA */}
+            {/* SECCIÓN B: MI EXPERIENCIA (SALIDA PROPIA & OPERADOR MAYORISTA) */}
             {experienceMainTab === 'trip' && (
               <View style={{ width: '100%' }}>
                 {!hasPurchasedOrganizedTrip || !contractedTrip ? (
@@ -2539,15 +2869,44 @@ export default function HomeScreen() {
                     </View>
                     <Text style={styles.lockedTripTitle}>Módulo Bloqueado</Text>
                     <Text style={styles.lockedTripDesc}>
-                      Este sector exclusivo se habilitará una vez que realices la reserva o contrates una experiencia organizada por nosotros. Solo usuarios con reserva activa pueden acceder.
+                      Este sector exclusivo se habilitará una vez que realices la reserva o señes una experiencia. Solo pasajeros con reserva activa o señada pueden acceder a este centro de viaje.
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.activeTripDetailContainer}>
+                    {/* 1. HERO CABECERA */}
                     <View style={styles.activeTripHero}>
-                      <Image source={{ uri: contractedTrip.imageUrl }} style={styles.activeTripHeroImg} />
+                      <Image source={{ uri: contractedTrip.coverImage || contractedTrip.imageUrl }} style={styles.activeTripHeroImg} />
                       <View style={styles.activeTripHeroOverlay}>
-                        <Text style={styles.activeTripHeroTitle}>{contractedTrip.destination}</Text>
+                        {/* Tag de Tipo de Viaje */}
+                        <View style={[
+                          styles.tripTypeBadge,
+                          contractedTrip.tripType === 'salida_propia' ? styles.tripTypeBadgePropio : styles.tripTypeBadgeOperador
+                        ]}>
+                          <Ionicons 
+                            name={contractedTrip.tripType === 'salida_propia' ? "sparkles" : "airplane"} 
+                            size={12} 
+                            color={Colors.white} 
+                          />
+                          <Text style={styles.tripTypeBadgeText}>
+                            {contractedTrip.tripType === 'salida_propia' 
+                              ? '🌟 Salida Propia TravelApp' 
+                              : `✈️ Operador: ${contractedTrip.operatorDetails?.operatorName || 'Mayorista'}`}
+                          </Text>
+                        </View>
+
+                        <Text style={styles.activeTripHeroTitle}>{contractedTrip.title || contractedTrip.destination}</Text>
+                        
+                        {/* Códigos de Sincronización */}
+                        <View style={styles.tripCodesRow}>
+                          <View style={styles.tripCodePill}>
+                            <Text style={styles.tripCodePillText}>Tour: {contractedTrip.tourCode}</Text>
+                          </View>
+                          <View style={[styles.tripCodePill, { borderColor: '#10B981', backgroundColor: 'rgba(6, 78, 59, 0.85)' }]}>
+                            <Text style={[styles.tripCodePillText, { color: '#6EE7B7' }]}>Reserva: {contractedTrip.reservationCode}</Text>
+                          </View>
+                        </View>
+
                         <View style={styles.activeTripHeroBadge}>
                           <Ionicons name="calendar-outline" size={12} color={Colors.white} />
                           <Text style={styles.activeTripHeroBadgeText}>{contractedTrip.dates}</Text>
@@ -2555,18 +2914,148 @@ export default function HomeScreen() {
                       </View>
                     </View>
 
+                    {/* 2. WIDGET DE CUENTA REGRESIVA */}
+                    {(() => {
+                      const countdown = calculateTripCountdown(contractedTrip.departureDate);
+                      return (
+                        <View style={styles.countdownCard}>
+                          <View style={styles.countdownHeader}>
+                            <Text style={styles.countdownTitle}>Cuenta Regresiva para la Salida</Text>
+                            <View style={[styles.countdownLiveBadge, countdown.isPast && { backgroundColor: '#4F46E5' }]}>
+                              <Ionicons name={countdown.isPast ? "navigate" : "time-outline"} size={12} color={Colors.white} />
+                              <Text style={styles.countdownLiveText}>{countdown.label}</Text>
+                            </View>
+                          </View>
+
+                          {!countdown.isPast && (
+                            <View style={styles.countdownGrid}>
+                              <View style={styles.countdownBox}>
+                                <Text style={styles.countdownNumber}>{countdown.days}</Text>
+                                <Text style={styles.countdownLabel}>Días</Text>
+                              </View>
+                              <Text style={styles.countdownDivider}>:</Text>
+                              <View style={styles.countdownBox}>
+                                <Text style={styles.countdownNumber}>{countdown.hours}</Text>
+                                <Text style={styles.countdownLabel}>Horas</Text>
+                              </View>
+                              <Text style={styles.countdownDivider}>:</Text>
+                              <View style={styles.countdownBox}>
+                                <Text style={styles.countdownNumber}>{countdown.mins}</Text>
+                                <Text style={styles.countdownLabel}>Minutos</Text>
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })()}
+
+                    {/* 3. WIDGET DE CLIMA EN DESTINO */}
+                    {contractedTrip.weather && (
+                      <View style={styles.weatherCard}>
+                        <View style={styles.weatherMainRow}>
+                          <View>
+                            <Text style={styles.weatherCity}>Clima en {contractedTrip.weather.city || contractedTrip.destination}</Text>
+                            <Text style={styles.weatherCondition}>{contractedTrip.weather.condition}</Text>
+                          </View>
+                          <Text style={styles.weatherTemp}>{contractedTrip.weather.temperature}°C</Text>
+                        </View>
+
+                        {contractedTrip.weather.forecast && (
+                          <View style={styles.weatherForecastBar}>
+                            {contractedTrip.weather.forecast.map((f: any, i: number) => (
+                              <View key={i} style={styles.forecastDayItem}>
+                                <Text style={styles.forecastDayName}>{f.day}</Text>
+                                <Ionicons name="sunny-outline" size={14} color="#0284C7" />
+                                <Text style={styles.forecastDayTemp}>{f.temp}°C</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* 4. BOTÓN PASE DE ABORDAJE QR */}
+                    <TouchableOpacity
+                      style={styles.qrPassButton}
+                      onPress={() => setIsQrModalVisible(true)}
+                    >
+                      <Ionicons name="qr-code-outline" size={20} color={Colors.white} />
+                      <Text style={styles.qrPassButtonText}>Ver Mi Pase de Abordaje QR (Check-In)</Text>
+                    </TouchableOpacity>
+
+                    {/* 5. FINANCIACIÓN Y PORCENTAJE PAGADO */}
+                    <View style={styles.paymentStatusCard}>
+                      <Text style={styles.paymentCardTitle}>Financiación &amp; Estado de Pago</Text>
+                      <View style={styles.paymentProgressContainer}>
+                        <View style={styles.paymentProgRow}>
+                          <Text style={styles.paymentProgLabel}>Abonado hasta el momento</Text>
+                          <Text style={styles.paymentProgValue}>
+                            {contractedTrip.payment?.currency} ${contractedTrip.payment?.paidAmount?.toLocaleString()} / ${contractedTrip.payment?.totalAmount?.toLocaleString()}
+                          </Text>
+                        </View>
+                        <View style={styles.progressBarBg}>
+                          <View style={[
+                            styles.progressBarFill, 
+                            { width: `${Math.min(100, ((contractedTrip.payment?.paidAmount || 0) / (contractedTrip.payment?.totalAmount || 1)) * 100)}%` }
+                          ]} />
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                          <Text style={styles.remainingBalanceText}>
+                            Saldo pendiente: {contractedTrip.payment?.currency} ${Math.max(0, (contractedTrip.payment?.totalAmount || 0) - (contractedTrip.payment?.paidAmount || 0)).toLocaleString()}
+                          </Text>
+                          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.primary }}>
+                            {Math.round(((contractedTrip.payment?.paidAmount || 0) / (contractedTrip.payment?.totalAmount || 1)) * 100)}% PAGADO
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* 6. MANIFIESTO DE PASAJEROS (ROSTER) */}
+                    <View style={styles.paxRosterContainer}>
+                      <View style={styles.paxRosterHeader}>
+                        <Text style={styles.paxRosterTitle}>Pasajeros en la Reserva ({contractedTrip.passengers?.length || 1})</Text>
+                        <Ionicons name="people-outline" size={16} color={Colors.primary} />
+                      </View>
+                      {contractedTrip.passengers?.map((pax: any, pIdx: number) => (
+                        <View key={pIdx} style={styles.paxItemRow}>
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={styles.paxName}>{pax.fullName}</Text>
+                              {pax.isTitular && (
+                                <View style={styles.paxTitularTag}>
+                                  <Text style={styles.paxTitularText}>TITULAR</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.paxSubDetail}>
+                              DNI: {pax.dni} {pax.seat ? `• ${pax.seat}` : ''} {pax.roomType ? `• Hab: ${pax.roomType}` : ''}
+                            </Text>
+                          </View>
+                          <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* 7. BARRA DE SUB-PESTAÑAS INTERACTIVAS */}
                     <ScrollView 
                       horizontal 
                       showsHorizontalScrollIndicator={false}
                       style={styles.subTabScroll}
                       contentContainerStyle={styles.subTabScrollContent}
                     >
-                      {[
-                        { id: 'itinerary', label: 'Itinerario & Info', icon: 'list-circle-outline' },
-                        { id: 'payments', label: 'Pagos & Extras', icon: 'wallet-outline' },
-                        { id: 'group', label: 'Comunidad', icon: 'people-outline' },
-                        { id: 'gallery', label: 'Fotos', icon: 'images-outline' },
-                      ].map(subTab => {
+                      {(contractedTrip.tripType === 'salida_propia' ? [
+                        { id: 'itinerary', label: 'Itinerario & Servicios', icon: 'list-circle-outline' },
+                        { id: 'vouchers', label: 'Vouchers & Póliza', icon: 'document-text-outline' },
+                        { id: 'payments', label: 'Opcionales & Merch', icon: 'bag-check-outline' },
+                        { id: 'group', label: 'Coordinador & Grupo', icon: 'people-outline' },
+                        { id: 'checkin', label: 'Web Check-In 48h', icon: 'car-sport-outline' },
+                        { id: 'gallery', label: 'Fotos en Vivo', icon: 'images-outline' },
+                        { id: 'sos', label: 'Recomendaciones & SOS', icon: 'shield-checkmark-outline' },
+                      ] : [
+                        { id: 'itinerary', label: 'Pasajes & Servicios', icon: 'airplane-outline' },
+                        { id: 'vouchers', label: 'Vouchers (Smart 72h)', icon: 'document-lock-outline' },
+                        { id: 'sos', label: 'Guardia 24h & Asistencia', icon: 'call-outline' },
+                      ]).map(subTab => {
                         const isSubSelected = activeTripSubTab === subTab.id;
                         return (
                           <TouchableOpacity
@@ -2581,128 +3070,230 @@ export default function HomeScreen() {
                       })}
                     </ScrollView>
 
+                    {/* 8. CONTENIDOS DE SUB-PESTAÑAS */}
+
+                    {/* SUBTAB 1: ITINERARIO & SERVICIOS (SALIDA PROPIA) O TICKETS (OPERADOR MAYORISTA) */}
                     {activeTripSubTab === 'itinerary' && (
                       <View style={styles.subTabContent}>
-                        <View style={styles.infoSectionCard}>
-                          <Text style={styles.sectionSubTitle}>Servicios Contratados</Text>
-                          {contractedTrip.services?.map((service: string, idx: number) => (
-                            <View key={idx} style={styles.serviceRow}>
-                              <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-                              <Text style={styles.serviceText}>{service}</Text>
+                        {contractedTrip.tripType === 'salida_propia' ? (
+                          <>
+                            {/* Servicios Contratados */}
+                            <View style={styles.infoSectionCard}>
+                              <Text style={styles.sectionSubTitle}>Servicios Contratados</Text>
+                              {contractedTrip.services?.map((service: string, idx: number) => (
+                                <View key={idx} style={styles.serviceRow}>
+                                  <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                                  <Text style={styles.serviceText}>{service}</Text>
+                                </View>
+                              ))}
+                              
+                              <TouchableOpacity 
+                                style={styles.downloadPdfBtn}
+                                onPress={() => {
+                                  Alert.alert(
+                                    'Póliza de Asistencia al Viajero',
+                                    `Aseguradora: ${contractedTrip.travelAssistance?.provider || 'Assist Card'}\nPóliza Nº: ${contractedTrip.travelAssistance?.policyNumber || 'AC-ARG-99201'}\nGuardia 24hs: ${contractedTrip.travelAssistance?.emergencyPhone24h || '+54 11 5555-8000'}`,
+                                    [
+                                      { text: 'Llamar a Asistencia', onPress: () => Linking.openURL(`tel:${contractedTrip.travelAssistance?.emergencyPhone24h || '55558000'}`) },
+                                      { text: 'Descargar PDF', onPress: () => Alert.alert('Descargando', 'Voucher de asistencia descargado con éxito.') },
+                                      { text: 'Cerrar', style: 'cancel' }
+                                    ]
+                                  );
+                                }}
+                              >
+                                <Ionicons name="cloud-download-outline" size={18} color={Colors.primary} />
+                                <Text style={styles.downloadPdfBtnText}>Descargar Voucher de Asistencia (PDF)</Text>
+                              </TouchableOpacity>
                             </View>
-                          ))}
-                          
-                          <TouchableOpacity 
-                            style={styles.downloadPdfBtn}
-                            onPress={() => {
-                              Alert.alert(
-                                'Descargar Cobertura',
-                                'Descargando póliza y credencial digital de asistencia Assist Card (PDF) en segundo plano...',
-                                [{ text: 'Listo' }]
-                              );
-                            }}
-                          >
-                            <Ionicons name="cloud-download-outline" size={18} color={Colors.primary} />
-                            <Text style={styles.downloadPdfBtnText}>Descargar Voucher de Asistencia (PDF)</Text>
-                          </TouchableOpacity>
-                        </View>
 
-                        <Text style={styles.sectionSubTitle}>Itinerario del Viaje</Text>
-                        <View style={styles.itineraryAccordion}>
-                          {contractedTrip.itinerary?.map((day: any) => {
-                            const isExpanded = expandedDay === day.day;
-                            return (
-                              <View key={day.day} style={[styles.accordionItem, isExpanded && styles.accordionItemExpanded]}>
-                                <TouchableOpacity 
-                                  style={styles.accordionHeader}
-                                  onPress={() => setExpandedDay(isExpanded ? null : day.day)}
-                                >
-                                  <View style={styles.accordionDayCircle}>
-                                    <Text style={styles.accordionDayText}>D{day.day}</Text>
+                            {/* Itinerario Día por Día */}
+                            <Text style={styles.sectionSubTitle}>Itinerario del Viaje Día por Día</Text>
+                            <View style={styles.itineraryAccordion}>
+                              {contractedTrip.itinerary?.map((day: any, dIdx: number) => {
+                                const dayNum = day.dayNumber || day.day || (dIdx + 1);
+                                const isExpanded = expandedDay === dayNum;
+                                return (
+                                  <View key={dayNum} style={[styles.accordionItem, isExpanded && styles.accordionItemExpanded]}>
+                                    <TouchableOpacity 
+                                      style={styles.accordionHeader}
+                                      onPress={() => setExpandedDay(isExpanded ? null : dayNum)}
+                                    >
+                                      <View style={styles.accordionDayCircle}>
+                                        <Text style={styles.accordionDayText}>D{dayNum}</Text>
+                                      </View>
+                                      <View style={{ flex: 1, paddingRight: 8 }}>
+                                        <Text style={styles.accordionHeaderTitle} numberOfLines={1}>{day.title}</Text>
+                                        {day.timeSlot && (
+                                          <Text style={{ fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.primary }}>
+                                            ⏰ {day.timeSlot} • {day.location || 'Destino'}
+                                          </Text>
+                                        )}
+                                      </View>
+                                      <Ionicons 
+                                        name={isExpanded ? "chevron-up" : "chevron-down"} 
+                                        size={18} 
+                                        color={Colors.textSecondary} 
+                                      />
+                                    </TouchableOpacity>
+                                    
+                                    {isExpanded && (
+                                      <View style={styles.accordionBody}>
+                                        <Text style={styles.accordionBodyDesc}>{day.description}</Text>
+                                      </View>
+                                    )}
                                   </View>
-                                  <Text style={styles.accordionHeaderTitle} numberOfLines={1}>{day.title}</Text>
-                                  <Ionicons 
-                                    name={isExpanded ? "chevron-up" : "chevron-down"} 
-                                    size={18} 
-                                    color={Colors.textSecondary} 
-                                  />
-                                </TouchableOpacity>
-                                
-                                {isExpanded && (
-                                  <View style={styles.accordionBody}>
-                                    <Text style={styles.accordionBodyDesc}>{day.description}</Text>
-                                  </View>
-                                )}
+                                );
+                              })}
+                            </View>
+
+                            {/* Asistente Travis AI */}
+                            <View style={styles.travisWidgetCard}>
+                              <View style={styles.travisWidgetHeader}>
+                                <View style={styles.travisWidgetAvatar}>
+                                  <Text style={styles.travisWidgetAvatarText}>T</Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.travisWidgetTitle}>¿Dudas sobre {contractedTrip.destination}?</Text>
+                                  <Text style={styles.travisWidgetSubtitle}>Preguntale a Travis AI sobre ropa recomendada, gastronomía, clima...</Text>
+                                </View>
                               </View>
-                            );
-                          })}
-                        </View>
+                              
+                              <View style={styles.travisWidgetForm}>
+                                <TextInput
+                                  style={styles.travisWidgetInput}
+                                  placeholder="Ej: ¿Qué abrigo llevar para el Cerro Campanario?"
+                                  value={travisQuery}
+                                  onChangeText={setTravisQuery}
+                                />
+                                <TouchableOpacity 
+                                  style={styles.travisWidgetBtn}
+                                  onPress={handleAskTravisAboutDestination}
+                                  disabled={travisLoading}
+                                >
+                                  {travisLoading ? (
+                                    <ActivityIndicator size="small" color={Colors.white} />
+                                  ) : (
+                                    <Ionicons name="send" size={16} color={Colors.white} />
+                                  )}
+                                </TouchableOpacity>
+                              </View>
 
-                        <View style={styles.travisWidgetCard}>
-                          <View style={styles.travisWidgetHeader}>
-                            <View style={styles.travisWidgetAvatar}>
-                              <Text style={styles.travisWidgetAvatarText}>T</Text>
+                              {travisAnswer ? (
+                                <View style={styles.travisWidgetResponse}>
+                                  <Text style={styles.travisWidgetResponseTitle}>Respuesta de Travis:</Text>
+                                  <Text style={styles.travisWidgetResponseText}>{travisAnswer}</Text>
+                                </View>
+                              ) : null}
                             </View>
-                            <View>
-                              <Text style={styles.travisWidgetTitle}>¿Dudas sobre {contractedTrip.destination}?</Text>
-                              <Text style={styles.travisWidgetSubtitle}>Preguntale a Travis AI sobre clima, ropa, gastronomía, etc.</Text>
-                            </View>
-                          </View>
-                          
-                          <View style={styles.travisWidgetForm}>
-                            <TextInput
-                              style={styles.travisWidgetInput}
-                              placeholder="Ej: ¿Qué ropa llevo para el Hornocal?"
-                              value={travisQuery}
-                              onChangeText={setTravisQuery}
-                            />
-                            <TouchableOpacity 
-                              style={styles.travisWidgetBtn}
-                              onPress={handleAskTravisAboutDestination}
-                              disabled={travisLoading}
-                            >
-                              {travisLoading ? (
-                                <ActivityIndicator size="small" color={Colors.white} />
-                              ) : (
-                                <Ionicons name="send" size={16} color={Colors.white} />
-                              )}
-                            </TouchableOpacity>
-                          </View>
+                          </>
+                        ) : (
+                          <>
+                            {/* TICKETS & SERVICIOS OPERADOR MAYORISTA */}
+                            <Text style={styles.sectionSubTitle}>Tickets de Transporte Emitidos</Text>
+                            {contractedTrip.operatorDetails?.tickets?.map((t: any, idx: number) => (
+                              <View key={idx} style={styles.ticketCard}>
+                                <View style={styles.ticketProviderRow}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Ionicons name={t.type === 'Avion' ? 'airplane' : 'bus'} size={18} color={Colors.primary} />
+                                    <Text style={styles.ticketProviderName}>{t.provider} ({t.identifier})</Text>
+                                  </View>
+                                  <View style={styles.ticketPnrBadge}>
+                                    <Text style={styles.ticketPnrText}>PNR: {t.locatorPnr}</Text>
+                                  </View>
+                                </View>
 
-                          {travisAnswer ? (
-                            <View style={styles.travisWidgetResponse}>
-                              <Text style={styles.travisWidgetResponseTitle}>Respuesta de Travis:</Text>
-                              <Text style={styles.travisWidgetResponseText}>{travisAnswer}</Text>
-                            </View>
-                          ) : null}
-                        </View>
+                                <View style={styles.ticketRouteRow}>
+                                  <View style={styles.ticketCityBox}>
+                                    <Text style={styles.ticketCityCode}>{t.origin}</Text>
+                                    <Text style={styles.ticketTimeText}>{t.departureTime}</Text>
+                                  </View>
+                                  <Ionicons name="arrow-forward" size={18} color={Colors.textMuted} />
+                                  <View style={styles.ticketCityBox}>
+                                    <Text style={styles.ticketCityCode}>{t.destination}</Text>
+                                    <Text style={styles.ticketTimeText}>{t.arrivalTime}</Text>
+                                  </View>
+                                </View>
+
+                                <View style={styles.ticketDetailsGrid}>
+                                  <Text style={styles.ticketDetailText}>💺 Asientos Asignados: <strong style={{ color: Colors.textPrimary }}>{t.seats?.join(', ')}</strong></Text>
+                                  {t.baggagePolicy && (
+                                    <Text style={styles.ticketDetailText}>🧳 Equipaje: {t.baggagePolicy}</Text>
+                                  )}
+                                </View>
+                              </View>
+                            ))}
+
+                            {/* Servicios Terrestres y Hotelería */}
+                            <Text style={styles.sectionSubTitle}>Alojamiento &amp; Servicios Terrestres</Text>
+                            {contractedTrip.operatorDetails?.landServices?.map((ls: any, idx: number) => (
+                              <View key={idx} style={styles.ticketCard}>
+                                <Text style={styles.ticketProviderName}>🏨 {ls.title}</Text>
+                                <Text style={styles.ticketDetailText}>Prestador: {ls.provider}</Text>
+                                {ls.foodPlan && <Text style={styles.ticketDetailText}>Régimen: {ls.foodPlan}</Text>}
+                                {ls.notes && <Text style={[styles.ticketDetailText, { marginTop: 4 }]}>ℹ️ {ls.notes}</Text>}
+                              </View>
+                            ))}
+                          </>
+                        )}
                       </View>
                     )}
 
+                    {/* SUBTAB 2: VOUCHERS (SMART 72H LOCK) */}
+                    {activeTripSubTab === 'vouchers' && (
+                      <View style={styles.subTabContent}>
+                        <Text style={styles.sectionSubTitle}>Documentación &amp; Vouchers Oficiales</Text>
+                        <Text style={styles.tabHeaderDesc}>
+                          Los vouchers de operadores mayoristas se habilitan con candado inteligente 72 horas antes de la partida.
+                        </Text>
+
+                        {contractedTrip.vouchers?.map((v: any) => {
+                          const unlocked = isVoucherUnlocked(v.unlockHoursBefore, contractedTrip.departureDate);
+
+                          return (
+                            <View key={v.id} style={styles.voucherItemCard}>
+                              <View style={{ flex: 1, paddingRight: 10 }}>
+                                <Text style={styles.voucherItemTitle}>{v.name}</Text>
+                                {unlocked ? (
+                                  <View style={styles.voucherUnlockBadge}>
+                                    <Ionicons name="lock-open-outline" size={12} color="#065F46" />
+                                    <Text style={styles.voucherUnlockText}>Disponible para Descarga</Text>
+                                  </View>
+                                ) : (
+                                  <View style={styles.voucherLockBadge}>
+                                    <Ionicons name="lock-closed-outline" size={12} color="#B45309" />
+                                    <Text style={styles.voucherLockText}>Se desbloquea 72hs antes de salir</Text>
+                                  </View>
+                                )}
+                              </View>
+
+                              {unlocked ? (
+                                <TouchableOpacity
+                                  style={{ padding: 10, backgroundColor: '#ECFDF5', borderRadius: 10 }}
+                                  onPress={() => {
+                                    Alert.alert('Descarga de Voucher', `Descargando ${v.name}...`, [{ text: 'Listo' }]);
+                                  }}
+                                >
+                                  <Ionicons name="cloud-download-outline" size={20} color="#059669" />
+                                </TouchableOpacity>
+                              ) : (
+                                <View style={{ padding: 10, backgroundColor: '#F1F5F9', borderRadius: 10 }}>
+                                  <Ionicons name="time-outline" size={20} color="#94A3B8" />
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
+
+                    {/* SUBTAB 3: OPCIONALES & MERCH (SALIDA PROPIA) */}
                     {activeTripSubTab === 'payments' && (
                       <View style={styles.subTabContent}>
-                        <View style={styles.paymentStatusCard}>
-                          <Text style={styles.paymentCardTitle}>Financiación y Estado de Pago</Text>
-                          <View style={styles.paymentProgressContainer}>
-                            <View style={styles.paymentProgRow}>
-                              <Text style={styles.paymentProgLabel}>Saldo Abonado</Text>
-                              <Text style={styles.paymentProgValue}>
-                                {contractedTrip.payment.currency} ${contractedTrip.payment.paidAmount} / ${contractedTrip.payment.totalAmount}
-                              </Text>
-                            </View>
-                            <View style={styles.progressBarBg}>
-                              <View style={[
-                                styles.progressBarFill, 
-                                { width: `${(contractedTrip.payment.paidAmount / contractedTrip.payment.totalAmount) * 100}%` }
-                              ]} />
-                            </View>
-                            <Text style={styles.remainingBalanceText}>
-                              Saldo Restante a pagar: {contractedTrip.payment.currency} ${contractedTrip.payment.totalAmount - contractedTrip.payment.paidAmount}
-                            </Text>
-                          </View>
-                        </View>
+                        <Text style={styles.sectionSubTitle}>Excursiones Opcionales &amp; Merchandising</Text>
+                        <Text style={styles.tabHeaderDesc}>
+                          Podés adquirir extras para tu viaje con Efectivo, Tarjeta / Mercado Pago o canjeando tus Puntos Rewards.
+                        </Text>
 
-                        <Text style={styles.sectionSubTitle}>Excursiones Opcionales (Adquirir con Galicia - Nave)</Text>
                         <View style={styles.excursionsList}>
                           {excursionsList.map((exc: any) => (
                             <View key={exc.id} style={styles.excursionCard}>
@@ -2715,16 +3306,26 @@ export default function HomeScreen() {
                               {exc.paid ? (
                                 <View style={styles.paidBadge}>
                                   <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
-                                  <Text style={styles.paidBadgeText}>ADQUIRIDA Y PAGADA</Text>
+                                  <Text style={styles.paidBadgeText}>ADQUIRIDA Y CONFIRMADA</Text>
                                 </View>
                               ) : (
-                                <TouchableOpacity 
-                                  style={styles.payExcursionBtn}
-                                  onPress={() => handleStartGaliciaPayment(exc)}
-                                >
-                                  <Ionicons name="wallet-outline" size={16} color={Colors.white} />
-                                  <Text style={styles.payExcursionBtnText}>Pagar con Galicia - Nave</Text>
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                                  <TouchableOpacity 
+                                    style={[styles.payExcursionBtn, { flex: 1 }]}
+                                    onPress={() => handleStartGaliciaPayment(exc)}
+                                  >
+                                    <Ionicons name="card-outline" size={14} color={Colors.white} />
+                                    <Text style={styles.payExcursionBtnText}>Pagar con Tarjeta</Text>
+                                  </TouchableOpacity>
+
+                                  <TouchableOpacity 
+                                    style={[styles.payExcursionBtn, { flex: 1, backgroundColor: '#D97706' }]}
+                                    onPress={() => handleRedeemPointsForExcursion(exc)}
+                                  >
+                                    <Ionicons name="gift-outline" size={14} color={Colors.white} />
+                                    <Text style={styles.payExcursionBtnText}>🎁 {exc.pointsPrice || exc.price * 20} Pts</Text>
+                                  </TouchableOpacity>
+                                </View>
                               )}
                             </View>
                           ))}
@@ -2732,62 +3333,102 @@ export default function HomeScreen() {
                       </View>
                     )}
 
+                    {/* SUBTAB 4: COORDINADOR & COMUNIDAD (SALIDA PROPIA) */}
                     {activeTripSubTab === 'group' && (
                       <View style={styles.subTabContent}>
-                        <View style={styles.coordinatorCard}>
-                          <Image source={{ uri: contractedTrip.coordinator.avatar }} style={styles.coordinatorAvatar} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.coordinatorName}>{contractedTrip.coordinator.name}</Text>
-                            <Text style={styles.coordinatorRole}>Coordinador de Viaje Asignado</Text>
-                            <TouchableOpacity 
-                              style={styles.whatsappCoordBtn}
-                              onPress={() => Linking.openURL(`https://wa.me/${contractedTrip.coordinator.phone.replace(/[^0-9]/g, '')}`)}
-                            >
-                              <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-                              <Text style={styles.whatsappCoordText}>Hablar por WhatsApp</Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-
-                        <Text style={styles.sectionSubTitle}>Tus Compañeros de Viaje</Text>
-                        <View style={styles.passengersListRow}>
-                          {['Sofía (BsAs)', 'Martín (Tucumán)', 'Griselda (Cba)', 'Juan Pablo (Mza)'].map((pName, index) => (
-                            <View key={index} style={styles.passengerChip}>
-                              <Ionicons name="person-outline" size={12} color={Colors.primary} />
-                              <Text style={styles.passengerChipText}>{pName}</Text>
+                        {/* Perfil del Coordinador */}
+                        {contractedTrip.coordinator && (
+                          <View style={styles.coordinatorCard}>
+                            <Image source={{ uri: contractedTrip.coordinator.avatar }} style={styles.coordinatorAvatar} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.coordinatorName}>{contractedTrip.coordinator.name}</Text>
+                              <Text style={styles.coordinatorRole}>Coordinador TravelApp a Cargo</Text>
+                              <TouchableOpacity 
+                                style={styles.whatsappCoordBtn}
+                                onPress={() => Linking.openURL(`https://wa.me/${contractedTrip.coordinator.phone.replace(/[^0-9]/g, '')}`)}
+                              >
+                                <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
+                                <Text style={styles.whatsappCoordText}>Hablar por WhatsApp</Text>
+                              </TouchableOpacity>
                             </View>
-                          ))}
+                          </View>
+                        )}
+
+                        {/* Switch de Privacidad de Perfil */}
+                        <View style={styles.communityPrivacyRow}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={styles.communityPrivacyTitle}>Privacidad en la Comunidad</Text>
+                            <Text style={styles.communityPrivacyDesc}>
+                              {hideCommunityProfile ? 'Tu perfil y nombre están ocultos para el resto del grupo.' : 'Tu nombre y foto son visibles para tus compañeros de viaje.'}
+                            </Text>
+                          </View>
+                          <Switch
+                            value={hideCommunityProfile}
+                            onValueChange={handleToggleCommunityPrivacy}
+                            trackColor={{ false: '#CBD5E1', true: '#4F46E5' }}
+                            thumbColor={Colors.white}
+                          />
                         </View>
 
-                        <Text style={styles.sectionSubTitle}>Chat Grupal de la Expedición 💬</Text>
+                        {/* Muro Social de Compañeros de Viaje */}
+                        <Text style={styles.sectionSubTitle}>Muro de la Comunidad de Pasajeros 💬</Text>
+                        
+                        {/* Input para publicar en la comunidad */}
+                        <View style={{ flexDirection: 'row', gap: 8, marginVertical: 8 }}>
+                          <TextInput
+                            style={[styles.chatInput, { flex: 1, backgroundColor: Colors.white }]}
+                            placeholder="Saludá o compartí un comentario con el grupo..."
+                            value={communityPostInput}
+                            onChangeText={setCommunityPostInput}
+                          />
+                          <TouchableOpacity
+                            style={[styles.chatSendBtn, { backgroundColor: '#4F46E5' }]}
+                            onPress={handlePostCommunityMessage}
+                            disabled={isPostingCommunity}
+                          >
+                            <Ionicons name="send" size={16} color={Colors.white} />
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Publicaciones del Muro */}
+                        <View style={{ gap: 8, marginTop: 4 }}>
+                          {communityPosts.length === 0 ? (
+                            <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textMuted, textAlign: 'center', padding: 16 }}>
+                              Sé el primero en saludar al grupo en el muro.
+                            </Text>
+                          ) : (
+                            communityPosts.map((post) => (
+                              <View key={post.id} style={styles.communityPostCard}>
+                                <View style={styles.communityPostHeader}>
+                                  <Image source={{ uri: post.userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200' }} style={styles.communityAvatar} />
+                                  <Text style={styles.communityAuthor}>{post.userName}</Text>
+                                </View>
+                                <Text style={styles.communityPostText}>{post.content}</Text>
+                              </View>
+                            ))
+                          )}
+                        </View>
+
+                        {/* Avisos Oficiales del Coordinador */}
+                        <Text style={[styles.sectionSubTitle, { marginTop: 16 }]}>Canal de Avisos del Coordinador 📢</Text>
                         <View style={styles.groupChatContainer}>
                           <ScrollView 
                             style={styles.chatScroll}
                             contentContainerStyle={{ gap: 10, padding: 10 }}
                             nestedScrollEnabled
                           >
-                            {groupMessages.map((msg) => {
-                              const isMe = msg.senderRole === 'pasajero' && msg.sender === user.displayName;
-                              const isCoord = msg.senderRole === 'coordinador';
-                              return (
-                                <View 
-                                  key={msg.id} 
-                                  style={[
-                                    styles.chatBubble, 
-                                    isMe ? styles.chatBubbleMe : isCoord ? styles.chatBubbleCoord : styles.chatBubbleOther
-                                  ]}
-                                >
-                                  <Text style={styles.chatSenderName}>{msg.sender}</Text>
-                                  <Text style={styles.chatBubbleText}>{msg.text}</Text>
-                                </View>
-                              );
-                            })}
+                            {groupMessages.map((msg) => (
+                              <View key={msg.id} style={[styles.chatBubble, msg.senderRole === 'coordinador' ? styles.chatBubbleCoord : styles.chatBubbleMe]}>
+                                <Text style={styles.chatSenderName}>{msg.sender}</Text>
+                                <Text style={styles.chatBubbleText}>{msg.text}</Text>
+                              </View>
+                            ))}
                           </ScrollView>
                           
                           <View style={styles.chatInputRow}>
                             <TextInput
                               style={styles.chatInput}
-                              placeholder="Escribí un mensaje al grupo..."
+                              placeholder="Pregunta privada para el coordinador..."
                               value={coordinatorMessage}
                               onChangeText={setCoordinatorMessage}
                             />
@@ -2802,30 +3443,156 @@ export default function HomeScreen() {
                       </View>
                     )}
 
+                    {/* SUBTAB 5: WEB CHECK-IN 48H & TRAVELCAB (SALIDA PROPIA) */}
+                    {activeTripSubTab === 'checkin' && (
+                      <View style={styles.subTabContent}>
+                        <Text style={styles.sectionSubTitle}>Web Check-In 48h &amp; Traslado TravelCab</Text>
+                        <Text style={styles.tabHeaderDesc}>
+                          Confirmá tu asistencia al viaje y coordiná la recogida en tu domicilio puerta a puerta hasta la terminal o aeropuerto.
+                        </Text>
+
+                        <View style={styles.checkInBox}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary }}>Estado del Check-In</Text>
+                            {contractedTrip.webCheckIn?.isCompleted ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                                <Text style={{ color: '#065F46', fontSize: 11, fontFamily: 'Quicksand-Bold' }}>CONFIRMADO</Text>
+                              </View>
+                            ) : (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                <Ionicons name="time-outline" size={14} color="#B45309" />
+                                <Text style={{ color: '#B45309', fontSize: 11, fontFamily: 'Quicksand-Bold' }}>HABILITADO (48H)</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary, marginTop: 4 }}>
+                            Dirección de recogida en tu domicilio (Opcional - Servicio Puerta a Puerta TravelCab):
+                          </Text>
+                          <TextInput
+                            style={styles.checkInInput}
+                            placeholder="Ej: Av. Aconquija 1820, Yerba Buena, Tucumán"
+                            value={checkInPickupAddress}
+                            onChangeText={setCheckInPickupAddress}
+                          />
+
+                          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary }}>
+                            Horario pactado de búsqueda:
+                          </Text>
+                          <TextInput
+                            style={styles.checkInInput}
+                            placeholder="Ej: 17:30 hs (Día de salida)"
+                            value={checkInPickupTime}
+                            onChangeText={setCheckInPickupTime}
+                          />
+
+                          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary }}>
+                            Observaciones de Equipaje:
+                          </Text>
+                          <TextInput
+                            style={styles.checkInInput}
+                            placeholder="Ej: 2 valijas grandes + 1 bolso de mano"
+                            value={checkInPickupNotes}
+                            onChangeText={setCheckInPickupNotes}
+                          />
+
+                          <TouchableOpacity
+                            style={styles.checkInActionBtn}
+                            onPress={handleSaveWebCheckIn}
+                            disabled={isSubmittingCheckIn}
+                          >
+                            <Text style={styles.checkInActionBtnText}>
+                              {contractedTrip.webCheckIn?.isCompleted ? 'Actualizar Datos de Check-In' : 'Confirmar Check-In y Pedir Traslado'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* SUBTAB 6: FOTOS EN VIVO (SALIDA PROPIA) */}
                     {activeTripSubTab === 'gallery' && (
                       <View style={styles.subTabContent}>
-                        <Text style={styles.sectionSubTitle}>Galería de Recuerdos del Viaje 📸</Text>
-                        <Text style={styles.tabHeaderDesc}>Fotos capturadas por el coordinador y los participantes para descargar.</Text>
+                        <Text style={styles.sectionSubTitle}>Banco de Fotos en Vivo del Viaje 📸</Text>
+                        <Text style={styles.tabHeaderDesc}>
+                          Fotos en alta definición subidas durante la expedición por el coordinador y los fotógrafos oficiales para descarga libre.
+                        </Text>
                         
                         <View style={styles.galleryGrid}>
-                          {contractedTrip.photos?.map((photoUrl: string, index: number) => (
-                            <View key={index} style={styles.galleryItem}>
-                              <Image source={{ uri: photoUrl }} style={styles.galleryImg} />
-                              <TouchableOpacity 
-                                style={styles.downloadPhotoBtn}
-                                onPress={() => {
-                                  Alert.alert(
-                                    'Descarga de Foto',
-                                    'La foto fue guardada en tu galería de imágenes.',
-                                    [{ text: 'Aceptar' }]
-                                  );
-                                }}
-                              >
-                                <Ionicons name="cloud-download-outline" size={16} color={Colors.white} />
-                              </TouchableOpacity>
+                          {(contractedTrip.livePhotos || contractedTrip.photos || []).map((photoItem: any, index: number) => {
+                            const photoUrl = typeof photoItem === 'string' ? photoItem : photoItem.url;
+                            const caption = typeof photoItem === 'string' ? 'Foto del Viaje' : (photoItem.caption || 'Foto del Viaje');
+
+                            return (
+                              <View key={index} style={styles.galleryItem}>
+                                <Image source={{ uri: photoUrl }} style={styles.galleryImg} />
+                                <TouchableOpacity 
+                                  style={styles.downloadPhotoBtn}
+                                  onPress={() => {
+                                    Alert.alert(
+                                      'Descarga de Foto en HD',
+                                      `Descargando "${caption}" en máxima resolución a tu galería...`,
+                                      [{ text: 'Aceptar' }]
+                                    );
+                                  }}
+                                >
+                                  <Ionicons name="cloud-download-outline" size={16} color={Colors.white} />
+                                </TouchableOpacity>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* SUBTAB 7: RECOMENDACIONES & SOS 24/7 */}
+                    {activeTripSubTab === 'sos' && (
+                      <View style={styles.subTabContent}>
+                        {/* Recomendaciones de Equipaje y Documentación */}
+                        <Text style={styles.sectionSubTitle}>Recomendaciones de Viaje &amp; Equipaje</Text>
+                        <View style={styles.infoSectionCard}>
+                          {contractedTrip.recommendations?.map((rec: string, rIdx: number) => (
+                            <View key={rIdx} style={styles.serviceRow}>
+                              <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
+                              <Text style={styles.serviceText}>{rec}</Text>
                             </View>
                           ))}
                         </View>
+
+                        {/* Condiciones Generales de Contratación */}
+                        <View style={styles.termsCard}>
+                          <Text style={styles.termsTitle}>Condiciones Generales del Servicio</Text>
+                          <Text style={styles.termsDesc}>
+                            {contractedTrip.termsAccepted?.accepted 
+                              ? `✓ Condiciones Generales firmadas y aceptadas digitalmente por ${contractedTrip.termsAccepted.acceptedBy} el ${contractedTrip.termsAccepted.acceptedAt}.`
+                              : 'Por favor lee y firma digitalmente las condiciones de viaje y políticas de cancelación.'}
+                          </Text>
+
+                          {!contractedTrip.termsAccepted?.accepted && (
+                            <TouchableOpacity style={styles.termsSignBtn} onPress={handleSignTerms}>
+                              <Text style={styles.termsSignBtnText}>Aceptar Términos y Condiciones</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+
+                        {/* Botón SOS 24/7 de Emergencia */}
+                        <TouchableOpacity 
+                          style={styles.sosButton}
+                          onPress={() => {
+                            Alert.alert(
+                              '🚨 Contactos de Emergencia 24hs',
+                              `Guardia TravelApp: ${contractedTrip.emergencyContacts?.[0]?.phone || '+54 9 381 400-9999'}\nAssist Card: ${contractedTrip.travelAssistance?.emergencyPhone24h || '+54 11 5555-8000'}`,
+                              [
+                                { text: 'Llamar a Guardia TravelApp', onPress: () => Linking.openURL(`tel:${contractedTrip.emergencyContacts?.[0]?.phone || '3814009999'}`) },
+                                { text: 'Llamar a Asistencia Médica', onPress: () => Linking.openURL(`tel:${contractedTrip.travelAssistance?.emergencyPhone24h || '55558000'}`) },
+                                { text: 'Cancelar', style: 'cancel' }
+                              ]
+                            );
+                          }}
+                        >
+                          <Ionicons name="alert-circle" size={20} color={Colors.white} />
+                          <Text style={styles.sosButtonText}>Línea SOS &amp; Guardia de Emergencia 24/7</Text>
+                        </TouchableOpacity>
                       </View>
                     )}
                   </View>
@@ -2934,25 +3701,35 @@ export default function HomeScreen() {
                 <View style={styles.qrModalOverlay}>
                   <View style={styles.qrModalContent}>
                     <View style={styles.qrModalHeader}>
-                      <Text style={styles.qrModalTitle}>Boarding Pass</Text>
+                      <View>
+                        <Text style={styles.qrModalTitle}>Pase de Abordaje &amp; Check-In</Text>
+                        <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#10B981', marginTop: 2 }}>
+                          Reserva: {contractedTrip.reservationCode || 'RES-TRV'} • Tour: {contractedTrip.tourCode || 'TRV-EXP'}
+                        </Text>
+                      </View>
                       <TouchableOpacity onPress={() => setIsQrModalVisible(false)} style={styles.qrModalCloseBtn}>
                         <Ionicons name="close" size={24} color={Colors.textPrimary} />
                       </TouchableOpacity>
                     </View>
                     
-                    <Text style={styles.qrModalSubtitle}>Presentá este código QR al coordinador al subir al micro</Text>
+                    <Text style={styles.qrModalSubtitle}>Presentá este código QR al coordinador al subir a la unidad de traslado o ingresar al hotel.</Text>
                     
                     <View style={styles.qrFrame}>
                       <Image 
-                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=trip_checkin:${user.uid}:${contractedTrip.id}` }} 
+                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=trip_checkin:${user?.uid || 'pax'}:${contractedTrip.reservationCode}:${contractedTrip.id}` }} 
                         style={styles.qrCodeImg} 
                       />
                     </View>
                     
                     <View style={styles.qrModalTripInfo}>
-                      <Text style={styles.qrModalTripDest}>{contractedTrip.destination}</Text>
+                      <Text style={styles.qrModalTripDest}>{contractedTrip.title || contractedTrip.destination}</Text>
                       <Text style={styles.qrModalTripDate}><Ionicons name="calendar-outline" size={12} /> {contractedTrip.dates}</Text>
-                      <Text style={styles.qrModalPassenger}>Pasajero: {firstName} {user?.displayName ? user.displayName.split(' ').slice(1).join(' ') : ''}</Text>
+                      <Text style={styles.qrModalPassenger}>Titular: {user?.displayName || firstName || 'Pasajero Titular'}</Text>
+                      {contractedTrip.passengers?.[0]?.seat && (
+                        <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.primary, marginTop: 2 }}>
+                          💺 {contractedTrip.passengers[0].seat}
+                        </Text>
+                      )}
                     </View>
 
                     <TouchableOpacity 
@@ -5037,5 +5814,90 @@ const styles = StyleSheet.create({
   safetyInfoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   safetyInfoTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
   safetyInfoDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, lineHeight: 16, fontFamily: 'Quicksand-Regular' },
+
+  // ESTILOS AVANZADOS "MI VIAJE" (EXPERIENCE)
+  tripTypeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 6 },
+  tripTypeBadgePropio: { backgroundColor: 'rgba(79, 70, 229, 0.9)' },
+  tripTypeBadgeOperador: { backgroundColor: 'rgba(217, 119, 6, 0.9)' },
+  tripTypeBadgeText: { color: Colors.white, fontSize: 11, fontFamily: 'Quicksand-Bold', textTransform: 'uppercase' },
+  
+  tripCodesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 6 },
+  tripCodePill: { backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  tripCodePillText: { color: Colors.white, fontSize: 10, fontFamily: 'Quicksand-Bold' },
+
+  countdownCard: { backgroundColor: '#0F172A', borderRadius: 16, padding: 14, marginVertical: 8, borderWidth: 1, borderColor: '#1E293B' },
+  countdownHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  countdownTitle: { color: '#94A3B8', fontSize: 11, fontFamily: 'Quicksand-Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
+  countdownLiveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#059669', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  countdownLiveText: { color: Colors.white, fontSize: 10, fontFamily: 'Quicksand-Bold' },
+  countdownGrid: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
+  countdownBox: { alignItems: 'center', minWidth: 55 },
+  countdownNumber: { color: Colors.white, fontSize: 22, fontFamily: 'Quicksand-Bold' },
+  countdownLabel: { color: '#94A3B8', fontSize: 10, fontFamily: 'Quicksand-Medium', textTransform: 'uppercase', marginTop: 2 },
+  countdownDivider: { color: '#475569', fontSize: 20, fontFamily: 'Quicksand-Bold', marginBottom: 12 },
+
+  weatherCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  weatherMainRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  weatherCity: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  weatherCondition: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
+  weatherTemp: { fontSize: 24, fontFamily: 'Quicksand-Bold', color: '#0284C7' },
+  weatherForecastBar: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  forecastDayItem: { alignItems: 'center', gap: 2 },
+  forecastDayName: { fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary },
+  forecastDayTemp: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+
+  qrPassButton: { backgroundColor: '#059669', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, marginVertical: 6, shadowColor: '#059669', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 4 },
+  qrPassButtonText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
+
+  paxRosterContainer: { backgroundColor: Colors.white, borderRadius: 16, padding: 14, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  paxRosterHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  paxRosterTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  paxItemRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  paxName: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  paxSubDetail: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
+  paxTitularTag: { backgroundColor: '#EEF2FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#C7D2FE' },
+  paxTitularText: { color: '#4F46E5', fontSize: 9, fontFamily: 'Quicksand-Bold' },
+
+  ticketCard: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  ticketProviderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  ticketProviderName: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  ticketPnrBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#CBD5E1' },
+  ticketPnrText: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#0F172A' },
+  ticketRouteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8, paddingVertical: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#F1F5F9' },
+  ticketCityBox: { alignItems: 'center' },
+  ticketCityCode: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  ticketTimeText: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
+  ticketDetailsGrid: { gap: 4, marginTop: 6 },
+  ticketDetailText: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
+
+  voucherItemCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.white, borderRadius: 14, padding: 14, marginVertical: 4, borderWidth: 1, borderColor: '#E2E8F0' },
+  voucherItemTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  voucherLockBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginTop: 4, alignSelf: 'flex-start' },
+  voucherLockText: { color: '#B45309', fontSize: 10, fontFamily: 'Quicksand-Bold' },
+  voucherUnlockBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginTop: 4, alignSelf: 'flex-start' },
+  voucherUnlockText: { color: '#065F46', fontSize: 10, fontFamily: 'Quicksand-Bold' },
+
+  communityPrivacyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 },
+  communityPrivacyTitle: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  communityPrivacyDesc: { fontSize: 10, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 1 },
+  communityPostCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 12, marginVertical: 4, borderWidth: 1, borderColor: '#E2E8F0' },
+  communityPostHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  communityAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E2E8F0' },
+  communityAuthor: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  communityPostText: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textPrimary, lineHeight: 17 },
+
+  checkInBox: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0', gap: 10 },
+  checkInInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textPrimary },
+  checkInActionBtn: { backgroundColor: '#059669', paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  checkInActionBtnText: { color: Colors.white, fontSize: 13, fontFamily: 'Quicksand-Bold' },
+
+  termsCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0', gap: 10 },
+  termsTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  termsDesc: { fontSize: 11, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, lineHeight: 16 },
+  termsSignBtn: { backgroundColor: '#4F46E5', paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  termsSignBtnText: { color: Colors.white, fontSize: 12, fontFamily: 'Quicksand-Bold' },
+
+  sosButton: { backgroundColor: '#EF4444', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, marginVertical: 8 },
+  sosButtonText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
 });
 

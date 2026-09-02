@@ -166,9 +166,18 @@ export default function ExperiencesDashboardPage() {
           </h1>
           <p className="mt-1.5 text-sm text-slate-500 font-medium">Consola panorámica de reservas, pasajes y consultas de Tours de Concorde 360.</p>
         </div>
-        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-xs font-bold text-slate-500">
-          <RefreshCw className="h-4 w-4 animate-spin text-green-500" />
-          Sincronizado
+        <div className="flex items-center gap-2">
+          <Link
+            href="/experiences/my-trip-mgmt"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm"
+          >
+            <Smartphone className="h-4 w-4" />
+            Gestor "Mi Viaje" (App Móvil)
+          </Link>
+          <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm text-xs font-bold text-slate-500">
+            <RefreshCw className="h-4 w-4 animate-spin text-green-500" />
+            Sincronizado
+          </div>
         </div>
       </div>
 

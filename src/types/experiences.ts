@@ -419,46 +419,185 @@ export function getTimeRemainingInfo(expiresAtStr?: string | null): { isExpired:
   return { isExpired: false, label: `⏱️ ${hours}h ${mins}m restantes`, urgencyClass: 'bg-blue-50 text-blue-700 border-blue-200' };
 }
 
-// Balance de Cierre y Liquidación Real de Salida Post-Viaje
-export interface TripClosureRealData {
-  id?: string;
-  quoteId?: string;
-  tripId?: string;
-  tripTitle: string;
-  destination: string;
-  departureDate: string;
-  returnDate?: string;
-  currency: CurrencyType;
-  // Pasajeros reales
-  budgetedPax: number;
-  actualPaxCount: number;
-  actualSinglesCount: number;
-  actualDoublesCount: number;
-  actualTriplesCount: number;
-  actualQuadsCount: number;
-  // Ingresos reales
-  actualGrossRevenue: number;
-  // Costos operativos reales incurridos
-  actualTransportCost: number;
-  actualLodgingCost: number;
-  actualFoodCost: number;
-  actualAssistanceCost: number;
-  actualCoordinationCost: number;
-  actualExtraServicesCost: number;
-  actualTotalOperatingCosts: number;
-  // Margen bruto real
-  actualGrossMargin: number;
-  // Deducciones comerciales reales
-  actualSellerCommissionsPaid: number;
-  actualAffiliateCommissionsPaid: number;
-  actualRewardsCostPaid: number;
-  actualRewardsDiscountsGiven: number;
-  // Resultado / Utilidad Neta Líquida Final
-  actualNetAgencyProfit: number;
-  actualProfitMarginPercent: number;
-  actualProfitPerPax: number;
-  closureNotes?: string;
-  closedBy?: string;
-  closedAt: string;
+// -------------------------------------------------------------
+// MODELO COMPLETO "MI VIAJE" (APP PASAJERO & DASHBOARD)
+// -------------------------------------------------------------
+
+export interface VoucherDoc {
+  id: string;
+  name: string;
+  type: 'asistencia' | 'hotel' | 'aereo' | 'bus' | 'excursion' | 'general';
+  url: string;
+  unlockHoursBefore?: number; // Por defecto 72 horas para operadores
+  unlockedAt?: string;
+  fileSize?: string;
 }
+
+export interface LivePhotoItem {
+  id: string;
+  url: string;
+  caption?: string;
+  uploadedAt: string;
+  uploadedBy?: string; // 'Coordinador' | Nombre
+  likesCount?: number;
+}
+
+export interface OperatorTransportTicket {
+  type: 'Bus' | 'Avion';
+  provider: string; // Ej: 'Aerolíneas Argentinas' | 'Flecha Bus'
+  identifier: string; // Nro Vuelo o Coche/Servicio
+  locatorPnr: string; // PNR / Código de Reserva
+  origin: string;
+  destination: string;
+  departureTime: string;
+  arrivalTime: string;
+  seats: string[];
+  baggagePolicy?: string;
+}
+
+export interface OperatorLandService {
+  id: string;
+  type: 'Hotel' | 'Traslado' | 'Excursion' | 'Otro';
+  title: string;
+  provider: string;
+  hotelName?: string;
+  foodPlan?: string;
+  voucherUrl?: string;
+  notes?: string;
+}
+
+export interface WebCheckIn48h {
+  enabled: boolean;
+  isCompleted: boolean;
+  completedAt?: string;
+  passengerNames?: string[];
+  doorPickupRequested: boolean;
+  pickupAddress?: string;
+  pickupTime?: string;
+  pickupNotes?: string;
+  travelCabTripId?: string;
+}
+
+export interface CommunityPost {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  userCity?: string;
+  content: string;
+  imageUrl?: string;
+  timestamp: number;
+  likes: number;
+  hideProfile?: boolean;
+}
+
+export interface DestinationWeather {
+  city: string;
+  temperature: number;
+  condition: string;
+  conditionCode?: string; // 'sunny' | 'cloudy' | 'rain' | 'snow'
+  humidity?: number;
+  windSpeed?: string;
+  forecast?: { day: string; temp: number; icon: string }[];
+}
+
+export interface ContractedTrip {
+  id: string;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  userPhone?: string;
+  reservationCode: string; // Ej: 'RES-89241-TRV'
+  tourCode: string; // Ej: 'TRV-EXP-BARILOCHE-2026'
+  tourId: string;
+  tripType: 'salida_propia' | 'operador_mayorista';
+  title: string;
+  destination: string;
+  departureDate: string; // YYYY-MM-DD
+  returnDate: string; // YYYY-MM-DD
+  dates: string;
+  departureOrigin: string;
+  coverImage: string;
+  imageUrl?: string;
+  weather?: DestinationWeather;
+  // Estado financiero
+  payment: {
+    currency: CurrencyType;
+    totalAmount: number;
+    paidAmount: number;
+    status: 'Presupuestada' | 'Señada' | 'Confirmada' | 'Pagado_Total';
+    paymentsHistory?: { date: string; amount: number; method: string; concept?: string }[];
+  };
+  // Pasajeros
+  passengers: {
+    fullName: string;
+    dni: string;
+    isTitular?: boolean;
+    dob?: string;
+    seat?: string;
+    roomType?: string;
+    dietaryRestrictions?: string;
+  }[];
+  // Servicios & Itinerario (Salida Propia)
+  services?: string[];
+  itinerary?: ItineraryDay[];
+  includedServices?: string[];
+  // Coordinador (Salida Propia)
+  coordinator?: {
+    name: string;
+    phone: string;
+    avatar?: string;
+    bio?: string;
+  };
+  // Excursiones Opcionales & Merch
+  optionalExcursions?: {
+    id: string;
+    title: string;
+    description: string;
+    price: number;
+    currency: CurrencyType;
+    pointsPrice?: number;
+    imageUrl?: string;
+    paid?: boolean;
+    paymentMethod?: string;
+  }[];
+  // Vouchers y Asistencia
+  vouchers?: VoucherDoc[];
+  travelAssistance?: {
+    provider: string;
+    policyNumber: string;
+    voucherPdfUrl?: string;
+    emergencyPhone24h: string;
+  };
+  // Detalles específicos de Operador Mayorista
+  operatorDetails?: {
+    operatorName: string;
+    tickets?: OperatorTransportTicket[];
+    landServices?: OperatorLandService[];
+    emergencyPhone24h: string;
+    generalTermsUrl?: string;
+    vouchersUnlockedAt72h?: boolean;
+  };
+  // Web Check-In 48h
+  webCheckIn?: WebCheckIn48h;
+  // Condiciones Generales
+  termsAccepted?: {
+    accepted: boolean;
+    acceptedAt?: string;
+    acceptedBy?: string;
+  };
+  // Privacidad en comunidad
+  communityPrivacy?: {
+    hideProfile: boolean;
+  };
+  // Banco de fotos en vivo
+  photos?: string[];
+  livePhotos?: LivePhotoItem[];
+  // Recomendaciones de viaje
+  recommendations?: string[];
+  emergencyContacts?: { label: string; phone: string }[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
 
