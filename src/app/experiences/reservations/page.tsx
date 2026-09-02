@@ -6,7 +6,7 @@ import {
   Ticket, Plus, Search, Filter, ArrowUpRight, DollarSign, Calendar,
   User, CheckCircle2, Clock, AlertCircle, Phone, Mail, FileText,
   CreditCard, Printer, QrCode, Trash2, ArrowLeft, RefreshCw, Sparkles,
-  MapPin, Users, ChevronRight, X, Eye, Briefcase
+  MapPin, Users, ChevronRight, X, Eye, Briefcase, Smartphone
 } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';

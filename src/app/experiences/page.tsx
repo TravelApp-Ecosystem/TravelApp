@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Palmtree, Ticket, Award, CheckCircle2, ChevronRight, AlertCircle,
   RefreshCw, Eye, Landmark, Compass, TrendingUp, ArrowUpRight, ShieldAlert,
-  Plane, Bus, MessageSquare, CheckSquare, Clock, Trash2, HelpCircle
+  Plane, Bus, MessageSquare, CheckSquare, Clock, Trash2, HelpCircle, Smartphone
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
