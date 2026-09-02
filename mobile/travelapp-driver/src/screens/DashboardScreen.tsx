@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { doc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import * as Location from 'expo-location';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useNavigation } from '@react-navigation/native';
 import { signOut } from 'firebase/auth';
@@ -137,17 +138,55 @@ export default function DashboardScreen() {
     };
   }, [lastBackgroundTime, biometricTimeoutMinutes, showBiometricModal]);
 
-  const handleTriggerBiometric = () => {
+  // Disparar autenticación biométrica real automáticamente cuando se abre el modal
+  useEffect(() => {
+    if (showBiometricModal) {
+      handleTriggerBiometric();
+    }
+  }, [showBiometricModal]);
+
+  const handleTriggerBiometric = async () => {
     setIsBiometricScanning(true);
-    setTimeout(() => {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync().catch(() => false);
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync().catch(() => false);
+
+      if (hasHardware && isEnrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Seguridad Conductor: Verificá tu identidad',
+          cancelLabel: 'Cancelar',
+          disableDeviceFallback: false,
+        });
+
+        if (result.success) {
+          setIsBiometricScanning(false);
+          setBiometricSuccess(true);
+          setTimeout(() => {
+            setBiometricSuccess(false);
+            setShowBiometricModal(false);
+            setLastActiveTime(Date.now());
+          }, 800);
+          return;
+        } else {
+          setIsBiometricScanning(false);
+          return;
+        }
+      } else {
+        // Fallback en simulador o sin sensor
+        setIsBiometricScanning(false);
+        setBiometricSuccess(true);
+        setTimeout(() => {
+          setBiometricSuccess(false);
+          setShowBiometricModal(false);
+          setLastActiveTime(Date.now());
+        }, 800);
+      }
+    } catch (e) {
+      console.log('Biometric inactivity prompt error:', e);
       setIsBiometricScanning(false);
-      setBiometricSuccess(true);
-      setTimeout(() => {
-        setBiometricSuccess(false);
-        setShowBiometricModal(false);
-        setLastActiveTime(Date.now()); // Reiniciar inactividad
-      }, 1500);
-    }, 2000);
+      setShowBiometricModal(false);
+      setLastActiveTime(Date.now());
+    }
   };
   
   // Modales y Menú
@@ -684,7 +723,7 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      {/* MODAL DE TAXÍMETRO (VIAJE LIBRE) */}
+      {/* MODAL DE TAXÍMETRO (VIAJE LIBRE / SUTRAPPA) */}
       <Modal
         visible={taximeterVisible}
         transparent
@@ -695,251 +734,255 @@ export default function DashboardScreen() {
           }
         }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { padding: 24, borderRadius: 28, elevation: 12 }]}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="calculator" size={26} color={Colors.primary} />
-              <Text style={[styles.modalTitle, { fontSize: 20 }]}>Taxímetro Viaje Libre (SUTRAPPA)</Text>
+        <View style={styles.taximeterOverlay}>
+          <View style={styles.taximeterSheet}>
+            {/* Pull Bar */}
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.taximeterHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: '#0284C7' + '15', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="calculator" size={24} color={Colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.taximeterTitle}>Taxímetro SUTRAPPA</Text>
+                  <Text style={styles.taximeterSubtitle}>Modo Viaje Libre en Calle</Text>
+                </View>
+              </View>
+              {taximeterStep !== 'running' && (
+                <TouchableOpacity onPress={() => setTaximeterVisible(false)} style={styles.closeTaximeterBtn}>
+                  <Ionicons name="close" size={22} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
             </View>
 
-            {taximeterStep === 'idle' && (
-              <View style={{ width: '100%', gap: 14, alignItems: 'center' }}>
-                <Text style={[styles.modalSubtitle, { fontSize: 13, textAlign: 'center' }]}>
-                  Iniciá un viaje en calle calculando la tarifa oficial según la ordenanza municipal vigente:
-                </Text>
-                
-                <View style={[styles.taxiRateBox, { width: '100%', padding: 14, borderRadius: 16 }]}>
-                  <View style={styles.taxiRateRow}>
-                    <Text style={styles.taxiRateLabel}>Bajada de Bandera:</Text>
-                    <Text style={styles.taxiRateValue}>$300.00 ARS</Text>
-                  </View>
-                  <View style={styles.taxiRateRow}>
-                    <Text style={styles.taxiRateLabel}>Valor por Kilómetro:</Text>
-                    <Text style={styles.taxiRateValue}>$180.00 ARS</Text>
-                  </View>
-                  <View style={styles.taxiRateRow}>
-                    <Text style={styles.taxiRateLabel}>Valor por Minuto:</Text>
-                    <Text style={styles.taxiRateValue}>$50.00 ARS</Text>
-                  </View>
-                </View>
-
-                {/* Datos del Pasajero para Recibo Opcional */}
-                <View style={{ width: '100%', gap: 6, marginTop: 4 }}>
-                  <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Bold', color: '#64748B' }}>
-                    Email del Pasajero (Para Recibo Digital):
-                  </Text>
-                  <TextInput
-                    style={[styles.formInput, { height: 46, fontSize: 13 }]}
-                    placeholder="pasajero@gmail.com (Opcional)"
-                    placeholderTextColor={Colors.textMuted}
-                    value={freeTripPassengerEmail}
-                    onChangeText={setFreeTripPassengerEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                {/* Botón Gigante Iniciar Viaje (Verde Separado) */}
-                <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', height: 72, backgroundColor: '#16A34A', justifyContent: 'center', alignItems: 'center', marginTop: 16, borderRadius: 20, elevation: 6, shadowColor: '#16A34A', shadowOpacity: 0.35, shadowOffset: { width: 0, height: 4 } }]}
-                  onPress={() => setTaximeterStep('running')}
-                  activeOpacity={0.85}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="play-circle" size={32} color={Colors.white} style={{ marginRight: 10 }} />
-                    <Text style={[styles.saveFormText, { fontSize: 20, fontWeight: '900', letterSpacing: 0.8 }]}>INICIAR VIAJE LIBRE</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.cancelFormBtn, { width: '100%', height: 48, justifyContent: 'center', marginTop: 16 }]}
-                  onPress={() => setTaximeterVisible(false)}
-                >
-                  <Text style={[styles.cancelFormText, { fontSize: 15 }]}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {taximeterStep === 'running' && (
-              <View style={{ width: '100%', gap: 16, alignItems: 'center' }}>
-                <View style={[styles.taxiLiveDisplay, { paddingVertical: 24, width: '100%', borderRadius: 20 }]}>
-                  <Text style={[styles.taxiLiveFare, { fontSize: 50, color: '#15803D' }]}>${taxiFare} ARS</Text>
-                  <Text style={[styles.taxiLiveFareLabel, { fontSize: 13 }]}>Tarifa Acumulada en Vivo (SUTRAPPA)</Text>
-                </View>
-
-                <View style={[styles.taxiLiveStats, { width: '100%' }]}>
-                  <View style={styles.taxiLiveStatItem}>
-                    <Ionicons name="time-outline" size={28} color={Colors.primary} />
-                    <Text style={[styles.taxiLiveStatVal, { fontSize: 20 }]}>{formatTaxiTime(taxiSeconds)}</Text>
-                    <Text style={styles.taxiLiveStatLabel}>Tiempo</Text>
-                  </View>
-                  <View style={styles.taxiLiveStatDivider} />
-                  <View style={styles.taxiLiveStatItem}>
-                    <Ionicons name="speedometer-outline" size={28} color={Colors.accent} />
-                    <Text style={[styles.taxiLiveStatVal, { fontSize: 20 }]}>{taxiDistance.toFixed(2)} km</Text>
-                    <Text style={styles.taxiLiveStatLabel}>Distancia</Text>
-                  </View>
-                </View>
-
-                {/* Botón Gigante Finalizar Viaje (Rojo Separado) */}
-                <TouchableOpacity 
-                  style={[styles.saveFormBtn, { width: '100%', height: 76, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center', marginTop: 28, borderRadius: 20, elevation: 8, shadowColor: '#DC2626', shadowOpacity: 0.4, shadowOffset: { width: 0, height: 6 } }]}
-                  onPress={() => setTaximeterStep('summary')}
-                  activeOpacity={0.85}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="stop-circle" size={34} color={Colors.white} style={{ marginRight: 10 }} />
-                    <Text style={[styles.saveFormText, { fontSize: 21, fontWeight: '900', letterSpacing: 0.8 }]}>FINALIZAR VIAJE</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {taximeterStep === 'summary' && (
-              <View style={{ width: '100%', gap: 12, alignItems: 'center' }}>
-                <Text style={[styles.modalSubtitle, { fontSize: 14, textAlign: 'center' }]}>Detalle del viaje libre completado:</Text>
-
-                <View style={[styles.taxiRateBox, { width: '100%', padding: 14, borderRadius: 16 }]}>
-                  <View style={styles.taxiRateRow}>
-                    <Text style={styles.taxiRateLabel}>Bajada de Bandera:</Text>
-                    <Text style={styles.taxiRateValue}>$300 ARS</Text>
-                  </View>
-                  <View style={styles.taxiRateRow}>
-                    <Text style={styles.taxiRateLabel}>Distancia ({taxiDistance.toFixed(2)} km):</Text>
-                    <Text style={styles.taxiRateValue}>${Math.round(taxiDistance * 180)} ARS</Text>
-                  </View>
-                  <View style={styles.taxiRateRow}>
-                    <Text style={styles.taxiRateLabel}>Tiempo ({formatTaxiTime(taxiSeconds)}):</Text>
-                    <Text style={styles.taxiRateValue}>${Math.round((taxiSeconds / 60) * 50)} ARS</Text>
-                  </View>
-                  <View style={[styles.taxiRateRow, { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 8, marginTop: 4 }]}>
-                    <Text style={[styles.taxiRateLabel, { fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, fontSize: 18 }]}>Total a Cobrar:</Text>
-                    <Text style={[styles.taxiRateValue, { fontFamily: 'Quicksand-Bold', color: Colors.success, fontSize: 24 }]}>${taxiFare} ARS</Text>
-                  </View>
-                </View>
-
-                {/* Campos opcionales para enviar recibo */}
-                <View style={{ width: '100%', gap: 8, marginTop: 4 }}>
-                  <TextInput
-                    style={[styles.formInput, { height: 44, fontSize: 13 }]}
-                    placeholder="Email pasajero (ej. usuario@gmail.com)"
-                    placeholderTextColor={Colors.textMuted}
-                    value={freeTripPassengerEmail}
-                    onChangeText={setFreeTripPassengerEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  <TextInput
-                    style={[styles.formInput, { height: 44, fontSize: 13 }]}
-                    placeholder="WhatsApp pasajero (ej. 3814123456)"
-                    placeholderTextColor={Colors.textMuted}
-                    value={freeTripPassengerPhone}
-                    onChangeText={setFreeTripPassengerPhone}
-                    keyboardType="phone-pad"
-                  />
-                </View>
-
-                {/* Opciones de Recibo Digital (Email o WhatsApp con Link de descarga) */}
-                <View style={{ width: '100%', gap: 10, marginTop: 6 }}>
-                  {/* Botón WhatsApp */}
-                  <TouchableOpacity 
-                    style={[styles.saveFormBtn, { width: '100%', height: 52, backgroundColor: '#25D366', justifyContent: 'center', alignItems: 'center', borderRadius: 14 }]}
-                    onPress={async () => {
-                      const receiptMsg = 
-                        `🧾 *RECIBO OFICIAL DE VIAJE - TRAVELAPP*\n\n` +
-                        `🚗 *Conductor:* ${user?.displayName || 'Conductor TravelCab'}\n` +
-                        `💰 *Total:* $${taxiFare} ARS\n` +
-                        `⏱️ *Tiempo:* ${formatTaxiTime(taxiSeconds)} | 📏 *Distancia:* ${taxiDistance.toFixed(2)} km\n` +
-                        `📍 *Servicio:* Viaje Libre / SUTRAPPA\n` +
-                        `📅 *Fecha:* ${new Date().toLocaleDateString('es-AR')}\n\n` +
-                        `📲 *Descargá TravelApp en tu celular para pedir tu próximo viaje:* \n` +
-                        `👉 https://travelapp.ar/descargar`;
-
-                      if (freeTripPassengerPhone) {
-                        const cleanPhone = freeTripPassengerPhone.replace(/\D/g, '');
-                        Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(receiptMsg)}`).catch(() => {
-                          Share.share({ message: receiptMsg });
-                        });
-                      } else {
-                        Linking.openURL(`https://wa.me/?text=${encodeURIComponent(receiptMsg)}`).catch(() => {
-                          Share.share({ message: receiptMsg });
-                        });
-                      }
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons name="logo-whatsapp" size={20} color={Colors.white} style={{ marginRight: 8 }} />
-                      <Text style={[styles.saveFormText, { fontSize: 15, fontWeight: '700' }]}>Enviar Recibo por WhatsApp</Text>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 32, paddingTop: 4 }}
+            >
+              {taximeterStep === 'idle' && (
+                <View style={{ width: '100%', gap: 16 }}>
+                  <View style={styles.taxiRateCard}>
+                    <Text style={styles.rateCardTitle}>Tarifario Municipal Oficial</Text>
+                    <View style={styles.taxiRateRow}>
+                      <Text style={styles.taxiRateLabel}>Bajada de Bandera:</Text>
+                      <Text style={styles.taxiRateValue}>$300.00 ARS</Text>
                     </View>
+                    <View style={styles.taxiRateRow}>
+                      <Text style={styles.taxiRateLabel}>Valor por Kilómetro:</Text>
+                      <Text style={styles.taxiRateValue}>$180.00 ARS</Text>
+                    </View>
+                    <View style={styles.taxiRateRow}>
+                      <Text style={styles.taxiRateLabel}>Valor por Minuto:</Text>
+                      <Text style={styles.taxiRateValue}>$50.00 ARS</Text>
+                    </View>
+                  </View>
+
+                  {/* Datos del Pasajero para Recibo Opcional */}
+                  <View style={{ width: '100%', gap: 6 }}>
+                    <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Bold', color: '#64748B' }}>
+                      Email del Pasajero (Para Recibo Digital Opcional):
+                    </Text>
+                    <TextInput
+                      style={styles.taximeterInput}
+                      placeholder="pasajero@gmail.com (Opcional)"
+                      placeholderTextColor={Colors.textMuted}
+                      value={freeTripPassengerEmail}
+                      onChangeText={setFreeTripPassengerEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+
+                  {/* Botón Gigante Iniciar Viaje (Verde) */}
+                  <TouchableOpacity 
+                    style={styles.btnStartFreeTrip}
+                    onPress={() => setTaximeterStep('running')}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="play-circle" size={32} color={Colors.white} style={{ marginRight: 10 }} />
+                    <Text style={styles.btnStartFreeTripText}>INICIAR VIAJE LIBRE</Text>
                   </TouchableOpacity>
 
-                  {/* Botón Email */}
-                  {freeTripPassengerEmail ? (
+                  <TouchableOpacity 
+                    style={styles.btnCancelFreeTrip}
+                    onPress={() => setTaximeterVisible(false)}
+                  >
+                    <Text style={styles.btnCancelFreeTripText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {taximeterStep === 'running' && (
+                <View style={{ width: '100%', gap: 18, alignItems: 'center' }}>
+                  <View style={styles.taxiLiveBigBox}>
+                    <Text style={styles.taxiLiveBigFare}>${taxiFare} ARS</Text>
+                    <Text style={styles.taxiLiveBigSub}>Tarifa Acumulada en Vivo</Text>
+                  </View>
+
+                  <View style={styles.taxiLiveStatsRow}>
+                    <View style={styles.taxiStatCard}>
+                      <Ionicons name="time-outline" size={26} color={Colors.primary} />
+                      <Text style={styles.taxiStatCardVal}>{formatTaxiTime(taxiSeconds)}</Text>
+                      <Text style={styles.taxiStatCardLabel}>Tiempo</Text>
+                    </View>
+                    <View style={styles.taxiStatCard}>
+                      <Ionicons name="speedometer-outline" size={26} color={Colors.accent} />
+                      <Text style={styles.taxiStatCardVal}>{taxiDistance.toFixed(2)} km</Text>
+                      <Text style={styles.taxiStatCardLabel}>Distancia</Text>
+                    </View>
+                  </View>
+
+                  {/* Botón Gigante Finalizar Viaje (Rojo) */}
+                  <TouchableOpacity 
+                    style={styles.btnStopFreeTrip}
+                    onPress={() => setTaximeterStep('summary')}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="stop-circle" size={34} color={Colors.white} style={{ marginRight: 10 }} />
+                    <Text style={styles.btnStopFreeTripText}>FINALIZAR VIAJE</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {taximeterStep === 'summary' && (
+                <View style={{ width: '100%', gap: 14 }}>
+                  <View style={styles.taxiSummaryBox}>
+                    <Text style={styles.summaryTitle}>Resumen del Viaje Finalizado</Text>
+                    <View style={styles.taxiRateRow}>
+                      <Text style={styles.taxiRateLabel}>Bajada de Bandera:</Text>
+                      <Text style={styles.taxiRateValue}>$300 ARS</Text>
+                    </View>
+                    <View style={styles.taxiRateRow}>
+                      <Text style={styles.taxiRateLabel}>Distancia ({taxiDistance.toFixed(2)} km):</Text>
+                      <Text style={styles.taxiRateValue}>${Math.round(taxiDistance * 180)} ARS</Text>
+                    </View>
+                    <View style={styles.taxiRateRow}>
+                      <Text style={styles.taxiRateLabel}>Tiempo ({formatTaxiTime(taxiSeconds)}):</Text>
+                      <Text style={styles.taxiRateValue}>${Math.round((taxiSeconds / 60) * 50)} ARS</Text>
+                    </View>
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>Total a Cobrar:</Text>
+                      <Text style={styles.totalVal}>${taxiFare} ARS</Text>
+                    </View>
+                  </View>
+
+                  {/* Inputs de Recibo */}
+                  <View style={{ width: '100%', gap: 8 }}>
+                    <TextInput
+                      style={styles.taximeterInput}
+                      placeholder="Email del pasajero (opcional)"
+                      placeholderTextColor={Colors.textMuted}
+                      value={freeTripPassengerEmail}
+                      onChangeText={setFreeTripPassengerEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                    <TextInput
+                      style={styles.taximeterInput}
+                      placeholder="WhatsApp del pasajero (ej. 3814123456)"
+                      placeholderTextColor={Colors.textMuted}
+                      value={freeTripPassengerPhone}
+                      onChangeText={setFreeTripPassengerPhone}
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+
+                  {/* Acciones de Recibo y Cobro */}
+                  <View style={{ gap: 10, marginTop: 4 }}>
                     <TouchableOpacity 
-                      style={[styles.saveFormBtn, { width: '100%', height: 50, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center', borderRadius: 14 }]}
-                      disabled={sendingReceipt}
+                      style={styles.btnReceiptWhatsApp}
                       onPress={async () => {
-                        setSendingReceipt(true);
-                        try {
-                          await fetch('https://travelapp-five-nu.vercel.app/api/receipt/send', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              passengerName: freeTripPassengerName || 'Pasajero',
-                              passengerEmail: freeTripPassengerEmail,
-                              passengerPhone: freeTripPassengerPhone,
-                              driverName: user?.displayName || 'Conductor TravelCab',
-                              origin: 'Viaje Libre SUTRAPPA',
-                              destination: 'Destino Final',
-                              totalFare: taxiFare,
-                              distanceKm: Number(taxiDistance.toFixed(2)),
-                              durationMinutes: Math.round(taxiSeconds / 60),
-                              paymentMethod: 'Efectivo',
-                              appDownloadUrl: 'https://travelapp.ar/descargar',
-                              breakdown: { baseFare: 300, distanceCost: Math.round(taxiDistance * 180), timeCost: Math.round((taxiSeconds / 60) * 50) }
-                            })
+                        const receiptMsg = 
+                          `🧾 *RECIBO OFICIAL DE VIAJE - TRAVELAPP*\n\n` +
+                          `🚗 *Conductor:* ${user?.displayName || 'Conductor TravelCab'}\n` +
+                          `💰 *Total:* $${taxiFare} ARS\n` +
+                          `⏱️ *Tiempo:* ${formatTaxiTime(taxiSeconds)} | 📏 *Distancia:* ${taxiDistance.toFixed(2)} km\n` +
+                          `📍 *Servicio:* Viaje Libre / SUTRAPPA\n` +
+                          `📅 *Fecha:* ${new Date().toLocaleDateString('es-AR')}\n\n` +
+                          `📲 *Descargá TravelApp en tu celular para pedir tu próximo viaje:* \n` +
+                          `👉 https://travelapp.ar/descargar`;
+
+                        if (freeTripPassengerPhone) {
+                          const cleanPhone = freeTripPassengerPhone.replace(/\D/g, '');
+                          Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(receiptMsg)}`).catch(() => {
+                            Share.share({ message: receiptMsg });
                           });
-                          Alert.alert('Recibo Enviado 📧', `Enviamos el comprobante digital con enlace de descarga a ${freeTripPassengerEmail}`);
-                        } catch (e) {
-                          console.warn('Error sending receipt:', e);
-                        } finally {
-                          setSendingReceipt(false);
+                        } else {
+                          Linking.openURL(`https://wa.me/?text=${encodeURIComponent(receiptMsg)}`).catch(() => {
+                            Share.share({ message: receiptMsg });
+                          });
                         }
                       }}
                     >
-                      {sendingReceipt ? (
-                        <ActivityIndicator color={Colors.white} />
-                      ) : (
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Ionicons name="mail" size={20} color={Colors.white} style={{ marginRight: 8 }} />
-                          <Text style={[styles.saveFormText, { fontSize: 15, fontWeight: '700' }]}>Enviar Recibo por Email</Text>
-                        </View>
-                      )}
+                      <Ionicons name="logo-whatsapp" size={20} color={Colors.white} style={{ marginRight: 8 }} />
+                      <Text style={styles.btnReceiptWhatsAppText}>Enviar Recibo por WhatsApp</Text>
                     </TouchableOpacity>
-                  ) : null}
 
-                  {/* Botón Cobrar y Finalizar */}
-                  <TouchableOpacity 
-                    style={[styles.saveFormBtn, { width: '100%', height: 58, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', borderRadius: 16, marginTop: 6, elevation: 4 }]}
-                    onPress={() => {
-                      setTodayEarnings(prev => prev + taxiFare);
-                      setTodayTrips(prev => prev + 1);
-                      setTaximeterVisible(false);
-                      setTaximeterStep('idle');
-                      setFreeTripPassengerEmail('');
-                      setFreeTripPassengerPhone('');
-                      setFreeTripPassengerName('');
-                      Alert.alert('Viaje Finalizado 🚖', `Cobro de $${taxiFare} ARS registrado exitosamente.`);
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {freeTripPassengerEmail ? (
+                      <TouchableOpacity 
+                        style={styles.btnReceiptEmail}
+                        disabled={sendingReceipt}
+                        onPress={async () => {
+                          setSendingReceipt(true);
+                          try {
+                            await fetch('https://travelapp-five-nu.vercel.app/api/receipt/send', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                passengerName: freeTripPassengerName || 'Pasajero',
+                                passengerEmail: freeTripPassengerEmail,
+                                passengerPhone: freeTripPassengerPhone,
+                                driverName: user?.displayName || 'Conductor TravelCab',
+                                origin: 'Viaje Libre SUTRAPPA',
+                                destination: 'Destino Final',
+                                totalFare: taxiFare,
+                                distanceKm: Number(taxiDistance.toFixed(2)),
+                                durationMinutes: Math.round(taxiSeconds / 60),
+                                paymentMethod: 'Efectivo',
+                                appDownloadUrl: 'https://travelapp.ar/descargar',
+                                breakdown: { baseFare: 300, distanceCost: Math.round(taxiDistance * 180), timeCost: Math.round((taxiSeconds / 60) * 50) }
+                              })
+                            });
+                            Alert.alert('Recibo Enviado 📧', `Enviamos el comprobante digital con enlace de descarga a ${freeTripPassengerEmail}`);
+                          } catch (e) {
+                            console.warn('Error sending receipt:', e);
+                          } finally {
+                            setSendingReceipt(false);
+                          }
+                        }}
+                      >
+                        {sendingReceipt ? (
+                          <ActivityIndicator color={Colors.white} />
+                        ) : (
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="mail" size={18} color={Colors.white} style={{ marginRight: 6 }} />
+                            <Text style={styles.btnReceiptEmailText}>Enviar Recibo por Email</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ) : null}
+
+                    <TouchableOpacity 
+                      style={styles.btnCollectAndFinish}
+                      onPress={() => {
+                        setTodayEarnings(prev => prev + taxiFare);
+                        setTodayTrips(prev => prev + 1);
+                        setTaximeterVisible(false);
+                        setTaximeterStep('idle');
+                        setFreeTripPassengerEmail('');
+                        setFreeTripPassengerPhone('');
+                        setFreeTripPassengerName('');
+                        Alert.alert('Viaje Finalizado 🚖', `Cobro de $${taxiFare} ARS registrado exitosamente.`);
+                      }}
+                    >
                       <Ionicons name="checkmark-circle" size={24} color={Colors.white} style={{ marginRight: 8 }} />
-                      <Text style={[styles.saveFormText, { fontSize: 17, fontWeight: '900' }]}>COBRAR Y FINALIZAR</Text>
-                    </View>
-                  </TouchableOpacity>
+                      <Text style={styles.btnCollectAndFinishText}>COBRAR Y FINALIZAR</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            )}
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1452,22 +1495,293 @@ const styles = StyleSheet.create({
   startScanText: { color: Colors.primary, fontSize: 11, fontFamily: 'Quicksand-Bold' },
   biometricFooterText: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textMuted },
   
-  // Taxímetro de viaje libre (Modo Taxi)
+  // Taxímetro de viaje libre (Modo Taxi Bottom Sheet)
   taximeterBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: '#0A2A5B', paddingVertical: 14, borderRadius: 12, marginTop: 14,
     width: '100%',
   },
   taximeterBtnText: { color: Colors.white, fontSize: 13, fontFamily: 'Quicksand-Bold' },
+  taximeterOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  taximeterSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+    maxHeight: height * 0.90,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  sheetHandle: {
+    width: 44,
+    height: 5,
+    backgroundColor: '#CBD5E1',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  taximeterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  taximeterTitle: {
+    fontSize: 18,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.textPrimary,
+  },
+  taximeterSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Quicksand-Regular',
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
+  closeTaximeterBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taxiRateCard: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  rateCardTitle: {
+    fontSize: 13,
+    fontFamily: 'Quicksand-Bold',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  taxiRateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  taxiRateLabel: { fontSize: 13, fontFamily: 'Quicksand-Medium', color: '#64748B' },
+  taxiRateValue: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: '#0F172A' },
+  taximeterInput: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 48,
+    fontSize: 14,
+    fontFamily: 'Quicksand-Regular',
+    color: Colors.textPrimary,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  btnStartFreeTrip: {
+    width: '100%',
+    height: 66,
+    backgroundColor: '#16A34A',
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    shadowColor: '#16A34A',
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  btnStartFreeTripText: {
+    fontSize: 18,
+    fontFamily: 'Quicksand-Bold',
+    fontWeight: '900',
+    color: Colors.white,
+    letterSpacing: 0.8,
+  },
+  btnCancelFreeTrip: {
+    width: '100%',
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnCancelFreeTripText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand-Bold',
+    color: '#64748B',
+  },
+  taxiLiveBigBox: {
+    width: '100%',
+    backgroundColor: '#ECFDF5',
+    borderRadius: 24,
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 2,
+    borderColor: '#A7F3D0',
+  },
+  taxiLiveBigFare: {
+    fontSize: 48,
+    fontFamily: 'Quicksand-Bold',
+    fontWeight: '900',
+    color: '#059669',
+    letterSpacing: 1,
+  },
+  taxiLiveBigSub: {
+    fontSize: 12,
+    fontFamily: 'Quicksand-Bold',
+    color: '#047857',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  taxiLiveStatsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  taxiStatCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  taxiStatCardVal: {
+    fontSize: 18,
+    fontFamily: 'Quicksand-Bold',
+    color: '#0F172A',
+  },
+  taxiStatCardLabel: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Medium',
+    color: '#64748B',
+  },
+  btnStopFreeTrip: {
+    width: '100%',
+    height: 72,
+    backgroundColor: '#DC2626',
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    shadowColor: '#DC2626',
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  btnStopFreeTripText: {
+    fontSize: 19,
+    fontFamily: 'Quicksand-Bold',
+    fontWeight: '900',
+    color: Colors.white,
+    letterSpacing: 0.8,
+  },
+  taxiSummaryBox: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontFamily: 'Quicksand-Bold',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1.5,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 10,
+    marginTop: 4,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontFamily: 'Quicksand-Bold',
+    color: '#0F172A',
+  },
+  totalVal: {
+    fontSize: 24,
+    fontFamily: 'Quicksand-Bold',
+    color: '#16A34A',
+  },
+  btnReceiptWhatsApp: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#25D366',
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnReceiptWhatsAppText: {
+    fontSize: 15,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.white,
+  },
+  btnReceiptEmail: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#2563EB',
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnReceiptEmailText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand-Bold',
+    color: Colors.white,
+  },
+  btnCollectAndFinish: {
+    width: '100%',
+    height: 56,
+    backgroundColor: '#059669',
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  btnCollectAndFinishText: {
+    fontSize: 16,
+    fontFamily: 'Quicksand-Bold',
+    fontWeight: '900',
+    color: Colors.white,
+    letterSpacing: 0.5,
+  },
   taxiRateBox: {
     width: '100%', backgroundColor: Colors.background, borderRadius: 16, padding: 16, gap: 10,
     borderWidth: 1.5, borderColor: Colors.border,
   },
-  taxiRateRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  taxiRateLabel: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
-  taxiRateValue: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
   taxiLiveDisplay: {
     width: '100%', backgroundColor: '#071428', borderRadius: 20, paddingVertical: 28,
     alignItems: 'center', justifyContent: 'center', gap: 6,
