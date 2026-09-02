@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
   TextInput, ActivityIndicator, Animated, ScrollView, Dimensions, Alert, Modal, Image, Linking, Platform, Vibration,
@@ -196,11 +196,52 @@ export default function HomeScreen() {
   const [driverDetails, setDriverDetails] = useState<any>(null);
   const [searchTimer, setSearchTimer] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
-
   // Categorías de Vehículos (Dinámicas de Firestore)
   const [categories, setCategories] = useState<any[]>([]);
+  const [allTariffs, setAllTariffs] = useState<any[]>([]);
 
-  // Datos del CMS y Rewards
+  // Categorías de Vehículos disponibles para el cliente (oculta las exclusivas de taxímetro / viaje libre)
+  const availableCategories = useMemo(() => {
+    const norm = (s: any) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    
+    return categories.filter(cat => {
+      const catNorm = norm(cat.name);
+      const catIdNorm = norm(cat.id);
+
+      // 1. Si existe un tarifario en Firestore con isFreeTripOnly === true que corresponda a esta categoría (o a Taxi), la ocultamos
+      const isFreeTripOnlyTariff = allTariffs.some(t => 
+        t.isFreeTripOnly === true && (
+          norm(t.category) === catNorm || 
+          norm(t.category) === catIdNorm || 
+          (catNorm.includes('taxi') && (norm(t.category).includes('taxi') || norm(t.name).includes('taxi') || norm(t.id).includes('taxi')))
+        )
+      );
+      if (isFreeTripOnlyTariff) return false;
+
+      // 2. Si hay tarifarios públicos configurados en Firestore pero ninguno público activo para Taxi, ocultar Taxi
+      if (activeTariffs.length > 0 && catNorm.includes('taxi')) {
+        const hasActivePublicTaxiTariff = activeTariffs.some(t => 
+          norm(t.category) === catNorm || 
+          norm(t.category) === catIdNorm || 
+          norm(t.category).includes('taxi') || 
+          norm(t.name).includes('taxi')
+        );
+        if (!hasActivePublicTaxiTariff) return false;
+      }
+
+      return true;
+    });
+  }, [categories, allTariffs, activeTariffs]);
+
+  // Si la categoría seleccionada ya no está disponible (ej. se activó modo taxímetro exclusivo), auto-seleccionar la primera disponible
+  useEffect(() => {
+    if (availableCategories.length > 0) {
+      const exists = availableCategories.some(c => c.name === selectedCategory);
+      if (!exists) {
+        setSelectedCategory(availableCategories[0].name);
+      }
+    }
+  }, [availableCategories, selectedCategory]);
   const [cmsBlocks, setCmsBlocks] = useState<CMSBlock[]>([]);
   const [rewardsBlocks, setRewardsBlocks] = useState<any[]>([]);
   const [rewardsList, setRewardsList] = useState<RewardItem[]>([]);
@@ -939,9 +980,9 @@ export default function HomeScreen() {
 
     // 6. Tarifarios activos sincronizados en tiempo real con el Dashboard Web
     const unsubTariffs = onSnapshot(collection(db, 'tariffs'), (snap) => {
-      const list = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }) as any)
-        .filter(t => t.isActive !== false && !t.id.endsWith('_active') && !t.isFreeTripOnly);
+      const rawList = snap.docs.map(d => ({ id: d.id, ...d.data() }) as any);
+      setAllTariffs(rawList);
+      const list = rawList.filter(t => t.isActive !== false && !t.id.endsWith('_active') && !t.isFreeTripOnly);
       setActiveTariffs(list);
     }, (err) => console.log("Error fetching active tariffs:", err));
 
@@ -1796,8 +1837,8 @@ export default function HomeScreen() {
               <Text style={styles.canvaPricingTitle}>Tarifa aproximada</Text>
               
               <View style={{ gap: 10 }}>
-                {categories.length > 0 ? (
-                  categories.slice(0, 4).map(cat => {
+                {availableCategories.length > 0 ? (
+                  availableCategories.slice(0, 4).map(cat => {
                     const isSelected = selectedCategory === cat.name;
                     const fare = calculateFare(cat.name);
                     const catLower = (cat.name || cat.id || '').toLowerCase();
