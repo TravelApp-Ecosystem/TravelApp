@@ -1799,7 +1799,7 @@ export default function HomeScreen() {
                   onPress={handleCompleteTrip}
                 >
                   <Text style={[styles.cancelTripBtnText, { color: Colors.success }]}>
-                    Finalizar Viaje (Simular Pago 1-Clic)
+                    Confirmar Llegada y Pagar
                   </Text>
                 </TouchableOpacity>
 
@@ -2828,19 +2828,6 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     )}
-
-                    <View style={[styles.testerCard, { marginTop: 24 }]}>
-                      <View style={styles.testerToggleRow}>
-                        <Text style={styles.testerToggleLabel}>🧪 Desactivar Simulación (Modo Tester)</Text>
-                        <Switch 
-                          value={hasPurchasedOrganizedTrip}
-                          onValueChange={(val) => handleSimulateTrip(val)}
-                          trackColor={{ false: '#CBD5E1', true: Colors.accent }}
-                          thumbColor={Colors.white}
-                        />
-                      </View>
-                    </View>
-
                   </View>
                 )}
               </View>

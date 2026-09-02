@@ -585,19 +585,19 @@ export default function CoordinatorHomeScreen() {
               <Text style={styles.modalTitle}>Asistencia / Abordaje Micro</Text>
             </View>
 
-            {/* Simulador de Escáner QR de Voucher */}
+            {/* Escáner / Entrada de Código QR de Voucher */}
             <View style={styles.simulatedQrBox}>
-              <Text style={styles.simulatedQrLabel}>Simular Escáner QR (Voucher Pasajero):</Text>
+              <Text style={styles.simulatedQrLabel}>Validación de Voucher / Código QR Pasajero:</Text>
               <View style={styles.simulatedQrRow}>
                 <TextInput
                   style={styles.simulatedQrInput}
-                  placeholder="Ej: trip_checkin:UID:TRIP_ID"
+                  placeholder="Código o escaneo: trip_checkin:UID:TRIP_ID"
                   value={simulatedQrInput}
                   onChangeText={setSimulatedQrInput}
                 />
                 <TouchableOpacity style={styles.simulatedQrBtn} onPress={handleSimulateQrScan}>
                   <Ionicons name="qr-code" size={16} color={Colors.white} />
-                  <Text style={styles.simulatedQrBtnText}>Escanear</Text>
+                  <Text style={styles.simulatedQrBtnText}>Validar</Text>
                 </TouchableOpacity>
               </View>
             </View>

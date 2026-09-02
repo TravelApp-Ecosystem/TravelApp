@@ -1718,11 +1718,11 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                     <div className="flex justify-between items-center bg-slate-100 p-3 rounded-xl">
                       <div className="text-left">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Distancia del Trayecto</span>
-                        <p className="text-sm font-extrabold text-slate-800">{distanceKm > 0 ? `${distanceKm} km` : 'Simulado'}</p>
+                        <p className="text-sm font-extrabold text-slate-800">{distanceKm > 0 ? `${distanceKm} km` : '--'}</p>
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Duración de Viaje</span>
-                        <p className="text-sm font-extrabold text-slate-800">{durationMin > 0 ? `${durationMin} min` : 'Simulado'}</p>
+                        <p className="text-sm font-extrabold text-slate-800">{durationMin > 0 ? `${durationMin} min` : '--'}</p>
                       </div>
                     </div>
 
@@ -2337,19 +2337,6 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                   </a>
                   
                   {/* Botón exclusivo de pruebas/desarrollo */}
-                  <button
-                    onClick={async () => {
-                      try {
-                        await updateDoc(doc(db, 'trips', searchingDriverModal.tripId), { paymentStatus: 'paid' });
-                      } catch (err) {
-                        console.error(err);
-                      }
-                    }}
-                    className="w-full bg-emerald-500 text-white font-black py-3 rounded-2xl hover:bg-emerald-600 transition-all text-center text-xs uppercase tracking-wider"
-                  >
-                    ⚡ Simular Aprobación de Pago (Dev)
-                  </button>
-
                   <button
                     onClick={async () => {
                       try {

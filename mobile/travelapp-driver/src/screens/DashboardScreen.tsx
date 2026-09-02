@@ -125,27 +125,97 @@ export default function DashboardScreen() {
     return unsub;
   }, []);
 
-  // Efecto del taxímetro digital activo con tarifas dinámicas de Firestore
+  // Efecto del taxímetro digital activo con GPS Real y tarifas dinámicas de Firestore
   useEffect(() => {
-    let interval: any = null;
+    let timerInterval: any = null;
+
     if (taximeterStep === 'running') {
-      interval = setInterval(() => {
-        setTaxiSeconds(prev => {
-          const nextSecs = prev + 1;
-          setTaxiDistance(dist => {
-            const nextDist = dist + 0.015; // 0.015 km por segundo
-            const base = freeTripTariff.baseFare;
-            const distCost = nextDist * freeTripTariff.pricePerKm;
-            const timeCost = (nextSecs / 60.0) * freeTripTariff.travelMinutePrice;
-            setTaxiFare(Math.round(base + distCost + timeCost));
-            return nextDist;
-          });
-          return nextSecs;
-        });
+      // 1. Contador de tiempo por segundo (tiempo de viaje / espera)
+      timerInterval = setInterval(() => {
+        setTaxiSeconds(prev => prev + 1);
       }, 1000);
+
+      // 2. Rastreo GPS de alta precisión en tiempo real
+      const startTaximeterGps = async () => {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const currentPos = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+            }).catch(() => null);
+
+            if (currentPos) {
+              lastTaximeterLocation.current = {
+                latitude: currentPos.coords.latitude,
+                longitude: currentPos.coords.longitude,
+              };
+            }
+
+            const watcher = await Location.watchPositionAsync(
+              {
+                accuracy: Location.Accuracy.High,
+                timeInterval: 2000,
+                distanceInterval: 4, // Actualizar cada 4 metros de desplazamiento real
+              },
+              (loc) => {
+                if (lastTaximeterLocation.current) {
+                  const deltaKm = calculateDistanceKm(
+                    lastTaximeterLocation.current.latitude,
+                    lastTaximeterLocation.current.longitude,
+                    loc.coords.latitude,
+                    loc.coords.longitude
+                  );
+
+                  // Filtrar jitter / ruido de GPS (solo si recorrió entre 4 metros y 500 metros por lectura)
+                  if (deltaKm >= 0.004 && deltaKm <= 0.5) {
+                    setTaxiDistance(prev => Number((prev + deltaKm).toFixed(3)));
+                    lastTaximeterLocation.current = {
+                      latitude: loc.coords.latitude,
+                      longitude: loc.coords.longitude,
+                    };
+                  }
+                } else {
+                  lastTaximeterLocation.current = {
+                    latitude: loc.coords.latitude,
+                    longitude: loc.coords.longitude,
+                  };
+                }
+              }
+            );
+            taximeterWatcher.current = watcher;
+          }
+        } catch (err) {
+          console.log('Error starting taximeter GPS watcher:', err);
+        }
+      };
+
+      startTaximeterGps();
+    } else {
+      if (taximeterWatcher.current) {
+        taximeterWatcher.current.remove();
+        taximeterWatcher.current = null;
+      }
+      lastTaximeterLocation.current = null;
     }
-    return () => clearInterval(interval);
-  }, [taximeterStep, freeTripTariff]);
+
+    return () => {
+      if (timerInterval) clearInterval(timerInterval);
+      if (taximeterWatcher.current) {
+        taximeterWatcher.current.remove();
+        taximeterWatcher.current = null;
+      }
+    };
+  }, [taximeterStep]);
+
+  // Recalcular tarifa acumulada del taxímetro en vivo según tiempo, distancia real por GPS y tarifario
+  useEffect(() => {
+    if (taximeterStep === 'running') {
+      const base = freeTripTariff.baseFare;
+      const distCost = taxiDistance * freeTripTariff.pricePerKm;
+      const timeCost = (taxiSeconds / 60.0) * freeTripTariff.travelMinutePrice;
+      setTaxiFare(Math.max(base, Math.round(base + distCost + timeCost)));
+    }
+  }, [taxiSeconds, taxiDistance, freeTripTariff, taximeterStep]);
 
   // Timer de inactividad activa en pantalla
   useEffect(() => {
@@ -257,6 +327,23 @@ export default function DashboardScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const slideMenuAnim = useRef(new Animated.Value(-width * 0.75)).current;
   const locationInterval = useRef<any>(null);
+  const lastTaximeterLocation = useRef<{ latitude: number; longitude: number } | null>(null);
+  const taximeterWatcher = useRef<any>(null);
+
+  // Cálculo de distancia Geodésica (Haversine) para el Taxímetro Real por GPS
+  const calculateDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radio terrestre en km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
 
   const user = auth.currentUser;
 
@@ -843,7 +930,13 @@ export default function DashboardScreen() {
                   {/* Botón Gigante Iniciar Viaje (Verde) */}
                   <TouchableOpacity 
                     style={styles.btnStartFreeTrip}
-                    onPress={() => setTaximeterStep('running')}
+                    onPress={() => {
+                      setTaxiSeconds(0);
+                      setTaxiDistance(0);
+                      setTaxiFare(freeTripTariff.baseFare);
+                      lastTaximeterLocation.current = null;
+                      setTaximeterStep('running');
+                    }}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="play-circle" size={32} color={Colors.white} style={{ marginRight: 10 }} />
