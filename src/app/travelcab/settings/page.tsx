@@ -861,6 +861,11 @@ export default function TravelCabSettingsPage() {
                                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-200 text-slate-800 uppercase tracking-wider">
                                       Cat: {t.category || 'Estándar'}
                                     </span>
+                                    {(t as any).isFreeTripOnly && (
+                                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white uppercase tracking-wider shadow-sm">
+                                        🚕 Exclusivo Taxímetro
+                                      </span>
+                                    )}
                                   </div>
                                   <h3 className="text-lg font-bold text-tech-blue pt-1">{t.name}</h3>
                                 </div>
@@ -1278,6 +1283,11 @@ export default function TravelCabSettingsPage() {
                                         <span className="text-[9px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded uppercase">
                                           Cat: {t.category}
                                         </span>
+                                        {t.isFreeTripOnly && (
+                                          <span className="text-[9px] font-black bg-amber-500 text-white px-2 py-0.5 rounded uppercase">
+                                            🚕 Exclusivo Taxímetro
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                     {t.isActive && (

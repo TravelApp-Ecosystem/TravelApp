@@ -50,6 +50,19 @@ export default function DashboardScreen() {
   const [taxiSeconds, setTaxiSeconds] = useState(0);
   const [taxiDistance, setTaxiDistance] = useState(0.0);
   const [taxiFare, setTaxiFare] = useState(300.0);
+  const [freeTripTariff, setFreeTripTariff] = useState<{
+    baseFare: number;
+    pricePerKm: number;
+    travelMinutePrice: number;
+    waitMinutePrice: number;
+    name: string;
+  }>({
+    baseFare: 300,
+    pricePerKm: 180,
+    travelMinutePrice: 50,
+    waitMinutePrice: 50,
+    name: 'Tarifario Municipal Oficial'
+  });
   const [referralPassengerBonus, setReferralPassengerBonus] = useState(1500);
   const [referralDriverBonus, setReferralDriverBonus] = useState(2000);
   const [freeTripPassengerEmail, setFreeTripPassengerEmail] = useState('');
@@ -59,6 +72,39 @@ export default function DashboardScreen() {
 
   const appState = useRef(AppState.currentState);
   const [lastBackgroundTime, setLastBackgroundTime] = useState<number | null>(null);
+
+  // Escuchar tarifario exclusivo de viaje libre / taxímetro desde Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'tariffs'), (snap) => {
+      const allTariffs = snap.docs.map(d => ({ id: d.id, ...d.data() }) as any);
+      // Buscar primero el tarifario marcado como isFreeTripOnly activo
+      let taxiTariff = allTariffs.find(t => t.isActive !== false && t.isFreeTripOnly);
+      // Fallback: buscar uno con categoría 'taxi' o nombre 'taxi' / 'sutrappa'
+      if (!taxiTariff) {
+        taxiTariff = allTariffs.find(t => t.isActive !== false && (
+          t.category?.toLowerCase() === 'taxi' || 
+          t.id?.toLowerCase().includes('taxi') || 
+          t.name?.toLowerCase().includes('taxi') ||
+          t.name?.toLowerCase().includes('sutrappa')
+        ));
+      }
+
+      if (taxiTariff) {
+        const base = Number(taxiTariff.baseFare) || 300;
+        const km = Number(taxiTariff.pricePerKm) || 180;
+        const min = Number(taxiTariff.travelMinutePrice || taxiTariff.waitMinutePrice) || 50;
+        setFreeTripTariff({
+          baseFare: base,
+          pricePerKm: km,
+          travelMinutePrice: min,
+          waitMinutePrice: Number(taxiTariff.waitMinutePrice) || min,
+          name: taxiTariff.name || 'Tarifario Municipal Oficial'
+        });
+      }
+    }, (err) => console.log('Error fetching free trip tariff in driver app:', err));
+
+    return unsub;
+  }, []);
 
   // Escuchar configuración de seguridad de Firestore
   useEffect(() => {
@@ -79,7 +125,7 @@ export default function DashboardScreen() {
     return unsub;
   }, []);
 
-  // Efecto del taxímetro digital activo
+  // Efecto del taxímetro digital activo con tarifas dinámicas de Firestore
   useEffect(() => {
     let interval: any = null;
     if (taximeterStep === 'running') {
@@ -88,9 +134,9 @@ export default function DashboardScreen() {
           const nextSecs = prev + 1;
           setTaxiDistance(dist => {
             const nextDist = dist + 0.015; // 0.015 km por segundo
-            const base = 300.0;
-            const distCost = nextDist * 180.0;
-            const timeCost = (nextSecs / 60.0) * 50.0;
+            const base = freeTripTariff.baseFare;
+            const distCost = nextDist * freeTripTariff.pricePerKm;
+            const timeCost = (nextSecs / 60.0) * freeTripTariff.travelMinutePrice;
             setTaxiFare(Math.round(base + distCost + timeCost));
             return nextDist;
           });
@@ -99,7 +145,7 @@ export default function DashboardScreen() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [taximeterStep]);
+  }, [taximeterStep, freeTripTariff]);
 
   // Timer de inactividad activa en pantalla
   useEffect(() => {
@@ -712,7 +758,7 @@ export default function DashboardScreen() {
               setTaximeterStep('idle');
               setTaxiSeconds(0);
               setTaxiDistance(0.0);
-              setTaxiFare(300.0);
+              setTaxiFare(freeTripTariff.baseFare);
               setTaximeterVisible(true);
             }}
             activeOpacity={0.85}
@@ -763,18 +809,18 @@ export default function DashboardScreen() {
               {taximeterStep === 'idle' && (
                 <View style={{ width: '100%', gap: 16 }}>
                   <View style={styles.taxiRateCard}>
-                    <Text style={styles.rateCardTitle}>Tarifario Municipal Oficial</Text>
+                    <Text style={styles.rateCardTitle}>{freeTripTariff.name}</Text>
                     <View style={styles.taxiRateRow}>
                       <Text style={styles.taxiRateLabel}>Bajada de Bandera:</Text>
-                      <Text style={styles.taxiRateValue}>$300.00 ARS</Text>
+                      <Text style={styles.taxiRateValue}>${freeTripTariff.baseFare.toFixed(2)} ARS</Text>
                     </View>
                     <View style={styles.taxiRateRow}>
                       <Text style={styles.taxiRateLabel}>Valor por Kilómetro:</Text>
-                      <Text style={styles.taxiRateValue}>$180.00 ARS</Text>
+                      <Text style={styles.taxiRateValue}>${freeTripTariff.pricePerKm.toFixed(2)} ARS</Text>
                     </View>
                     <View style={styles.taxiRateRow}>
                       <Text style={styles.taxiRateLabel}>Valor por Minuto:</Text>
-                      <Text style={styles.taxiRateValue}>$50.00 ARS</Text>
+                      <Text style={styles.taxiRateValue}>${freeTripTariff.travelMinutePrice.toFixed(2)} ARS</Text>
                     </View>
                   </View>
 
@@ -851,15 +897,15 @@ export default function DashboardScreen() {
                     <Text style={styles.summaryTitle}>Resumen del Viaje Finalizado</Text>
                     <View style={styles.taxiRateRow}>
                       <Text style={styles.taxiRateLabel}>Bajada de Bandera:</Text>
-                      <Text style={styles.taxiRateValue}>$300 ARS</Text>
+                      <Text style={styles.taxiRateValue}>${freeTripTariff.baseFare} ARS</Text>
                     </View>
                     <View style={styles.taxiRateRow}>
                       <Text style={styles.taxiRateLabel}>Distancia ({taxiDistance.toFixed(2)} km):</Text>
-                      <Text style={styles.taxiRateValue}>${Math.round(taxiDistance * 180)} ARS</Text>
+                      <Text style={styles.taxiRateValue}>${Math.round(taxiDistance * freeTripTariff.pricePerKm)} ARS</Text>
                     </View>
                     <View style={styles.taxiRateRow}>
                       <Text style={styles.taxiRateLabel}>Tiempo ({formatTaxiTime(taxiSeconds)}):</Text>
-                      <Text style={styles.taxiRateValue}>${Math.round((taxiSeconds / 60) * 50)} ARS</Text>
+                      <Text style={styles.taxiRateValue}>${Math.round((taxiSeconds / 60) * freeTripTariff.travelMinutePrice)} ARS</Text>
                     </View>
                     <View style={styles.totalRow}>
                       <Text style={styles.totalLabel}>Total a Cobrar:</Text>
@@ -941,7 +987,11 @@ export default function DashboardScreen() {
                                 durationMinutes: Math.round(taxiSeconds / 60),
                                 paymentMethod: 'Efectivo',
                                 appDownloadUrl: 'https://travelapp.ar/descargar',
-                                breakdown: { baseFare: 300, distanceCost: Math.round(taxiDistance * 180), timeCost: Math.round((taxiSeconds / 60) * 50) }
+                                breakdown: { 
+                                  baseFare: freeTripTariff.baseFare, 
+                                  distanceCost: Math.round(taxiDistance * freeTripTariff.pricePerKm), 
+                                  timeCost: Math.round((taxiSeconds / 60) * freeTripTariff.travelMinutePrice) 
+                                }
                               })
                             });
                             Alert.alert('Recibo Enviado 📧', `Enviamos el comprobante digital con enlace de descarga a ${freeTripPassengerEmail}`);

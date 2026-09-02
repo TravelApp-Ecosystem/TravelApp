@@ -6,7 +6,7 @@ import {
   Mail, Phone, User, ShieldCheck, CreditCard, Banknote,
   QrCode, AlertCircle, RefreshCw, Send, Check
 } from 'lucide-react';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { MUTariff } from '@/types/logistics';
 
@@ -51,15 +51,47 @@ export const FreeTripTaximeter: React.FC<FreeTripTaximeterProps> = ({ onTripComp
   const [destinationAddress, setDestinationAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Efectivo' | 'Mercado Pago QR' | 'Tarjeta Débito/Crédito'>('Efectivo');
 
-  // Tarifas configuradas
-  const [baseFare, setBaseFare] = useState(1200);        // Bajada de bandera
-  const [pricePerKm, setPricePerKm] = useState(480);       // Precio por Km
-  const [pricePerMinute, setPricePerMinute] = useState(120); // Precio por Minuto
+  // Tarifas configuradas dinámicamente desde Firestore
+  const [baseFare, setBaseFare] = useState(300);          // Bajada de bandera
+  const [pricePerKm, setPricePerKm] = useState(180);        // Precio por Km
+  const [pricePerMinute, setPricePerMinute] = useState(50); // Precio por Minuto
+  const [tariffName, setTariffName] = useState('Tarifario Municipal Oficial');
+
+  // Escuchar tarifario exclusivo de viaje libre desde Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'tariffs'), (snap) => {
+      const allTariffs = snap.docs.map(d => ({ id: d.id, ...d.data() }) as any);
+      let taxiTariff = allTariffs.find(t => t.isActive !== false && t.isFreeTripOnly);
+      if (!taxiTariff) {
+        taxiTariff = allTariffs.find(t => t.isActive !== false && (
+          t.category?.toLowerCase() === 'taxi' || 
+          t.id?.toLowerCase().includes('taxi') || 
+          t.name?.toLowerCase().includes('taxi') ||
+          t.name?.toLowerCase().includes('sutrappa')
+        ));
+      }
+
+      if (taxiTariff) {
+        const base = Number(taxiTariff.baseFare) || 300;
+        const km = Number(taxiTariff.pricePerKm) || 180;
+        const min = Number(taxiTariff.travelMinutePrice || taxiTariff.waitMinutePrice) || 50;
+        setBaseFare(base);
+        setPricePerKm(km);
+        setPricePerMinute(min);
+        setTariffName(taxiTariff.name || 'Tarifario Municipal Oficial');
+        if (tripState === 'idle') {
+          setCurrentFare(base);
+        }
+      }
+    }, (err) => console.log('Error fetching free trip tariff in web taximeter:', err));
+
+    return () => unsub();
+  }, [tripState]);
 
   // Taxímetro en Tiempo Real
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [distanceKm, setDistanceKm] = useState(0);
-  const [currentFare, setCurrentFare] = useState(1200);
+  const [currentFare, setCurrentFare] = useState(300);
 
   // Estados de Recibo Digital
   const [sendingReceipt, setSendingReceipt] = useState(false);

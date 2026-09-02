@@ -42,6 +42,7 @@ export const MUTariffForm: React.FC<MUTariffFormProps> = ({ editData, onSubmitSu
     commissionRate: 15,
     weeklyMembership: 5000,
     specialRates: [],
+    isFreeTripOnly: false,
   });
 
   // Cargar categorías y sucursales dinámicas en tiempo real
@@ -89,6 +90,7 @@ export const MUTariffForm: React.FC<MUTariffFormProps> = ({ editData, onSubmitSu
         commissionRate: editData.commissionRate ?? 15,
         weeklyMembership: editData.weeklyMembership ?? 5000,
         specialRates: editData.specialRates ?? [],
+        isFreeTripOnly: editData.isFreeTripOnly ?? false,
       });
     } else {
       setFormData({
@@ -116,6 +118,7 @@ export const MUTariffForm: React.FC<MUTariffFormProps> = ({ editData, onSubmitSu
         commissionRate: 15,
         weeklyMembership: 5000,
         specialRates: [],
+        isFreeTripOnly: false,
       });
     }
   }, [editData]);
@@ -192,6 +195,7 @@ export const MUTariffForm: React.FC<MUTariffFormProps> = ({ editData, onSubmitSu
         specialRates: formData.specialRates || [],
         type: 'mu',
         isActive: formData.isActive ?? true,
+        isFreeTripOnly: !!formData.isFreeTripOnly,
         id: finalId,
       };
 
@@ -254,6 +258,36 @@ export const MUTariffForm: React.FC<MUTariffFormProps> = ({ editData, onSubmitSu
               ))}
             </select>
           </div>
+        </div>
+
+        {/* SWITCH: MODO EXCLUSIVO TAXÍMETRO / VIAJE LIBRE */}
+        <div className={`p-4 rounded-xl border transition-all flex items-start justify-between gap-4 ${
+          formData.isFreeTripOnly 
+            ? 'border-amber-400 bg-amber-50/80 shadow-sm' 
+            : 'border-slate-200 bg-slate-50/50'
+        }`}>
+          <div className="space-y-1 pr-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black text-slate-800">🚕 Modo Exclusivo Taxímetro / Viaje Libre (SUTRAPPA)</span>
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                formData.isFreeTripOnly ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {formData.isFreeTripOnly ? 'ACTIVO · EXCLUSIVO TAXÍMETRO' : 'DESACTIVADO'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Al activar esta opción, este tarifario <strong>alimentará en tiempo real el Taxímetro de la App Conductor</strong> y quedará <strong>oculto para los clientes</strong> (no podrán solicitar viajes con esta tarifa desde la app de pasajeros).
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+            <input 
+              type="checkbox"
+              checked={!!formData.isFreeTripOnly}
+              onChange={(e) => setFormData({ ...formData, isFreeTripOnly: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+          </label>
         </div>
 
         {/* Selector de Sucursales Asignadas */}

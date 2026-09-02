@@ -73,6 +73,7 @@ export interface MUTariff {
   weeklyMembership: number;     // Membresía Semanal $ (ej: 5000)
   specialRates?: TariffSpecialRate[];
   isActive?: boolean;
+  isFreeTripOnly?: boolean;     // Si es true, es exclusivo para el taxímetro de viaje libre y no se muestra a pasajeros
   type?: 'mu';
 }
 

@@ -941,7 +941,7 @@ export default function HomeScreen() {
     const unsubTariffs = onSnapshot(collection(db, 'tariffs'), (snap) => {
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() }) as any)
-        .filter(t => t.isActive !== false && !t.id.endsWith('_active'));
+        .filter(t => t.isActive !== false && !t.id.endsWith('_active') && !t.isFreeTripOnly);
       setActiveTariffs(list);
     }, (err) => console.log("Error fetching active tariffs:", err));
 

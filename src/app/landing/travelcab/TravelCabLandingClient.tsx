@@ -610,7 +610,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
 
   const currentTariffs = useMemo(() => {
     const typeFilter = modality === 'ARC' ? 'arc' : 'mu';
-    const filtered = activeTariffs.filter((t: any) => t.type === typeFilter);
+    const filtered = activeTariffs.filter((t: any) => t.type === typeFilter && !t.isFreeTripOnly);
     if (filtered.length > 0) return filtered;
     return modality === 'ARC' ? DEFAULT_ARC_TARIFFS_FALLBACK : DEFAULT_MU_TARIFFS_FALLBACK;
   }, [activeTariffs, modality]);
