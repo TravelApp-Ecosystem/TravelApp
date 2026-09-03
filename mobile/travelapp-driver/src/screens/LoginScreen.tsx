@@ -22,7 +22,12 @@ const MASTER_ADMIN_EMAILS = [
 
 const SAVED_DRIVER_KEY = 'travelapp_driver_saved_credentials';
 
-export default function LoginScreen() {
+interface LoginScreenProps {
+  onLoginSuccess?: () => void;
+  navigation?: any;
+}
+
+export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -227,6 +232,10 @@ export default function LoginScreen() {
             },
             createdAt: Date.now(),
           });
+        }
+
+        if (onLoginSuccess) {
+          onLoginSuccess();
         }
       }
     } catch (err: any) {

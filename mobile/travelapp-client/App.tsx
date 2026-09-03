@@ -61,6 +61,14 @@ export default function App() {
     }).start();
   }, [activeIcon]);
 
+  if (!fontsLoaded && !fontError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0B192C', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />

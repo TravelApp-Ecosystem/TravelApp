@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-bg.jpg",
-      "resizeMode": "cover",
-      "backgroundColor": "#0B192C"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ar.travelapp.client",
@@ -20,13 +15,8 @@
       }
     },
     "android": {
-      "splash": {
-        "image": "./assets/splash-bg.jpg",
-        "resizeMode": "cover",
-        "backgroundColor": "#0B192C"
-      },
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#0B192C"
       },
       "package": "ar.travelapp.client",
@@ -48,19 +38,29 @@
     },
     "plugins": [
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0B192C"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "TravelApp necesita tu ubicación para mostrarte conductores cercanos y calcular rutas."
         }
       ],
-      [
-        "react-native-maps",
-        {
-          "androidGoogleMapsApiKey": "AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U"
-        }
-      ],
-      "expo-font"
+      "./plugins/withMavenMirror"
     ],
+    "updates": {
+      "url": "https://u.expo.dev/a687d59f-c1ec-4f94-b77f-eea980284d82",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "eas": {
         "projectId": "a687d59f-c1ec-4f94-b77f-eea980284d82"

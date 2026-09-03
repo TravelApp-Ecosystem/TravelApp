@@ -16,10 +16,14 @@ import WalletScreen from '../screens/WalletScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 
+import { registerForPushNotificationsAsync } from '../lib/notifications';
+import * as Notifications from 'expo-notifications';
+
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const [user, setUser] = useState<User | null>(null);
+  const [sessionVerified, setSessionVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,6 +43,10 @@ export default function RootNavigator() {
             setUser(u);
             setLoading(false);
             clearTimeout(safetyTimer);
+
+            if (u) {
+              registerForPushNotificationsAsync(u.uid);
+            }
           }
         },
         (error) => {
@@ -57,10 +65,16 @@ export default function RootNavigator() {
       }
     }
 
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      console.log('[Driver Notification Tapped]', data);
+    });
+
     return () => {
       isMounted = false;
       clearTimeout(safetyTimer);
       unsub();
+      responseListener.remove();
     };
   }, []);
 
@@ -75,8 +89,15 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!user ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
+        {!user || !sessionVerified ? (
+          <Stack.Screen name="Login">
+            {(props) => (
+              <LoginScreen
+                {...props}
+                onLoginSuccess={() => setSessionVerified(true)}
+              />
+            )}
+          </Stack.Screen>
         ) : (
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />

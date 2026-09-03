@@ -18,6 +18,9 @@ import CompleteProfileScreen from '../screens/CompleteProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
+import { registerForPushNotificationsAsync } from '../lib/notifications';
+import * as Notifications from 'expo-notifications';
+
 export default function RootNavigator() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,8 +29,23 @@ export default function RootNavigator() {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
+
+      if (u) {
+        // Registrar Push Notifications con canales de alta prioridad y guardar token en Firestore
+        registerForPushNotificationsAsync(u.uid);
+      }
     });
-    return unsub;
+
+    // Escuchar cuando el usuario toca una notificación (con la app en segundo plano o cerrada)
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      console.log('[Notification Tapped]', data);
+    });
+
+    return () => {
+      unsub();
+      responseListener.remove();
+    };
   }, []);
 
   if (loading) {
