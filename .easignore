@@ -1,0 +1,13 @@
+﻿/.next/
+/.vercel/
+/node_modules/
+/public/
+/src/
+/scratch/
+/assets/
+/.git/
+/.vscode/
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*
