@@ -31,17 +31,39 @@ export default function RootNavigator() {
       if (isMounted) setLoading(false);
     }, 3500);
 
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       if (isMounted) {
-        setUser(u);
-        setLoading(false);
-        clearTimeout(safetyTimer);
-
         if (u) {
-          // Registrar Push Notifications con canales de alta prioridad y guardar token en Firestore
+          setUser(u);
+          setLoading(false);
+          clearTimeout(safetyTimer);
           registerForPushNotificationsAsync(u.uid).catch((err) => {
             console.warn('[Push Registration non-fatal]:', err);
           });
+        } else {
+          // Si Firebase no tiene el usuario en memoria, verificar credenciales guardadas
+          try {
+            const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+            const raw = await AsyncStorage.getItem('travelapp_saved_user_credentials');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && parsed.email && parsed.pass) {
+                const { signInWithEmailAndPassword } = await import('firebase/auth');
+                const res = await signInWithEmailAndPassword(auth, parsed.email, parsed.pass);
+                if (res?.user && isMounted) {
+                  setUser(res.user);
+                  setLoading(false);
+                  clearTimeout(safetyTimer);
+                  return;
+                }
+              }
+            }
+          } catch (storageAuthErr) {
+            console.warn('Client auto-login from storage failed:', storageAuthErr);
+          }
+          setUser(null);
+          setLoading(false);
+          clearTimeout(safetyTimer);
         }
       }
     });

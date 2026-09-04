@@ -38,14 +38,40 @@ export default function RootNavigator() {
     try {
       unsub = onAuthStateChanged(
         auth,
-        (u) => {
+        async (u) => {
           if (isMounted) {
-            setUser(u);
-            setLoading(false);
-            clearTimeout(safetyTimer);
-
             if (u) {
+              setUser(u);
+              setSessionVerified(true);
+              setLoading(false);
+              clearTimeout(safetyTimer);
               registerForPushNotificationsAsync(u.uid);
+            } else {
+              // Si Firebase no tiene el usuario en memoria, verificar credenciales guardadas
+              try {
+                const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+                const raw = await AsyncStorage.getItem('travelapp_driver_saved_credentials');
+                if (raw) {
+                  const parsed = JSON.parse(raw);
+                  if (parsed && parsed.email && parsed.pass) {
+                    const { signInWithEmailAndPassword } = await import('firebase/auth');
+                    const res = await signInWithEmailAndPassword(auth, parsed.email, parsed.pass);
+                    if (res?.user && isMounted) {
+                      setUser(res.user);
+                      setSessionVerified(true);
+                      setLoading(false);
+                      clearTimeout(safetyTimer);
+                      return;
+                    }
+                  }
+                }
+              } catch (storageAuthErr) {
+                console.warn('Auto-login from storage failed:', storageAuthErr);
+              }
+              setUser(null);
+              setSessionVerified(false);
+              setLoading(false);
+              clearTimeout(safetyTimer);
             }
           }
         },

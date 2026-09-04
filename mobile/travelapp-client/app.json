@@ -10,11 +10,13 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ar.travelapp.client",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "config": {
         "googleMapsApiKey": "AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U"
       }
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#0B192C"

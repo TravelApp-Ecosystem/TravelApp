@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>596622732697-f60d2k0oc757m3j870pmdjagcdrii423.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.596622732697-f60d2k0oc757m3j870pmdjagcdrii423</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDO0WQCWIjAG1zHTvyCDn9_EvgEMm00Jvg</string>
+	<key>GCM_SENDER_ID</key>
+	<string>596622732697</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>ar.travelapp.driver</string>
+	<key>PROJECT_ID</key>
+	<string>mvp-travelapp</string>
+	<key>STORAGE_BUCKET</key>
+	<string>mvp-travelapp.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:596622732697:ios:a12f5857878344c83db708</string>
+</dict>
+</plist>
