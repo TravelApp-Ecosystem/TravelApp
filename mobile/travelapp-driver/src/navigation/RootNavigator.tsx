@@ -65,16 +65,21 @@ export default function RootNavigator() {
       }
     }
 
-    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      console.log('[Driver Notification Tapped]', data);
-    });
+    let responseListener: { remove: () => void } | null = null;
+    try {
+      responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data;
+        console.log('[Driver Notification Tapped]', data);
+      });
+    } catch (notifErr) {
+      console.warn('[Driver Notification listener setup failed]:', notifErr);
+    }
 
     return () => {
       isMounted = false;
       clearTimeout(safetyTimer);
       unsub();
-      responseListener.remove();
+      if (responseListener) responseListener.remove();
     };
   }, []);
 

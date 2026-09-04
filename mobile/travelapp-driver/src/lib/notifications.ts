@@ -3,15 +3,20 @@ import { Platform } from 'react-native';
 import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// 1. Configurar el comportamiento cuando la app recibe una notificación en primer plano (con protección contra errores)
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch (e) {
+  console.warn('[Driver Notifications] setNotificationHandler skipped:', e);
+}
 
 export async function registerForPushNotificationsAsync(driverId?: string): Promise<string | null> {
   let token: string | null = null;

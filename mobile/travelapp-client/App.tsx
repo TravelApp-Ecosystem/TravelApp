@@ -1,12 +1,64 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, View, StyleSheet, Text, Animated, ImageBackground } from 'react-native';
-import { useFonts, Quicksand_400Regular, Quicksand_500Medium, Quicksand_600SemiBold, Quicksand_700Bold } from '@expo-google-fonts/quicksand';
+import {
+  ActivityIndicator,
+  View,
+  StyleSheet,
+  Text,
+  Animated,
+  ImageBackground,
+} from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import {
+  useFonts,
+  Quicksand_400Regular,
+  Quicksand_500Medium,
+  Quicksand_600SemiBold,
+  Quicksand_700Bold,
+} from '@expo-google-fonts/quicksand';
 import { Ionicons } from '@expo/vector-icons';
 import RootNavigator from './src/navigation/RootNavigator';
 import { Colors, Fonts } from './src/lib/constants';
 import { TravelCabLogo, TravelAppLogo } from './src/components/BrandLogos';
+
+// Prevenir que el Splash nativo se oculte antes de tiempo
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Escudo protector raíz contra errores no controlados
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.warn('[App Crash Shield caught error]:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+          <Text style={styles.errorTitle}>TravelApp</Text>
+          <Text style={styles.errorSubtitle}>Iniciando en modo seguro...</Text>
+          <ActivityIndicator size="small" color="#FFFFFF" style={{ marginTop: 16 }} />
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -20,6 +72,13 @@ export default function App() {
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const [activeIcon, setActiveIcon] = useState<'car' | 'airplane' | 'bed' | 'compass' | 'briefcase' | 'logo'>('car');
   const iconAnim = useRef(new Animated.Value(0.3)).current;
+
+  // Ocultar el Splash nativo apenas las fuentes o la pantalla React estén listas
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     // Secuencia animada de iconos (movilidad, aviones, hoteles, excursiones, maletas, logo final)
@@ -61,6 +120,7 @@ export default function App() {
     }).start();
   }, [activeIcon]);
 
+  // Si las fuentes están cargando y no hubo error, mostrar pantalla de preparación silenciosa
   if (!fontsLoaded && !fontError) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0B192C', alignItems: 'center', justifyContent: 'center' }}>
@@ -70,66 +130,81 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      <View style={{ flex: 1 }}>
-        <RootNavigator />
+    <AppErrorBoundary>
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <View style={{ flex: 1, backgroundColor: '#0B192C' }}>
+          <RootNavigator />
 
-        {showSplash && (
-          <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
-            <ImageBackground
-              source={require('./assets/splash-bg.jpg')}
-              style={styles.backgroundImage}
-              resizeMode="cover"
-            >
-              <View style={styles.darkMask}>
-                {/* Logo Central o Icono Animado */}
-                <View style={styles.centerContainer}>
-                  <Animated.View style={[styles.iconBox, { transform: [{ scale: iconAnim }] }]}>
-                    {activeIcon === 'car' && (
-                      <Ionicons name="car-outline" size={90} color={Colors.white} />
-                    )}
-                    {activeIcon === 'airplane' && (
-                      <Ionicons name="airplane-outline" size={90} color={Colors.white} />
-                    )}
-                    {activeIcon === 'bed' && (
-                      <Ionicons name="bed-outline" size={90} color={Colors.white} />
-                    )}
-                    {activeIcon === 'compass' && (
-                      <Ionicons name="compass-outline" size={90} color={Colors.white} />
-                    )}
-                    {activeIcon === 'briefcase' && (
-                      <Ionicons name="briefcase-outline" size={90} color={Colors.white} />
-                    )}
-                    {activeIcon === 'logo' && (
-                      <View style={styles.logoRevealBox}>
-                        <TravelCabLogo size={220} textColor={Colors.white} isAccentColor={true} />
-                      </View>
-                    )}
-                  </Animated.View>
-                </View>
+          {showSplash && (
+            <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
+              <ImageBackground
+                source={require('./assets/splash.png')}
+                style={styles.backgroundImage}
+                resizeMode="cover"
+              >
+                <View style={styles.darkMask}>
+                  {/* Logo Central o Icono Animado */}
+                  <View style={styles.centerContainer}>
+                    <Animated.View style={[styles.iconBox, { transform: [{ scale: iconAnim }] }]}>
+                      {activeIcon === 'car' && (
+                        <Ionicons name="car-outline" size={90} color={Colors.white} />
+                      )}
+                      {activeIcon === 'airplane' && (
+                        <Ionicons name="airplane-outline" size={90} color={Colors.white} />
+                      )}
+                      {activeIcon === 'bed' && (
+                        <Ionicons name="bed-outline" size={90} color={Colors.white} />
+                      )}
+                      {activeIcon === 'compass' && (
+                        <Ionicons name="compass-outline" size={90} color={Colors.white} />
+                      )}
+                      {activeIcon === 'briefcase' && (
+                        <Ionicons name="briefcase-outline" size={90} color={Colors.white} />
+                      )}
+                      {activeIcon === 'logo' && (
+                        <View style={styles.logoRevealBox}>
+                          <TravelCabLogo size={220} textColor={Colors.white} isAccentColor={true} />
+                        </View>
+                      )}
+                    </Animated.View>
+                  </View>
 
-                {/* Footer del Splash */}
-                <View style={styles.footerContainer}>
-                  <Text style={styles.ecosystemText}>Miembro del ecosistema</Text>
-                  <View style={styles.appLogoRow}>
-                    <TravelAppLogo size={130} textColor={Colors.white} isAccentColor={true} />
+                  {/* Footer del Splash */}
+                  <View style={styles.footerContainer}>
+                    <Text style={styles.ecosystemText}>Miembro del ecosistema</Text>
+                    <View style={styles.appLogoRow}>
+                      <TravelAppLogo size={130} textColor={Colors.white} isAccentColor={true} />
+                    </View>
                   </View>
                 </View>
-              </View>
-            </ImageBackground>
-          </Animated.View>
-        )}
-      </View>
-    </SafeAreaProvider>
+              </ImageBackground>
+            </Animated.View>
+          )}
+        </View>
+      </SafeAreaProvider>
+    </AppErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
+  errorContainer: {
     flex: 1,
+    backgroundColor: '#0B192C',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginTop: 16,
+  },
+  errorSubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginTop: 8,
   },
   splashOverlay: {
     position: 'absolute',
@@ -151,7 +226,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(11, 25, 44, 0.25)', // Tinte suave traslúcido para ver claramente la imagen de la pareja
+    backgroundColor: 'rgba(11, 25, 44, 0.25)',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 60,
@@ -191,4 +266,5 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
+
 

@@ -26,25 +26,42 @@ export default function RootNavigator() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 3500);
 
-      if (u) {
-        // Registrar Push Notifications con canales de alta prioridad y guardar token en Firestore
-        registerForPushNotificationsAsync(u.uid);
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (isMounted) {
+        setUser(u);
+        setLoading(false);
+        clearTimeout(safetyTimer);
+
+        if (u) {
+          // Registrar Push Notifications con canales de alta prioridad y guardar token en Firestore
+          registerForPushNotificationsAsync(u.uid).catch((err) => {
+            console.warn('[Push Registration non-fatal]:', err);
+          });
+        }
       }
     });
 
-    // Escuchar cuando el usuario toca una notificación (con la app en segundo plano o cerrada)
-    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      console.log('[Notification Tapped]', data);
-    });
+    // Escuchar cuando el usuario toca una notificación (con protección contra errores)
+    let responseListener: { remove: () => void } | null = null;
+    try {
+      responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data;
+        console.log('[Notification Tapped]', data);
+      });
+    } catch (notifErr) {
+      console.warn('[Notification response listener non-fatal]:', notifErr);
+    }
 
     return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
       unsub();
-      responseListener.remove();
+      if (responseListener) responseListener.remove();
     };
   }, []);
 

@@ -130,5 +130,35 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
+
+    // --- EXPERIENCIAS Y SALIDAS PROPIAS / MI VIAJE (CONTRACTED TRIPS) ---
+    match /contracted_trips/{tripId} {
+      // Lectura permitida para pasajeros con reserva, usuarios autenticados y admin
+      allow read: if true;
+      // Escritura permitida para administradores, operadores y coordinadores asignados
+      allow write: if isAdmin() || (isAuthenticated() && (
+        resource.data.coordinator.phone == request.auth.token.phone_number ||
+        request.resource.data.coordinator.phone == request.auth.token.phone_number
+      ));
+
+      // Subcolecciones de fotos en vivo, comunicados y vouchers
+      match /{subcollection=**} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+    }
+
+    // --- COORDINADORES DE EXPERIENCIAS ---
+    match /coordinators/{coordId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // --- NOTIFICACIONES PUSH & IN-APP ---
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() || isAdmin();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
   }
 }

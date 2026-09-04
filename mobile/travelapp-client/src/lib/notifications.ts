@@ -3,16 +3,20 @@ import { Platform } from 'react-native';
 import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-// 1. Configurar el comportamiento cuando la app recibe una notificación en primer plano
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// 1. Configurar el comportamiento cuando la app recibe una notificación en primer plano (con protección contra errores)
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch (e) {
+  console.warn('[Notifications] setNotificationHandler skipped:', e);
+}
 
 /**
  * Registra el dispositivo para recibir notificaciones Push de Expo
