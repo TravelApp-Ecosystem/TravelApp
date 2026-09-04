@@ -7,6 +7,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ar.travelapp.driver",
@@ -40,17 +45,15 @@
     },
     "plugins": [
       [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash-icon.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF"
-        }
-      ],
-      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "TravelApp Conductor necesita tu ubicación para compartirla con los pasajeros y recibir solicitudes de viaje."
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U"
         }
       ],
       "./plugins/withMavenMirror"
@@ -58,7 +61,7 @@
     "updates": {
       "url": "https://u.expo.dev/981daf60-ddc3-4651-9f8f-34fb64cf612b",
       "enabled": true,
-      "fallbackToCacheTimeout": 30000
+      "fallbackToCacheTimeout": 0
     },
     "runtimeVersion": {
       "policy": "appVersion"

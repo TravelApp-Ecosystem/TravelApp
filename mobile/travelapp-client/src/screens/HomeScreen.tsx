@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
   TextInput, ActivityIndicator, Animated, ScrollView, Dimensions, Alert, Modal, Image, Linking, Platform, Vibration,
@@ -8,14 +8,13 @@ import MapView, { Marker, PROVIDER_GOOGLE, Polyline, UrlTile } from 'react-nativ
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../lib/firebase';
 import { Colors, Fonts, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY, API_BASE_URL } from '../lib/constants';
 import { TravelCabLogo, TravelAppLogo, TravelExperienceLogo } from '../components/BrandLogos';
 import { InteractiveMapView } from '../components/InteractiveMapView';
-import { playSeatbeltSafetyPrompt, playCustomVoiceNotification } from '../lib/audioService';
 
 import { OverlappingNativeCarousel } from '../components/OverlappingNativeCarousel';
 
@@ -196,52 +195,11 @@ export default function HomeScreen() {
   const [driverDetails, setDriverDetails] = useState<any>(null);
   const [searchTimer, setSearchTimer] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
+
   // Categorías de Vehículos (Dinámicas de Firestore)
   const [categories, setCategories] = useState<any[]>([]);
-  const [allTariffs, setAllTariffs] = useState<any[]>([]);
 
-  // Categorías de Vehículos disponibles para el cliente (oculta las exclusivas de taxímetro / viaje libre)
-  const availableCategories = useMemo(() => {
-    const norm = (s: any) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-    
-    return categories.filter(cat => {
-      const catNorm = norm(cat.name);
-      const catIdNorm = norm(cat.id);
-
-      // 1. Si existe un tarifario en Firestore con isFreeTripOnly === true que corresponda a esta categoría (o a Taxi), la ocultamos
-      const isFreeTripOnlyTariff = allTariffs.some(t => 
-        t.isFreeTripOnly === true && (
-          norm(t.category) === catNorm || 
-          norm(t.category) === catIdNorm || 
-          (catNorm.includes('taxi') && (norm(t.category).includes('taxi') || norm(t.name).includes('taxi') || norm(t.id).includes('taxi')))
-        )
-      );
-      if (isFreeTripOnlyTariff) return false;
-
-      // 2. Si hay tarifarios públicos configurados en Firestore pero ninguno público activo para Taxi, ocultar Taxi
-      if (activeTariffs.length > 0 && catNorm.includes('taxi')) {
-        const hasActivePublicTaxiTariff = activeTariffs.some(t => 
-          norm(t.category) === catNorm || 
-          norm(t.category) === catIdNorm || 
-          norm(t.category).includes('taxi') || 
-          norm(t.name).includes('taxi')
-        );
-        if (!hasActivePublicTaxiTariff) return false;
-      }
-
-      return true;
-    });
-  }, [categories, allTariffs, activeTariffs]);
-
-  // Si la categoría seleccionada ya no está disponible (ej. se activó modo taxímetro exclusivo), auto-seleccionar la primera disponible
-  useEffect(() => {
-    if (availableCategories.length > 0) {
-      const exists = availableCategories.some(c => c.name === selectedCategory);
-      if (!exists) {
-        setSelectedCategory(availableCategories[0].name);
-      }
-    }
-  }, [availableCategories, selectedCategory]);
+  // Datos del CMS y Rewards
   const [cmsBlocks, setCmsBlocks] = useState<CMSBlock[]>([]);
   const [rewardsBlocks, setRewardsBlocks] = useState<any[]>([]);
   const [rewardsList, setRewardsList] = useState<RewardItem[]>([]);
@@ -260,23 +218,6 @@ export default function HomeScreen() {
   const [userPhone, setUserPhone] = useState<string>('');
   const [userPhotoURL, setUserPhotoURL] = useState<string>('');
   const [isSavingPhone, setIsSavingPhone] = useState(false);
-  const [supportModalVisible, setSupportModalVisible] = useState(false);
-  const [safetyModalVisible, setSafetyModalVisible] = useState(false);
-
-  const handleSupportAction = (type: 'phone' | 'email' | 'whatsapp' | 'travis' | 'emergency') => {
-    setSupportModalVisible(false);
-    if (type === 'phone') {
-      Linking.openURL('tel:08102200018');
-    } else if (type === 'email') {
-      Linking.openURL('mailto:soporte@travelapp.ar?subject=Consulta%20desde%20TravelApp%20Cliente');
-    } else if (type === 'whatsapp') {
-      Linking.openURL('https://wa.me/?text=Hola%20TravelApp%2C%20necesito%20atenci%C3%B3n%20al%20cliente%20con%20mi%20cuenta.');
-    } else if (type === 'travis') {
-      navigation.navigate('Chat');
-    } else if (type === 'emergency') {
-      Linking.openURL('tel:911');
-    }
-  };
 
   // Estados de Chat en Vivo (Conductor - Pasajero - Concorde 360)
   const [isChatModalVisible, setIsChatModalVisible] = useState(false);
@@ -309,7 +250,7 @@ export default function HomeScreen() {
   const [hasPurchasedOrganizedTrip, setHasPurchasedOrganizedTrip] = useState(false);
   const [contractedTrip, setContractedTrip] = useState<any | null>(null);
   const [experienceMainTab, setExperienceMainTab] = useState<'catalog' | 'trip'>('catalog');
-  const [activeTripSubTab, setActiveTripSubTab] = useState<'itinerary' | 'vouchers' | 'payments' | 'group' | 'checkin' | 'gallery' | 'sos'>('itinerary');
+  const [activeTripSubTab, setActiveTripSubTab] = useState<'itinerary' | 'payments' | 'group' | 'gallery'>('itinerary');
   const [expandedDay, setExpandedDay] = useState<number | null>(1); // Acordeón de itinerario
   const [travisQuery, setTravisQuery] = useState('');
   const [travisAnswer, setTravisAnswer] = useState('');
@@ -323,24 +264,6 @@ export default function HomeScreen() {
   const [isQrModalVisible, setIsQrModalVisible] = useState(false);
   const [rewardsSubTab, setRewardsSubTab] = useState<'canje' | 'beneficios'>('canje');
   const [selectedBenefit, setSelectedBenefit] = useState<any | null>(null);
-
-  // Estados de Comunidad y Muro Social del Viaje
-  const [communityPosts, setCommunityPosts] = useState<any[]>([]);
-  const [communityPostInput, setCommunityPostInput] = useState('');
-  const [isPostingCommunity, setIsPostingCommunity] = useState(false);
-  const [hideCommunityProfile, setHideCommunityProfile] = useState(false);
-
-  // Estados de Web Check-In 48h y Traslado TravelCab
-  const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
-  const [checkInPickupAddress, setCheckInPickupAddress] = useState('');
-  const [checkInPickupTime, setCheckInPickupTime] = useState('');
-  const [checkInPickupNotes, setCheckInPickupNotes] = useState('');
-  const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false);
-
-  // Estados de Términos y Condiciones, Vouchers y SOS
-  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
-  const [isSosModalOpen, setIsSosModalOpen] = useState(false);
-  const [selectedVoucherDoc, setSelectedVoucherDoc] = useState<any | null>(null);
 
   // Datos extendidos de Perfil para TravelApp Experience
   const [passport, setPassport] = useState('');
@@ -558,62 +481,54 @@ export default function HomeScreen() {
     }
   };
   useEffect(() => {
-    let unsubTrip: (() => void) | null = null;
-    let unsubMessages: (() => void) | null = null;
-    let unsubCommunity: (() => void) | null = null;
+    if (user) {
+      const q = query(collection(db, 'contracted_trips'));
+      const unsubTrip = onSnapshot(q, (snap) => {
+        let matchingTripDoc = null as any;
+        
+        // Buscar viaje donde coincida userId, email o passengerId
+        for (const docSnap of snap.docs) {
+          const t = docSnap.data();
+          const emailMatch = user.email && t.clientEmail && t.clientEmail.toLowerCase() === user.email.toLowerCase();
+          const uidMatch = t.userId === user.uid || t.passengerId === user.uid;
+          const phoneMatch = user.phoneNumber && t.clientPhone && t.clientPhone === user.phoneNumber;
 
-    const attachSubcollections = (tripId: string) => {
-      if (unsubMessages) unsubMessages();
-      if (unsubCommunity) unsubCommunity();
-
-      unsubMessages = onSnapshot(collection(db, 'contracted_trips', tripId, 'group_messages'), (msgSnap) => {
-        const msgs = msgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        msgs.sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0));
-        setGroupMessages(msgs);
-      });
-
-      unsubCommunity = onSnapshot(collection(db, 'contracted_trips', tripId, 'community_feed'), (commSnap) => {
-        const posts = commSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        posts.sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
-        setCommunityPosts(posts);
-      });
-    };
-
-    // Consultar viajes en Firestore
-    const q = query(collection(db, 'contracted_trips'));
-    unsubTrip = onSnapshot(q, (snap) => {
-      if (!snap.empty) {
-        // Buscar primero el viaje del usuario logueado o tomar el primero disponible
-        const userTripDoc = snap.docs.find(d => {
-          const data = d.data();
-          return data.userId === user?.uid || data.userEmail === user?.email;
-        }) || snap.docs[0];
-
-        const data = { id: userTripDoc.id, ...userTripDoc.data() } as any;
-        setContractedTrip(data);
-        setHasPurchasedOrganizedTrip(true);
-        setExcursionsList(data.optionalExcursions || []);
-        setHideCommunityProfile(data.communityPrivacy?.hideProfile || false);
-
-        if (data.webCheckIn) {
-          setCheckInPickupAddress(data.webCheckIn.pickupAddress || '');
-          setCheckInPickupTime(data.webCheckIn.pickupTime || '');
-          setCheckInPickupNotes(data.webCheckIn.pickupNotes || '');
+          if (emailMatch || uidMatch || phoneMatch) {
+            // Verificar que esté señado o pagado
+            const isConfirmed = t.paymentStatus === 'Señado' || t.paymentStatus === 'Pagado' || 
+                                t.status === 'Señado' || t.status === 'Pagado' || 
+                                (t.payment && t.payment.paidAmount > 0) || t.isPaid === true;
+            if (isConfirmed) {
+              matchingTripDoc = docSnap;
+              break;
+            }
+          }
         }
 
-        attachSubcollections(userTripDoc.id);
-      } else {
-        setContractedTrip(null);
-        setHasPurchasedOrganizedTrip(false);
-        setExcursionsList([]);
-      }
-    });
+        if (matchingTripDoc) {
+          const data = { id: matchingTripDoc.id, ...matchingTripDoc.data() } as any;
+          setContractedTrip(data);
+          setHasPurchasedOrganizedTrip(true);
+          setExcursionsList(data.optionalExcursions || []);
 
-    return () => {
-      if (unsubTrip) unsubTrip();
-      if (unsubMessages) unsubMessages();
-      if (unsubCommunity) unsubCommunity();
-    };
+          // Suscribirse a los mensajes del grupo de este viaje
+          const unsubMessages = onSnapshot(collection(db, 'contracted_trips', matchingTripDoc.id, 'group_messages'), (msgSnap) => {
+            const msgs = msgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            msgs.sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0));
+            setGroupMessages(msgs);
+          });
+          return () => unsubMessages();
+        } else {
+          setContractedTrip(null);
+          setHasPurchasedOrganizedTrip(false);
+          setExcursionsList([]);
+          setGroupMessages([]);
+        }
+      }, (err) => {
+        console.log('Non-fatal contracted_trips query error:', err);
+      });
+      return unsubTrip;
+    }
   }, [user?.uid, user?.email]);
 
   // Escuchar viajes de TravelCab del usuario en tiempo real
@@ -641,6 +556,88 @@ export default function HomeScreen() {
       setExperienceMainTab('catalog');
     }
   }, [hasPurchasedOrganizedTrip]);
+
+  // Manejar simulación de compra/cancelación de viaje grupal (Modo Tester)
+  const handleSimulateTrip = async (enable: boolean) => {
+    if (!user?.uid) return;
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      if (enable) {
+        await setDoc(userRef, { hasPurchasedOrganizedTrip: true }, { merge: true });
+        
+        const tripId = `trip_humahuaca_${user.uid}`;
+        const tripRef = doc(db, 'contracted_trips', tripId);
+        const tripData = {
+          id: tripId,
+          userId: user.uid,
+          destination: "Quebrada de Humahuaca & Salinas Grandes",
+          dates: "12 Oct - 19 Oct, 2026",
+          imageUrl: "https://images.unsplash.com/photo-1583037189850-1921ae7c6c22?q=80&w=800&auto=format&fit=crop",
+          coordinator: {
+            name: "Marcos Vignola",
+            phone: "+5493815556667",
+            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop"
+          },
+          services: [
+            "Aéreos ida y vuelta (Aerolíneas Argentinas)",
+            "Traslados privados en minibus (TravelCab ACI)",
+            "7 noches en Posada del Silencio (Purmamarca)",
+            "Régimen de media pensión (Desayuno y Cena)",
+            "Excursiones terrestres con guías locales autorizados",
+            "Cobertura Assist Card Premium (Asistencia Médica Completa)"
+          ],
+          itinerary: [
+            { day: 1, title: "Vuelo a Salta & Transfer a Purmamarca", description: "Arribo al aeropuerto de Salta. Recepción por Marcos Vignola y traslado privado a Purmamarca recorriendo el espectacular camino de cornisa. Check-in en el hotel y cena grupal de bienvenida." },
+            { day: 2, title: "Cerro de Siete Colores & Paseo de los Colorados", description: "Trekking matutino suave por el Paseo de los Colorados para apreciar las distintas tonalidades geológicas del Cerro de Siete Colores. Tarde libre para recorrer la feria de artesanos locales de Purmamarca." },
+            { day: 3, title: "Salinas Grandes & Cuesta de Lipán", description: "Ascenso por la impactante Cuesta de Lipán hasta alcanzar los 4.170 msnm. Descenso a las imponentes Salinas Grandes. Almuerzo campestre en el salar y sesión fotográfica interactiva." },
+            { day: 4, title: "Pucará de Tilcara & Garganta del Diablo", description: "Traslado a Tilcara. Visita guiada al sitio arqueológico Pucará de Tilcara. Trekking opcional a la Garganta del Diablo para ver las cascadas naturales en el lecho del río." },
+            { day: 5, title: "Hornocal (Serranía de los 14 Colores) & Humahuaca", description: "Viaje al norte hacia Humahuaca. Almuerzo tradicional con peña folclórica en vivo. Por la tarde, ascenso en camionetas 4x4 al mirador del Hornocal (4.350 msnm) para ver el atardecer sobre los 14 colores." },
+            { day: 6, title: "Día Libre en Purmamarca o Excursión Opcional a Iruya", description: "Día libre para descansar y disfrutar del hotel. Recomendamos la excursión opcional de día entero al mágico pueblo colgado de la montaña: Iruya." },
+            { day: 7, title: "Caminata entre Cardones & Regreso a Salta Capital", description: "Check-out del hotel. Viaje de regreso visitando el Parque Nacional Los Cardones. Tarde libre en Salta Capital para últimas compras y cena de despedida grupal en la Peña de Balderrama." },
+            { day: 8, title: "Despedida & Vuelo de Retorno", description: "Transfer al aeropuerto de Salta para abordar el vuelo de regreso a Buenos Aires. Fin de la experiencia." }
+          ],
+          payment: {
+            totalAmount: 1450,
+            paidAmount: 950,
+            currency: "USD"
+          },
+          assistancePdfUrl: "https://www.assistcard.com/content/dam/assistcard/global/pdf/condiciones-generales.pdf",
+          recommendations: "Llevar ropa de abrigo en capas (amplitud térmica), protector solar factor 50+, anteojos de sol, calzado de trekking cómodo y abundante agua para evitar el mal de altura (apunamiento).",
+          optionalExcursions: [
+            { id: "exc-iruya", title: "Excursión Especial de Día Entero a Iruya (4x4)", description: "Aventura todo terreno cruzando el Abra del Cóndor a 4000 msnm para descender al histórico pueblo colgado de Iruya. Incluye almuerzo.", price: 120, paid: false },
+            { id: "exc-bodega", title: "Degustación de Vinos de Altura & Almuerzo en Cafayate", description: "Visita a una prestigiosa bodega boutique con degustación dirigida por enólogo y almuerzo de pasos maridado.", price: 85, paid: false }
+          ],
+          photos: [
+            "https://images.unsplash.com/photo-1583037189850-1921ae7c6c22?q=80&w=600&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1619542402915-dcaf30e4e2a1?q=80&w=600&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=600&auto=format&fit=crop"
+          ]
+        };
+        await setDoc(tripRef, tripData);
+        
+        // Crear un par de mensajes de grupo de bienvenida
+        const welcomeRef1 = doc(collection(db, 'contracted_trips', tripId, 'group_messages'), 'msg_welcome_1');
+        const welcomeRef2 = doc(collection(db, 'contracted_trips', tripId, 'group_messages'), 'msg_welcome_2');
+        await setDoc(welcomeRef1, {
+          sender: "Marcos Vignola",
+          senderRole: "coordinador",
+          text: "¡Hola a todos! Bienvenidos al grupo de la expedición a Humahuaca y Salinas Grandes. Acá voy a ir subiendo novedades y vamos a estar en contacto durante todo el viaje.",
+          timestamp: Date.now() - 3600000 * 2
+        });
+        await setDoc(welcomeRef2, {
+          sender: "Sofía (BsAs)",
+          senderRole: "pasajero",
+          text: "¡Hola Marcos! Qué bueno, estoy re entusiasmada con este viaje. Ya tengo todo listo para arrancar.",
+          timestamp: Date.now() - 3600000
+        });
+      } else {
+        await setDoc(userRef, { hasPurchasedOrganizedTrip: false }, { merge: true });
+        await deleteDoc(doc(db, 'contracted_trips', `trip_humahuaca_${user.uid}`));
+      }
+    } catch (err) {
+      console.log("Error in simulator trip toggle:", err);
+    }
+  };
 
   // Preguntar a Travis AI sobre el destino
   const handleAskTravisAboutDestination = async () => {
@@ -741,182 +738,7 @@ export default function HomeScreen() {
     }, 2000);
   };
 
-  // Helper de Cuenta Regresiva de Salida
-  const calculateTripCountdown = (departureDateStr?: string) => {
-    if (!departureDateStr) return { days: 0, hours: 0, mins: 0, isPast: false, label: 'Salida Próxima' };
-    const depTime = new Date(departureDateStr).getTime();
-    const nowTime = Date.now();
-    const diffMs = depTime - nowTime;
-
-    if (diffMs <= 0) {
-      return { days: 0, hours: 0, mins: 0, isPast: true, label: '¡Salida en Curso / Viajando!' };
-    }
-
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-    return { days, hours, mins, isPast: false, label: `Faltan ${days} días ${hours}h ${mins}m` };
-  };
-
-  // Helper de Desbloqueo Inteligente de Vouchers (72hs)
-  const isVoucherUnlocked = (unlockHoursBefore: number = 72, departureDateStr?: string) => {
-    if (unlockHoursBefore === 0 || !departureDateStr) return true;
-    const depTime = new Date(departureDateStr).getTime();
-    const unlockTime = depTime - (unlockHoursBefore * 60 * 60 * 1000);
-    return Date.now() >= unlockTime;
-  };
-
-  // Helper de Desbloqueo de Web Check-In 48h
-  const isCheckInUnlocked = (departureDateStr?: string) => {
-    if (!departureDateStr) return true;
-    const depTime = new Date(departureDateStr).getTime();
-    const unlockTime = depTime - (48 * 60 * 60 * 1000);
-    return Date.now() >= unlockTime;
-  };
-
-  // Alternar privacidad de perfil en el muro del grupo
-  const handleToggleCommunityPrivacy = async (hide: boolean) => {
-    setHideCommunityProfile(hide);
-    if (!contractedTrip?.id) return;
-    try {
-      await updateDoc(doc(db, 'contracted_trips', contractedTrip.id), {
-        'communityPrivacy.hideProfile': hide
-      });
-    } catch (e) {
-      console.log('Error updating community privacy:', e);
-    }
-  };
-
-  // Publicar mensaje en el muro comunitario del viaje
-  const handlePostCommunityMessage = async () => {
-    const text = communityPostInput.trim();
-    if (!text || !contractedTrip?.id) return;
-    setIsPostingCommunity(true);
-    try {
-      const commRef = doc(collection(db, 'contracted_trips', contractedTrip.id, 'community_feed'), `post_${Date.now()}`);
-      await setDoc(commRef, {
-        id: commRef.id,
-        userId: user?.uid || 'pax_demo',
-        userName: hideCommunityProfile ? 'Pasajero Anónimo' : (user?.displayName || firstName || 'Pasajero'),
-        userAvatar: hideCommunityProfile ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200' : (user?.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200'),
-        content: text,
-        timestamp: Date.now(),
-        likes: 0,
-        hideProfile: hideCommunityProfile,
-        createdAt: new Date().toISOString()
-      });
-      setCommunityPostInput('');
-    } catch (e) {
-      console.error('Error posting to community feed:', e);
-      Alert.alert('Error', 'No se pudo publicar tu mensaje en la comunidad.');
-    } finally {
-      setIsPostingCommunity(false);
-    }
-  };
-
-  // Guardar Web Check-In 48h y solicitud de traslado TravelCab
-  const handleSaveWebCheckIn = async () => {
-    if (!contractedTrip?.id) return;
-    setIsSubmittingCheckIn(true);
-    try {
-      const checkInData = {
-        enabled: true,
-        isCompleted: true,
-        completedAt: new Date().toISOString(),
-        doorPickupRequested: !!checkInPickupAddress,
-        pickupAddress: checkInPickupAddress,
-        pickupTime: checkInPickupTime,
-        pickupNotes: checkInPickupNotes
-      };
-
-      await updateDoc(doc(db, 'contracted_trips', contractedTrip.id), {
-        webCheckIn: checkInData,
-        updatedAt: new Date().toISOString()
-      });
-
-      setContractedTrip((prev: any) => ({ ...prev, webCheckIn: checkInData }));
-      setIsCheckInModalOpen(false);
-      Alert.alert(
-        '¡Check-In Realizado con Éxito!',
-        checkInPickupAddress
-          ? 'Tu pase de abordaje está confirmado y el móvil de TravelCab vendrá a buscarte en el horario pactado a tu domicilio.'
-          : 'Tu pase de abordaje ha sido confirmado para la salida.'
-      );
-    } catch (e) {
-      console.error('Error saving check-in:', e);
-      Alert.alert('Error', 'No se pudo registrar el check-in.');
-    } finally {
-      setIsSubmittingCheckIn(false);
-    }
-  };
-
-  // Firma y Aceptación Digital de Condiciones Generales
-  const handleSignTerms = async () => {
-    if (!contractedTrip?.id) return;
-    try {
-      const termsData = {
-        accepted: true,
-        acceptedAt: new Date().toISOString(),
-        acceptedBy: user?.displayName || firstName || 'Pasajero Titular'
-      };
-      await updateDoc(doc(db, 'contracted_trips', contractedTrip.id), {
-        termsAccepted: termsData,
-        updatedAt: new Date().toISOString()
-      });
-      setContractedTrip((prev: any) => ({ ...prev, termsAccepted: termsData }));
-      setIsTermsModalOpen(false);
-      Alert.alert('Condiciones Aceptadas', 'Has firmado digitalmente las Condiciones Generales de Viaje.');
-    } catch (e) {
-      console.error('Error signing terms:', e);
-    }
-  };
-
-  // Canjear Excursión Opcional con Puntos Rewards
-  const handleRedeemPointsForExcursion = async (excursion: any) => {
-    const requiredPoints = excursion.pointsPrice || (excursion.price * 20);
-    if (rewardsPoints < requiredPoints) {
-      Alert.alert(
-        'Puntos Insuficientes',
-        `Esta excursión requiere ${requiredPoints} puntos y tenés ${rewardsPoints} puntos disponibles.`
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Confirmar Canje Rewards',
-      `¿Deseas canjear ${requiredPoints} puntos Rewards por la actividad "${excursion.title}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Canjear Ahora',
-          onPress: async () => {
-            try {
-              if (contractedTrip?.id) {
-                const tripRef = doc(db, 'contracted_trips', contractedTrip.id);
-                const updatedExc = (contractedTrip.optionalExcursions || []).map((exc: any) => {
-                  if (exc.id === excursion.id) {
-                    return { ...exc, paid: true, paymentMethod: 'Puntos Rewards' };
-                  }
-                  return exc;
-                });
-                await updateDoc(tripRef, { optionalExcursions: updatedExc });
-              }
-
-              const userRef = doc(db, 'users', user.uid);
-              await updateDoc(userRef, {
-                rewardsPoints: rewardsPoints - requiredPoints
-              });
-
-              Alert.alert('¡Canje Exitoso!', `Has obtenido "${excursion.title}". El voucher fue asignado a tu viaje.`);
-            } catch (e) {
-              console.error('Error redeeming points:', e);
-            }
-          }
-        }
-      ]
-    );
-  };
+  // Cargar ubicación GPS inicial
   useEffect(() => {
     const getGPS = async () => {
       try {
@@ -1121,12 +943,10 @@ export default function HomeScreen() {
       }
     });
 
-    // 6. Tarifarios activos sincronizados en tiempo real con el Dashboard Web
-    const unsubTariffs = onSnapshot(collection(db, 'tariffs'), (snap) => {
-      const rawList = snap.docs.map(d => ({ id: d.id, ...d.data() }) as any);
-      setAllTariffs(rawList);
-      const list = rawList.filter(t => t.isActive !== false && !t.id.endsWith('_active') && !t.isFreeTripOnly);
-      setActiveTariffs(list);
+    // 6. Tarifarios activos
+    const qTariffs = query(collection(db, 'tariffs'), where('isActive', '==', true));
+    const unsubTariffs = onSnapshot(qTariffs, (snap) => {
+      setActiveTariffs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (err) => console.log("Error fetching active tariffs:", err));
 
     // 7. Configuración de sonido y logística
@@ -1139,28 +959,6 @@ export default function HomeScreen() {
       }
     }, (err) => console.log("Error fetching logistics config:", err));
 
-    // 8. Notificaciones push y alertas de audio en vivo desde el Dashboard Web
-    const lastNotifProcessed = { current: 0 };
-    const qNotifications = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), limit(1));
-    const unsubNotifications = onSnapshot(qNotifications, (snap) => {
-      if (!snap.empty) {
-        const notif = snap.docs[0].data();
-        const notifTime = notif.timestamp || 0;
-        if (notifTime > lastNotifProcessed.current && (Date.now() - notifTime < 30000)) {
-          lastNotifProcessed.current = notifTime;
-          const currentUserId = auth.currentUser?.uid;
-          if (notif.audience === 'all' || notif.audience === 'passengers' || (currentUserId && notif.targetUserId === currentUserId)) {
-            showOverlayNotification(notif.title + ': ' + notif.message);
-            if (notif.soundAlert === 'seatbelt_safety') {
-              playSeatbeltSafetyPrompt();
-            } else if (notif.soundAlert !== 'none' && notif.message) {
-              playCustomVoiceNotification(notif.message);
-            }
-          }
-        }
-      }
-    });
-
     return () => {
       unsubDrivers();
       unsubCategories();
@@ -1169,7 +967,6 @@ export default function HomeScreen() {
       unsubExperiences();
       unsubTariffs();
       unsubLogistics();
-      unsubNotifications();
     };
   }, []);
 
@@ -1372,14 +1169,10 @@ export default function HomeScreen() {
 
     try {
       const estimatedPrice = calculateFare(selectedCategory);
-      const randomPin = String(Math.floor(1000 + Math.random() * 9000));
-      const cat = activeSubMode === 'traslados' ? 'TRANSFER' : activeSubMode === 'interurbano' ? 'ARC' : 'MU';
-      const isTripScheduled = isScheduled || Boolean(scheduleDate && scheduleTime);
-
       const tripData: any = {
         passengerId: user.uid,
         userName: firstName,
-        passengerPhone: userPhone || '',
+        passengerPhone: '',
         origin,
         destination,
         originCoords: originCoords ? { lat: originCoords.latitude, lng: originCoords.longitude } : null,
@@ -1388,13 +1181,7 @@ export default function HomeScreen() {
         estimatedDistanceKm: routeDistance || 0,
         estimatedDurationMins: routeDuration || 0,
         serviceType: selectedCategory,
-        serviceCategory: cat,
-        isScheduled: isTripScheduled,
-        scheduledDate: isTripScheduled ? scheduleDate : null,
-        scheduledTime: isTripScheduled ? scheduleTime : null,
-        scheduledDateTime: isTripScheduled && scheduleDate && scheduleTime ? new Date(`${scheduleDate}T${scheduleTime}:00`) : null,
         estimatedPrice,
-        securityPin: randomPin,
         paymentMethod: selectedPayment,
         paymentStatus: selectedPayment === 'Efectivo' ? 'pending' : 'awaiting_payment',
         status: 'searching',
@@ -1565,73 +1352,32 @@ export default function HomeScreen() {
     ]);
   };
 
-  // Cálculo de tarifa real usando tarifario o fallback sincronizado 1:1 con el Dashboard Web
+  // Cálculo de tarifa real usando tarifario o fallback
   const calculateFare = (categoryName: string) => {
-    const norm = (s: any) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-    const targetNorm = norm(categoryName);
-
     // 1. Encontrar la categoría seleccionada
-    const selectedCat = categories.find(c => norm(c.name) === targetNorm || norm(c.id) === targetNorm) || { id: targetNorm, name: categoryName, basePrice: 400, multiplier: 1 };
+    const selectedCat = categories.find(c => c.name === categoryName) || { id: 'cat-1', basePrice: 400, multiplier: 1 };
     
-    // 2. Buscar si hay una tarifa activa de Firestore para esta categoría o la estándar por defecto
-    const matchedTariff = 
-      activeTariffs.find((t: any) => norm(t.category) === norm(selectedCat.id) || norm(t.category) === targetNorm) ||
-      activeTariffs.find((t: any) => norm(t.category).includes('estandar') || norm(t.category).includes('standard')) ||
-      activeTariffs[0];
-
-    const distance = routeDistance > 0 ? routeDistance : 1;
-    const duration = routeDuration > 0 ? routeDuration : Math.round(distance * 2);
-
+    // 2. Buscar si hay una tarifa activa de Firestore para esta categoría
+    const matchedTariff = activeTariffs.find((t: any) => t.category === selectedCat.id || t.category === categoryName);
     if (!matchedTariff) {
-      // Fallback si la base de datos no tiene tarifarios creados aún
-      const baseFare = targetNorm.includes('prem') ? 600 : targetNorm.includes('tax') ? 450 : 400;
-      const pricePerKm = targetNorm.includes('prem') ? 550 : targetNorm.includes('tax') ? 450 : 350;
+      // Si no hay tarifa activa en la BD, calcular en base al fallback y la distancia estimada
+      const distance = routeDistance > 0 ? routeDistance : 1; // Mínimo 1 km
+      const pricePerKm = categoryName === 'Premium' ? 550 : categoryName === 'Taxi' ? 450 : 350;
+      const baseFare = categoryName === 'Premium' ? 600 : categoryName === 'Taxi' ? 450 : 350;
       return Math.round(baseFare + pricePerKm * distance);
     }
 
-    // 3. Usar valores del tarifario real configurado en el Dashboard
-    const baseFare = Number(matchedTariff.baseFare || 0);
-    const pricePerKm = Number(matchedTariff.pricePerKm || 0);
-    const travelMinutePrice = Number(matchedTariff.travelMinutePrice || 0);
-    const minimumFare = Number(matchedTariff.minimumFare || 0);
+    // 3. Si hay tarifa activa en la BD, usar sus valores reales
+    const baseFare = matchedTariff.baseFare || 300;
+    const pricePerKm = matchedTariff.pricePerKm || 180;
+    const travelMinutePrice = matchedTariff.travelMinutePrice || 50;
+    const minimumFare = matchedTariff.minimumFare || 450;
 
-    const calculatedFare = baseFare + (pricePerKm * distance) + (travelMinutePrice * duration);
-    let base = Math.max(minimumFare, Math.round(calculatedFare));
+    const distance = routeDistance > 0 ? routeDistance : 1;
+    const duration = routeDuration > 0 ? routeDuration : 2;
 
-    // Aplicar recargo de tarifa especial (días y horarios / nocturno) si está configurado
-    if (matchedTariff.specialRates && Array.isArray(matchedTariff.specialRates) && base > 0) {
-      const DAYS_MAP = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-      const now = new Date();
-      const currentDay = DAYS_MAP[now.getDay()];
-      const currentMin = now.getHours() * 60 + now.getMinutes();
-
-      for (const sr of matchedTariff.specialRates) {
-        if (!sr.active) continue;
-        const days = (sr.daysOfWeek || []).map((d: string) => norm(d));
-        if (days.length === 0 || days.includes(currentDay) || days.includes('todos')) {
-          const [startH, startM] = (sr.startTime || '00:00').split(':').map(Number);
-          const [endH, endM] = (sr.endTime || '23:59').split(':').map(Number);
-          const startTotal = startH * 60 + startM;
-          const endTotal = endH * 60 + endM;
-
-          const isInTime = startTotal <= endTotal
-            ? (currentMin >= startTotal && currentMin <= endTotal)
-            : (currentMin >= startTotal || currentMin <= endTotal);
-
-          if (isInTime && sr.percentageModifier) {
-            base = Math.round(base * (1 + Number(sr.percentageModifier) / 100));
-            break;
-          }
-        }
-      }
-    }
-
-    // Aplicar recargo por pago electrónico si no es Efectivo
-    if (selectedPayment !== 'Efectivo' && matchedTariff.electronicPaymentFee) {
-      base = Math.round(base * (1 + Number(matchedTariff.electronicPaymentFee) / 100));
-    }
-
-    return Math.max(minimumFare, base);
+    const computedFare = baseFare + (pricePerKm * distance) + (travelMinutePrice * duration);
+    return Math.max(minimumFare, Math.round(computedFare));
   };
 
   const getDaysRemaining = (dateStr: string) => {
@@ -1813,39 +1559,6 @@ export default function HomeScreen() {
                     <Image source={{ uri: driverDetails.carPhoto }} style={styles.carPhotoTrackingImg} />
                   </View>
                 ) : null}
-
-                {/* PIN de Seguridad para abordar (Opcional) */}
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  backgroundColor: '#F0FDF4',
-                  borderWidth: 1.5,
-                  borderColor: '#86EFAC',
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  marginTop: 10
-                }}>
-                  <View style={{ flex: 1, paddingRight: 8 }}>
-                    <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#15803D' }}>
-                      🔑 PIN DE ABORDAJE (OPCIONAL)
-                    </Text>
-                    <Text style={{ fontSize: 10, fontFamily: 'Quicksand-Medium', color: '#166534', marginTop: 1 }}>
-                      Dictáselo al chofer solo si te lo solicita antes de arrancar.
-                    </Text>
-                  </View>
-                  <View style={{
-                    backgroundColor: '#16A34A',
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 8,
-                  }}>
-                    <Text style={{ fontSize: 15, fontFamily: 'Quicksand-Bold', color: '#FFFFFF', letterSpacing: 2 }}>
-                      {activeTrip?.securityPin || '4829'}
-                    </Text>
-                  </View>
-                </View>
               </View>
 
               {/* Controles de Viaje (Fila Horizontal) */}
@@ -1942,7 +1655,7 @@ export default function HomeScreen() {
                   onPress={handleCompleteTrip}
                 >
                   <Text style={[styles.cancelTripBtnText, { color: Colors.success }]}>
-                    Confirmar Llegada y Pagar
+                    Finalizar Viaje (Simular Pago 1-Clic)
                   </Text>
                 </TouchableOpacity>
 
@@ -1980,57 +1693,32 @@ export default function HomeScreen() {
               <Text style={styles.canvaPricingTitle}>Tarifa aproximada</Text>
               
               <View style={{ gap: 10 }}>
-                {availableCategories.length > 0 ? (
-                  availableCategories.slice(0, 4).map(cat => {
+                {categories.length > 0 ? (
+                  categories.slice(0, 4).map(cat => {
                     const isSelected = selectedCategory === cat.name;
                     const fare = calculateFare(cat.name);
-                    const catLower = (cat.name || cat.id || '').toLowerCase();
-                    const localCarImage = catLower.includes('taxi')
-                      ? require('../../assets/landing_taxi.png')
-                      : catLower.includes('vip') || catLower.includes('premium')
-                        ? require('../../assets/landing_premium.png')
-                        : catLower.includes('plus')
-                          ? require('../../assets/landing_plus.png')
-                          : catLower.includes('rural') || catLower.includes('arc')
-                            ? require('../../assets/landing_rural.png')
-                            : require('../../assets/landing_estandar.png');
-                    
-                    const remoteImage = cat.imageUrl || cat.iconImage || cat.image || (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:') || cat.icon.length > 30 || cat.icon.includes('/') || cat.icon.includes(';') || cat.icon.includes('+') || cat.icon.includes('=')) ? cat.icon : null);
-
+                    const categoryImage = cat.imageUrl || cat.iconImage || cat.image || (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:') || cat.icon.length > 30 || cat.icon.includes('/') || cat.icon.includes(';') || cat.icon.includes('+') || cat.icon.includes('=')) ? cat.icon : null);
                     return (
                       <TouchableOpacity 
                         key={cat.id} 
-                        activeOpacity={0.9}
                         style={[styles.canvaCategoryBtn, isSelected && styles.canvaCategoryBtnActive]}
                         onPress={() => setSelectedCategory(cat.name)}
                       >
-                        {/* Header: Nombre, ETA y Precio */}
-                        <View style={styles.canvaCategoryHeaderRow}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={styles.canvaCategoryName}>{cat.name}</Text>
-                            <View style={styles.canvaEtaBadge}>
-                              <Text style={styles.canvaEtaText}>{cat.eta || '3-5 min'}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          {categoryImage ? (
+                            <Image source={{ uri: categoryImage }} style={{ width: 42, height: 32, resizeMode: 'contain' }} />
+                          ) : (
+                            <View style={styles.categoryIconCircle}>
+                              <Ionicons 
+                                name={getSafeIoniconsName(cat.icon, 'car-outline')} 
+                                size={20} 
+                                color={Colors.accent} 
+                              />
                             </View>
-                          </View>
-                          <Text style={styles.canvaCategoryPrice}>${fare.toLocaleString('es-AR')}</Text>
+                          )}
+                          <Text style={styles.canvaCategoryName}>{cat.name}</Text>
                         </View>
-
-                        {/* Imagen Grande de Auto que llega casi a los bordes de la tarjeta */}
-                        <View style={styles.canvaCarImageContainer}>
-                          <Image 
-                            source={remoteImage ? { uri: remoteImage } : localCarImage} 
-                            style={styles.canvaCarImage} 
-                            resizeMode="contain" 
-                          />
-                        </View>
-
-                        {/* Footer: Descripción y método de pago */}
-                        <View style={styles.canvaCategoryFooterRow}>
-                          <Text style={styles.canvaCategoryDesc} numberOfLines={1}>
-                            {cat.description || 'Sedán moderno, climatizado y confortable'}
-                          </Text>
-                          <Text style={styles.canvaEtaText}>Efectivo / MP</Text>
-                        </View>
+                        <Text style={styles.canvaCategoryPrice}>${fare}</Text>
                       </TouchableOpacity>
                     );
                   })
@@ -2168,25 +1856,8 @@ export default function HomeScreen() {
       {/* HEADER DE INICIO (ESTILO AZUL TECH) */}
       {activeTab === 'home' && requestFlowStep === 'idle' && (
         <View style={[styles.canvaHeader, { paddingTop: insets.top > 0 ? insets.top + 12 : 36 }]}>
-          <View style={[styles.canvaLogoRow, { justifyContent: 'space-between', alignItems: 'center' }]}>
+          <View style={styles.canvaLogoRow}>
             <TravelCabLogo size={140} textColor={Colors.white} isAccentColor={true} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <TouchableOpacity
-                style={styles.topSafetyIconBtn}
-                onPress={() => setSafetyModalVisible(true)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="shield-checkmark" size={18} color="#EF4444" />
-                <Text style={styles.topSafetyIconText}>Seguridad</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.topSupportIconBtn}
-                onPress={() => setSupportModalVisible(true)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="headset" size={18} color={Colors.accent} />
-              </TouchableOpacity>
-            </View>
           </View>
           
           <View style={styles.canvaUserGreetingBox}>
@@ -2672,7 +2343,7 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* SECCIÓN B: MI EXPERIENCIA (SALIDA PROPIA & OPERADOR MAYORISTA) */}
+            {/* SECCIÓN B: MI EXPERIENCIA */}
             {experienceMainTab === 'trip' && (
               <View style={{ width: '100%' }}>
                 {!hasPurchasedOrganizedTrip || !contractedTrip ? (
@@ -2682,44 +2353,15 @@ export default function HomeScreen() {
                     </View>
                     <Text style={styles.lockedTripTitle}>Módulo Bloqueado</Text>
                     <Text style={styles.lockedTripDesc}>
-                      Este sector exclusivo se habilitará una vez que realices la reserva o señes una experiencia. Solo pasajeros con reserva activa o señada pueden acceder a este centro de viaje.
+                      Este sector exclusivo se habilitará una vez que realices la reserva o contrates una experiencia organizada por nosotros. Solo usuarios con reserva activa pueden acceder.
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.activeTripDetailContainer}>
-                    {/* 1. HERO CABECERA */}
                     <View style={styles.activeTripHero}>
-                      <Image source={{ uri: contractedTrip.coverImage || contractedTrip.imageUrl }} style={styles.activeTripHeroImg} />
+                      <Image source={{ uri: contractedTrip.imageUrl }} style={styles.activeTripHeroImg} />
                       <View style={styles.activeTripHeroOverlay}>
-                        {/* Tag de Tipo de Viaje */}
-                        <View style={[
-                          styles.tripTypeBadge,
-                          contractedTrip.tripType === 'salida_propia' ? styles.tripTypeBadgePropio : styles.tripTypeBadgeOperador
-                        ]}>
-                          <Ionicons 
-                            name={contractedTrip.tripType === 'salida_propia' ? "sparkles" : "airplane"} 
-                            size={12} 
-                            color={Colors.white} 
-                          />
-                          <Text style={styles.tripTypeBadgeText}>
-                            {contractedTrip.tripType === 'salida_propia' 
-                              ? '🌟 Salida Propia TravelApp' 
-                              : `✈️ Operador: ${contractedTrip.operatorDetails?.operatorName || 'Mayorista'}`}
-                          </Text>
-                        </View>
-
-                        <Text style={styles.activeTripHeroTitle}>{contractedTrip.title || contractedTrip.destination}</Text>
-                        
-                        {/* Códigos de Sincronización */}
-                        <View style={styles.tripCodesRow}>
-                          <View style={styles.tripCodePill}>
-                            <Text style={styles.tripCodePillText}>Tour: {contractedTrip.tourCode}</Text>
-                          </View>
-                          <View style={[styles.tripCodePill, { borderColor: '#10B981', backgroundColor: 'rgba(6, 78, 59, 0.85)' }]}>
-                            <Text style={[styles.tripCodePillText, { color: '#6EE7B7' }]}>Reserva: {contractedTrip.reservationCode}</Text>
-                          </View>
-                        </View>
-
+                        <Text style={styles.activeTripHeroTitle}>{contractedTrip.destination}</Text>
                         <View style={styles.activeTripHeroBadge}>
                           <Ionicons name="calendar-outline" size={12} color={Colors.white} />
                           <Text style={styles.activeTripHeroBadgeText}>{contractedTrip.dates}</Text>
@@ -2727,148 +2369,18 @@ export default function HomeScreen() {
                       </View>
                     </View>
 
-                    {/* 2. WIDGET DE CUENTA REGRESIVA */}
-                    {(() => {
-                      const countdown = calculateTripCountdown(contractedTrip.departureDate);
-                      return (
-                        <View style={styles.countdownCard}>
-                          <View style={styles.countdownHeader}>
-                            <Text style={styles.countdownTitle}>Cuenta Regresiva para la Salida</Text>
-                            <View style={[styles.countdownLiveBadge, countdown.isPast && { backgroundColor: '#4F46E5' }]}>
-                              <Ionicons name={countdown.isPast ? "navigate" : "time-outline"} size={12} color={Colors.white} />
-                              <Text style={styles.countdownLiveText}>{countdown.label}</Text>
-                            </View>
-                          </View>
-
-                          {!countdown.isPast && (
-                            <View style={styles.countdownGrid}>
-                              <View style={styles.countdownBox}>
-                                <Text style={styles.countdownNumber}>{countdown.days}</Text>
-                                <Text style={styles.countdownLabel}>Días</Text>
-                              </View>
-                              <Text style={styles.countdownDivider}>:</Text>
-                              <View style={styles.countdownBox}>
-                                <Text style={styles.countdownNumber}>{countdown.hours}</Text>
-                                <Text style={styles.countdownLabel}>Horas</Text>
-                              </View>
-                              <Text style={styles.countdownDivider}>:</Text>
-                              <View style={styles.countdownBox}>
-                                <Text style={styles.countdownNumber}>{countdown.mins}</Text>
-                                <Text style={styles.countdownLabel}>Minutos</Text>
-                              </View>
-                            </View>
-                          )}
-                        </View>
-                      );
-                    })()}
-
-                    {/* 3. WIDGET DE CLIMA EN DESTINO */}
-                    {contractedTrip.weather && (
-                      <View style={styles.weatherCard}>
-                        <View style={styles.weatherMainRow}>
-                          <View>
-                            <Text style={styles.weatherCity}>Clima en {contractedTrip.weather.city || contractedTrip.destination}</Text>
-                            <Text style={styles.weatherCondition}>{contractedTrip.weather.condition}</Text>
-                          </View>
-                          <Text style={styles.weatherTemp}>{contractedTrip.weather.temperature}°C</Text>
-                        </View>
-
-                        {contractedTrip.weather.forecast && (
-                          <View style={styles.weatherForecastBar}>
-                            {contractedTrip.weather.forecast.map((f: any, i: number) => (
-                              <View key={i} style={styles.forecastDayItem}>
-                                <Text style={styles.forecastDayName}>{f.day}</Text>
-                                <Ionicons name="sunny-outline" size={14} color="#0284C7" />
-                                <Text style={styles.forecastDayTemp}>{f.temp}°C</Text>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-                      </View>
-                    )}
-
-                    {/* 4. BOTÓN PASE DE ABORDAJE QR */}
-                    <TouchableOpacity
-                      style={styles.qrPassButton}
-                      onPress={() => setIsQrModalVisible(true)}
-                    >
-                      <Ionicons name="qr-code-outline" size={20} color={Colors.white} />
-                      <Text style={styles.qrPassButtonText}>Ver Mi Pase de Abordaje QR (Check-In)</Text>
-                    </TouchableOpacity>
-
-                    {/* 5. FINANCIACIÓN Y PORCENTAJE PAGADO */}
-                    <View style={styles.paymentStatusCard}>
-                      <Text style={styles.paymentCardTitle}>Financiación &amp; Estado de Pago</Text>
-                      <View style={styles.paymentProgressContainer}>
-                        <View style={styles.paymentProgRow}>
-                          <Text style={styles.paymentProgLabel}>Abonado hasta el momento</Text>
-                          <Text style={styles.paymentProgValue}>
-                            {contractedTrip.payment?.currency} ${contractedTrip.payment?.paidAmount?.toLocaleString()} / ${contractedTrip.payment?.totalAmount?.toLocaleString()}
-                          </Text>
-                        </View>
-                        <View style={styles.progressBarBg}>
-                          <View style={[
-                            styles.progressBarFill, 
-                            { width: `${Math.min(100, ((contractedTrip.payment?.paidAmount || 0) / (contractedTrip.payment?.totalAmount || 1)) * 100)}%` }
-                          ]} />
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                          <Text style={styles.remainingBalanceText}>
-                            Saldo pendiente: {contractedTrip.payment?.currency} ${Math.max(0, (contractedTrip.payment?.totalAmount || 0) - (contractedTrip.payment?.paidAmount || 0)).toLocaleString()}
-                          </Text>
-                          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.primary }}>
-                            {Math.round(((contractedTrip.payment?.paidAmount || 0) / (contractedTrip.payment?.totalAmount || 1)) * 100)}% PAGADO
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* 6. MANIFIESTO DE PASAJEROS (ROSTER) */}
-                    <View style={styles.paxRosterContainer}>
-                      <View style={styles.paxRosterHeader}>
-                        <Text style={styles.paxRosterTitle}>Pasajeros en la Reserva ({contractedTrip.passengers?.length || 1})</Text>
-                        <Ionicons name="people-outline" size={16} color={Colors.primary} />
-                      </View>
-                      {contractedTrip.passengers?.map((pax: any, pIdx: number) => (
-                        <View key={pIdx} style={styles.paxItemRow}>
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <Text style={styles.paxName}>{pax.fullName}</Text>
-                              {pax.isTitular && (
-                                <View style={styles.paxTitularTag}>
-                                  <Text style={styles.paxTitularText}>TITULAR</Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text style={styles.paxSubDetail}>
-                              DNI: {pax.dni} {pax.seat ? `• ${pax.seat}` : ''} {pax.roomType ? `• Hab: ${pax.roomType}` : ''}
-                            </Text>
-                          </View>
-                          <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-                        </View>
-                      ))}
-                    </View>
-
-                    {/* 7. BARRA DE SUB-PESTAÑAS INTERACTIVAS */}
                     <ScrollView 
                       horizontal 
                       showsHorizontalScrollIndicator={false}
                       style={styles.subTabScroll}
                       contentContainerStyle={styles.subTabScrollContent}
                     >
-                      {(contractedTrip.tripType === 'salida_propia' ? [
-                        { id: 'itinerary', label: 'Itinerario & Servicios', icon: 'list-circle-outline' },
-                        { id: 'vouchers', label: 'Vouchers & Póliza', icon: 'document-text-outline' },
-                        { id: 'payments', label: 'Opcionales & Merch', icon: 'bag-check-outline' },
-                        { id: 'group', label: 'Coordinador & Grupo', icon: 'people-outline' },
-                        { id: 'checkin', label: 'Web Check-In 48h', icon: 'car-sport-outline' },
-                        { id: 'gallery', label: 'Fotos en Vivo', icon: 'images-outline' },
-                        { id: 'sos', label: 'Recomendaciones & SOS', icon: 'shield-checkmark-outline' },
-                      ] : [
-                        { id: 'itinerary', label: 'Pasajes & Servicios', icon: 'airplane-outline' },
-                        { id: 'vouchers', label: 'Vouchers (Smart 72h)', icon: 'document-lock-outline' },
-                        { id: 'sos', label: 'Guardia 24h & Asistencia', icon: 'call-outline' },
-                      ]).map(subTab => {
+                      {[
+                        { id: 'itinerary', label: 'Itinerario & Info', icon: 'list-circle-outline' },
+                        { id: 'payments', label: 'Pagos & Extras', icon: 'wallet-outline' },
+                        { id: 'group', label: 'Comunidad', icon: 'people-outline' },
+                        { id: 'gallery', label: 'Fotos', icon: 'images-outline' },
+                      ].map(subTab => {
                         const isSubSelected = activeTripSubTab === subTab.id;
                         return (
                           <TouchableOpacity
@@ -2883,230 +2395,128 @@ export default function HomeScreen() {
                       })}
                     </ScrollView>
 
-                    {/* 8. CONTENIDOS DE SUB-PESTAÑAS */}
-
-                    {/* SUBTAB 1: ITINERARIO & SERVICIOS (SALIDA PROPIA) O TICKETS (OPERADOR MAYORISTA) */}
                     {activeTripSubTab === 'itinerary' && (
                       <View style={styles.subTabContent}>
-                        {contractedTrip.tripType === 'salida_propia' ? (
-                          <>
-                            {/* Servicios Contratados */}
-                            <View style={styles.infoSectionCard}>
-                              <Text style={styles.sectionSubTitle}>Servicios Contratados</Text>
-                              {contractedTrip.services?.map((service: string, idx: number) => (
-                                <View key={idx} style={styles.serviceRow}>
-                                  <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-                                  <Text style={styles.serviceText}>{service}</Text>
-                                </View>
-                              ))}
-                              
-                              <TouchableOpacity 
-                                style={styles.downloadPdfBtn}
-                                onPress={() => {
-                                  Alert.alert(
-                                    'Póliza de Asistencia al Viajero',
-                                    `Aseguradora: ${contractedTrip.travelAssistance?.provider || 'Assist Card'}\nPóliza Nº: ${contractedTrip.travelAssistance?.policyNumber || 'AC-ARG-99201'}\nGuardia 24hs: ${contractedTrip.travelAssistance?.emergencyPhone24h || '+54 11 5555-8000'}`,
-                                    [
-                                      { text: 'Llamar a Asistencia', onPress: () => Linking.openURL(`tel:${contractedTrip.travelAssistance?.emergencyPhone24h || '55558000'}`) },
-                                      { text: 'Descargar PDF', onPress: () => Alert.alert('Descargando', 'Voucher de asistencia descargado con éxito.') },
-                                      { text: 'Cerrar', style: 'cancel' }
-                                    ]
-                                  );
-                                }}
-                              >
-                                <Ionicons name="cloud-download-outline" size={18} color={Colors.primary} />
-                                <Text style={styles.downloadPdfBtnText}>Descargar Voucher de Asistencia (PDF)</Text>
-                              </TouchableOpacity>
+                        <View style={styles.infoSectionCard}>
+                          <Text style={styles.sectionSubTitle}>Servicios Contratados</Text>
+                          {contractedTrip.services?.map((service: string, idx: number) => (
+                            <View key={idx} style={styles.serviceRow}>
+                              <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                              <Text style={styles.serviceText}>{service}</Text>
                             </View>
+                          ))}
+                          
+                          <TouchableOpacity 
+                            style={styles.downloadPdfBtn}
+                            onPress={() => {
+                              Alert.alert(
+                                'Descargar Cobertura',
+                                'Descargando póliza y credencial digital de asistencia Assist Card (PDF) en segundo plano...',
+                                [{ text: 'Listo' }]
+                              );
+                            }}
+                          >
+                            <Ionicons name="cloud-download-outline" size={18} color={Colors.primary} />
+                            <Text style={styles.downloadPdfBtnText}>Descargar Voucher de Asistencia (PDF)</Text>
+                          </TouchableOpacity>
+                        </View>
 
-                            {/* Itinerario Día por Día */}
-                            <Text style={styles.sectionSubTitle}>Itinerario del Viaje Día por Día</Text>
-                            <View style={styles.itineraryAccordion}>
-                              {contractedTrip.itinerary?.map((day: any, dIdx: number) => {
-                                const dayNum = day.dayNumber || day.day || (dIdx + 1);
-                                const isExpanded = expandedDay === dayNum;
-                                return (
-                                  <View key={dayNum} style={[styles.accordionItem, isExpanded && styles.accordionItemExpanded]}>
-                                    <TouchableOpacity 
-                                      style={styles.accordionHeader}
-                                      onPress={() => setExpandedDay(isExpanded ? null : dayNum)}
-                                    >
-                                      <View style={styles.accordionDayCircle}>
-                                        <Text style={styles.accordionDayText}>D{dayNum}</Text>
-                                      </View>
-                                      <View style={{ flex: 1, paddingRight: 8 }}>
-                                        <Text style={styles.accordionHeaderTitle} numberOfLines={1}>{day.title}</Text>
-                                        {day.timeSlot && (
-                                          <Text style={{ fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.primary }}>
-                                            ⏰ {day.timeSlot} • {day.location || 'Destino'}
-                                          </Text>
-                                        )}
-                                      </View>
-                                      <Ionicons 
-                                        name={isExpanded ? "chevron-up" : "chevron-down"} 
-                                        size={18} 
-                                        color={Colors.textSecondary} 
-                                      />
-                                    </TouchableOpacity>
-                                    
-                                    {isExpanded && (
-                                      <View style={styles.accordionBody}>
-                                        <Text style={styles.accordionBodyDesc}>{day.description}</Text>
-                                      </View>
-                                    )}
-                                  </View>
-                                );
-                              })}
-                            </View>
-
-                            {/* Asistente Travis AI */}
-                            <View style={styles.travisWidgetCard}>
-                              <View style={styles.travisWidgetHeader}>
-                                <View style={styles.travisWidgetAvatar}>
-                                  <Text style={styles.travisWidgetAvatarText}>T</Text>
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                  <Text style={styles.travisWidgetTitle}>¿Dudas sobre {contractedTrip.destination}?</Text>
-                                  <Text style={styles.travisWidgetSubtitle}>Preguntale a Travis AI sobre ropa recomendada, gastronomía, clima...</Text>
-                                </View>
-                              </View>
-                              
-                              <View style={styles.travisWidgetForm}>
-                                <TextInput
-                                  style={styles.travisWidgetInput}
-                                  placeholder="Ej: ¿Qué abrigo llevar para el Cerro Campanario?"
-                                  value={travisQuery}
-                                  onChangeText={setTravisQuery}
-                                />
+                        <Text style={styles.sectionSubTitle}>Itinerario del Viaje</Text>
+                        <View style={styles.itineraryAccordion}>
+                          {contractedTrip.itinerary?.map((day: any) => {
+                            const isExpanded = expandedDay === day.day;
+                            return (
+                              <View key={day.day} style={[styles.accordionItem, isExpanded && styles.accordionItemExpanded]}>
                                 <TouchableOpacity 
-                                  style={styles.travisWidgetBtn}
-                                  onPress={handleAskTravisAboutDestination}
-                                  disabled={travisLoading}
+                                  style={styles.accordionHeader}
+                                  onPress={() => setExpandedDay(isExpanded ? null : day.day)}
                                 >
-                                  {travisLoading ? (
-                                    <ActivityIndicator size="small" color={Colors.white} />
-                                  ) : (
-                                    <Ionicons name="send" size={16} color={Colors.white} />
-                                  )}
+                                  <View style={styles.accordionDayCircle}>
+                                    <Text style={styles.accordionDayText}>D{day.day}</Text>
+                                  </View>
+                                  <Text style={styles.accordionHeaderTitle} numberOfLines={1}>{day.title}</Text>
+                                  <Ionicons 
+                                    name={isExpanded ? "chevron-up" : "chevron-down"} 
+                                    size={18} 
+                                    color={Colors.textSecondary} 
+                                  />
                                 </TouchableOpacity>
-                              </View>
-
-                              {travisAnswer ? (
-                                <View style={styles.travisWidgetResponse}>
-                                  <Text style={styles.travisWidgetResponseTitle}>Respuesta de Travis:</Text>
-                                  <Text style={styles.travisWidgetResponseText}>{travisAnswer}</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          </>
-                        ) : (
-                          <>
-                            {/* TICKETS & SERVICIOS OPERADOR MAYORISTA */}
-                            <Text style={styles.sectionSubTitle}>Tickets de Transporte Emitidos</Text>
-                            {contractedTrip.operatorDetails?.tickets?.map((t: any, idx: number) => (
-                              <View key={idx} style={styles.ticketCard}>
-                                <View style={styles.ticketProviderRow}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                    <Ionicons name={t.type === 'Avion' ? 'airplane' : 'bus'} size={18} color={Colors.primary} />
-                                    <Text style={styles.ticketProviderName}>{t.provider} ({t.identifier})</Text>
-                                  </View>
-                                  <View style={styles.ticketPnrBadge}>
-                                    <Text style={styles.ticketPnrText}>PNR: {t.locatorPnr}</Text>
-                                  </View>
-                                </View>
-
-                                <View style={styles.ticketRouteRow}>
-                                  <View style={styles.ticketCityBox}>
-                                    <Text style={styles.ticketCityCode}>{t.origin}</Text>
-                                    <Text style={styles.ticketTimeText}>{t.departureTime}</Text>
-                                  </View>
-                                  <Ionicons name="arrow-forward" size={18} color={Colors.textMuted} />
-                                  <View style={styles.ticketCityBox}>
-                                    <Text style={styles.ticketCityCode}>{t.destination}</Text>
-                                    <Text style={styles.ticketTimeText}>{t.arrivalTime}</Text>
-                                  </View>
-                                </View>
-
-                                <View style={styles.ticketDetailsGrid}>
-                                  <Text style={styles.ticketDetailText}>💺 Asientos Asignados: <strong style={{ color: Colors.textPrimary }}>{t.seats?.join(', ')}</strong></Text>
-                                  {t.baggagePolicy && (
-                                    <Text style={styles.ticketDetailText}>🧳 Equipaje: {t.baggagePolicy}</Text>
-                                  )}
-                                </View>
-                              </View>
-                            ))}
-
-                            {/* Servicios Terrestres y Hotelería */}
-                            <Text style={styles.sectionSubTitle}>Alojamiento &amp; Servicios Terrestres</Text>
-                            {contractedTrip.operatorDetails?.landServices?.map((ls: any, idx: number) => (
-                              <View key={idx} style={styles.ticketCard}>
-                                <Text style={styles.ticketProviderName}>🏨 {ls.title}</Text>
-                                <Text style={styles.ticketDetailText}>Prestador: {ls.provider}</Text>
-                                {ls.foodPlan && <Text style={styles.ticketDetailText}>Régimen: {ls.foodPlan}</Text>}
-                                {ls.notes && <Text style={[styles.ticketDetailText, { marginTop: 4 }]}>ℹ️ {ls.notes}</Text>}
-                              </View>
-                            ))}
-                          </>
-                        )}
-                      </View>
-                    )}
-
-                    {/* SUBTAB 2: VOUCHERS (SMART 72H LOCK) */}
-                    {activeTripSubTab === 'vouchers' && (
-                      <View style={styles.subTabContent}>
-                        <Text style={styles.sectionSubTitle}>Documentación &amp; Vouchers Oficiales</Text>
-                        <Text style={styles.tabHeaderDesc}>
-                          Los vouchers de operadores mayoristas se habilitan con candado inteligente 72 horas antes de la partida.
-                        </Text>
-
-                        {contractedTrip.vouchers?.map((v: any) => {
-                          const unlocked = isVoucherUnlocked(v.unlockHoursBefore, contractedTrip.departureDate);
-
-                          return (
-                            <View key={v.id} style={styles.voucherItemCard}>
-                              <View style={{ flex: 1, paddingRight: 10 }}>
-                                <Text style={styles.voucherItemTitle}>{v.name}</Text>
-                                {unlocked ? (
-                                  <View style={styles.voucherUnlockBadge}>
-                                    <Ionicons name="lock-open-outline" size={12} color="#065F46" />
-                                    <Text style={styles.voucherUnlockText}>Disponible para Descarga</Text>
-                                  </View>
-                                ) : (
-                                  <View style={styles.voucherLockBadge}>
-                                    <Ionicons name="lock-closed-outline" size={12} color="#B45309" />
-                                    <Text style={styles.voucherLockText}>Se desbloquea 72hs antes de salir</Text>
+                                
+                                {isExpanded && (
+                                  <View style={styles.accordionBody}>
+                                    <Text style={styles.accordionBodyDesc}>{day.description}</Text>
                                   </View>
                                 )}
                               </View>
+                            );
+                          })}
+                        </View>
 
-                              {unlocked ? (
-                                <TouchableOpacity
-                                  style={{ padding: 10, backgroundColor: '#ECFDF5', borderRadius: 10 }}
-                                  onPress={() => {
-                                    Alert.alert('Descarga de Voucher', `Descargando ${v.name}...`, [{ text: 'Listo' }]);
-                                  }}
-                                >
-                                  <Ionicons name="cloud-download-outline" size={20} color="#059669" />
-                                </TouchableOpacity>
-                              ) : (
-                                <View style={{ padding: 10, backgroundColor: '#F1F5F9', borderRadius: 10 }}>
-                                  <Ionicons name="time-outline" size={20} color="#94A3B8" />
-                                </View>
-                              )}
+                        <View style={styles.travisWidgetCard}>
+                          <View style={styles.travisWidgetHeader}>
+                            <View style={styles.travisWidgetAvatar}>
+                              <Text style={styles.travisWidgetAvatarText}>T</Text>
                             </View>
-                          );
-                        })}
+                            <View>
+                              <Text style={styles.travisWidgetTitle}>¿Dudas sobre {contractedTrip.destination}?</Text>
+                              <Text style={styles.travisWidgetSubtitle}>Preguntale a Travis AI sobre clima, ropa, gastronomía, etc.</Text>
+                            </View>
+                          </View>
+                          
+                          <View style={styles.travisWidgetForm}>
+                            <TextInput
+                              style={styles.travisWidgetInput}
+                              placeholder="Ej: ¿Qué ropa llevo para el Hornocal?"
+                              value={travisQuery}
+                              onChangeText={setTravisQuery}
+                            />
+                            <TouchableOpacity 
+                              style={styles.travisWidgetBtn}
+                              onPress={handleAskTravisAboutDestination}
+                              disabled={travisLoading}
+                            >
+                              {travisLoading ? (
+                                <ActivityIndicator size="small" color={Colors.white} />
+                              ) : (
+                                <Ionicons name="send" size={16} color={Colors.white} />
+                              )}
+                            </TouchableOpacity>
+                          </View>
+
+                          {travisAnswer ? (
+                            <View style={styles.travisWidgetResponse}>
+                              <Text style={styles.travisWidgetResponseTitle}>Respuesta de Travis:</Text>
+                              <Text style={styles.travisWidgetResponseText}>{travisAnswer}</Text>
+                            </View>
+                          ) : null}
+                        </View>
                       </View>
                     )}
 
-                    {/* SUBTAB 3: OPCIONALES & MERCH (SALIDA PROPIA) */}
                     {activeTripSubTab === 'payments' && (
                       <View style={styles.subTabContent}>
-                        <Text style={styles.sectionSubTitle}>Excursiones Opcionales &amp; Merchandising</Text>
-                        <Text style={styles.tabHeaderDesc}>
-                          Podés adquirir extras para tu viaje con Efectivo, Tarjeta / Mercado Pago o canjeando tus Puntos Rewards.
-                        </Text>
+                        <View style={styles.paymentStatusCard}>
+                          <Text style={styles.paymentCardTitle}>Financiación y Estado de Pago</Text>
+                          <View style={styles.paymentProgressContainer}>
+                            <View style={styles.paymentProgRow}>
+                              <Text style={styles.paymentProgLabel}>Saldo Abonado</Text>
+                              <Text style={styles.paymentProgValue}>
+                                {contractedTrip.payment.currency} ${contractedTrip.payment.paidAmount} / ${contractedTrip.payment.totalAmount}
+                              </Text>
+                            </View>
+                            <View style={styles.progressBarBg}>
+                              <View style={[
+                                styles.progressBarFill, 
+                                { width: `${(contractedTrip.payment.paidAmount / contractedTrip.payment.totalAmount) * 100}%` }
+                              ]} />
+                            </View>
+                            <Text style={styles.remainingBalanceText}>
+                              Saldo Restante a pagar: {contractedTrip.payment.currency} ${contractedTrip.payment.totalAmount - contractedTrip.payment.paidAmount}
+                            </Text>
+                          </View>
+                        </View>
 
+                        <Text style={styles.sectionSubTitle}>Excursiones Opcionales (Adquirir con Galicia - Nave)</Text>
                         <View style={styles.excursionsList}>
                           {excursionsList.map((exc: any) => (
                             <View key={exc.id} style={styles.excursionCard}>
@@ -3119,26 +2529,16 @@ export default function HomeScreen() {
                               {exc.paid ? (
                                 <View style={styles.paidBadge}>
                                   <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
-                                  <Text style={styles.paidBadgeText}>ADQUIRIDA Y CONFIRMADA</Text>
+                                  <Text style={styles.paidBadgeText}>ADQUIRIDA Y PAGADA</Text>
                                 </View>
                               ) : (
-                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                                  <TouchableOpacity 
-                                    style={[styles.payExcursionBtn, { flex: 1 }]}
-                                    onPress={() => handleStartGaliciaPayment(exc)}
-                                  >
-                                    <Ionicons name="card-outline" size={14} color={Colors.white} />
-                                    <Text style={styles.payExcursionBtnText}>Pagar con Tarjeta</Text>
-                                  </TouchableOpacity>
-
-                                  <TouchableOpacity 
-                                    style={[styles.payExcursionBtn, { flex: 1, backgroundColor: '#D97706' }]}
-                                    onPress={() => handleRedeemPointsForExcursion(exc)}
-                                  >
-                                    <Ionicons name="gift-outline" size={14} color={Colors.white} />
-                                    <Text style={styles.payExcursionBtnText}>🎁 {exc.pointsPrice || exc.price * 20} Pts</Text>
-                                  </TouchableOpacity>
-                                </View>
+                                <TouchableOpacity 
+                                  style={styles.payExcursionBtn}
+                                  onPress={() => handleStartGaliciaPayment(exc)}
+                                >
+                                  <Ionicons name="wallet-outline" size={16} color={Colors.white} />
+                                  <Text style={styles.payExcursionBtnText}>Pagar con Galicia - Nave</Text>
+                                </TouchableOpacity>
                               )}
                             </View>
                           ))}
@@ -3146,102 +2546,62 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    {/* SUBTAB 4: COORDINADOR & COMUNIDAD (SALIDA PROPIA) */}
                     {activeTripSubTab === 'group' && (
                       <View style={styles.subTabContent}>
-                        {/* Perfil del Coordinador */}
-                        {contractedTrip.coordinator && (
-                          <View style={styles.coordinatorCard}>
-                            <Image source={{ uri: contractedTrip.coordinator.avatar }} style={styles.coordinatorAvatar} />
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.coordinatorName}>{contractedTrip.coordinator.name}</Text>
-                              <Text style={styles.coordinatorRole}>Coordinador TravelApp a Cargo</Text>
-                              <TouchableOpacity 
-                                style={styles.whatsappCoordBtn}
-                                onPress={() => Linking.openURL(`https://wa.me/${contractedTrip.coordinator.phone.replace(/[^0-9]/g, '')}`)}
-                              >
-                                <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-                                <Text style={styles.whatsappCoordText}>Hablar por WhatsApp</Text>
-                              </TouchableOpacity>
+                        <View style={styles.coordinatorCard}>
+                          <Image source={{ uri: contractedTrip.coordinator.avatar }} style={styles.coordinatorAvatar} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.coordinatorName}>{contractedTrip.coordinator.name}</Text>
+                            <Text style={styles.coordinatorRole}>Coordinador de Viaje Asignado</Text>
+                            <TouchableOpacity 
+                              style={styles.whatsappCoordBtn}
+                              onPress={() => Linking.openURL(`https://wa.me/${contractedTrip.coordinator.phone.replace(/[^0-9]/g, '')}`)}
+                            >
+                              <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
+                              <Text style={styles.whatsappCoordText}>Hablar por WhatsApp</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        <Text style={styles.sectionSubTitle}>Tus Compañeros de Viaje</Text>
+                        <View style={styles.passengersListRow}>
+                          {['Sofía (BsAs)', 'Martín (Tucumán)', 'Griselda (Cba)', 'Juan Pablo (Mza)'].map((pName, index) => (
+                            <View key={index} style={styles.passengerChip}>
+                              <Ionicons name="person-outline" size={12} color={Colors.primary} />
+                              <Text style={styles.passengerChipText}>{pName}</Text>
                             </View>
-                          </View>
-                        )}
-
-                        {/* Switch de Privacidad de Perfil */}
-                        <View style={styles.communityPrivacyRow}>
-                          <View style={{ flex: 1, paddingRight: 8 }}>
-                            <Text style={styles.communityPrivacyTitle}>Privacidad en la Comunidad</Text>
-                            <Text style={styles.communityPrivacyDesc}>
-                              {hideCommunityProfile ? 'Tu perfil y nombre están ocultos para el resto del grupo.' : 'Tu nombre y foto son visibles para tus compañeros de viaje.'}
-                            </Text>
-                          </View>
-                          <Switch
-                            value={hideCommunityProfile}
-                            onValueChange={handleToggleCommunityPrivacy}
-                            trackColor={{ false: '#CBD5E1', true: '#4F46E5' }}
-                            thumbColor={Colors.white}
-                          />
+                          ))}
                         </View>
 
-                        {/* Muro Social de Compañeros de Viaje */}
-                        <Text style={styles.sectionSubTitle}>Muro de la Comunidad de Pasajeros 💬</Text>
-                        
-                        {/* Input para publicar en la comunidad */}
-                        <View style={{ flexDirection: 'row', gap: 8, marginVertical: 8 }}>
-                          <TextInput
-                            style={[styles.chatInput, { flex: 1, backgroundColor: Colors.white }]}
-                            placeholder="Saludá o compartí un comentario con el grupo..."
-                            value={communityPostInput}
-                            onChangeText={setCommunityPostInput}
-                          />
-                          <TouchableOpacity
-                            style={[styles.chatSendBtn, { backgroundColor: '#4F46E5' }]}
-                            onPress={handlePostCommunityMessage}
-                            disabled={isPostingCommunity}
-                          >
-                            <Ionicons name="send" size={16} color={Colors.white} />
-                          </TouchableOpacity>
-                        </View>
-
-                        {/* Publicaciones del Muro */}
-                        <View style={{ gap: 8, marginTop: 4 }}>
-                          {communityPosts.length === 0 ? (
-                            <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textMuted, textAlign: 'center', padding: 16 }}>
-                              Sé el primero en saludar al grupo en el muro.
-                            </Text>
-                          ) : (
-                            communityPosts.map((post) => (
-                              <View key={post.id} style={styles.communityPostCard}>
-                                <View style={styles.communityPostHeader}>
-                                  <Image source={{ uri: post.userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200' }} style={styles.communityAvatar} />
-                                  <Text style={styles.communityAuthor}>{post.userName}</Text>
-                                </View>
-                                <Text style={styles.communityPostText}>{post.content}</Text>
-                              </View>
-                            ))
-                          )}
-                        </View>
-
-                        {/* Avisos Oficiales del Coordinador */}
-                        <Text style={[styles.sectionSubTitle, { marginTop: 16 }]}>Canal de Avisos del Coordinador 📢</Text>
+                        <Text style={styles.sectionSubTitle}>Chat Grupal de la Expedición 💬</Text>
                         <View style={styles.groupChatContainer}>
                           <ScrollView 
                             style={styles.chatScroll}
                             contentContainerStyle={{ gap: 10, padding: 10 }}
                             nestedScrollEnabled
                           >
-                            {groupMessages.map((msg) => (
-                              <View key={msg.id} style={[styles.chatBubble, msg.senderRole === 'coordinador' ? styles.chatBubbleCoord : styles.chatBubbleMe]}>
-                                <Text style={styles.chatSenderName}>{msg.sender}</Text>
-                                <Text style={styles.chatBubbleText}>{msg.text}</Text>
-                              </View>
-                            ))}
+                            {groupMessages.map((msg) => {
+                              const isMe = msg.senderRole === 'pasajero' && msg.sender === user.displayName;
+                              const isCoord = msg.senderRole === 'coordinador';
+                              return (
+                                <View 
+                                  key={msg.id} 
+                                  style={[
+                                    styles.chatBubble, 
+                                    isMe ? styles.chatBubbleMe : isCoord ? styles.chatBubbleCoord : styles.chatBubbleOther
+                                  ]}
+                                >
+                                  <Text style={styles.chatSenderName}>{msg.sender}</Text>
+                                  <Text style={styles.chatBubbleText}>{msg.text}</Text>
+                                </View>
+                              );
+                            })}
                           </ScrollView>
                           
                           <View style={styles.chatInputRow}>
                             <TextInput
                               style={styles.chatInput}
-                              placeholder="Pregunta privada para el coordinador..."
+                              placeholder="Escribí un mensaje al grupo..."
                               value={coordinatorMessage}
                               onChangeText={setCoordinatorMessage}
                             />
@@ -3256,158 +2616,45 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    {/* SUBTAB 5: WEB CHECK-IN 48H & TRAVELCAB (SALIDA PROPIA) */}
-                    {activeTripSubTab === 'checkin' && (
-                      <View style={styles.subTabContent}>
-                        <Text style={styles.sectionSubTitle}>Web Check-In 48h &amp; Traslado TravelCab</Text>
-                        <Text style={styles.tabHeaderDesc}>
-                          Confirmá tu asistencia al viaje y coordiná la recogida en tu domicilio puerta a puerta hasta la terminal o aeropuerto.
-                        </Text>
-
-                        <View style={styles.checkInBox}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text style={{ fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary }}>Estado del Check-In</Text>
-                            {contractedTrip.webCheckIn?.isCompleted ? (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                                <Text style={{ color: '#065F46', fontSize: 11, fontFamily: 'Quicksand-Bold' }}>CONFIRMADO</Text>
-                              </View>
-                            ) : (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                <Ionicons name="time-outline" size={14} color="#B45309" />
-                                <Text style={{ color: '#B45309', fontSize: 11, fontFamily: 'Quicksand-Bold' }}>HABILITADO (48H)</Text>
-                              </View>
-                            )}
-                          </View>
-
-                          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary, marginTop: 4 }}>
-                            Dirección de recogida en tu domicilio (Opcional - Servicio Puerta a Puerta TravelCab):
-                          </Text>
-                          <TextInput
-                            style={styles.checkInInput}
-                            placeholder="Ej: Av. Aconquija 1820, Yerba Buena, Tucumán"
-                            value={checkInPickupAddress}
-                            onChangeText={setCheckInPickupAddress}
-                          />
-
-                          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary }}>
-                            Horario pactado de búsqueda:
-                          </Text>
-                          <TextInput
-                            style={styles.checkInInput}
-                            placeholder="Ej: 17:30 hs (Día de salida)"
-                            value={checkInPickupTime}
-                            onChangeText={setCheckInPickupTime}
-                          />
-
-                          <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary }}>
-                            Observaciones de Equipaje:
-                          </Text>
-                          <TextInput
-                            style={styles.checkInInput}
-                            placeholder="Ej: 2 valijas grandes + 1 bolso de mano"
-                            value={checkInPickupNotes}
-                            onChangeText={setCheckInPickupNotes}
-                          />
-
-                          <TouchableOpacity
-                            style={styles.checkInActionBtn}
-                            onPress={handleSaveWebCheckIn}
-                            disabled={isSubmittingCheckIn}
-                          >
-                            <Text style={styles.checkInActionBtnText}>
-                              {contractedTrip.webCheckIn?.isCompleted ? 'Actualizar Datos de Check-In' : 'Confirmar Check-In y Pedir Traslado'}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* SUBTAB 6: FOTOS EN VIVO (SALIDA PROPIA) */}
                     {activeTripSubTab === 'gallery' && (
                       <View style={styles.subTabContent}>
-                        <Text style={styles.sectionSubTitle}>Banco de Fotos en Vivo del Viaje 📸</Text>
-                        <Text style={styles.tabHeaderDesc}>
-                          Fotos en alta definición subidas durante la expedición por el coordinador y los fotógrafos oficiales para descarga libre.
-                        </Text>
+                        <Text style={styles.sectionSubTitle}>Galería de Recuerdos del Viaje 📸</Text>
+                        <Text style={styles.tabHeaderDesc}>Fotos capturadas por el coordinador y los participantes para descargar.</Text>
                         
                         <View style={styles.galleryGrid}>
-                          {(contractedTrip.livePhotos || contractedTrip.photos || []).map((photoItem: any, index: number) => {
-                            const photoUrl = typeof photoItem === 'string' ? photoItem : photoItem.url;
-                            const caption = typeof photoItem === 'string' ? 'Foto del Viaje' : (photoItem.caption || 'Foto del Viaje');
-
-                            return (
-                              <View key={index} style={styles.galleryItem}>
-                                <Image source={{ uri: photoUrl }} style={styles.galleryImg} />
-                                <TouchableOpacity 
-                                  style={styles.downloadPhotoBtn}
-                                  onPress={() => {
-                                    Alert.alert(
-                                      'Descarga de Foto en HD',
-                                      `Descargando "${caption}" en máxima resolución a tu galería...`,
-                                      [{ text: 'Aceptar' }]
-                                    );
-                                  }}
-                                >
-                                  <Ionicons name="cloud-download-outline" size={16} color={Colors.white} />
-                                </TouchableOpacity>
-                              </View>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    )}
-
-                    {/* SUBTAB 7: RECOMENDACIONES & SOS 24/7 */}
-                    {activeTripSubTab === 'sos' && (
-                      <View style={styles.subTabContent}>
-                        {/* Recomendaciones de Equipaje y Documentación */}
-                        <Text style={styles.sectionSubTitle}>Recomendaciones de Viaje &amp; Equipaje</Text>
-                        <View style={styles.infoSectionCard}>
-                          {contractedTrip.recommendations?.map((rec: string, rIdx: number) => (
-                            <View key={rIdx} style={styles.serviceRow}>
-                              <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
-                              <Text style={styles.serviceText}>{rec}</Text>
+                          {contractedTrip.photos?.map((photoUrl: string, index: number) => (
+                            <View key={index} style={styles.galleryItem}>
+                              <Image source={{ uri: photoUrl }} style={styles.galleryImg} />
+                              <TouchableOpacity 
+                                style={styles.downloadPhotoBtn}
+                                onPress={() => {
+                                  Alert.alert(
+                                    'Descarga de Foto',
+                                    'La foto fue guardada en tu galería de imágenes.',
+                                    [{ text: 'Aceptar' }]
+                                  );
+                                }}
+                              >
+                                <Ionicons name="cloud-download-outline" size={16} color={Colors.white} />
+                              </TouchableOpacity>
                             </View>
                           ))}
                         </View>
-
-                        {/* Condiciones Generales de Contratación */}
-                        <View style={styles.termsCard}>
-                          <Text style={styles.termsTitle}>Condiciones Generales del Servicio</Text>
-                          <Text style={styles.termsDesc}>
-                            {contractedTrip.termsAccepted?.accepted 
-                              ? `✓ Condiciones Generales firmadas y aceptadas digitalmente por ${contractedTrip.termsAccepted.acceptedBy} el ${contractedTrip.termsAccepted.acceptedAt}.`
-                              : 'Por favor lee y firma digitalmente las condiciones de viaje y políticas de cancelación.'}
-                          </Text>
-
-                          {!contractedTrip.termsAccepted?.accepted && (
-                            <TouchableOpacity style={styles.termsSignBtn} onPress={handleSignTerms}>
-                              <Text style={styles.termsSignBtnText}>Aceptar Términos y Condiciones</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-
-                        {/* Botón SOS 24/7 de Emergencia */}
-                        <TouchableOpacity 
-                          style={styles.sosButton}
-                          onPress={() => {
-                            Alert.alert(
-                              '🚨 Contactos de Emergencia 24hs',
-                              `Guardia TravelApp: ${contractedTrip.emergencyContacts?.[0]?.phone || '+54 9 381 400-9999'}\nAssist Card: ${contractedTrip.travelAssistance?.emergencyPhone24h || '+54 11 5555-8000'}`,
-                              [
-                                { text: 'Llamar a Guardia TravelApp', onPress: () => Linking.openURL(`tel:${contractedTrip.emergencyContacts?.[0]?.phone || '3814009999'}`) },
-                                { text: 'Llamar a Asistencia Médica', onPress: () => Linking.openURL(`tel:${contractedTrip.travelAssistance?.emergencyPhone24h || '55558000'}`) },
-                                { text: 'Cancelar', style: 'cancel' }
-                              ]
-                            );
-                          }}
-                        >
-                          <Ionicons name="alert-circle" size={20} color={Colors.white} />
-                          <Text style={styles.sosButtonText}>Línea SOS &amp; Guardia de Emergencia 24/7</Text>
-                        </TouchableOpacity>
                       </View>
                     )}
+
+                    <View style={[styles.testerCard, { marginTop: 24 }]}>
+                      <View style={styles.testerToggleRow}>
+                        <Text style={styles.testerToggleLabel}>🧪 Desactivar Simulación (Modo Tester)</Text>
+                        <Switch 
+                          value={hasPurchasedOrganizedTrip}
+                          onValueChange={(val) => handleSimulateTrip(val)}
+                          trackColor={{ false: '#CBD5E1', true: Colors.accent }}
+                          thumbColor={Colors.white}
+                        />
+                      </View>
+                    </View>
+
                   </View>
                 )}
               </View>
@@ -3514,35 +2761,25 @@ export default function HomeScreen() {
                 <View style={styles.qrModalOverlay}>
                   <View style={styles.qrModalContent}>
                     <View style={styles.qrModalHeader}>
-                      <View>
-                        <Text style={styles.qrModalTitle}>Pase de Abordaje &amp; Check-In</Text>
-                        <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#10B981', marginTop: 2 }}>
-                          Reserva: {contractedTrip.reservationCode || 'RES-TRV'} • Tour: {contractedTrip.tourCode || 'TRV-EXP'}
-                        </Text>
-                      </View>
+                      <Text style={styles.qrModalTitle}>Boarding Pass</Text>
                       <TouchableOpacity onPress={() => setIsQrModalVisible(false)} style={styles.qrModalCloseBtn}>
                         <Ionicons name="close" size={24} color={Colors.textPrimary} />
                       </TouchableOpacity>
                     </View>
                     
-                    <Text style={styles.qrModalSubtitle}>Presentá este código QR al coordinador al subir a la unidad de traslado o ingresar al hotel.</Text>
+                    <Text style={styles.qrModalSubtitle}>Presentá este código QR al coordinador al subir al micro</Text>
                     
                     <View style={styles.qrFrame}>
                       <Image 
-                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=trip_checkin:${user?.uid || 'pax'}:${contractedTrip.reservationCode}:${contractedTrip.id}` }} 
+                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=trip_checkin:${user.uid}:${contractedTrip.id}` }} 
                         style={styles.qrCodeImg} 
                       />
                     </View>
                     
                     <View style={styles.qrModalTripInfo}>
-                      <Text style={styles.qrModalTripDest}>{contractedTrip.title || contractedTrip.destination}</Text>
+                      <Text style={styles.qrModalTripDest}>{contractedTrip.destination}</Text>
                       <Text style={styles.qrModalTripDate}><Ionicons name="calendar-outline" size={12} /> {contractedTrip.dates}</Text>
-                      <Text style={styles.qrModalPassenger}>Titular: {user?.displayName || firstName || 'Pasajero Titular'}</Text>
-                      {contractedTrip.passengers?.[0]?.seat && (
-                        <Text style={{ fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.primary, marginTop: 2 }}>
-                          💺 {contractedTrip.passengers[0].seat}
-                        </Text>
-                      )}
+                      <Text style={styles.qrModalPassenger}>Pasajero: {firstName} {user?.displayName ? user.displayName.split(' ').slice(1).join(' ') : ''}</Text>
                     </View>
 
                     <TouchableOpacity 
@@ -3890,42 +3127,6 @@ export default function HomeScreen() {
                 <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
               </TouchableOpacity>
 
-              {/* Botón Atención al Cliente */}
-              <TouchableOpacity 
-                style={[styles.dossierLaunchBtn, { backgroundColor: '#0A2A5B', paddingHorizontal: 14, justifyContent: 'space-between' }]}
-                onPress={() => setSupportModalVisible(true)}
-                activeOpacity={0.85}
-              >
-                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(2,132,199,0.18)', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="headset-outline" size={22} color="#38BDF8" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={[styles.dossierLaunchBtnText, { textAlign: 'left', fontSize: 14 }]}>Atención al Cliente 24/7</Text>
-                  <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: Fonts.medium }}>
-                    Teléfono 0810-220-0018 · WhatsApp · Email
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-              </TouchableOpacity>
-
-              {/* Botón Centro de Seguridad */}
-              <TouchableOpacity 
-                style={[styles.dossierLaunchBtn, { backgroundColor: '#0A2A5B', paddingHorizontal: 14, justifyContent: 'space-between' }]}
-                onPress={() => setSafetyModalVisible(true)}
-                activeOpacity={0.85}
-              >
-                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.18)', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="shield-checkmark-outline" size={22} color="#F87171" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={[styles.dossierLaunchBtnText, { textAlign: 'left', fontSize: 14 }]}>Centro de Seguridad & SOS</Text>
-                  <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: Fonts.medium }}>
-                    Grabación de Audio · 911 · PIN de Viaje
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-              </TouchableOpacity>
-
               {/* Cerrar Sesión */}
               <TouchableOpacity style={styles.logoutBtn} onPress={() => auth.signOut()}>
                 <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
@@ -4009,168 +3210,6 @@ export default function HomeScreen() {
               ) : (
                 <Ionicons name="send" size={18} color={Colors.white} />
               )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* MODAL DE ATENCIÓN AL CLIENTE 24/7 */}
-      <Modal
-        visible={supportModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSupportModalVisible(false)}
-      >
-        <View style={styles.supportModalOverlay}>
-          <View style={styles.supportModalContent}>
-            <View style={styles.supportModalHeader}>
-              <View style={styles.modalIconBadge}>
-                <Ionicons name="headset" size={26} color={Colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.supportModalTitle}>Atención al Cliente</Text>
-                <Text style={styles.supportModalSubtitle}>Estamos disponibles 24/7 para asistirte</Text>
-              </View>
-              <TouchableOpacity onPress={() => setSupportModalVisible(false)} style={styles.supportModalCloseBtn}>
-                <Ionicons name="close" size={22} color={Colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.supportOptionsList}>
-              <TouchableOpacity
-                style={styles.supportChannelBtn}
-                onPress={() => handleSupportAction('phone')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.channelIconWrap, { backgroundColor: '#E0F2FE' }]}>
-                  <Ionicons name="call" size={22} color="#0284C7" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.channelTitle}>Teléfono de Atención</Text>
-                  <Text style={styles.channelValue}>0810-220-0018</Text>
-                  <Text style={styles.channelSub}>Llamada directa sin costo adicional</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.supportChannelBtn}
-                onPress={() => handleSupportAction('email')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.channelIconWrap, { backgroundColor: '#FEF3C7' }]}>
-                  <Ionicons name="mail" size={22} color="#D97706" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.channelTitle}>Correo Electrónico</Text>
-                  <Text style={styles.channelValue}>soporte@travelapp.ar</Text>
-                  <Text style={styles.channelSub}>Respuesta y seguimiento oficial</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.supportChannelBtn}
-                onPress={() => handleSupportAction('whatsapp')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.channelIconWrap, { backgroundColor: '#DCFCE7' }]}>
-                  <Ionicons name="logo-whatsapp" size={22} color="#16A34A" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.channelTitle}>WhatsApp Oficial</Text>
-                  <Text style={styles.channelValue}>Chat con Operador en Vivo</Text>
-                  <Text style={styles.channelSub}>Atención ágil e inmediata</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.supportChannelBtn}
-                onPress={() => handleSupportAction('travis')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.channelIconWrap, { backgroundColor: Colors.primary + '18' }]}>
-                  <Ionicons name="sparkles" size={22} color={Colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.channelTitle}>Asistente Virtual Travis AI</Text>
-                  <Text style={styles.channelValue}>Chat Inteligente 24/7</Text>
-                  <Text style={styles.channelSub}>Consultas sobre viajes, tarifas y cuenta</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.emergencySupportBtn}
-                onPress={() => handleSupportAction('emergency')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="alert-circle" size={20} color={Colors.white} />
-                <Text style={styles.emergencySupportText}>Línea de Emergencias 911</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* MODAL DE CENTRO DE SEGURIDAD & SOS */}
-      <Modal
-        visible={safetyModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSafetyModalVisible(false)}
-      >
-        <View style={styles.supportModalOverlay}>
-          <View style={styles.supportModalContent}>
-            <View style={styles.supportModalHeader}>
-              <View style={[styles.modalIconBadge, { backgroundColor: '#FEF2F2' }]}>
-                <Ionicons name="shield-checkmark" size={26} color={Colors.danger} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.supportModalTitle}>Centro de Seguridad</Text>
-                <Text style={styles.supportModalSubtitle}>Herramientas de protección en todo momento</Text>
-              </View>
-              <TouchableOpacity onPress={() => setSafetyModalVisible(false)} style={styles.supportModalCloseBtn}>
-                <Ionicons name="close" size={22} color={Colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.safetyInfoCard}>
-              <View style={styles.safetyInfoRow}>
-                <Ionicons name="mic-circle" size={24} color={Colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.safetyInfoTitle}>Grabación de Audio en Cabina</Text>
-                  <Text style={styles.safetyInfoDesc}>Durante cualquier viaje activo podés activar el micrófono para respaldar el audio del recorrido con encriptación segura.</Text>
-                </View>
-              </View>
-
-              <View style={styles.safetyInfoRow}>
-                <Ionicons name="keypad" size={24} color={Colors.accent} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.safetyInfoTitle}>Código PIN Anti-Impostores</Text>
-                  <Text style={styles.safetyInfoDesc}>Tu app genera un código de 4 dígitos para que el chofer verifique tu identidad antes de arrancar.</Text>
-                </View>
-              </View>
-
-              <View style={styles.safetyInfoRow}>
-                <Ionicons name="share-social" size={24} color="#16A34A" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.safetyInfoTitle}>Seguimiento en Vivo por WhatsApp</Text>
-                  <Text style={styles.safetyInfoDesc}>Compartí tu recorrido en tiempo real con familiares para que sigan el auto en el mapa desde cualquier navegador.</Text>
-                </View>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.emergencySupportBtn}
-              onPress={() => {
-                setSafetyModalVisible(false);
-                Linking.openURL('tel:911');
-              }}
-            >
-              <Ionicons name="call" size={20} color={Colors.white} />
-              <Text style={styles.emergencySupportText}>Llamar al 911 Inmediatamente</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -4673,19 +3712,12 @@ const styles = StyleSheet.create({
   canvaCarouselCardDesc: { fontSize: 9, fontFamily: 'Quicksand-Regular', color: '#94A3B8', lineHeight: 12 },
   canvaCarouselCardPlaceholder: { width: 140, height: 130, backgroundColor: '#071A3C', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1E293B' },
   
-  canvaPricingTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', fontWeight: '800', color: Colors.white, marginBottom: 14, textAlign: 'center' },
-  canvaCategoryBtn: { flexDirection: 'column', alignItems: 'center', backgroundColor: '#FF7A00', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.18, shadowRadius: 5, elevation: 3, marginBottom: 10 },
-  canvaCategoryBtnActive: { borderWidth: 2.5, borderColor: '#0A2A5B', backgroundColor: '#FF6B00' },
-  canvaCategoryHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 },
-  canvaCategoryName: { fontSize: 15, fontFamily: 'Quicksand-Bold', fontWeight: '800', color: Colors.white },
-  canvaCategoryPrice: { fontSize: 17, fontFamily: 'Quicksand-Bold', fontWeight: '800', color: Colors.white },
-  canvaCarImageContainer: { width: '100%', height: 75, alignItems: 'center', justifyContent: 'center', marginVertical: 2 },
-  canvaCarImage: { width: '100%', height: '100%' },
-  canvaEtaBadge: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: 6 },
-  canvaEtaText: { fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.white },
-  canvaCategoryFooterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', paddingTop: 4, marginTop: 2 },
-  canvaCategoryDesc: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: 'rgba(255,255,255,0.9)', flex: 1, marginRight: 8 },
+  canvaPricingTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: '#0A2A5B', marginBottom: 14, textAlign: 'center' },
+  canvaCategoryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FF7A00', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
+  canvaCategoryBtnActive: { borderWidth: 2, borderColor: '#0A2A5B' },
   categoryIconCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
+  canvaCategoryName: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.white },
+  canvaCategoryPrice: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.white },
   
   canvaAgendaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#FF7A00', borderRadius: 12, paddingVertical: 10, marginTop: 12 },
   canvaAgendaBtnText: { color: '#FF7A00', fontSize: 13, fontFamily: 'Quicksand-Bold' },
@@ -5572,145 +4604,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand-Bold',
     color: Colors.textPrimary,
   },
-  topSafetyIconBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  topSafetyIconText: {
-    fontSize: 11,
-    fontFamily: 'Quicksand-Bold',
-    color: '#EF4444',
-  },
-  topSupportIconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Modals de Soporte y Seguridad
-  supportModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  supportModalContent: { backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 },
-  supportModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  modalIconBadge: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
-  supportModalTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  supportModalSubtitle: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
-  supportModalCloseBtn: { padding: 4 },
-
-  supportOptionsList: { gap: 10 },
-  supportChannelBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#F8FAFC', padding: 14, borderRadius: 16,
-    borderWidth: 1, borderColor: '#E2E8F0',
-  },
-  channelIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  channelTitle: { fontSize: 12, color: Colors.textSecondary, fontFamily: 'Quicksand-Bold' },
-  channelValue: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginTop: 1 },
-  channelSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: 'Quicksand-Regular' },
-
-  emergencySupportBtn: {
-    backgroundColor: Colors.danger, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 14, borderRadius: 14, marginTop: 6,
-  },
-  emergencySupportText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
-
-  safetyInfoCard: { backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 14 },
-  safetyInfoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  safetyInfoTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  safetyInfoDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, lineHeight: 16, fontFamily: 'Quicksand-Regular' },
-
-  // ESTILOS AVANZADOS "MI VIAJE" (EXPERIENCE)
-  tripTypeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 6 },
-  tripTypeBadgePropio: { backgroundColor: 'rgba(79, 70, 229, 0.9)' },
-  tripTypeBadgeOperador: { backgroundColor: 'rgba(217, 119, 6, 0.9)' },
-  tripTypeBadgeText: { color: Colors.white, fontSize: 11, fontFamily: 'Quicksand-Bold', textTransform: 'uppercase' },
-  
-  tripCodesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 6 },
-  tripCodePill: { backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  tripCodePillText: { color: Colors.white, fontSize: 10, fontFamily: 'Quicksand-Bold' },
-
-  countdownCard: { backgroundColor: '#0F172A', borderRadius: 16, padding: 14, marginVertical: 8, borderWidth: 1, borderColor: '#1E293B' },
-  countdownHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  countdownTitle: { color: '#94A3B8', fontSize: 11, fontFamily: 'Quicksand-Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
-  countdownLiveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#059669', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  countdownLiveText: { color: Colors.white, fontSize: 10, fontFamily: 'Quicksand-Bold' },
-  countdownGrid: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-  countdownBox: { alignItems: 'center', minWidth: 55 },
-  countdownNumber: { color: Colors.white, fontSize: 22, fontFamily: 'Quicksand-Bold' },
-  countdownLabel: { color: '#94A3B8', fontSize: 10, fontFamily: 'Quicksand-Medium', textTransform: 'uppercase', marginTop: 2 },
-  countdownDivider: { color: '#475569', fontSize: 20, fontFamily: 'Quicksand-Bold', marginBottom: 12 },
-
-  weatherCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0' },
-  weatherMainRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  weatherCity: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  weatherCondition: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
-  weatherTemp: { fontSize: 24, fontFamily: 'Quicksand-Bold', color: '#0284C7' },
-  weatherForecastBar: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-  forecastDayItem: { alignItems: 'center', gap: 2 },
-  forecastDayName: { fontSize: 10, fontFamily: 'Quicksand-Bold', color: Colors.textSecondary },
-  forecastDayTemp: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-
-  qrPassButton: { backgroundColor: '#059669', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, marginVertical: 6, shadowColor: '#059669', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 4 },
-  qrPassButtonText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
-
-  paxRosterContainer: { backgroundColor: Colors.white, borderRadius: 16, padding: 14, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0' },
-  paxRosterHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  paxRosterTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  paxItemRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  paxName: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  paxSubDetail: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
-  paxTitularTag: { backgroundColor: '#EEF2FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#C7D2FE' },
-  paxTitularText: { color: '#4F46E5', fontSize: 9, fontFamily: 'Quicksand-Bold' },
-
-  ticketCard: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0' },
-  ticketProviderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  ticketProviderName: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  ticketPnrBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#CBD5E1' },
-  ticketPnrText: { fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#0F172A' },
-  ticketRouteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8, paddingVertical: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#F1F5F9' },
-  ticketCityBox: { alignItems: 'center' },
-  ticketCityCode: { fontSize: 16, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  ticketTimeText: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
-  ticketDetailsGrid: { gap: 4, marginTop: 6 },
-  ticketDetailText: { fontSize: 11, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary },
-
-  voucherItemCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.white, borderRadius: 14, padding: 14, marginVertical: 4, borderWidth: 1, borderColor: '#E2E8F0' },
-  voucherItemTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  voucherLockBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginTop: 4, alignSelf: 'flex-start' },
-  voucherLockText: { color: '#B45309', fontSize: 10, fontFamily: 'Quicksand-Bold' },
-  voucherUnlockBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginTop: 4, alignSelf: 'flex-start' },
-  voucherUnlockText: { color: '#065F46', fontSize: 10, fontFamily: 'Quicksand-Bold' },
-
-  communityPrivacyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12 },
-  communityPrivacyTitle: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  communityPrivacyDesc: { fontSize: 10, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 1 },
-  communityPostCard: { backgroundColor: Colors.white, borderRadius: 14, padding: 12, marginVertical: 4, borderWidth: 1, borderColor: '#E2E8F0' },
-  communityPostHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  communityAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E2E8F0' },
-  communityAuthor: { fontSize: 12, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  communityPostText: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textPrimary, lineHeight: 17 },
-
-  checkInBox: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0', gap: 10 },
-  checkInInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textPrimary },
-  checkInActionBtn: { backgroundColor: '#059669', paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  checkInActionBtnText: { color: Colors.white, fontSize: 13, fontFamily: 'Quicksand-Bold' },
-
-  termsCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginVertical: 6, borderWidth: 1, borderColor: '#E2E8F0', gap: 10 },
-  termsTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
-  termsDesc: { fontSize: 11, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, lineHeight: 16 },
-  termsSignBtn: { backgroundColor: '#4F46E5', paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  termsSignBtnText: { color: Colors.white, fontSize: 12, fontFamily: 'Quicksand-Bold' },
-
-  sosButton: { backgroundColor: '#EF4444', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, marginVertical: 8 },
-  sosButtonText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
 });
 
