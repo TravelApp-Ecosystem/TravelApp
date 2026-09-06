@@ -20,12 +20,7 @@
       }
     },
     "android": {
-      "versionCode": 4,
-      "splash": {
-        "image": "./assets/splash-icon.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#FFFFFF"
-      },
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#FFFFFF"
