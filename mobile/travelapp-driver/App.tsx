@@ -23,7 +23,6 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     if (this.state.hasError) {
       return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Ionicons name="warning-outline" size={54} color="#0A2A5B" style={{ marginBottom: 16 }} />
           <Text style={{ color: '#0A2A5B', fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>
             Aviso de Carga (Chofer)
           </Text>
@@ -39,6 +38,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
+    ...Ionicons.font,
     'Quicksand-Regular': Quicksand_400Regular,
     'Quicksand-Medium': Quicksand_500Medium,
     'Quicksand-SemiBold': Quicksand_600SemiBold,

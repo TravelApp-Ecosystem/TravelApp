@@ -8,8 +8,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-bg.png",
-      "resizeMode": "cover",
+      "image": "./assets/android-icon-foreground.png",
+      "resizeMode": "contain",
       "backgroundColor": "#0B192C"
     },
     "ios": {
@@ -28,10 +28,10 @@
       }
     },
     "android": {
-      "versionCode": 2,
+      "versionCode": 3,
       "splash": {
-        "image": "./assets/splash-bg.png",
-        "resizeMode": "cover",
+        "image": "./assets/android-icon-foreground.png",
+        "resizeMode": "contain",
         "backgroundColor": "#0B192C"
       },
       "googleServicesFile": "./google-services.json",
@@ -77,7 +77,7 @@
     ],
     "updates": {
       "url": "https://u.expo.dev/a687d59f-c1ec-4f94-b77f-eea980284d82",
-      "enabled": true,
+      "enabled": false,
       "fallbackToCacheTimeout": 0
     },
     "runtimeVersion": {
