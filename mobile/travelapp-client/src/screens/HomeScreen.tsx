@@ -8,13 +8,14 @@ import MapView, { Marker, PROVIDER_GOOGLE, Polyline, UrlTile } from 'react-nativ
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../lib/firebase';
 import { Colors, Fonts, TRAVIS_WEBHOOK_URL, GOOGLE_MAPS_KEY, API_BASE_URL } from '../lib/constants';
 import { TravelCabLogo, TravelAppLogo, TravelExperienceLogo } from '../components/BrandLogos';
 import { InteractiveMapView } from '../components/InteractiveMapView';
+import { playSeatbeltSafetyPrompt, playCustomVoiceNotification } from '../lib/audioService';
 
 import { OverlappingNativeCarousel } from '../components/OverlappingNativeCarousel';
 
@@ -151,14 +152,6 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const user = auth.currentUser!;
   const firstName = user?.displayName?.split(' ')[0] || 'Pasajero';
-  const adminEmails = ['fernando@travelapp.ar', 'ferincola@gmail.com', 'admin@travelapp.ar', 'carlos@travelapp.ar', 'edgar@travelapp.ar'];
-  const userEmail = (user?.email || '').toLowerCase().trim();
-  const isAdminUser = Boolean(
-    adminEmails.includes(userEmail) || 
-    userEmail.includes('admin') || 
-    userEmail.includes('ferincola') ||
-    userEmail.includes('incola')
-  );
 
   // Navegación de Tabs: 'home' | 'experience' | 'trips' | 'rewards' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'experience' | 'trips' | 'rewards' | 'profile'>('home');
@@ -203,35 +196,52 @@ export default function HomeScreen() {
   const [driverDetails, setDriverDetails] = useState<any>(null);
   const [searchTimer, setSearchTimer] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
-
   // Categorías de Vehículos (Dinámicas de Firestore)
   const [categories, setCategories] = useState<any[]>([]);
+  const [allTariffs, setAllTariffs] = useState<any[]>([]);
 
-  // Categorías Visibles en App de Pasajeros (Filtrando inactivas y exclusivas de taxímetro)
-  const visibleCategories = useMemo(() => {
+  // Categorías de Vehículos disponibles para el cliente (oculta las exclusivas de taxímetro / viaje libre)
+  const availableCategories = useMemo(() => {
+    const norm = (s: any) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    
     return categories.filter(cat => {
-      // 1. Descartar si está marcada como inactiva u oculta
-      if ((cat as any).active === false || (cat as any).visible === false || (cat as any).hidden === true) {
-        return false;
-      }
-      // 2. Buscar si hay una tarifa activa asociada en activeTariffs
-      const matchedTariff = activeTariffs.find((t: any) => 
-        t.isActive !== false && 
-        (t.category === cat.id || t.category === cat.name || t.name?.toLowerCase() === cat.name?.toLowerCase() || t.id === cat.id)
+      const catNorm = norm(cat.name);
+      const catIdNorm = norm(cat.id);
+
+      // 1. Si existe un tarifario en Firestore con isFreeTripOnly === true que corresponda a esta categoría (o a Taxi), la ocultamos
+      const isFreeTripOnlyTariff = allTariffs.some(t => 
+        t.isFreeTripOnly === true && (
+          norm(t.category) === catNorm || 
+          norm(t.category) === catIdNorm || 
+          (catNorm.includes('taxi') && (norm(t.category).includes('taxi') || norm(t.name).includes('taxi') || norm(t.id).includes('taxi')))
+        )
       );
-      // Si el tarifario está configurado como exclusivo para el taxímetro del chofer (isFreeTripOnly: true / oculto a pasajeros)
-      if (matchedTariff && matchedTariff.isFreeTripOnly) {
-        return false;
+      if (isFreeTripOnlyTariff) return false;
+
+      // 2. Si hay tarifarios públicos configurados en Firestore pero ninguno público activo para Taxi, ocultar Taxi
+      if (activeTariffs.length > 0 && catNorm.includes('taxi')) {
+        const hasActivePublicTaxiTariff = activeTariffs.some(t => 
+          norm(t.category) === catNorm || 
+          norm(t.category) === catIdNorm || 
+          norm(t.category).includes('taxi') || 
+          norm(t.name).includes('taxi')
+        );
+        if (!hasActivePublicTaxiTariff) return false;
       }
-      // Si la categoría misma está configurada con isFreeTripOnly
-      if ((cat as any).isFreeTripOnly) {
-        return false;
-      }
+
       return true;
     });
-  }, [categories, activeTariffs]);
+  }, [categories, allTariffs, activeTariffs]);
 
-  // Datos del CMS y Rewards
+  // Si la categoría seleccionada ya no está disponible (ej. se activó modo taxímetro exclusivo), auto-seleccionar la primera disponible
+  useEffect(() => {
+    if (availableCategories.length > 0) {
+      const exists = availableCategories.some(c => c.name === selectedCategory);
+      if (!exists) {
+        setSelectedCategory(availableCategories[0].name);
+      }
+    }
+  }, [availableCategories, selectedCategory]);
   const [cmsBlocks, setCmsBlocks] = useState<CMSBlock[]>([]);
   const [rewardsBlocks, setRewardsBlocks] = useState<any[]>([]);
   const [rewardsList, setRewardsList] = useState<RewardItem[]>([]);
@@ -250,17 +260,29 @@ export default function HomeScreen() {
   const [userPhone, setUserPhone] = useState<string>('');
   const [userPhotoURL, setUserPhotoURL] = useState<string>('');
   const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [supportModalVisible, setSupportModalVisible] = useState(false);
+  const [safetyModalVisible, setSafetyModalVisible] = useState(false);
+
+  const handleSupportAction = (type: 'phone' | 'email' | 'whatsapp' | 'travis' | 'emergency') => {
+    setSupportModalVisible(false);
+    if (type === 'phone') {
+      Linking.openURL('tel:08102200018');
+    } else if (type === 'email') {
+      Linking.openURL('mailto:soporte@travelapp.ar?subject=Consulta%20desde%20TravelApp%20Cliente');
+    } else if (type === 'whatsapp') {
+      Linking.openURL('https://wa.me/?text=Hola%20TravelApp%2C%20necesito%20atenci%C3%B3n%20al%20cliente%20con%20mi%20cuenta.');
+    } else if (type === 'travis') {
+      navigation.navigate('Chat');
+    } else if (type === 'emergency') {
+      Linking.openURL('tel:911');
+    }
+  };
 
   // Estados de Chat en Vivo (Conductor - Pasajero - Concorde 360)
   const [isChatModalVisible, setIsChatModalVisible] = useState(false);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInputText, setChatInputText] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-
-  // Estados de Notificaciones Push & Broadcasts del Centro de Mensajería
-  const sessionStartTime = useRef(Date.now()).current;
-  const [notificationsInbox, setNotificationsInbox] = useState<any[]>([]);
-  const [isNotificationsModalVisible, setIsNotificationsModalVisible] = useState(false);
 
   const handleAddStop = () => {
     if (intermediateStops.length < 3) {
@@ -316,13 +338,6 @@ export default function HomeScreen() {
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const mapRef = useRef<MapView | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
-
-  // Blindaje de costos y caché inteligente (Google Maps & Travis AI)
-  const autocompleteDebounceRef = useRef<any>(null);
-  const autocompleteCacheRef = useRef<Map<string, any[]>>(new Map());
-  const geocodeCacheRef = useRef<Map<string, { latitude: number; longitude: number }>>(new Map());
-  const routeCacheRef = useRef<Map<string, { distance: number; duration: number; polyline: any }>>(new Map());
-  const lastTravisQueryTimeRef = useRef<number>(0);
 
   // Escuchador de autenticación y errores de Google Maps API (gm_authFailure)
   useEffect(() => {
@@ -525,37 +540,17 @@ export default function HomeScreen() {
     }
   };
   useEffect(() => {
-    if (user) {
-      const q = query(collection(db, 'contracted_trips'));
+    if (user?.uid) {
+      const q = query(collection(db, 'contracted_trips'), where('userId', '==', user.uid));
       const unsubTrip = onSnapshot(q, (snap) => {
-        let matchingTripDoc = null as any;
-        
-        // Buscar viaje real donde coincida userId, email o passengerId
-        for (const docSnap of snap.docs) {
-          const t = docSnap.data();
-          const emailMatch = user.email && t.clientEmail && t.clientEmail.toLowerCase() === user.email.toLowerCase();
-          const uidMatch = t.userId === user.uid || t.passengerId === user.uid;
-          const phoneMatch = user.phoneNumber && t.clientPhone && t.clientPhone === user.phoneNumber;
-
-          if (emailMatch || uidMatch || phoneMatch) {
-            matchingTripDoc = docSnap;
-            break;
-          }
-        }
-
-        // Si es admin y no tiene uno asignado personalmente, cargar el primer viaje real disponible de la base de datos
-        if (!matchingTripDoc && isAdminUser && snap.docs.length > 0) {
-          matchingTripDoc = snap.docs[0];
-        }
-
-        if (matchingTripDoc) {
-          const data = { id: matchingTripDoc.id, ...matchingTripDoc.data() } as any;
+        if (!snap.empty) {
+          const tripDoc = snap.docs[0];
+          const data = { id: tripDoc.id, ...tripDoc.data() } as any;
           setContractedTrip(data);
-          setHasPurchasedOrganizedTrip(true);
           setExcursionsList(data.optionalExcursions || []);
-
-          // Suscribirse a los mensajes en tiempo real del grupo de este viaje
-          const unsubMessages = onSnapshot(collection(db, 'contracted_trips', matchingTripDoc.id, 'group_messages'), (msgSnap) => {
+          
+          // Suscribirse a los mensajes del grupo de este viaje
+          const unsubMessages = onSnapshot(collection(db, 'contracted_trips', tripDoc.id, 'group_messages'), (msgSnap) => {
             const msgs = msgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             msgs.sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0));
             setGroupMessages(msgs);
@@ -563,16 +558,13 @@ export default function HomeScreen() {
           return () => unsubMessages();
         } else {
           setContractedTrip(null);
-          setHasPurchasedOrganizedTrip(false);
           setExcursionsList([]);
           setGroupMessages([]);
         }
-      }, (err) => {
-        console.log('Non-fatal contracted_trips query error:', err);
       });
       return unsubTrip;
     }
-  }, [user?.uid, user?.email]);
+  }, [user?.uid]);
 
   // Escuchar viajes de TravelCab del usuario en tiempo real
   useEffect(() => {
@@ -600,63 +592,110 @@ export default function HomeScreen() {
     }
   }, [hasPurchasedOrganizedTrip]);
 
+  // Manejar simulación de compra/cancelación de viaje grupal (Modo Tester)
+  const handleSimulateTrip = async (enable: boolean) => {
+    if (!user?.uid) return;
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      if (enable) {
+        await setDoc(userRef, { hasPurchasedOrganizedTrip: true }, { merge: true });
+        
+        const tripId = `trip_humahuaca_${user.uid}`;
+        const tripRef = doc(db, 'contracted_trips', tripId);
+        const tripData = {
+          id: tripId,
+          userId: user.uid,
+          destination: "Quebrada de Humahuaca & Salinas Grandes",
+          dates: "12 Oct - 19 Oct, 2026",
+          imageUrl: "https://images.unsplash.com/photo-1583037189850-1921ae7c6c22?q=80&w=800&auto=format&fit=crop",
+          coordinator: {
+            name: "Marcos Vignola",
+            phone: "+5493815556667",
+            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop"
+          },
+          services: [
+            "Aéreos ida y vuelta (Aerolíneas Argentinas)",
+            "Traslados privados en minibus (TravelCab ACI)",
+            "7 noches en Posada del Silencio (Purmamarca)",
+            "Régimen de media pensión (Desayuno y Cena)",
+            "Excursiones terrestres con guías locales autorizados",
+            "Cobertura Assist Card Premium (Asistencia Médica Completa)"
+          ],
+          itinerary: [
+            { day: 1, title: "Vuelo a Salta & Transfer a Purmamarca", description: "Arribo al aeropuerto de Salta. Recepción por Marcos Vignola y traslado privado a Purmamarca recorriendo el espectacular camino de cornisa. Check-in en el hotel y cena grupal de bienvenida." },
+            { day: 2, title: "Cerro de Siete Colores & Paseo de los Colorados", description: "Trekking matutino suave por el Paseo de los Colorados para apreciar las distintas tonalidades geológicas del Cerro de Siete Colores. Tarde libre para recorrer la feria de artesanos locales de Purmamarca." },
+            { day: 3, title: "Salinas Grandes & Cuesta de Lipán", description: "Ascenso por la impactante Cuesta de Lipán hasta alcanzar los 4.170 msnm. Descenso a las imponentes Salinas Grandes. Almuerzo campestre en el salar y sesión fotográfica interactiva." },
+            { day: 4, title: "Pucará de Tilcara & Garganta del Diablo", description: "Traslado a Tilcara. Visita guiada al sitio arqueológico Pucará de Tilcara. Trekking opcional a la Garganta del Diablo para ver las cascadas naturales en el lecho del río." },
+            { day: 5, title: "Hornocal (Serranía de los 14 Colores) & Humahuaca", description: "Viaje al norte hacia Humahuaca. Almuerzo tradicional con peña folclórica en vivo. Por la tarde, ascenso en camionetas 4x4 al mirador del Hornocal (4.350 msnm) para ver el atardecer sobre los 14 colores." },
+            { day: 6, title: "Día Libre en Purmamarca o Excursión Opcional a Iruya", description: "Día libre para descansar y disfrutar del hotel. Recomendamos la excursión opcional de día entero al mágico pueblo colgado de la montaña: Iruya." },
+            { day: 7, title: "Caminata entre Cardones & Regreso a Salta Capital", description: "Check-out del hotel. Viaje de regreso visitando el Parque Nacional Los Cardones. Tarde libre en Salta Capital para últimas compras y cena de despedida grupal en la Peña de Balderrama." },
+            { day: 8, title: "Despedida & Vuelo de Retorno", description: "Transfer al aeropuerto de Salta para abordar el vuelo de regreso a Buenos Aires. Fin de la experiencia." }
+          ],
+          payment: {
+            totalAmount: 1450,
+            paidAmount: 950,
+            currency: "USD"
+          },
+          assistancePdfUrl: "https://www.assistcard.com/content/dam/assistcard/global/pdf/condiciones-generales.pdf",
+          recommendations: "Llevar ropa de abrigo en capas (amplitud térmica), protector solar factor 50+, anteojos de sol, calzado de trekking cómodo y abundante agua para evitar el mal de altura (apunamiento).",
+          optionalExcursions: [
+            { id: "exc-iruya", title: "Excursión Especial de Día Entero a Iruya (4x4)", description: "Aventura todo terreno cruzando el Abra del Cóndor a 4000 msnm para descender al histórico pueblo colgado de Iruya. Incluye almuerzo.", price: 120, paid: false },
+            { id: "exc-bodega", title: "Degustación de Vinos de Altura & Almuerzo en Cafayate", description: "Visita a una prestigiosa bodega boutique con degustación dirigida por enólogo y almuerzo de pasos maridado.", price: 85, paid: false }
+          ],
+          photos: [
+            "https://images.unsplash.com/photo-1583037189850-1921ae7c6c22?q=80&w=600&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1619542402915-dcaf30e4e2a1?q=80&w=600&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=600&auto=format&fit=crop"
+          ]
+        };
+        await setDoc(tripRef, tripData);
+        
+        // Crear un par de mensajes de grupo de bienvenida
+        const welcomeRef1 = doc(collection(db, 'contracted_trips', tripId, 'group_messages'), 'msg_welcome_1');
+        const welcomeRef2 = doc(collection(db, 'contracted_trips', tripId, 'group_messages'), 'msg_welcome_2');
+        await setDoc(welcomeRef1, {
+          sender: "Marcos Vignola",
+          senderRole: "coordinador",
+          text: "¡Hola a todos! Bienvenidos al grupo de la expedición a Humahuaca y Salinas Grandes. Acá voy a ir subiendo novedades y vamos a estar en contacto durante todo el viaje.",
+          timestamp: Date.now() - 3600000 * 2
+        });
+        await setDoc(welcomeRef2, {
+          sender: "Sofía (BsAs)",
+          senderRole: "pasajero",
+          text: "¡Hola Marcos! Qué bueno, estoy re entusiasmada con este viaje. Ya tengo todo listo para arrancar.",
+          timestamp: Date.now() - 3600000
+        });
+      } else {
+        await setDoc(userRef, { hasPurchasedOrganizedTrip: false }, { merge: true });
+        await deleteDoc(doc(db, 'contracted_trips', `trip_humahuaca_${user.uid}`));
+      }
+    } catch (err) {
+      console.log("Error in simulator trip toggle:", err);
+    }
+  };
+
   // Preguntar a Travis AI sobre el destino
   const handleAskTravisAboutDestination = async () => {
     const text = travisQuery.trim();
     if (!text || travisLoading) return;
-
-    // Rate limiting local: 2.5 segundos entre preguntas
-    const now = Date.now();
-    if (now - lastTravisQueryTimeRef.current < 2500) {
-      return;
-    }
-    lastTravisQueryTimeRef.current = now;
-
     setTravisLoading(true);
     setTravisAnswer('');
-
-    // AbortController con timeout de 8 segundos
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
     try {
       const res = await fetch(TRAVIS_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
         body: JSON.stringify({
           subscriber_id: user?.uid || 'app_user',
           message: `Pregunta sobre mi viaje grupal a ${contractedTrip?.destination || 'nuestro destino'}: ${text}`,
-          first_name: firstName,
+          first_name: user?.displayName?.split(' ')[0] || 'Pasajero',
           channel: 'app_client',
         }),
       });
-      clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        throw new Error(`HTTP status ${res.status}`);
-      }
-
       const data = await res.json();
-      const reply = data.messages?.[0]?.text || data.reply || (typeof data === 'string' ? data : null);
-      if (reply) {
-        setTravisAnswer(reply);
-      } else {
-        setTravisAnswer(`¡Hola ${firstName}! En ${contractedTrip?.destination || 'tu destino'} contás con clima templado, asistencia las 24hs y nuestras excursiones recomendadas en el itinerario. ¿Querés saber algo específico sobre horarios o qué llevar en la valija?`);
-      }
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      // Respuesta contextual de contingencia para que NUNCA quede en bucle ni con error
-      const destName = contractedTrip?.destination || 'tu destino';
-      if (text.toLowerCase().includes('ropa') || text.toLowerCase().includes('valija') || text.toLowerCase().includes('llevar')) {
-        setTravisAnswer(`Para ${destName} te recomiendo llevar ropa cómoda en capas, calzado deportivo para caminatas, protector solar y una campera liviana para las noches frescas.`);
-      } else if (text.toLowerCase().includes('clima') || text.toLowerCase().includes('tiempo') || text.toLowerCase().includes('temperatura')) {
-        setTravisAnswer(`El clima en ${destName} suele ser muy agradable, con días soleados y noches frescas. ¡Ideal para disfrutar de las excursiones al aire libre!`);
-      } else if (text.toLowerCase().includes('excursion') || text.toLowerCase().includes('paseo') || text.toLowerCase().includes('hacer')) {
-        setTravisAnswer(`En ${destName} tenés incluidas visitas guiadas y traslados privados. Podés sumar excursiones opcionales desde la pestaña 'Pagos & Extras'.`);
-      } else {
-        setTravisAnswer(`¡Hola ${firstName}! Todo el itinerario y detalles para ${destName} están confirmados. Cualquier duda urgente también podés contactar al coordinador por el chat del grupo.`);
-      }
+      const reply = data.messages?.[0]?.text || data.reply || 'No tengo respuesta en este momento sobre el destino.';
+      setTravisAnswer(reply);
+    } catch (err) {
+      setTravisAnswer('Hubo un problema de conexión con Travis AI. Intentá de nuevo.');
     } finally {
       setTravisLoading(false);
     }
@@ -675,6 +714,18 @@ export default function HomeScreen() {
         timestamp: Date.now()
       });
       setCoordinatorMessage('');
+      
+      // Auto respuesta simulada del coordinador después de 3 segundos
+      setTimeout(async () => {
+        const replyRef = doc(collection(db, 'contracted_trips', contractedTrip.id, 'group_messages'), `msg_reply_${Date.now()}`);
+        await setDoc(replyRef, {
+          sender: "Marcos Vignola",
+          senderRole: "coordinador",
+          text: `¡Hola ${firstName}! Recibí tu mensaje. Recordá que nos reunimos todos hoy a las 20hs en el lobby del hotel para repasar los detalles de mañana.`,
+          timestamp: Date.now()
+        });
+      }, 3000);
+      
     } catch (err) {
       console.log("Error sending coordinator message:", err);
     }
@@ -927,11 +978,13 @@ export default function HomeScreen() {
       }
     });
 
-    // 6. Tarifarios activos sincronizados en tiempo real
+    // 6. Tarifarios activos sincronizados en tiempo real con el Dashboard Web
     const unsubTariffs = onSnapshot(collection(db, 'tariffs'), (snap) => {
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setActiveTariffs(all.filter((t: any) => t.isActive !== false));
-    }, (err) => console.log("Error fetching active tariffs in passenger app:", err));
+      const rawList = snap.docs.map(d => ({ id: d.id, ...d.data() }) as any);
+      setAllTariffs(rawList);
+      const list = rawList.filter(t => t.isActive !== false && !t.id.endsWith('_active') && !t.isFreeTripOnly);
+      setActiveTariffs(list);
+    }, (err) => console.log("Error fetching active tariffs:", err));
 
     // 7. Configuración de sonido y logística
     const unsubLogistics = onSnapshot(doc(db, 'system_config', 'logistics'), (snap) => {
@@ -943,40 +996,27 @@ export default function HomeScreen() {
       }
     }, (err) => console.log("Error fetching logistics config:", err));
 
-    // 8. Notificaciones y Campañas Broadcast del Centro de Mensajería en Vivo
-    const unsubNotifications = onSnapshot(collection(db, 'notifications'), (snap) => {
-      const list: any[] = [];
-      const currentUid = user?.uid;
-      const currentEmail = user?.email?.toLowerCase().trim();
-
-      snap.forEach((d) => {
-        const data = d.data();
-        const isForUser =
-          !data.audience ||
-          data.audience === 'all' ||
-          data.audience === 'passengers' ||
-          data.targetUserId === currentUid ||
-          (data.targetUserId && currentEmail && data.targetUserId.toLowerCase() === currentEmail) ||
-          (Array.isArray(data.specificIds) && (data.specificIds.includes(currentUid) || (currentEmail && data.specificIds.some((s: string) => s.toLowerCase() === currentEmail))));
-
-        if (isForUser) {
-          list.push({ id: d.id, ...data });
-        }
-      });
-
-      list.sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0));
-      setNotificationsInbox(list);
-
-      // Si llegó una nueva notificación reciente generada hace menos de 2 minutos
-      if (list.length > 0) {
-        const newest = list[0];
-        const nTime = Number(newest.timestamp || newest.createdAt || 0);
-        if (nTime > sessionStartTime - 120000) {
-          playNotificationSoundAndVibrate();
-          showOverlayNotification(`${newest.title || 'Aviso TravelApp'}\n${newest.message || ''}`);
+    // 8. Notificaciones push y alertas de audio en vivo desde el Dashboard Web
+    const lastNotifProcessed = { current: 0 };
+    const qNotifications = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), limit(1));
+    const unsubNotifications = onSnapshot(qNotifications, (snap) => {
+      if (!snap.empty) {
+        const notif = snap.docs[0].data();
+        const notifTime = notif.timestamp || 0;
+        if (notifTime > lastNotifProcessed.current && (Date.now() - notifTime < 30000)) {
+          lastNotifProcessed.current = notifTime;
+          const currentUserId = auth.currentUser?.uid;
+          if (notif.audience === 'all' || notif.audience === 'passengers' || (currentUserId && notif.targetUserId === currentUserId)) {
+            showOverlayNotification(notif.title + ': ' + notif.message);
+            if (notif.soundAlert === 'seatbelt_safety') {
+              playSeatbeltSafetyPrompt();
+            } else if (notif.soundAlert !== 'none' && notif.message) {
+              playCustomVoiceNotification(notif.message);
+            }
+          }
         }
       }
-    }, (err) => console.log("Error fetching notifications in passenger app:", err));
+    });
 
     return () => {
       unsubDrivers();
@@ -1017,48 +1057,45 @@ export default function HomeScreen() {
     }
   };
 
-  const fetchPlaceSuggestions = (text: string, field: 'origin' | 'destination') => {
+  const fetchPlaceSuggestions = async (text: string, field: 'origin' | 'destination') => {
     if (field === 'origin') setOrigin(text);
     else setDestination(text);
 
-    if (!text || text.trim().length < 3) {
-      if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+    if (!text || text.length < 3) {
       if (field === 'origin') setOriginSuggestions([]);
       else setDestSuggestions([]);
       return;
     }
 
-    const cleanQuery = text.trim().toLowerCase();
-    const cached = autocompleteCacheRef.current.get(cleanQuery);
-    if (cached) {
-      if (field === 'origin') setOriginSuggestions(cached);
-      else setDestSuggestions(cached);
-      return;
-    }
-
-    if (autocompleteDebounceRef.current) {
-      clearTimeout(autocompleteDebounceRef.current);
-    }
-
-    autocompleteDebounceRef.current = setTimeout(async () => {
-      try {
-        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(text)}&key=${GOOGLE_MAPS_KEY}&language=es&components=country:ar`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const predictions = data.predictions || [];
-        autocompleteCacheRef.current.set(cleanQuery, predictions);
-        if (field === 'origin') setOriginSuggestions(predictions);
-        else setDestSuggestions(predictions);
-      } catch (e) {
-        console.warn("Autocomplete error:", e);
-        if (field === 'origin') setOriginSuggestions([]);
-        else setDestSuggestions([]);
+    try {
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(text)}&key=${GOOGLE_MAPS_KEY}&language=es&components=country:ar`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.predictions && data.predictions.length > 0) {
+        if (field === 'origin') setOriginSuggestions(data.predictions);
+        else setDestSuggestions(data.predictions);
+      } else {
+        const mockSuggestions = [
+          { place_id: `mock-1-${field}`, description: `${text}, San Miguel de Tucumán` },
+          { place_id: `mock-2-${field}`, description: `${text}, Yerba Buena, Tucumán` },
+          { place_id: `mock-3-${field}`, description: `${text}, Tafí Viejo, Tucumán` },
+        ];
+        if (field === 'origin') setOriginSuggestions(mockSuggestions);
+        else setDestSuggestions(mockSuggestions);
       }
-    }, 400);
+    } catch (e) {
+      const mockSuggestions = [
+        { place_id: `mock-1-${field}`, description: `${text}, San Miguel de Tucumán` },
+        { place_id: `mock-2-${field}`, description: `${text}, Yerba Buena, Tucumán` },
+        { place_id: `mock-3-${field}`, description: `${text}, Tafí Viejo, Tucumán` },
+      ];
+      if (field === 'origin') setOriginSuggestions(mockSuggestions);
+      else setDestSuggestions(mockSuggestions);
+    }
   };
 
   const handleSelectSuggestion = async (suggestion: any, field: 'origin' | 'destination') => {
-    const { description } = suggestion;
+    const { place_id, description } = suggestion;
     
     if (field === 'origin') {
       setOrigin(description);
@@ -1069,14 +1106,6 @@ export default function HomeScreen() {
     }
     setActiveSearchField(null);
 
-    const cleanAddress = (description || '').trim().toLowerCase();
-    const cachedCoords = geocodeCacheRef.current.get(cleanAddress);
-    if (cachedCoords) {
-      if (field === 'origin') setOriginCoords(cachedCoords);
-      else setDestinationCoords(cachedCoords);
-      return;
-    }
-
     try {
       const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(description)}&key=${GOOGLE_MAPS_KEY}`;
       const geoRes = await fetch(geoUrl);
@@ -1084,7 +1113,6 @@ export default function HomeScreen() {
       if (geoData.results && geoData.results.length > 0) {
         const loc = geoData.results[0].geometry.location;
         const coords = { latitude: loc.lat, longitude: loc.lng };
-        geocodeCacheRef.current.set(cleanAddress, coords);
         if (field === 'origin') setOriginCoords(coords);
         else setDestinationCoords(coords);
         return;
@@ -1093,11 +1121,12 @@ export default function HomeScreen() {
       console.warn("Geocoding lookup failed for suggestion:", gErr);
     }
 
-    // Si falla geocoding y es origen, asignar GPS actual
-    if (field === 'origin' && currentLocation) {
-      const coords = { latitude: currentLocation.latitude, longitude: currentLocation.longitude };
-      setOriginCoords(coords);
-    }
+    // Fallback de coordenadas aproximadas si falla geocoding
+    const mockCoords = field === 'origin' 
+      ? { latitude: -26.8241, longitude: -65.2226 }
+      : { latitude: -26.8167, longitude: -65.2833 };
+    if (field === 'origin') setOriginCoords(mockCoords);
+    else setDestinationCoords(mockCoords);
   };
 
   const ensureCoordsAndRoute = async (): Promise<boolean> => {
@@ -1160,17 +1189,6 @@ export default function HomeScreen() {
   }, [originCoords, destinationCoords]);
 
   const fetchRouteDetailsWithCoords = async (oCoords: any, dCoords: any) => {
-    if (!oCoords || !dCoords) return;
-
-    const routeKey = `${Number(oCoords.latitude).toFixed(3)},${Number(oCoords.longitude).toFixed(3)}_${Number(dCoords.latitude).toFixed(3)},${Number(dCoords.longitude).toFixed(3)}`;
-    const cachedRoute = routeCacheRef.current.get(routeKey);
-    if (cachedRoute) {
-      setRouteDistance(cachedRoute.distance);
-      setRouteDuration(cachedRoute.duration);
-      setRoutePolyline(cachedRoute.polyline);
-      return;
-    }
-
     try {
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${oCoords.latitude},${oCoords.longitude}&destination=${dCoords.latitude},${dCoords.longitude}&key=${GOOGLE_MAPS_KEY}`;
       const res = await fetch(url);
@@ -1178,14 +1196,9 @@ export default function HomeScreen() {
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         const leg = route.legs[0];
-        const distKm = leg.distance.value / 1000;
-        const durMin = leg.duration.value / 60;
-        const poly = route.overview_polyline.points;
-
-        routeCacheRef.current.set(routeKey, { distance: distKm, duration: durMin, polyline: poly });
-        setRouteDistance(distKm);
-        setRouteDuration(durMin);
-        setRoutePolyline(poly);
+        setRouteDistance(leg.distance.value / 1000);
+        setRouteDuration(leg.duration.value / 60);
+        setRoutePolyline(route.overview_polyline.points);
       } else {
         throw new Error("No route found from Directions API");
       }
@@ -1197,13 +1210,9 @@ export default function HomeScreen() {
       const lon2 = dCoords.longitude;
       const dist = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2)) * 111.32;
       const finalDist = dist > 0.5 ? Math.round(dist * 10) / 10 : 5.4;
-      const durMin = Math.round(finalDist * 2);
-      const poly = [oCoords, dCoords];
-
-      routeCacheRef.current.set(routeKey, { distance: finalDist, duration: durMin, polyline: poly });
       setRouteDistance(finalDist);
-      setRouteDuration(durMin);
-      setRoutePolyline(poly);
+      setRouteDuration(Math.round(finalDist * 2));
+      setRoutePolyline([oCoords, dCoords]);
     }
   };
 
@@ -1220,10 +1229,14 @@ export default function HomeScreen() {
 
     try {
       const estimatedPrice = calculateFare(selectedCategory);
+      const randomPin = String(Math.floor(1000 + Math.random() * 9000));
+      const cat = activeSubMode === 'traslados' ? 'TRANSFER' : activeSubMode === 'interurbano' ? 'ARC' : 'MU';
+      const isTripScheduled = isScheduled || Boolean(scheduleDate && scheduleTime);
+
       const tripData: any = {
         passengerId: user.uid,
         userName: firstName,
-        passengerPhone: '',
+        passengerPhone: userPhone || '',
         origin,
         destination,
         originCoords: originCoords ? { lat: originCoords.latitude, lng: originCoords.longitude } : null,
@@ -1232,7 +1245,13 @@ export default function HomeScreen() {
         estimatedDistanceKm: routeDistance || 0,
         estimatedDurationMins: routeDuration || 0,
         serviceType: selectedCategory,
+        serviceCategory: cat,
+        isScheduled: isTripScheduled,
+        scheduledDate: isTripScheduled ? scheduleDate : null,
+        scheduledTime: isTripScheduled ? scheduleTime : null,
+        scheduledDateTime: isTripScheduled && scheduleDate && scheduleTime ? new Date(`${scheduleDate}T${scheduleTime}:00`) : null,
         estimatedPrice,
+        securityPin: randomPin,
         paymentMethod: selectedPayment,
         paymentStatus: selectedPayment === 'Efectivo' ? 'pending' : 'awaiting_payment',
         status: 'searching',
@@ -1403,90 +1422,73 @@ export default function HomeScreen() {
     ]);
   };
 
-  // Cálculo de tarifa 100% real conectada a Firestore y sincronizada con el Dashboard
+  // Cálculo de tarifa real usando tarifario o fallback sincronizado 1:1 con el Dashboard Web
   const calculateFare = (categoryName: string) => {
+    const norm = (s: any) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const targetNorm = norm(categoryName);
+
     // 1. Encontrar la categoría seleccionada
-    const selectedCat = categories.find(c => c.name === categoryName || c.id === categoryName || c.name?.toLowerCase() === categoryName?.toLowerCase());
-    const catId = selectedCat?.id || categoryName;
-    const catName = selectedCat?.name || categoryName;
-    const catLower = (catName || '').toLowerCase();
+    const selectedCat = categories.find(c => norm(c.name) === targetNorm || norm(c.id) === targetNorm) || { id: targetNorm, name: categoryName, basePrice: 400, multiplier: 1 };
+    
+    // 2. Buscar si hay una tarifa activa de Firestore para esta categoría o la estándar por defecto
+    const matchedTariff = 
+      activeTariffs.find((t: any) => norm(t.category) === norm(selectedCat.id) || norm(t.category) === targetNorm) ||
+      activeTariffs.find((t: any) => norm(t.category).includes('estandar') || norm(t.category).includes('standard')) ||
+      activeTariffs[0];
 
-    // 2. Buscar si hay una tarifa activa de Firestore para esta categoría y modo
-    let matchedTariff = activeTariffs.find((t: any) => 
-      t.isActive !== false && 
-      (t.category === catId || t.category === catName || t.name?.toLowerCase() === catLower || t.id === catId)
-    );
-
-    // Fallbacks inteligentes según tipo y alias
-    if (!matchedTariff && (catId === 'std-001' || catLower.includes('estandar'))) {
-      matchedTariff = activeTariffs.find((t: any) => t.id === 'mu_active' && t.isActive !== false);
-    }
-    if (!matchedTariff && (catId === 'tax-001' || catLower.includes('taxi') || catLower.includes('sutrappa'))) {
-      matchedTariff = activeTariffs.find((t: any) => (t.name?.toLowerCase().includes('taxi') || t.category === 'tax-001') && t.isActive !== false);
-    }
-    if (!matchedTariff) {
-      if (activeSubMode === 'urbana') {
-        matchedTariff = activeTariffs.find((t: any) => t.type === 'mu' && t.isActive !== false);
-      } else if (activeSubMode === 'interurbano') {
-        matchedTariff = activeTariffs.find((t: any) => (t.type === 'arc' || t.type === 'aci') && t.isActive !== false);
-      } else if (activeSubMode === 'traslados') {
-        matchedTariff = activeTariffs.find((t: any) => t.type === 'transfers' && t.isActive !== false);
-      }
-    }
-
-    // Distancia y duración estimadas
-    const distance = routeDistance > 0 ? routeDistance : 3.5;
-    const duration = routeDuration > 0 ? routeDuration : Math.max(5, Math.round(distance * 2.2));
+    const distance = routeDistance > 0 ? routeDistance : 1;
+    const duration = routeDuration > 0 ? routeDuration : Math.round(distance * 2);
 
     if (!matchedTariff) {
-      // Valores por defecto seguros si Firestore aún no tiene tarifas configuradas
-      const baseFare = catLower.includes('vip') || catLower.includes('premium') ? 1500 : catLower.includes('taxi') ? 1200 : 1200;
-      const pricePerKm = catLower.includes('vip') || catLower.includes('premium') ? 1100 : catLower.includes('taxi') ? 1200 : 850;
-      const travelMinutePrice = catLower.includes('vip') || catLower.includes('premium') ? 120 : catLower.includes('taxi') ? 120 : 85;
-      const minimumFare = catLower.includes('vip') || catLower.includes('premium') ? 3500 : 2500;
-      
-      const computed = baseFare + (pricePerKm * distance) + (travelMinutePrice * duration);
-      return Math.max(minimumFare, Math.round(computed));
+      // Fallback si la base de datos no tiene tarifarios creados aún
+      const baseFare = targetNorm.includes('prem') ? 600 : targetNorm.includes('tax') ? 450 : 400;
+      const pricePerKm = targetNorm.includes('prem') ? 550 : targetNorm.includes('tax') ? 450 : 350;
+      return Math.round(baseFare + pricePerKm * distance);
     }
 
-    // 3. Extraer valores 100% reales configurados en el Dashboard
-    const baseFare = Number(matchedTariff.baseFare) || (catLower.includes('taxi') ? 1200 : 1200);
-    const pricePerKm = Number(matchedTariff.pricePerKm) || (catLower.includes('taxi') ? 1200 : 850);
-    const travelMinutePrice = Number(matchedTariff.travelMinutePrice) || (catLower.includes('taxi') ? 120 : 85);
-    const minimumFare = Number(matchedTariff.minimumFare) || 2500;
+    // 3. Usar valores del tarifario real configurado en el Dashboard
+    const baseFare = Number(matchedTariff.baseFare || 0);
+    const pricePerKm = Number(matchedTariff.pricePerKm || 0);
+    const travelMinutePrice = Number(matchedTariff.travelMinutePrice || 0);
+    const minimumFare = Number(matchedTariff.minimumFare || 0);
 
-    let computedFare = baseFare + (pricePerKm * distance) + (travelMinutePrice * duration);
+    const calculatedFare = baseFare + (pricePerKm * distance) + (travelMinutePrice * duration);
+    let base = Math.max(minimumFare, Math.round(calculatedFare));
 
-    // 4. Evaluar tarifas especiales (specialRates) configuradas en el Dashboard
-    if (Array.isArray(matchedTariff.specialRates)) {
+    // Aplicar recargo de tarifa especial (días y horarios / nocturno) si está configurado
+    if (matchedTariff.specialRates && Array.isArray(matchedTariff.specialRates) && base > 0) {
+      const DAYS_MAP = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
       const now = new Date();
-      const currentHour = now.getHours() + now.getMinutes() / 60;
-      const currentDay = now.getDay(); // 0: Dom, 1: Lun, ..., 6: Sáb
+      const currentDay = DAYS_MAP[now.getDay()];
+      const currentMin = now.getHours() * 60 + now.getMinutes();
 
       for (const sr of matchedTariff.specialRates) {
-        if (sr.isActive === false) continue;
-        if (sr.daysOfWeek && Array.isArray(sr.daysOfWeek) && sr.daysOfWeek.length > 0 && !sr.daysOfWeek.includes(currentDay)) {
-          continue;
-        }
-        if (sr.startTime && sr.endTime) {
-          const [sH, sM] = sr.startTime.split(':').map(Number);
-          const [eH, eM] = sr.endTime.split(':').map(Number);
-          const s = sH + (sM || 0) / 60;
-          const e = eH + (eM || 0) / 60;
-          const inWindow = s <= e ? (currentHour >= s && currentHour <= e) : (currentHour >= s || currentHour <= e);
-          if (inWindow) {
-            if (sr.multiplier && sr.multiplier > 0) {
-              computedFare *= Number(sr.multiplier);
-            }
-            if (sr.flatExtra && sr.flatExtra > 0) {
-              computedFare += Number(sr.flatExtra);
-            }
+        if (!sr.active) continue;
+        const days = (sr.daysOfWeek || []).map((d: string) => norm(d));
+        if (days.length === 0 || days.includes(currentDay) || days.includes('todos')) {
+          const [startH, startM] = (sr.startTime || '00:00').split(':').map(Number);
+          const [endH, endM] = (sr.endTime || '23:59').split(':').map(Number);
+          const startTotal = startH * 60 + startM;
+          const endTotal = endH * 60 + endM;
+
+          const isInTime = startTotal <= endTotal
+            ? (currentMin >= startTotal && currentMin <= endTotal)
+            : (currentMin >= startTotal || currentMin <= endTotal);
+
+          if (isInTime && sr.percentageModifier) {
+            base = Math.round(base * (1 + Number(sr.percentageModifier) / 100));
+            break;
           }
         }
       }
     }
 
-    return Math.max(minimumFare, Math.round(computedFare));
+    // Aplicar recargo por pago electrónico si no es Efectivo
+    if (selectedPayment !== 'Efectivo' && matchedTariff.electronicPaymentFee) {
+      base = Math.round(base * (1 + Number(matchedTariff.electronicPaymentFee) / 100));
+    }
+
+    return Math.max(minimumFare, base);
   };
 
   const getDaysRemaining = (dateStr: string) => {
@@ -1668,6 +1670,39 @@ export default function HomeScreen() {
                     <Image source={{ uri: driverDetails.carPhoto }} style={styles.carPhotoTrackingImg} />
                   </View>
                 ) : null}
+
+                {/* PIN de Seguridad para abordar (Opcional) */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: '#F0FDF4',
+                  borderWidth: 1.5,
+                  borderColor: '#86EFAC',
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  marginTop: 10
+                }}>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={{ fontSize: 11, fontFamily: 'Quicksand-Bold', color: '#15803D' }}>
+                      🔑 PIN DE ABORDAJE (OPCIONAL)
+                    </Text>
+                    <Text style={{ fontSize: 10, fontFamily: 'Quicksand-Medium', color: '#166534', marginTop: 1 }}>
+                      Dictáselo al chofer solo si te lo solicita antes de arrancar.
+                    </Text>
+                  </View>
+                  <View style={{
+                    backgroundColor: '#16A34A',
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                  }}>
+                    <Text style={{ fontSize: 15, fontFamily: 'Quicksand-Bold', color: '#FFFFFF', letterSpacing: 2 }}>
+                      {activeTrip?.securityPin || '4829'}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               {/* Controles de Viaje (Fila Horizontal) */}
@@ -1764,7 +1799,7 @@ export default function HomeScreen() {
                   onPress={handleCompleteTrip}
                 >
                   <Text style={[styles.cancelTripBtnText, { color: Colors.success }]}>
-                    Finalizar y Confirmar Viaje
+                    Confirmar Llegada y Pagar
                   </Text>
                 </TouchableOpacity>
 
@@ -1802,8 +1837,8 @@ export default function HomeScreen() {
               <Text style={styles.canvaPricingTitle}>Tarifa aproximada</Text>
               
               <View style={{ gap: 10 }}>
-                {visibleCategories.length > 0 ? (
-                  visibleCategories.slice(0, 6).map((cat: any, idx: number) => {
+                {availableCategories.length > 0 ? (
+                  availableCategories.slice(0, 4).map(cat => {
                     const isSelected = selectedCategory === cat.name;
                     const fare = calculateFare(cat.name);
                     const catLower = (cat.name || cat.id || '').toLowerCase();
@@ -1816,12 +1851,12 @@ export default function HomeScreen() {
                           : catLower.includes('rural') || catLower.includes('arc')
                             ? require('../../assets/landing_rural.png')
                             : require('../../assets/landing_estandar.png');
-
+                    
                     const remoteImage = cat.imageUrl || cat.iconImage || cat.image || (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:') || cat.icon.length > 30 || cat.icon.includes('/') || cat.icon.includes(';') || cat.icon.includes('+') || cat.icon.includes('=')) ? cat.icon : null);
 
                     return (
                       <TouchableOpacity 
-                        key={cat.id || cat.name || `cat-option-${idx}`} 
+                        key={cat.id} 
                         activeOpacity={0.9}
                         style={[styles.canvaCategoryBtn, isSelected && styles.canvaCategoryBtnActive]}
                         onPress={() => setSelectedCategory(cat.name)}
@@ -1839,21 +1874,19 @@ export default function HomeScreen() {
 
                         {/* Imagen Grande de Auto que llega casi a los bordes de la tarjeta */}
                         <View style={styles.canvaCarImageContainer}>
-                          {remoteImage ? (
-                            <Image source={{ uri: remoteImage }} style={styles.canvaCarImage} resizeMode="contain" />
-                          ) : (
-                            <Image source={localCarImage} style={styles.canvaCarImage} resizeMode="contain" />
-                          )}
+                          <Image 
+                            source={remoteImage ? { uri: remoteImage } : localCarImage} 
+                            style={styles.canvaCarImage} 
+                            resizeMode="contain" 
+                          />
                         </View>
 
-                        {/* Footer: Descripción y Método de Pago */}
+                        {/* Footer: Descripción y método de pago */}
                         <View style={styles.canvaCategoryFooterRow}>
                           <Text style={styles.canvaCategoryDesc} numberOfLines={1}>
-                            {cat.description || (catLower.includes('taxi') ? 'Servicio con taxímetro oficial' : 'Sedán moderno, climatizado y confortable')}
+                            {cat.description || 'Sedán moderno, climatizado y confortable'}
                           </Text>
-                          <Text style={[styles.canvaEtaText, { color: 'rgba(255,255,255,0.95)' }]}>
-                            {selectedPayment === 'Cash' || selectedPayment === 'Efectivo' ? 'Efectivo' : selectedPayment === 'MercadoPago' || selectedPayment === 'Mercado Pago' ? 'Mercado Pago' : selectedPayment}
-                          </Text>
+                          <Text style={styles.canvaEtaText}>Efectivo / MP</Text>
                         </View>
                       </TouchableOpacity>
                     );
@@ -1933,7 +1966,7 @@ export default function HomeScreen() {
               <Text style={styles.webMapText}>
                 {originCoords && destinationCoords 
                   ? `Ruta: ${origin.split(',')[0]} ➔ ${destination.split(',')[0]}` 
-                  : "Mapa en Vivo (TravelCab Argentina)"}
+                  : "Mapa en Vivo (Simulación Ecosistema)"}
               </Text>
             </View>
           ) : (
@@ -1949,9 +1982,9 @@ export default function HomeScreen() {
                 flipY={false}
               />
               {/* Choferes online */}
-              {onlineDrivers.map((d: any, dIdx: number) => d.location && (
+              {onlineDrivers.map((d: any) => d.location && (
                 <Marker
-                  key={d.id || `driver-marker-${dIdx}`}
+                  key={d.id}
                   coordinate={d.location}
                   title={d.name}
                   description="Chofer de TravelCab cercano"
@@ -1992,23 +2025,25 @@ export default function HomeScreen() {
       {/* HEADER DE INICIO (ESTILO AZUL TECH) */}
       {activeTab === 'home' && requestFlowStep === 'idle' && (
         <View style={[styles.canvaHeader, { paddingTop: insets.top > 0 ? insets.top + 12 : 36 }]}>
-          <View style={styles.canvaLogoRow}>
-            <View style={{ width: 40 }} />
+          <View style={[styles.canvaLogoRow, { justifyContent: 'space-between', alignItems: 'center' }]}>
             <TravelCabLogo size={140} textColor={Colors.white} isAccentColor={true} />
-            <TouchableOpacity 
-              style={styles.headerNotifBtn} 
-              onPress={() => setIsNotificationsModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="notifications-outline" size={22} color={Colors.white} />
-              {notificationsInbox.length > 0 && (
-                <View style={styles.headerNotifBadge}>
-                  <Text style={styles.headerNotifBadgeText}>
-                    {notificationsInbox.length > 9 ? '9+' : notificationsInbox.length}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                style={styles.topSafetyIconBtn}
+                onPress={() => setSafetyModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="shield-checkmark" size={18} color="#EF4444" />
+                <Text style={styles.topSafetyIconText}>Seguridad</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.topSupportIconBtn}
+                onPress={() => setSupportModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="headset" size={18} color={Colors.accent} />
+              </TouchableOpacity>
+            </View>
           </View>
           
           <View style={styles.canvaUserGreetingBox}>
@@ -2115,9 +2150,9 @@ export default function HomeScreen() {
                       </View>
                       {activeSearchField === 'origin' && originSuggestions.length > 0 && (
                         <View style={styles.suggestionsContainer}>
-                          {originSuggestions.map((item, oIdx) => (
+                          {originSuggestions.map((item) => (
                             <TouchableOpacity
-                              key={item.place_id || `orig-sug-${oIdx}`}
+                              key={item.place_id}
                               style={styles.suggestionItem}
                               onPress={() => handleSelectSuggestion(item, 'origin')}
                             >
@@ -2187,9 +2222,9 @@ export default function HomeScreen() {
                       </View>
                       {activeSearchField === 'destination' && destSuggestions.length > 0 && (
                         <View style={styles.suggestionsContainer}>
-                          {destSuggestions.map((item, dIdx) => (
+                          {destSuggestions.map((item) => (
                             <TouchableOpacity
-                              key={item.place_id || `dest-sug-${dIdx}`}
+                              key={item.place_id}
                               style={styles.suggestionItem}
                               onPress={() => handleSelectSuggestion(item, 'destination')}
                             >
@@ -2442,7 +2477,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="compass" size={16} color={experienceMainTab === 'trip' ? Colors.white : Colors.textSecondary} />
                 <Text style={[styles.segmentText, experienceMainTab === 'trip' && styles.segmentTextActive]}>Mi experiencia</Text>
-                {!hasPurchasedOrganizedTrip && !isAdminUser && (
+                {!hasPurchasedOrganizedTrip && (
                   <Ionicons name="lock-closed" size={12} color={experienceMainTab === 'trip' ? Colors.white : Colors.textMuted} style={{ marginLeft: 4 }} />
                 )}
               </TouchableOpacity>
@@ -2451,27 +2486,13 @@ export default function HomeScreen() {
             {/* SECCIÓN A: CATÁLOGO */}
             {experienceMainTab === 'catalog' && (
               <View style={styles.catalogContainer}>
-                {experiences.map((item, expIdx) => (
-                  <View key={item.id || `exp-card-${expIdx}`} style={styles.catalogCard}>
+                {experiences.map(item => (
+                  <View key={item.id} style={styles.catalogCard}>
                     <Image source={{ uri: item.img || item.imageUrl }} style={styles.catalogCardImg} />
                     <View style={styles.catalogCardBody}>
                       <View style={styles.catalogCardMeta}>
-                        <Text style={styles.catalogDuration}>{item.duration || `${item.nightsCount || 4} Noches`}</Text>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={styles.catalogPrice}>
-                            {typeof item.price === 'number' 
-                              ? `$ ${item.price.toLocaleString('es-AR')}` 
-                              : item.price?.toString().startsWith('$') || item.price?.toString().startsWith('U$S')
-                                ? item.price
-                                : `$ ${item.price}`}
-                          </Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 3 }}>
-                            <Ionicons name="star" size={10} color="#D97706" style={{ marginRight: 3 }} />
-                            <Text style={{ fontSize: 10, fontFamily: Fonts.bold, color: '#92400E' }}>
-                              +{item.pointsEarned || Math.max(50, Math.round((Number(item.price) || 60000) / 3000))} pts Rewards
-                            </Text>
-                          </View>
-                        </View>
+                        <Text style={styles.catalogDuration}>{item.duration}</Text>
+                        <Text style={styles.catalogPrice}>{item.price}</Text>
                       </View>
                       <Text style={styles.catalogTitle}>{item.title}</Text>
                       <Text style={styles.catalogDesc}>{item.desc || item.description}</Text>
@@ -2485,7 +2506,7 @@ export default function HomeScreen() {
                               { text: 'Preguntar a Travis', onPress: () => {
                                 setExperienceMainTab('trip');
                                 setActiveTripSubTab('itinerary');
-                                if (!hasPurchasedOrganizedTrip && !isAdminUser) {
+                                if (!hasPurchasedOrganizedTrip) {
                                   Alert.alert("Acceso Restringido", "Este sector exclusivo se habilitará una vez que realices la reserva de tu viaje.");
                                 } else {
                                   setTravisQuery(`¿Qué excursiones recomiendan hacer en Mendoza en un viaje de 5 días?`);
@@ -2511,32 +2532,25 @@ export default function HomeScreen() {
             {/* SECCIÓN B: MI EXPERIENCIA */}
             {experienceMainTab === 'trip' && (
               <View style={{ width: '100%' }}>
-                {!contractedTrip ? (
+                {!hasPurchasedOrganizedTrip || !contractedTrip ? (
                   <View style={styles.lockedTripContainer}>
                     <View style={styles.lockIconCircle}>
-                      <Ionicons name="compass-outline" size={36} color={Colors.primary} />
+                      <Ionicons name="lock-closed" size={32} color={Colors.accent} />
                     </View>
-                    <Text style={styles.lockedTripTitle}>Aún no tenés un Viaje Contratado</Text>
+                    <Text style={styles.lockedTripTitle}>Módulo Bloqueado</Text>
                     <Text style={styles.lockedTripDesc}>
-                      Este sector se habilitará automáticamente en tiempo real con tu itinerario, coordinador asignado, asistencia médica y comunidad una vez confirmada tu reserva.
+                      Este sector exclusivo se habilitará una vez que realices la reserva o contrates una experiencia organizada por nosotros. Solo usuarios con reserva activa pueden acceder.
                     </Text>
-                    <TouchableOpacity 
-                      style={[styles.catalogConsultBtn, { marginTop: 16, paddingHorizontal: 24 }]}
-                      onPress={() => setExperienceMainTab('catalog')}
-                    >
-                      <Ionicons name="sparkles" size={16} color={Colors.white} />
-                      <Text style={styles.catalogConsultBtnText}>Explorar Catálogo de Viajes</Text>
-                    </TouchableOpacity>
                   </View>
                 ) : (
                   <View style={styles.activeTripDetailContainer}>
                     <View style={styles.activeTripHero}>
-                      <Image source={{ uri: contractedTrip.imageUrl || 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=800' }} style={styles.activeTripHeroImg} />
+                      <Image source={{ uri: contractedTrip.imageUrl }} style={styles.activeTripHeroImg} />
                       <View style={styles.activeTripHeroOverlay}>
-                        <Text style={styles.activeTripHeroTitle}>{contractedTrip.destination || 'Mi Experiencia'}</Text>
+                        <Text style={styles.activeTripHeroTitle}>{contractedTrip.destination}</Text>
                         <View style={styles.activeTripHeroBadge}>
                           <Ionicons name="calendar-outline" size={12} color={Colors.white} />
-                          <Text style={styles.activeTripHeroBadgeText}>{contractedTrip.dates || 'Próximamente'}</Text>
+                          <Text style={styles.activeTripHeroBadgeText}>{contractedTrip.dates}</Text>
                         </View>
                       </View>
                     </View>
@@ -2572,7 +2586,7 @@ export default function HomeScreen() {
                         <View style={styles.infoSectionCard}>
                           <Text style={styles.sectionSubTitle}>Servicios Contratados</Text>
                           {contractedTrip.services?.map((service: string, idx: number) => (
-                            <View key={`service-row-${idx}`} style={styles.serviceRow}>
+                            <View key={idx} style={styles.serviceRow}>
                               <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
                               <Text style={styles.serviceText}>{service}</Text>
                             </View>
@@ -2595,10 +2609,10 @@ export default function HomeScreen() {
 
                         <Text style={styles.sectionSubTitle}>Itinerario del Viaje</Text>
                         <View style={styles.itineraryAccordion}>
-                          {contractedTrip.itinerary?.map((day: any, dIdx: number) => {
+                          {contractedTrip.itinerary?.map((day: any) => {
                             const isExpanded = expandedDay === day.day;
                             return (
-                              <View key={`itin-day-${day.day || dIdx}`} style={[styles.accordionItem, isExpanded && styles.accordionItemExpanded]}>
+                              <View key={day.day} style={[styles.accordionItem, isExpanded && styles.accordionItemExpanded]}>
                                 <TouchableOpacity 
                                   style={styles.accordionHeader}
                                   onPress={() => setExpandedDay(isExpanded ? null : day.day)}
@@ -2690,8 +2704,8 @@ export default function HomeScreen() {
 
                         <Text style={styles.sectionSubTitle}>Excursiones Opcionales (Adquirir con Galicia - Nave)</Text>
                         <View style={styles.excursionsList}>
-                          {excursionsList.map((exc: any, excIdx: number) => (
-                            <View key={exc.id || `exc-item-${excIdx}`} style={styles.excursionCard}>
+                          {excursionsList.map((exc: any) => (
+                            <View key={exc.id} style={styles.excursionCard}>
                               <View style={styles.excursionHeader}>
                                 <Text style={styles.excursionTitle}>{exc.title}</Text>
                                 <Text style={styles.excursionPrice}>U$S {exc.price}</Text>
@@ -2721,13 +2735,13 @@ export default function HomeScreen() {
                     {activeTripSubTab === 'group' && (
                       <View style={styles.subTabContent}>
                         <View style={styles.coordinatorCard}>
-                          <Image source={{ uri: contractedTrip.coordinator?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300' }} style={styles.coordinatorAvatar} />
+                          <Image source={{ uri: contractedTrip.coordinator.avatar }} style={styles.coordinatorAvatar} />
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.coordinatorName}>{contractedTrip.coordinator?.name || 'Marcos Vignola'}</Text>
+                            <Text style={styles.coordinatorName}>{contractedTrip.coordinator.name}</Text>
                             <Text style={styles.coordinatorRole}>Coordinador de Viaje Asignado</Text>
                             <TouchableOpacity 
                               style={styles.whatsappCoordBtn}
-                              onPress={() => Linking.openURL(`https://wa.me/${(contractedTrip.coordinator?.phone || '5493815550192').replace(/[^0-9]/g, '')}`)}
+                              onPress={() => Linking.openURL(`https://wa.me/${contractedTrip.coordinator.phone.replace(/[^0-9]/g, '')}`)}
                             >
                               <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
                               <Text style={styles.whatsappCoordText}>Hablar por WhatsApp</Text>
@@ -2738,7 +2752,7 @@ export default function HomeScreen() {
                         <Text style={styles.sectionSubTitle}>Tus Compañeros de Viaje</Text>
                         <View style={styles.passengersListRow}>
                           {['Sofía (BsAs)', 'Martín (Tucumán)', 'Griselda (Cba)', 'Juan Pablo (Mza)'].map((pName, index) => (
-                            <View key={`passenger-chip-${index}`} style={styles.passengerChip}>
+                            <View key={index} style={styles.passengerChip}>
                               <Ionicons name="person-outline" size={12} color={Colors.primary} />
                               <Text style={styles.passengerChipText}>{pName}</Text>
                             </View>
@@ -2752,12 +2766,12 @@ export default function HomeScreen() {
                             contentContainerStyle={{ gap: 10, padding: 10 }}
                             nestedScrollEnabled
                           >
-                            {groupMessages.map((msg, mIdx) => {
+                            {groupMessages.map((msg) => {
                               const isMe = msg.senderRole === 'pasajero' && msg.sender === user.displayName;
                               const isCoord = msg.senderRole === 'coordinador';
                               return (
                                 <View 
-                                  key={msg.id || `gmsg-${mIdx}`} 
+                                  key={msg.id} 
                                   style={[
                                     styles.chatBubble, 
                                     isMe ? styles.chatBubbleMe : isCoord ? styles.chatBubbleCoord : styles.chatBubbleOther
@@ -2795,7 +2809,7 @@ export default function HomeScreen() {
                         
                         <View style={styles.galleryGrid}>
                           {contractedTrip.photos?.map((photoUrl: string, index: number) => (
-                            <View key={`photo-grid-item-${index}`} style={styles.galleryItem}>
+                            <View key={index} style={styles.galleryItem}>
                               <Image source={{ uri: photoUrl }} style={styles.galleryImg} />
                               <TouchableOpacity 
                                 style={styles.downloadPhotoBtn}
@@ -2814,7 +2828,6 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     )}
-
                   </View>
                 )}
               </View>
@@ -2872,8 +2885,8 @@ export default function HomeScreen() {
 
             <View style={styles.tripsList}>
               {passengerTrips.length > 0 ? (
-                passengerTrips.map((item, pIdx) => (
-                  <View key={item.id || `past-trip-${pIdx}`} style={styles.tripHistoryItem}>
+                passengerTrips.map(item => (
+                  <View key={item.id} style={styles.tripHistoryItem}>
                     <View style={styles.historyIcon}>
                       <Ionicons name="car-outline" size={20} color={Colors.accent} />
                     </View>
@@ -2989,8 +3002,8 @@ export default function HomeScreen() {
                 <Text style={styles.tabHeaderDesc}>Canjeá tus puntos acumulados por viajes gratis y actividades en TravelApp Experiences.</Text>
 
                 <View style={styles.rewardsCatalogGrid}>
-                  {rewardsList.map((item, rIdx) => (
-                    <View key={item.id || `reward-item-${rIdx}`} style={styles.rewardCatalogCard}>
+                  {rewardsList.map(item => (
+                    <View key={item.id} style={styles.rewardCatalogCard}>
                       <Image source={{ uri: item.imageUrl }} style={styles.rewardItemImg} />
                       <View style={styles.rewardItemBody}>
                         <Text style={styles.rewardItemTitle}>{item.title}</Text>
@@ -3287,6 +3300,42 @@ export default function HomeScreen() {
                 <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
               </TouchableOpacity>
 
+              {/* Botón Atención al Cliente */}
+              <TouchableOpacity 
+                style={[styles.dossierLaunchBtn, { backgroundColor: '#0A2A5B', paddingHorizontal: 14, justifyContent: 'space-between' }]}
+                onPress={() => setSupportModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(2,132,199,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="headset-outline" size={22} color="#38BDF8" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={[styles.dossierLaunchBtnText, { textAlign: 'left', fontSize: 14 }]}>Atención al Cliente 24/7</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: Fonts.medium }}>
+                    Teléfono 0810-220-0018 · WhatsApp · Email
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+              </TouchableOpacity>
+
+              {/* Botón Centro de Seguridad */}
+              <TouchableOpacity 
+                style={[styles.dossierLaunchBtn, { backgroundColor: '#0A2A5B', paddingHorizontal: 14, justifyContent: 'space-between' }]}
+                onPress={() => setSafetyModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="shield-checkmark-outline" size={22} color="#F87171" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={[styles.dossierLaunchBtnText, { textAlign: 'left', fontSize: 14 }]}>Centro de Seguridad & SOS</Text>
+                  <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: Fonts.medium }}>
+                    Grabación de Audio · 911 · PIN de Viaje
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+              </TouchableOpacity>
+
               {/* Cerrar Sesión */}
               <TouchableOpacity style={styles.logoutBtn} onPress={() => auth.signOut()}>
                 <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
@@ -3370,6 +3419,168 @@ export default function HomeScreen() {
               ) : (
                 <Ionicons name="send" size={18} color={Colors.white} />
               )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE ATENCIÓN AL CLIENTE 24/7 */}
+      <Modal
+        visible={supportModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSupportModalVisible(false)}
+      >
+        <View style={styles.supportModalOverlay}>
+          <View style={styles.supportModalContent}>
+            <View style={styles.supportModalHeader}>
+              <View style={styles.modalIconBadge}>
+                <Ionicons name="headset" size={26} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.supportModalTitle}>Atención al Cliente</Text>
+                <Text style={styles.supportModalSubtitle}>Estamos disponibles 24/7 para asistirte</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSupportModalVisible(false)} style={styles.supportModalCloseBtn}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.supportOptionsList}>
+              <TouchableOpacity
+                style={styles.supportChannelBtn}
+                onPress={() => handleSupportAction('phone')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.channelIconWrap, { backgroundColor: '#E0F2FE' }]}>
+                  <Ionicons name="call" size={22} color="#0284C7" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.channelTitle}>Teléfono de Atención</Text>
+                  <Text style={styles.channelValue}>0810-220-0018</Text>
+                  <Text style={styles.channelSub}>Llamada directa sin costo adicional</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.supportChannelBtn}
+                onPress={() => handleSupportAction('email')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.channelIconWrap, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="mail" size={22} color="#D97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.channelTitle}>Correo Electrónico</Text>
+                  <Text style={styles.channelValue}>soporte@travelapp.ar</Text>
+                  <Text style={styles.channelSub}>Respuesta y seguimiento oficial</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.supportChannelBtn}
+                onPress={() => handleSupportAction('whatsapp')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.channelIconWrap, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="logo-whatsapp" size={22} color="#16A34A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.channelTitle}>WhatsApp Oficial</Text>
+                  <Text style={styles.channelValue}>Chat con Operador en Vivo</Text>
+                  <Text style={styles.channelSub}>Atención ágil e inmediata</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.supportChannelBtn}
+                onPress={() => handleSupportAction('travis')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.channelIconWrap, { backgroundColor: Colors.primary + '18' }]}>
+                  <Ionicons name="sparkles" size={22} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.channelTitle}>Asistente Virtual Travis AI</Text>
+                  <Text style={styles.channelValue}>Chat Inteligente 24/7</Text>
+                  <Text style={styles.channelSub}>Consultas sobre viajes, tarifas y cuenta</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.emergencySupportBtn}
+                onPress={() => handleSupportAction('emergency')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="alert-circle" size={20} color={Colors.white} />
+                <Text style={styles.emergencySupportText}>Línea de Emergencias 911</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE CENTRO DE SEGURIDAD & SOS */}
+      <Modal
+        visible={safetyModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSafetyModalVisible(false)}
+      >
+        <View style={styles.supportModalOverlay}>
+          <View style={styles.supportModalContent}>
+            <View style={styles.supportModalHeader}>
+              <View style={[styles.modalIconBadge, { backgroundColor: '#FEF2F2' }]}>
+                <Ionicons name="shield-checkmark" size={26} color={Colors.danger} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.supportModalTitle}>Centro de Seguridad</Text>
+                <Text style={styles.supportModalSubtitle}>Herramientas de protección en todo momento</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSafetyModalVisible(false)} style={styles.supportModalCloseBtn}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.safetyInfoCard}>
+              <View style={styles.safetyInfoRow}>
+                <Ionicons name="mic-circle" size={24} color={Colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.safetyInfoTitle}>Grabación de Audio en Cabina</Text>
+                  <Text style={styles.safetyInfoDesc}>Durante cualquier viaje activo podés activar el micrófono para respaldar el audio del recorrido con encriptación segura.</Text>
+                </View>
+              </View>
+
+              <View style={styles.safetyInfoRow}>
+                <Ionicons name="keypad" size={24} color={Colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.safetyInfoTitle}>Código PIN Anti-Impostores</Text>
+                  <Text style={styles.safetyInfoDesc}>Tu app genera un código de 4 dígitos para que el chofer verifique tu identidad antes de arrancar.</Text>
+                </View>
+              </View>
+
+              <View style={styles.safetyInfoRow}>
+                <Ionicons name="share-social" size={24} color="#16A34A" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.safetyInfoTitle}>Seguimiento en Vivo por WhatsApp</Text>
+                  <Text style={styles.safetyInfoDesc}>Compartí tu recorrido en tiempo real con familiares para que sigan el auto en el mapa desde cualquier navegador.</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.emergencySupportBtn}
+              onPress={() => {
+                setSafetyModalVisible(false);
+                Linking.openURL('tel:911');
+              }}
+            >
+              <Ionicons name="call" size={20} color={Colors.white} />
+              <Text style={styles.emergencySupportText}>Llamar al 911 Inmediatamente</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -3730,65 +3941,6 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      {/* MODAL DE CENTRO DE MENSAJES Y NOTIFICACIONES */}
-      <Modal
-        visible={isNotificationsModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsNotificationsModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="notifications" size={24} color={Colors.primary} />
-                <Text style={styles.modalTitle}>Centro de Avisos</Text>
-              </View>
-              <TouchableOpacity onPress={() => setIsNotificationsModalVisible(false)} style={{ padding: 4 }}>
-                <Ionicons name="close" size={24} color={Colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {notificationsInbox.length === 0 ? (
-                <View style={{ padding: 30, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="mail-open-outline" size={48} color={Colors.textMuted} />
-                  <Text style={{ fontSize: 14, fontFamily: 'Quicksand-Medium', color: Colors.textMuted, marginTop: 12, textAlign: 'center' }}>
-                    No tenés avisos ni notificaciones pendientes por el momento.
-                  </Text>
-                </View>
-              ) : (
-                notificationsInbox.map((n, idx) => (
-                  <View key={n.id || `notif-${idx}`} style={styles.notifInboxCard}>
-                    <View style={styles.notifInboxHeader}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                        <Ionicons 
-                          name={n.category === 'promo' ? 'gift' : n.soundAlert === 'driver_alert' ? 'alert-circle' : 'megaphone'} 
-                          size={18} 
-                          color={n.category === 'promo' ? '#F59E0B' : Colors.primary} 
-                        />
-                        <Text style={styles.notifInboxTitle} numberOfLines={1}>{n.title || 'Aviso TravelApp'}</Text>
-                      </View>
-                      <Text style={styles.notifInboxTime}>
-                        {n.timestamp ? new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </Text>
-                    </View>
-                    <Text style={styles.notifInboxMsg}>{n.message}</Text>
-                  </View>
-                ))
-              )}
-            </ScrollView>
-
-            <TouchableOpacity 
-              style={[styles.confirmBtn, { marginTop: 16 }]} 
-              onPress={() => setIsNotificationsModalVisible(false)}
-            >
-              <Text style={styles.confirmBtnText}>Cerrar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
       {/* NOTIFICACIÓN OVERLAY FLOTANTE */}
       {overlayMessage && (
         <Animated.View style={[styles.overlayBanner, { transform: [{ translateY: overlayAnim }] }]}>
@@ -3887,66 +4039,7 @@ const styles = StyleSheet.create({
 
   // Estilos Canva Redesign
   canvaHeader: { paddingHorizontal: 20, paddingBottom: 16, alignItems: 'center', gap: 10 },
-  canvaLogoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' },
-  headerNotifBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  headerNotifBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: Colors.danger,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: '#0A2A5B',
-  },
-  headerNotifBadgeText: {
-    color: Colors.white,
-    fontSize: 10,
-    fontFamily: 'Quicksand-Bold',
-    fontWeight: 'bold',
-  },
-  notifInboxCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 6,
-  },
-  notifInboxHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  notifInboxTitle: {
-    fontSize: 14,
-    fontFamily: 'Quicksand-Bold',
-    fontWeight: 'bold',
-    color: Colors.textPrimary,
-  },
-  notifInboxTime: {
-    fontSize: 11,
-    fontFamily: 'Quicksand-Medium',
-    color: Colors.textMuted,
-  },
-  notifInboxMsg: {
-    fontSize: 13,
-    fontFamily: 'Quicksand-Medium',
-    color: Colors.textSecondary,
-    lineHeight: 18,
-  },
+  canvaLogoRow: { alignItems: 'center', justifyContent: 'center' },
   canvaUserGreetingBox: { alignItems: 'center', justifyContent: 'center', gap: 4, width: '100%' },
   canvaUserGreetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, maxWidth: '100%' },
   canvaUserAvatarCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
@@ -3990,7 +4083,7 @@ const styles = StyleSheet.create({
   canvaCarouselCardDesc: { fontSize: 9, fontFamily: 'Quicksand-Regular', color: '#94A3B8', lineHeight: 12 },
   canvaCarouselCardPlaceholder: { width: 140, height: 130, backgroundColor: '#071A3C', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1E293B' },
   
-  canvaPricingTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', fontWeight: '800', color: '#0A2A5B', marginBottom: 14, textAlign: 'center' },
+  canvaPricingTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', fontWeight: '800', color: Colors.white, marginBottom: 14, textAlign: 'center' },
   canvaCategoryBtn: { flexDirection: 'column', alignItems: 'center', backgroundColor: '#FF7A00', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.18, shadowRadius: 5, elevation: 3, marginBottom: 10 },
   canvaCategoryBtnActive: { borderWidth: 2.5, borderColor: '#0A2A5B', backgroundColor: '#FF6B00' },
   canvaCategoryHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 },
@@ -4658,6 +4751,13 @@ const styles = StyleSheet.create({
   lockedTripTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
   lockedTripDesc: { fontSize: 13, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 16, lineHeight: 20 },
   
+  testerCard: { backgroundColor: Colors.primary + '08', borderStyle: 'dashed', borderWidth: 1.5, borderColor: Colors.primary + '40', borderRadius: 18, padding: 16, gap: 8, width: '100%' },
+  testerHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  testerTitle: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.primary },
+  testerDesc: { fontSize: 11, fontFamily: 'Quicksand-Regular', color: Colors.textSecondary, lineHeight: 16 },
+  testerToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  testerToggleLabel: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+
   // active trip details
   activeTripDetailContainer: { gap: 16 },
   activeTripHero: { height: 130, borderRadius: 18, overflow: 'hidden', justifyContent: 'flex-end' },
@@ -4882,5 +4982,60 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand-Bold',
     color: Colors.textPrimary,
   },
+  topSafetyIconBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  topSafetyIconText: {
+    fontSize: 11,
+    fontFamily: 'Quicksand-Bold',
+    color: '#EF4444',
+  },
+  topSupportIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Modals de Soporte y Seguridad
+  supportModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  supportModalContent: { backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 },
+  supportModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  modalIconBadge: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
+  supportModalTitle: { fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  supportModalSubtitle: { fontSize: 12, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, marginTop: 2 },
+  supportModalCloseBtn: { padding: 4 },
+
+  supportOptionsList: { gap: 10 },
+  supportChannelBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#F8FAFC', padding: 14, borderRadius: 16,
+    borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  channelIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  channelTitle: { fontSize: 12, color: Colors.textSecondary, fontFamily: 'Quicksand-Bold' },
+  channelValue: { fontSize: 14, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, marginTop: 1 },
+  channelSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: 'Quicksand-Regular' },
+
+  emergencySupportBtn: {
+    backgroundColor: Colors.danger, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 14, borderRadius: 14, marginTop: 6,
+  },
+  emergencySupportText: { color: Colors.white, fontSize: 14, fontFamily: 'Quicksand-Bold' },
+
+  safetyInfoCard: { backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 14 },
+  safetyInfoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  safetyInfoTitle: { fontSize: 13, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary },
+  safetyInfoDesc: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, lineHeight: 16, fontFamily: 'Quicksand-Regular' },
 });
 

@@ -8,34 +8,6 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { Colors, Fonts } from './src/lib/constants';
 import { TravelCabLogo, TravelAppLogo } from './src/components/BrandLogos';
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: any, errorInfo: any) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <View style={{ flex: 1, backgroundColor: '#0B192C', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: '#FF7A00', fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>
-            Aviso de Carga
-          </Text>
-          <Text style={{ color: '#FFFFFF', fontSize: 13, marginBottom: 20, textAlign: 'center', opacity: 0.9 }}>
-            {String(this.state.error?.message || this.state.error || 'Ocurrió un problema menor.')}
-          </Text>
-        </View>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     ...Ionicons.font,
@@ -90,26 +62,16 @@ export default function App() {
     }).start();
   }, [activeIcon]);
 
-  if (!fontsLoaded && !fontError) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0B192C', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#FF7A00" />
-      </View>
-    );
-  }
-
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
       <View style={{ flex: 1 }}>
-        <ErrorBoundary>
-          <RootNavigator />
-        </ErrorBoundary>
+        <RootNavigator />
 
         {showSplash && (
           <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
             <ImageBackground
-              source={require('./assets/splash-bg.png')}
+              source={require('./assets/splash-bg.jpg')}
               style={styles.backgroundImage}
               resizeMode="cover"
             >

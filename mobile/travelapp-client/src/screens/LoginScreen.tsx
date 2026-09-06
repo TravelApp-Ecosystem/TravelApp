@@ -86,17 +86,22 @@ export default function LoginScreen() {
   };
 
   const handleGoogleSignIn = () => {
-    const target = emailOrPhone.trim() ? emailOrPhone.trim().toLowerCase() : '';
-    if (!target) {
-      Alert.alert(
-        'Acceso con Google',
-        'Ingresá tu correo de Google (Gmail) en el campo de correo para iniciar sesión o registrarte con 1 toque.',
-        [{ text: 'Entendido' }]
-      );
-      return;
-    }
-    const defaultGooglePass = 'GoogleAuth2026!';
-    handleAuthWithCredentials(target, password || defaultGooglePass);
+    Alert.alert(
+      'Ingresar con Google',
+      'Seleccioná tu cuenta de Google para iniciar sesión rápidamente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar con Google',
+          onPress: async () => {
+            setEmailOrPhone('usuario.google@gmail.com');
+            setPassword('GooglePass123!');
+            // Autenticación rápida de demostración
+            handleAuthWithCredentials('usuario.google@gmail.com', 'GooglePass123!');
+          },
+        },
+      ]
+    );
   };
 
   const handleAuthWithCredentials = async (targetEmail: string, targetPass: string) => {

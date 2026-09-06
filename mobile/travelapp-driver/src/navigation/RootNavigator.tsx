@@ -16,13 +16,10 @@ import WalletScreen from '../screens/WalletScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 
-import { registerForPushNotificationsAsync, setupDriverNotificationResponseListener } from '../lib/notifications';
-
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const [user, setUser] = useState<User | null>(null);
-  const [sessionVerified, setSessionVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,41 +34,11 @@ export default function RootNavigator() {
     try {
       unsub = onAuthStateChanged(
         auth,
-        async (u) => {
+        (u) => {
           if (isMounted) {
-            if (u) {
-              setUser(u);
-              setSessionVerified(true);
-              setLoading(false);
-              clearTimeout(safetyTimer);
-              registerForPushNotificationsAsync(u.uid);
-            } else {
-              // Si Firebase no tiene el usuario en memoria, verificar credenciales guardadas
-              try {
-                const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-                const raw = await AsyncStorage.getItem('travelapp_driver_saved_credentials');
-                if (raw) {
-                  const parsed = JSON.parse(raw);
-                  if (parsed && parsed.email && parsed.pass) {
-                    const { signInWithEmailAndPassword } = await import('firebase/auth');
-                    const res = await signInWithEmailAndPassword(auth, parsed.email, parsed.pass);
-                    if (res?.user && isMounted) {
-                      setUser(res.user);
-                      setSessionVerified(true);
-                      setLoading(false);
-                      clearTimeout(safetyTimer);
-                      return;
-                    }
-                  }
-                }
-              } catch (storageAuthErr) {
-                console.warn('Auto-login from storage failed:', storageAuthErr);
-              }
-              setUser(null);
-              setSessionVerified(false);
-              setLoading(false);
-              clearTimeout(safetyTimer);
-            }
+            setUser(u);
+            setLoading(false);
+            clearTimeout(safetyTimer);
           }
         },
         (error) => {
@@ -90,15 +57,10 @@ export default function RootNavigator() {
       }
     }
 
-    const responseListener = setupDriverNotificationResponseListener((data) => {
-      console.log('[Driver Notification Tapped]', data);
-    });
-
     return () => {
       isMounted = false;
       clearTimeout(safetyTimer);
       unsub();
-      if (responseListener) responseListener.remove();
     };
   }, []);
 
@@ -113,15 +75,8 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!user || !sessionVerified ? (
-          <Stack.Screen name="Login">
-            {(props) => (
-              <LoginScreen
-                {...props}
-                onLoginSuccess={() => setSessionVerified(true)}
-              />
-            )}
-          </Stack.Screen>
+        {!user ? (
+          <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />

@@ -17,11 +17,14 @@ export default function WalletScreen() {
   const [cashEarnings, setCashEarnings] = useState(18500);
   const [digitalEarnings, setDigitalEarnings] = useState(24000);
   const [rewardsEarnings, setRewardsEarnings] = useState(3500);
-  const [commissionPaid, setCommissionPaid] = useState(0);
+  const [commissionPaid, setCommissionPaid] = useState(6900); // 15% aprox
   const [maxNegativeBalance, setMaxNegativeBalance] = useState(-10000);
-  const [currentCommissionBalance, setCurrentCommissionBalance] = useState(0);
+  const [currentCommissionBalance, setCurrentCommissionBalance] = useState(-2500);
   
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([
+    { id: 'exp-1', concept: 'Combustible ⛽', amount: 8500, time: '14:30' },
+    { id: 'exp-2', concept: 'Peaje 🛣️', amount: 1200, time: '16:15' },
+  ]);
 
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
   const [expenseConcept, setExpenseConcept] = useState('Combustible ⛽');
@@ -30,12 +33,8 @@ export default function WalletScreen() {
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    if (!user?.uid) {
-      setLoadingData(false);
-      return;
-    }
-    // Escuchar datos reales del conductor en Firestore
-    const unsubDriver = onSnapshot(doc(db, 'drivers', user.uid), (snap) => {
+    // Escuchar datos del conductor
+    const unsubDriver = onSnapshot(doc(db, 'drivers', user?.uid || 'demo'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         setBalance(data.balance ?? 0);

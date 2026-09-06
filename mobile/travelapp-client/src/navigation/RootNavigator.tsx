@@ -18,66 +18,16 @@ import CompleteProfileScreen from '../screens/CompleteProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
-import { registerForPushNotificationsAsync, setupNotificationResponseListener } from '../lib/notifications';
-
 export default function RootNavigator() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-    const safetyTimer = setTimeout(() => {
-      if (isMounted) setLoading(false);
-    }, 3500);
-
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (isMounted) {
-        if (u) {
-          setUser(u);
-          setLoading(false);
-          clearTimeout(safetyTimer);
-          registerForPushNotificationsAsync(u.uid).catch((err) => {
-            console.warn('[Push Registration non-fatal]:', err);
-          });
-        } else {
-          // Si Firebase no tiene el usuario en memoria, verificar credenciales guardadas
-          try {
-            const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-            const raw = await AsyncStorage.getItem('travelapp_saved_user_credentials');
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (parsed && parsed.email && parsed.pass) {
-                const { signInWithEmailAndPassword } = await import('firebase/auth');
-                const res = await signInWithEmailAndPassword(auth, parsed.email, parsed.pass);
-                if (res?.user && isMounted) {
-                  setUser(res.user);
-                  setLoading(false);
-                  clearTimeout(safetyTimer);
-                  return;
-                }
-              }
-            }
-          } catch (storageAuthErr) {
-            console.warn('Client auto-login from storage failed:', storageAuthErr);
-          }
-          setUser(null);
-          setLoading(false);
-          clearTimeout(safetyTimer);
-        }
-      }
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
     });
-
-    // Escuchar cuando el usuario toca una notificación (con protección contra errores)
-    const responseListener = setupNotificationResponseListener((data) => {
-      console.log('[Notification Tapped]', data);
-    });
-
-    return () => {
-      isMounted = false;
-      clearTimeout(safetyTimer);
-      unsub();
-      if (responseListener) responseListener.remove();
-    };
+    return unsub;
   }, []);
 
   if (loading) {
