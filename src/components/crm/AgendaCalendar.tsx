@@ -55,7 +55,7 @@ export const AgendaCalendar = () => {
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h3 className="font-semibold text-tech-blue mb-4">Disponibilidad (Meet)</h3>
           <p className="text-sm text-slate-500">
-            Tu calendario está sincronizado directamente con Firestore mediante Zapier. Los leads agendados por Travis aparecen aquí automáticamente.
+            Tu calendario está sincronizado en tiempo real con Firestore y ManyChat (WhatsApp). Los leads y citas agendadas por Travis aparecen aquí automáticamente.
           </p>
         </div>
 

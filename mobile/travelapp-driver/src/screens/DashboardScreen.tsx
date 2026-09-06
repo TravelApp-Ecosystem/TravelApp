@@ -73,6 +73,61 @@ export default function DashboardScreen() {
   const appState = useRef(AppState.currentState);
   const [lastBackgroundTime, setLastBackgroundTime] = useState<number | null>(null);
 
+  // Estados de Notificaciones Push & Comunicados Oficiales
+  const sessionStartTime = useRef(Date.now()).current;
+  const [driverBroadcastModal, setDriverBroadcastModal] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    soundAlert?: string;
+    category?: string;
+  } | null>(null);
+
+  // Escuchar notificaciones y broadcasts dirigidos a choferes
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'notifications'), (snap) => {
+      const currentUid = auth.currentUser?.uid;
+      const currentEmail = auth.currentUser?.email?.toLowerCase().trim();
+
+      const list: any[] = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        const isForDriver =
+          !data.audience ||
+          data.audience === 'all' ||
+          data.audience === 'drivers' ||
+          data.targetUserId === currentUid ||
+          (data.targetUserId && currentEmail && data.targetUserId.toLowerCase() === currentEmail) ||
+          (Array.isArray(data.specificIds) && (data.specificIds.includes(currentUid) || (currentEmail && data.specificIds.some((s: string) => s.toLowerCase() === currentEmail))));
+
+        if (isForDriver) {
+          list.push({ id: d.id, ...data });
+        }
+      });
+
+      list.sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0));
+      if (list.length > 0) {
+        const newest = list[0];
+        const nTime = Number(newest.timestamp || newest.createdAt || 0);
+        if (nTime > sessionStartTime - 120000) {
+          try {
+            playTripRequestAlertSound().catch(() => {});
+          } catch (e) {}
+
+          setDriverBroadcastModal({
+            id: newest.id,
+            title: newest.title || '📢 Comunicado Oficial TravelCab',
+            message: newest.message || '',
+            soundAlert: newest.soundAlert,
+            category: newest.category,
+          });
+        }
+      }
+    }, (err) => console.log('Error listening to driver notifications:', err));
+
+    return unsub;
+  }, []);
+
   // Escuchar tarifario exclusivo de viaje libre / taxímetro desde Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'tariffs'), (snap) => {
@@ -328,6 +383,7 @@ export default function DashboardScreen() {
   const slideMenuAnim = useRef(new Animated.Value(-width * 0.75)).current;
   const locationInterval = useRef<any>(null);
   const lastTaximeterLocation = useRef<{ latitude: number; longitude: number } | null>(null);
+  const lastBroadcastLocation = useRef<{ latitude: number; longitude: number; time: number } | null>(null);
   const taximeterWatcher = useRef<any>(null);
 
   // Cálculo de distancia Geodésica (Haversine) para el Taxímetro Real por GPS
@@ -557,12 +613,34 @@ export default function DashboardScreen() {
             setCurrentLocation({ latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0.015, longitudeDelta: 0.015 });
             
             if (user?.uid) {
-              await setDoc(doc(db, 'drivers', user.uid), {
-                isOnline: true,
-                location: coords,
-                updatedAt: Timestamp.now(),
-                name: user.displayName || 'Conductor',
-              }, { merge: true }).catch(() => {});
+              const now = Date.now();
+              let shouldWrite = false;
+              if (!lastBroadcastLocation.current) {
+                shouldWrite = true;
+              } else {
+                const elapsedSeconds = (now - lastBroadcastLocation.current.time) / 1000;
+                const distanceMeters = calculateDistanceKm(
+                  lastBroadcastLocation.current.latitude,
+                  lastBroadcastLocation.current.longitude,
+                  coords.latitude,
+                  coords.longitude
+                ) * 1000;
+
+                // Escribir solo si se desplazó al menos 12 metros o pasaron 45 segundos (heartbeat)
+                if (distanceMeters >= 12 || elapsedSeconds >= 45) {
+                  shouldWrite = true;
+                }
+              }
+
+              if (shouldWrite) {
+                lastBroadcastLocation.current = { latitude: coords.latitude, longitude: coords.longitude, time: now };
+                await setDoc(doc(db, 'drivers', user.uid), {
+                  isOnline: true,
+                  location: coords,
+                  updatedAt: Timestamp.now(),
+                  name: user.displayName || 'Conductor',
+                }, { merge: true }).catch(() => {});
+              }
             }
           }
         } catch (e) {
@@ -1454,6 +1532,38 @@ export default function DashboardScreen() {
             <Text style={styles.biometricFooterText}>
               Verificación configurada cada {biometricTimeoutMinutes} min.
             </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE COMUNICADO OFICIAL O AVISO PARA CHOFER */}
+      <Modal
+        visible={!!driverBroadcastModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDriverBroadcastModal(null)}
+      >
+        <View style={styles.biometricOverlay}>
+          <View style={[styles.biometricCard, { borderColor: Colors.primary, borderWidth: 2 }]}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(30, 58, 138, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="megaphone" size={32} color={Colors.primary} />
+            </View>
+
+            <View style={{ alignItems: 'center', gap: 6, width: '100%' }}>
+              <Text style={{ fontSize: 18, fontFamily: 'Quicksand-Bold', color: Colors.textPrimary, textAlign: 'center' }}>
+                {driverBroadcastModal?.title || 'Comunicado Oficial'}
+              </Text>
+              <Text style={{ fontSize: 14, fontFamily: 'Quicksand-Medium', color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                {driverBroadcastModal?.message}
+              </Text>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.btnStartFreeTrip, { height: 50, marginTop: 10, width: '100%' }]}
+              onPress={() => setDriverBroadcastModal(null)}
+            >
+              <Text style={[styles.btnStartFreeTripText, { fontSize: 15 }]}>Entendido</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

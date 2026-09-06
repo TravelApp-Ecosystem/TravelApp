@@ -884,30 +884,31 @@ export default function MyTripManagementPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
+    <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-50 space-y-6 text-slate-800">
       {/* Header Superior */}
-      <div className="max-w-7xl mx-auto mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
           <div className="flex items-center gap-3">
             <Link 
               href="/experiences/reservations" 
-              className="p-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 transition-colors text-slate-400 hover:text-white"
+              className="p-2.5 bg-white hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors text-slate-600 hover:text-tech-blue shadow-sm"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Post-Venta & Operativa en Vivo
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                   Sincronizado con App Móvil
                 </span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white mt-1">
+              <h1 className="text-2xl font-black tracking-tight text-tech-blue mt-1 flex items-center gap-2">
+                <Smartphone className="w-7 h-7 text-green-500" />
                 Gestor Operativo "Mi Viaje"
               </h1>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-500 font-medium">
                 Carga y edita salidas propias, vouchers a 72hs, fotos en vivo, notificaciones push y traslados TravelCab.
               </p>
             </div>
@@ -916,23 +917,23 @@ export default function MyTripManagementPage() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleOpenNewTripModal}
-              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/20"
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-all shadow-sm"
             >
               <PlusCircle className="w-4 h-4" />
               + Cargar Nuevo Viaje Propio
             </button>
             <button
               onClick={handleSeedSampleTrips}
-              className="flex items-center gap-2 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20"
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-tech-blue hover:bg-tech-blue/90 text-white rounded-xl text-sm font-bold transition-all shadow-sm"
             >
               <Sparkles className="w-4 h-4" />
               Sincronizar Demos
             </button>
             <Link
               href="/experiences/catalog"
-              className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-colors shadow-sm"
             >
-              <Ticket className="w-4 h-4" />
+              <Ticket className="w-4 h-4 text-tech-blue" />
               Catálogo
             </Link>
           </div>
@@ -940,9 +941,9 @@ export default function MyTripManagementPage() {
 
         {/* Notificación de éxito */}
         {actionSuccess && (
-          <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-3 text-emerald-400 animate-in fade-in slide-in-from-top-2">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-            <span className="text-sm font-medium">{actionSuccess}</span>
+          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-800 shadow-sm animate-in fade-in slide-in-from-top-2">
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-600" />
+            <span className="text-sm font-semibold">{actionSuccess}</span>
           </div>
         )}
       </div>
@@ -950,23 +951,23 @@ export default function MyTripManagementPage() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Columna Izquierda: Selector de Salidas y Reservas (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 backdrop-blur">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                <Ticket className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <Ticket className="w-4 h-4 text-emerald-600" />
                 Salidas & Reservas Activas ({tripsList.length})
               </h3>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleOpenNewTripModal}
-                  className="p-1 hover:bg-emerald-500/20 rounded text-emerald-400 hover:text-emerald-300"
+                  className="p-1 hover:bg-emerald-50 rounded text-emerald-600 hover:text-emerald-700"
                   title="Cargar nuevo viaje"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white"
+                  className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600"
                   title="Refrescar lista"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -979,12 +980,12 @@ export default function MyTripManagementPage() {
               placeholder="Buscar por código, destino o pasajero..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 mb-3"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 mb-3"
             />
 
             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
               {filteredTrips.length === 0 ? (
-                <div className="p-6 text-center text-slate-500 text-sm">
+                <div className="p-6 text-center text-slate-400 text-sm">
                   No se encontraron salidas. Hacé clic en "+ Cargar Nuevo Viaje Propio" para crear uno.
                 </div>
               ) : (
@@ -998,33 +999,33 @@ export default function MyTripManagementPage() {
                       onClick={() => handleSelectTrip(trip)}
                       className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                         isSelected
-                          ? 'bg-emerald-500/10 border-emerald-500/40 shadow-sm shadow-emerald-500/10'
-                          : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/40 hover:border-slate-700'
+                          ? 'bg-emerald-50/70 border-emerald-500 ring-1 ring-emerald-500/30 shadow-sm'
+                          : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider ${
-                          isPropio ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${
+                          isPropio ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}>
                           {isPropio ? 'Salida Propia' : 'Operador Mayorista'}
                         </span>
-                        <span className="text-[11px] font-mono font-medium text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/50">
+                        <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                           {trip.reservationCode}
                         </span>
                       </div>
 
-                      <h4 className="text-sm font-semibold text-white line-clamp-1">{trip.title}</h4>
-                      <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-slate-500" />
+                      <h4 className="text-sm font-bold text-slate-900 line-clamp-1">{trip.title}</h4>
+                      <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 text-slate-400" />
                         {trip.destination}
                       </p>
 
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800/60">
-                        <span className="flex items-center gap-1 text-slate-300 font-medium">
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100">
+                        <span className="flex items-center gap-1 text-slate-700 font-medium">
                           <Users className="w-3 h-3 text-slate-400" />
                           {trip.userName || 'Pasajero'} ({trip.passengers?.length || 1} pax)
                         </span>
-                        <span className="font-mono text-slate-400">{trip.departureDate}</span>
+                        <span className="font-mono text-slate-500">{trip.departureDate}</span>
                       </div>
                     </div>
                   );
@@ -1039,9 +1040,9 @@ export default function MyTripManagementPage() {
           {selectedTrip ? (
             <>
               {/* Card de Resumen del Viaje */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 relative overflow-hidden shadow-sm">
                 <div 
-                  className="absolute inset-0 opacity-15 bg-cover bg-center"
+                  className="absolute inset-0 opacity-10 bg-cover bg-center"
                   style={{ backgroundImage: `url(${selectedTrip.coverImage || selectedTrip.imageUrl})` }}
                 />
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1049,36 +1050,36 @@ export default function MyTripManagementPage() {
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
                         selectedTrip.tripType === 'salida_propia'
-                          ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
                       }`}>
                         {selectedTrip.tripType === 'salida_propia' ? '🌟 Salida Propia TravelApp' : '✈️ Operador Mayorista'}
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-slate-800 text-slate-200 border border-slate-700">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
                         Tour: {selectedTrip.tourCode}
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         Reserva: {selectedTrip.reservationCode}
                       </span>
                     </div>
 
-                    <h2 className="text-xl md:text-2xl font-bold text-white mb-1">{selectedTrip.title}</h2>
-                    <p className="text-sm text-slate-300 flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-emerald-400" />
+                    <h2 className="text-xl md:text-2xl font-black text-tech-blue mb-1">{selectedTrip.title}</h2>
+                    <p className="text-sm text-slate-600 flex items-center gap-1.5 font-medium">
+                      <Calendar className="w-4 h-4 text-emerald-600" />
                       {selectedTrip.dates} ({selectedTrip.departureOrigin} ➔ {selectedTrip.destination})
                     </p>
 
                     <div className="flex items-center gap-2 mt-3">
                       <button
                         onClick={() => handleOpenEditTripModal(selectedTrip)}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors"
+                        className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-1.5 transition-colors shadow-xs"
                       >
-                        <Edit className="w-3.5 h-3.5 text-emerald-400" />
+                        <Edit className="w-3.5 h-3.5 text-emerald-600" />
                         Editar Datos del Viaje
                       </button>
                       <button
                         onClick={() => handleDeleteTrip(selectedTrip.id, selectedTrip.title)}
-                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-semibold border border-rose-500/30 flex items-center gap-1.5 transition-colors"
+                        className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold border border-rose-200 flex items-center gap-1.5 transition-colors shadow-xs"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         Eliminar Salida
@@ -1087,14 +1088,14 @@ export default function MyTripManagementPage() {
                   </div>
 
                   {/* Estado Financiero Rápido */}
-                  <div className="bg-slate-950/80 border border-slate-800 p-3.5 rounded-xl text-right min-w-[200px]">
-                    <div className="text-xs text-slate-400">Estado de Cobro</div>
-                    <div className="text-base font-bold text-emerald-400 font-mono">
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-right min-w-[200px]">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Estado de Cobro</div>
+                    <div className="text-base font-bold text-emerald-600 font-mono mt-0.5">
                       {selectedTrip.payment.currency} ${selectedTrip.payment.paidAmount.toLocaleString()} / ${selectedTrip.payment.totalAmount.toLocaleString()}
                     </div>
-                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1.5">
+                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mt-2">
                       <div 
-                        className="bg-emerald-500 h-full rounded-full"
+                        className="bg-emerald-500 h-full rounded-full transition-all"
                         style={{ width: `${Math.min(100, (selectedTrip.payment.paidAmount / selectedTrip.payment.totalAmount) * 100)}%` }}
                       />
                     </div>
@@ -1103,7 +1104,7 @@ export default function MyTripManagementPage() {
               </div>
 
               {/* Pestañas Operativas */}
-              <div className="flex border-b border-slate-800 gap-2 overflow-x-auto pb-1">
+              <div className="flex border-b border-slate-200 gap-2 overflow-x-auto pb-1">
                 {[
                   { id: 'vouchers', label: 'Vouchers (72hs)', icon: FileText, count: selectedTrip.vouchers?.length || 0 },
                   { id: 'photos', label: 'Fotos en Vivo', icon: ImageIcon, count: selectedTrip.livePhotos?.length || selectedTrip.photos?.length || 0 },
@@ -1118,17 +1119,17 @@ export default function MyTripManagementPage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id as any)}
-                      className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm rounded-xl transition-all whitespace-nowrap ${
+                      className={`flex items-center gap-2 px-4 py-2.5 font-bold text-sm rounded-xl transition-all whitespace-nowrap ${
                         isActive
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-xs'
+                          : 'text-slate-600 hover:text-tech-blue hover:bg-slate-100 border border-transparent'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{tab.label}</span>
                       {tab.count !== undefined && (
                         <span className={`text-xs px-1.5 py-0.2 rounded-full font-bold ${
-                          isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'
+                          isActive ? 'bg-emerald-200 text-emerald-800' : 'bg-slate-200 text-slate-600'
                         }`}>
                           {tab.count}
                         </span>
@@ -1142,37 +1143,37 @@ export default function MyTripManagementPage() {
 
               {/* 1. VOUCHERS */}
               {activeTab === 'vouchers' && (
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-emerald-400" />
+                    <h3 className="text-base font-bold text-tech-blue flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-emerald-600" />
                       Gestión de Vouchers Descargables (App Pasajeros)
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Cargá los vouchers en PDF de aéreos, buses, hoteles y asistencia. Los vouchers de operadores mayoristas se desbloquean automáticamente en la app 72 horas antes de la salida.
                     </p>
                   </div>
 
                   {/* Formulario para nuevo voucher */}
-                  <div className="bg-slate-950 border border-slate-800/80 p-4 rounded-xl space-y-3">
-                    <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Adjuntar Nuevo Documento / Voucher</h4>
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
+                    <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Adjuntar Nuevo Documento / Voucher</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Nombre del Voucher</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">Nombre del Voucher</label>
                         <input
                           type="text"
                           placeholder="Ej: E-Ticket Vuelo Copa Airlines"
                           value={voucherName}
                           onChange={(e) => setVoucherName(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Categoría</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">Categoría</label>
                         <select
                           value={voucherType}
                           onChange={(e) => setVoucherType(e.target.value as any)}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                         >
                           <option value="general">General / Voucher Todo Incluido</option>
                           <option value="aereo">Pasaje Aéreo / E-Ticket</option>
@@ -1183,11 +1184,11 @@ export default function MyTripManagementPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Política de Desbloqueo</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">Política de Desbloqueo</label>
                         <select
                           value={voucherUnlockHours}
                           onChange={(e) => setVoucherUnlockHours(Number(e.target.value))}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                         >
                           <option value="0">🔓 Inmediato (Ya disponible)</option>
                           <option value="72">⏳ 72 Horas antes de la salida (Estándar Operadores)</option>
@@ -1198,19 +1199,19 @@ export default function MyTripManagementPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">URL del Archivo PDF / Documento</label>
+                      <label className="text-xs text-slate-600 font-medium block mb-1">URL del Archivo PDF / Documento</label>
                       <input
                         type="text"
                         placeholder="https://... o enlace a Storage de Firebase"
                         value={voucherUrl}
                         onChange={(e) => setVoucherUrl(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
                     <button
                       onClick={handleAddVoucher}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition-colors flex items-center gap-2 shadow-sm"
                     >
                       <Plus className="w-4 h-4" />
                       Guardar Voucher para el Pasajero
@@ -1219,28 +1220,28 @@ export default function MyTripManagementPage() {
 
                   {/* Lista de vouchers cargados */}
                   <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vouchers Asignados a esta Reserva</h4>
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vouchers Asignados a esta Reserva</h4>
                     {(!selectedTrip.vouchers || selectedTrip.vouchers.length === 0) ? (
-                      <p className="text-sm text-slate-500 italic p-4 bg-slate-950 rounded-xl text-center">
+                      <p className="text-sm text-slate-400 italic p-4 bg-slate-50 rounded-xl text-center border border-slate-200">
                         No hay vouchers cargados todavía para este viaje.
                       </p>
                     ) : (
                       selectedTrip.vouchers.map((v) => (
-                        <div key={v.id} className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl">
+                        <div key={v.id} className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100/70 transition-colors">
                           <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-slate-900 rounded-lg text-emerald-400 border border-slate-800">
+                            <div className="p-2.5 bg-white rounded-lg text-emerald-600 border border-slate-200 shadow-xs">
                               <FileText className="w-5 h-5" />
                             </div>
                             <div>
-                              <div className="text-sm font-semibold text-white">{v.name}</div>
-                              <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-                                <span className="capitalize px-2 py-0.5 rounded bg-slate-900 border border-slate-800">{v.type}</span>
+                              <div className="text-sm font-bold text-slate-900">{v.name}</div>
+                              <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                                <span className="capitalize px-2 py-0.5 rounded bg-white border border-slate-200 font-medium text-slate-700">{v.type}</span>
                                 {v.unlockHoursBefore && v.unlockHoursBefore > 0 ? (
-                                  <span className="flex items-center gap-1 text-amber-400">
+                                  <span className="flex items-center gap-1 text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                                     <Lock className="w-3 h-3" /> Bloqueado hasta 72hs antes
                                   </span>
                                 ) : (
-                                  <span className="flex items-center gap-1 text-emerald-400">
+                                  <span className="flex items-center gap-1 text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                     <Unlock className="w-3 h-3" /> Disponible ahora
                                   </span>
                                 )}
@@ -1253,14 +1254,14 @@ export default function MyTripManagementPage() {
                               href={v.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white"
+                              className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 hover:text-tech-blue transition-colors"
                               title="Ver Voucher"
                             >
                               <Eye className="w-4 h-4" />
                             </a>
                             <button
                               onClick={() => handleDeleteVoucher(v.id)}
-                              className="p-2 hover:bg-red-950/60 rounded-lg text-red-400 hover:text-red-300"
+                              className="p-2 hover:bg-rose-100 rounded-lg text-rose-600 hover:text-rose-700 transition-colors"
                               title="Eliminar Voucher"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1275,45 +1276,45 @@ export default function MyTripManagementPage() {
 
               {/* 2. BANCO DE FOTOS EN VIVO */}
               {activeTab === 'photos' && (
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <ImageIcon className="w-5 h-5 text-indigo-400" />
+                    <h3 className="text-base font-bold text-tech-blue flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-indigo-600" />
                       Banco de Imágenes en Vivo del Coordinador
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Las fotos que subas aquí aparecerán instantáneamente en la pestaña "Fotos" de la App de todos los pasajeros del grupo para descarga directa.
                     </p>
                   </div>
 
                   {/* Formulario nueva foto */}
-                  <div className="bg-slate-950 border border-slate-800/80 p-4 rounded-xl space-y-3">
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">URL de la Foto en Alta Resolución</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">URL de la Foto en Alta Resolución</label>
                         <input
                           type="text"
                           placeholder="https://images.unsplash.com/..."
                           value={photoUrl}
                           onChange={(e) => setPhotoUrl(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Epígrafe / Lugar de la Toma</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">Epígrafe / Lugar de la Toma</label>
                         <input
                           type="text"
                           placeholder="Ej: Foto grupal en la cima del Campanario"
                           value={photoCaption}
                           onChange={(e) => setPhotoCaption(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-indigo-500"
                         />
                       </div>
                     </div>
 
                     <button
                       onClick={handleAddPhoto}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-colors flex items-center gap-2 shadow-sm"
                     >
                       <Plus className="w-4 h-4" />
                       Publicar Foto en la Galería del Grupo
@@ -1323,18 +1324,18 @@ export default function MyTripManagementPage() {
                   {/* Grilla de Fotos */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {(selectedTrip.livePhotos || []).map((p) => (
-                      <div key={p.id} className="relative group bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-video md:aspect-square">
+                      <div key={p.id} className="relative group bg-slate-100 rounded-xl overflow-hidden border border-slate-200 aspect-video md:aspect-square shadow-xs">
                         <img src={p.url} alt={p.caption || 'Foto'} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-between">
                           <button
                             onClick={() => handleDeletePhoto(p.id)}
-                            className="self-end p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-500"
+                            className="self-end p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-500"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                           <div>
-                            <p className="text-xs font-semibold text-white line-clamp-1">{p.caption}</p>
-                            <p className="text-[10px] text-slate-300">{p.uploadedAt}</p>
+                            <p className="text-xs font-bold text-white line-clamp-1">{p.caption}</p>
+                            <p className="text-[10px] text-slate-200">{p.uploadedAt}</p>
                           </div>
                         </div>
                       </div>
@@ -1345,57 +1346,57 @@ export default function MyTripManagementPage() {
 
               {/* 3. COMUNICADOS Y NOTIFICACIONES PUSH */}
               {activeTab === 'broadcast' && (
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Send className="w-5 h-5 text-emerald-400" />
+                    <h3 className="text-base font-bold text-tech-blue flex items-center gap-2">
+                      <Send className="w-5 h-5 text-emerald-600" />
                       Emisión de Comunicados Oficiales & Push Notifications
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Enviá avisos importantes a los celulares de los pasajeros de este viaje. La notificación sonará y se mostrará incluso si la app está cerrada en segundo plano.
                     </p>
                   </div>
 
-                  <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-4">
+                  <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4">
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">Título del Aviso / Notificación</label>
+                      <label className="text-xs text-slate-600 font-medium block mb-1">Título del Aviso / Notificación</label>
                       <input
                         type="text"
                         placeholder="Ej: ⏰ Horario de partida para la excursión de mañana"
                         value={broadcastTitle}
                         onChange={(e) => setBroadcastTitle(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">Cuerpo del Mensaje</label>
+                      <label className="text-xs text-slate-600 font-medium block mb-1">Cuerpo del Mensaje</label>
                       <textarea
                         rows={3}
                         placeholder="Escribí el comunicado detallado (horarios de desayuno, recomendaciones de abrigo, puntos de encuentro)..."
                         value={broadcastBody}
                         onChange={(e) => setBroadcastBody(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
-                    <div className="flex items-center gap-3 bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+                    <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-200">
                       <input
                         type="checkbox"
                         id="pushToggle"
                         checked={sendPushNotification}
                         onChange={(e) => setSendPushNotification(e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-500 bg-slate-950 border-slate-700"
+                        className="w-4 h-4 rounded text-emerald-600 bg-slate-50 border-slate-300"
                       />
-                      <label htmlFor="pushToggle" className="text-xs text-slate-200 cursor-pointer">
-                        <span className="font-semibold text-emerald-400">Disparar Notificación Push (FCM / Expo)</span>: Hará sonar el smartphone de los pasajeros del grupo aunque la aplicación esté cerrada.
+                      <label htmlFor="pushToggle" className="text-xs text-slate-700 cursor-pointer">
+                        <span className="font-bold text-emerald-700">Disparar Notificación Push (FCM / Expo)</span>: Hará sonar el smartphone de los pasajeros del grupo aunque la aplicación esté cerrada.
                       </label>
                     </div>
 
                     <button
                       onClick={handleSendBroadcast}
                       disabled={isSendingBroadcast}
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white font-semibold rounded-xl text-sm transition-all flex items-center gap-2"
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm transition-all flex items-center gap-2 shadow-sm"
                     >
                       {isSendingBroadcast ? (
                         <>
@@ -1415,38 +1416,38 @@ export default function MyTripManagementPage() {
 
               {/* 4. OPCIONALES Y MERCH */}
               {activeTab === 'excursions' && (
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-amber-400" />
+                    <h3 className="text-base font-bold text-tech-blue flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-500" />
                       Tienda de Excursiones Opcionales & Merchandising
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Agregá actividades opcionales para que los pasajeros las compren desde su app con Mercado Pago / Galicia Nave, Efectivo o Canje de Puntos Rewards.
                     </p>
                   </div>
 
                   {/* Formulario nuevo opcional */}
-                  <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
-                    <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Publicar Nuevo Opcional / Merchandising</h4>
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
+                    <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Publicar Nuevo Opcional / Merchandising</h4>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div className="md:col-span-2">
-                        <label className="text-xs text-slate-400 block mb-1">Título de la Actividad / Producto</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">Título de la Actividad / Producto</label>
                         <input
                           type="text"
                           placeholder="Ej: Alquiler de Ropa de Nieve Completo"
                           value={excTitle}
                           onChange={(e) => setExcTitle(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-amber-500"
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Precio</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">Precio</label>
                         <div className="flex gap-1">
                           <select
                             value={excCurrency}
                             onChange={(e) => setExcCurrency(e.target.value as any)}
-                            className="px-2 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white"
+                            className="px-2 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800"
                           >
                             <option value="USD">USD</option>
                             <option value="ARS">ARS</option>
@@ -1456,48 +1457,48 @@ export default function MyTripManagementPage() {
                             placeholder="0"
                             value={excPrice || ''}
                             onChange={(e) => setExcPrice(Number(e.target.value))}
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-amber-500"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Puntos Rewards Requeridos</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">Puntos Rewards Requeridos</label>
                         <input
                           type="number"
                           placeholder="Ej: 500"
                           value={excPoints || ''}
                           onChange={(e) => setExcPoints(Number(e.target.value))}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-amber-500"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">Descripción</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">Descripción</label>
                         <input
                           type="text"
                           placeholder="Detalles de lo que incluye..."
                           value={excDesc}
                           onChange={(e) => setExcDesc(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-amber-500"
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-400 block mb-1">URL de la Foto</label>
+                        <label className="text-xs text-slate-600 font-medium block mb-1">URL de la Foto</label>
                         <input
                           type="text"
                           placeholder="https://..."
                           value={excImg}
                           onChange={(e) => setExcImg(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-amber-500"
                         />
                       </div>
                     </div>
 
                     <button
                       onClick={handleAddExcursion}
-                      className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition-colors flex items-center gap-2 shadow-sm"
                     >
                       <Plus className="w-4 h-4" />
                       Publicar Opcional
@@ -1507,20 +1508,20 @@ export default function MyTripManagementPage() {
                   {/* Lista de opcionales */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {(selectedTrip.optionalExcursions || []).map((exc) => (
-                      <div key={exc.id} className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl flex gap-3">
-                        <img src={exc.imageUrl} alt={exc.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                      <div key={exc.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex gap-3 shadow-xs">
+                        <img src={exc.imageUrl} alt={exc.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-slate-200" />
                         <div className="flex-1">
-                          <h4 className="text-sm font-semibold text-white">{exc.title}</h4>
-                          <p className="text-xs text-slate-400 line-clamp-1">{exc.description}</p>
+                          <h4 className="text-sm font-bold text-slate-900">{exc.title}</h4>
+                          <p className="text-xs text-slate-500 line-clamp-1">{exc.description}</p>
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs font-bold text-amber-400 font-mono">
+                            <span className="text-xs font-bold text-amber-700 font-mono bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                               {exc.currency} ${exc.price}
                             </span>
-                            <span className="text-xs font-semibold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">
+                            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                               🎁 {exc.pointsPrice || exc.price * 20} Pts
                             </span>
                             {exc.paid && (
-                              <span className="text-xs font-semibold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
+                              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                 ✓ PAGADA
                               </span>
                             )}
@@ -1534,46 +1535,46 @@ export default function MyTripManagementPage() {
 
               {/* 5. WEB CHECK-IN 48H & TRASLADOS */}
               {activeTab === 'checkin' && (
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Car className="w-5 h-5 text-emerald-400" />
+                    <h3 className="text-base font-bold text-tech-blue flex items-center gap-2">
+                      <Car className="w-5 h-5 text-emerald-600" />
                       Monitoreo de Web Check-In & Traslados TravelCab
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Visualizá las solicitudes de recogida en domicilio puerta a puerta de los pasajeros para llevarlos a la terminal o aeropuerto.
                     </p>
                   </div>
 
-                  <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                       <div>
-                        <span className="text-xs text-slate-400">Estado del Check-In 48h</span>
-                        <div className="text-sm font-bold text-white">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Estado del Check-In 48h</span>
+                        <div className="text-sm font-bold text-slate-900 mt-0.5">
                           {selectedTrip.webCheckIn?.isCompleted ? '✓ Check-In Realizado' : '⏳ Pendiente de Check-In'}
                         </div>
                       </div>
 
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        selectedTrip.webCheckIn?.doorPickupRequested ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
+                        selectedTrip.webCheckIn?.doorPickupRequested ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
                       }`}>
                         {selectedTrip.webCheckIn?.doorPickupRequested ? '🚖 Traslado Puerta a Puerta Solicitado' : 'Sin Traslado'}
                       </span>
                     </div>
 
                     {selectedTrip.webCheckIn?.doorPickupRequested && (
-                      <div className="bg-slate-900 p-4 rounded-xl space-y-2 border border-slate-800">
-                        <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Detalles del Servicio de Recogida:</div>
-                        <div className="text-sm text-slate-200 flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-emerald-400" />
-                          <span className="font-semibold">Dirección:</span> {selectedTrip.webCheckIn.pickupAddress}
+                      <div className="bg-white p-4 rounded-xl space-y-2 border border-slate-200">
+                        <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">Detalles del Servicio de Recogida:</div>
+                        <div className="text-sm text-slate-800 flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-emerald-600" />
+                          <span className="font-bold">Dirección:</span> {selectedTrip.webCheckIn.pickupAddress}
                         </div>
-                        <div className="text-sm text-slate-200 flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-emerald-400" />
-                          <span className="font-semibold">Horario Requerido:</span> {selectedTrip.webCheckIn.pickupTime}
+                        <div className="text-sm text-slate-800 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-emerald-600" />
+                          <span className="font-bold">Horario Requerido:</span> {selectedTrip.webCheckIn.pickupTime}
                         </div>
                         {selectedTrip.webCheckIn.pickupNotes && (
-                          <div className="text-xs text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                          <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                             Notas de Equipaje: {selectedTrip.webCheckIn.pickupNotes}
                           </div>
                         )}
@@ -1585,47 +1586,47 @@ export default function MyTripManagementPage() {
 
               {/* 6. PASAJEROS, ROSTER & CONDICIONES */}
               {activeTab === 'passengers' && (
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Users className="w-5 h-5 text-indigo-400" />
+                    <h3 className="text-base font-bold text-tech-blue flex items-center gap-2">
+                      <Users className="w-5 h-5 text-indigo-600" />
                       Manifiesto de Pasajeros & Aceptación de Condiciones Generales
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Auditoría de datos de pasajeros, butacas asignadas y firma electrónica de condiciones generales de contratación.
                     </p>
                   </div>
 
                   <div className="space-y-3">
                     {(selectedTrip.passengers || []).map((pax, idx) => (
-                      <div key={idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-white">{pax.fullName}</span>
+                            <span className="text-sm font-bold text-slate-900">{pax.fullName}</span>
                             {pax.isTitular && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                                 TITULAR
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                            <span>DNI: <strong className="text-slate-300 font-mono">{pax.dni}</strong></span>
-                            {pax.seat && <span>Ubicación: <strong className="text-slate-300">{pax.seat}</strong></span>}
-                            {pax.roomType && <span>Habitación: <strong className="text-slate-300">{pax.roomType}</strong></span>}
-                            {pax.dietaryRestrictions && <span>Dieta: <strong className="text-slate-300">{pax.dietaryRestrictions}</strong></span>}
+                          <div className="text-xs text-slate-500 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                            <span>DNI: <strong className="text-slate-800 font-mono">{pax.dni}</strong></span>
+                            {pax.seat && <span>Ubicación: <strong className="text-slate-800">{pax.seat}</strong></span>}
+                            {pax.roomType && <span>Habitación: <strong className="text-slate-800">{pax.roomType}</strong></span>}
+                            {pax.dietaryRestrictions && <span>Dieta: <strong className="text-slate-800">{pax.dietaryRestrictions}</strong></span>}
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <span className="text-[11px] text-slate-400 block">Condiciones Generales:</span>
+                            <span className="text-[11px] text-slate-500 block">Condiciones Generales:</span>
                             {selectedTrip.termsAccepted?.accepted ? (
-                              <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1 justify-end">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Aceptadas digitalmente
+                              <span className="text-xs font-bold text-emerald-700 flex items-center gap-1 justify-end">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Aceptadas digitalmente
                               </span>
                             ) : (
-                              <span className="text-xs font-semibold text-amber-400 flex items-center gap-1 justify-end">
-                                <Clock className="w-3.5 h-3.5" /> Pendiente de firma
+                              <span className="text-xs font-bold text-amber-700 flex items-center gap-1 justify-end">
+                                <Clock className="w-3.5 h-3.5 text-amber-600" /> Pendiente de firma
                               </span>
                             )}
                           </div>
@@ -1637,9 +1638,9 @@ export default function MyTripManagementPage() {
               )}
             </>
           ) : (
-            <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
-              <Ticket className="w-12 h-12 mx-auto text-slate-600 mb-3" />
-              <p className="text-base font-semibold text-slate-300">Seleccioná una salida o reserva para gestionar "Mi Viaje"</p>
+            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400 shadow-sm">
+              <Ticket className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-base font-bold text-slate-700">Seleccioná una salida o reserva para gestionar "Mi Viaje"</p>
               <p className="text-xs text-slate-500 mt-1">O hacé clic en "+ Cargar Nuevo Viaje Propio" para crear una salida desde cero.</p>
             </div>
           )}
@@ -1650,19 +1651,19 @@ export default function MyTripManagementPage() {
       {/* MODAL: CARGAR / EDITAR VIAJE PROPIO (SALIDA PROPIA)                      */}
       {/* ========================================================================= */}
       {isTripModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full my-8 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full my-8 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
             {/* Header del Modal */}
-            <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-xs">
                   <Luggage className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 className="text-lg font-black text-tech-blue">
                     {editingTripId ? '✏️ Modificar Información de Salida / Viaje' : '✨ Cargar Nuevo Viaje Propio (Salida Propia)'}
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500 font-medium">
                     Completá los detalles para sincronizarlos en tiempo real con la App Móvil de clientes y el Catálogo web.
                   </p>
                 </div>
@@ -1670,14 +1671,14 @@ export default function MyTripManagementPage() {
 
               <button
                 onClick={() => setIsTripModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Pestañas del Formulario */}
-            <div className="flex border-b border-slate-800 bg-slate-950/80 px-6 gap-2 overflow-x-auto">
+            <div className="flex border-b border-slate-200 bg-slate-100/60 px-6 gap-2 overflow-x-auto">
               {[
                 { id: 'general', label: '1. General & Fechas', icon: MapPin },
                 { id: 'coordinator', label: '2. Coordinación & Asistencia', icon: ShieldCheck },
@@ -1691,10 +1692,10 @@ export default function MyTripManagementPage() {
                     key={tab.id}
                     type="button"
                     onClick={() => setTripModalTab(tab.id as any)}
-                    className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs border-b-2 transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 py-3 px-4 font-bold text-xs border-b-2 transition-all whitespace-nowrap ${
                       isActive
-                        ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                        ? 'border-emerald-600 text-emerald-700 bg-white shadow-xs'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -1705,18 +1706,18 @@ export default function MyTripManagementPage() {
             </div>
 
             {/* Cuerpo del Formulario */}
-            <form onSubmit={handleSaveTrip} className="p-6 overflow-y-auto space-y-6 flex-1">
+            <form onSubmit={handleSaveTrip} className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
               {/* TAB 1: GENERAL & FECHAS */}
               {tripModalTab === 'general' && (
                 <div className="space-y-5">
                   {/* Tipo de Viaje */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 mb-2">Tipo de Viaje / Salida</label>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Tipo de Viaje / Salida</label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className={`p-3.5 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${
                         tripForm.tripType === 'salida_propia'
-                          ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-300'
-                          : 'bg-slate-950 border-slate-800 text-slate-400'
+                          ? 'bg-indigo-50 border-indigo-400 text-indigo-900 shadow-xs ring-1 ring-indigo-400/30'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}>
                         <input
                           type="radio"
@@ -1726,19 +1727,19 @@ export default function MyTripManagementPage() {
                           onChange={() => setTripForm(p => ({ ...p, tripType: 'salida_propia' }))}
                           className="hidden"
                         />
-                        <div className="w-4 h-4 rounded-full border border-indigo-400 flex items-center justify-center">
-                          {tripForm.tripType === 'salida_propia' && <div className="w-2 h-2 rounded-full bg-indigo-400" />}
+                        <div className="w-4 h-4 rounded-full border border-indigo-500 flex items-center justify-center">
+                          {tripForm.tripType === 'salida_propia' && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-white">🌟 Salida Propia TravelApp</div>
-                          <div className="text-[11px] text-slate-400">Coordinador propio, bus exclusivo y control total.</div>
+                          <div className="text-xs font-bold text-slate-900">🌟 Salida Propia TravelApp</div>
+                          <div className="text-[11px] text-slate-500 font-medium">Coordinador propio, bus exclusivo y control total.</div>
                         </div>
                       </label>
 
                       <label className={`p-3.5 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${
                         tripForm.tripType === 'operador_mayorista'
-                          ? 'bg-amber-500/10 border-amber-500/50 text-amber-300'
-                          : 'bg-slate-950 border-slate-800 text-slate-400'
+                          ? 'bg-amber-50 border-amber-400 text-amber-900 shadow-xs ring-1 ring-amber-400/30'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}>
                         <input
                           type="radio"
@@ -1748,12 +1749,12 @@ export default function MyTripManagementPage() {
                           onChange={() => setTripForm(p => ({ ...p, tripType: 'operador_mayorista' }))}
                           className="hidden"
                         />
-                        <div className="w-4 h-4 rounded-full border border-amber-400 flex items-center justify-center">
-                          {tripForm.tripType === 'operador_mayorista' && <div className="w-2 h-2 rounded-full bg-amber-400" />}
+                        <div className="w-4 h-4 rounded-full border border-amber-500 flex items-center justify-center">
+                          {tripForm.tripType === 'operador_mayorista' && <div className="w-2 h-2 rounded-full bg-amber-600" />}
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-white">✈️ Paquete Operador Mayorista</div>
-                          <div className="text-[11px] text-slate-400">Aéreos PNR, vouchers con candado 72hs.</div>
+                          <div className="text-xs font-bold text-slate-900">✈️ Operador Mayorista (Cupo)</div>
+                          <div className="text-[11px] text-slate-500 font-medium">Vouchers automáticos bloqueados hasta 72hs antes.</div>
                         </div>
                       </label>
                     </div>
@@ -1762,110 +1763,111 @@ export default function MyTripManagementPage() {
                   {/* Título y Destino */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Título / Nombre del Viaje *</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Nombre Comercial del Viaje / Salida *</label>
                       <input
                         type="text"
                         required
                         value={tripForm.title}
                         onChange={(e) => setTripForm(p => ({ ...p, title: e.target.value }))}
-                        placeholder="Ej: Bariloche Mágico & Circuito Chico"
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        placeholder="Ej: Bariloche Exclusivo de Primavera"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Destino Principal *</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Destino Principal *</label>
                       <input
                         type="text"
                         required
                         value={tripForm.destination}
                         onChange={(e) => setTripForm(p => ({ ...p, destination: e.target.value }))}
                         placeholder="Ej: San Carlos de Bariloche, Río Negro"
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
                       />
                     </div>
                   </div>
 
-                  {/* Códigos de Identificación */}
+                  {/* Origen, Fechas y Días */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Código de Tour (Marketplace) *</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Origen de Partida *</label>
                       <input
                         type="text"
                         required
-                        value={tripForm.tourCode}
-                        onChange={(e) => setTripForm(p => ({ ...p, tourCode: e.target.value }))}
-                        placeholder="TRV-EXP-BARILOCHE-2026"
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Código de Reserva Interno</label>
-                      <input
-                        type="text"
-                        value={tripForm.reservationCode}
-                        onChange={(e) => setTripForm(p => ({ ...p, reservationCode: e.target.value }))}
-                        placeholder="RES-89241-TRV"
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-indigo-400 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Origen de Partida</label>
-                      <input
-                        type="text"
                         value={tripForm.departureOrigin}
                         onChange={(e) => setTripForm(p => ({ ...p, departureOrigin: e.target.value }))}
-                        placeholder="San Miguel de Tucumán"
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        placeholder="Ej: San Miguel de Tucumán"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
                       />
                     </div>
-                  </div>
 
-                  {/* Fechas */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Fecha de Salida *</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Fecha de Salida *</label>
                       <input
-                        type="date"
+                        type="text"
                         required
                         value={tripForm.departureDate}
                         onChange={(e) => setTripForm(p => ({ ...p, departureDate: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        placeholder="Ej: 15 de Octubre 2026"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Fecha de Regreso</label>
-                      <input
-                        type="date"
-                        value={tripForm.returnDate}
-                        onChange={(e) => setTripForm(p => ({ ...p, returnDate: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Texto de Fechas (App)</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Duración (Días / Noches)</label>
                       <input
                         type="text"
                         value={tripForm.dates}
                         onChange={(e) => setTripForm(p => ({ ...p, dates: e.target.value }))}
-                        placeholder="15 al 22 de Septiembre 2026"
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        placeholder="Ej: 7 días / 5 noches"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
                       />
                     </div>
                   </div>
 
-                  {/* Precio y Finanzas */}
+                  {/* Códigos Internos y Tipo de Transporte */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Moneda</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Código de Salida / Tour (Identificador)</label>
+                      <input
+                        type="text"
+                        value={tripForm.tourCode}
+                        onChange={(e) => setTripForm(p => ({ ...p, tourCode: e.target.value.toUpperCase() }))}
+                        placeholder="BRC-2026-OCT"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-800 uppercase focus:bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Código de Reserva Demo / Inicial</label>
+                      <input
+                        type="text"
+                        value={tripForm.reservationCode}
+                        onChange={(e) => setTripForm(p => ({ ...p, reservationCode: e.target.value.toUpperCase() }))}
+                        placeholder="TRV-9981"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold text-emerald-700 uppercase focus:bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Fecha de Regreso</label>
+                      <input
+                        type="date"
+                        value={tripForm.returnDate}
+                        onChange={(e) => setTripForm(p => ({ ...p, returnDate: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Precios y Finanzas */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Moneda</label>
                       <select
                         value={tripForm.currency}
                         onChange={(e) => setTripForm(p => ({ ...p, currency: e.target.value as any }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
                       >
                         <option value="ARS">ARS ($ Pesos Argentinos)</option>
                         <option value="USD">USD ($ Dólares)</option>
@@ -1873,91 +1875,91 @@ export default function MyTripManagementPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Precio Total por Pasajero</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Precio Total por Pasajero</label>
                       <input
                         type="number"
                         value={tripForm.totalAmount}
                         onChange={(e) => setTripForm(p => ({ ...p, totalAmount: Number(e.target.value) }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold text-emerald-700 focus:bg-white focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Monto Pagado / Señado Inicial</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Monto Pagado / Señado Inicial</label>
                       <input
                         type="number"
                         value={tripForm.paidAmount}
                         onChange={(e) => setTripForm(p => ({ ...p, paidAmount: Number(e.target.value) }))}
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-mono text-indigo-400 focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold text-indigo-700 focus:bg-white focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                   </div>
 
-                  {/* Selector de Portada con Presets */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 mb-2">Imagen de Portada (Presets o URL)</label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                  {/* Selección de Portada / Imagen */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Foto de Portada del Destino</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
                       {PRESET_COVERS.map((preset, idx) => (
-                        <div
+                        <button
                           key={idx}
+                          type="button"
                           onClick={() => setTripForm(p => ({ ...p, coverImage: preset.url }))}
-                          className={`p-1.5 rounded-xl border cursor-pointer transition-all flex flex-col items-center text-center ${
+                          className={`p-1.5 rounded-xl border text-center transition-all ${
                             tripForm.coverImage === preset.url
-                              ? 'bg-emerald-500/20 border-emerald-500'
-                              : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                              ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/30'
+                              : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                           }`}
                         >
-                          <img src={preset.url} alt={preset.name} className="w-full h-16 object-cover rounded-lg mb-1" />
-                          <span className="text-[11px] font-medium text-slate-300 line-clamp-1">{preset.name}</span>
-                        </div>
+                          <img src={preset.url} alt={preset.name} className="w-full h-12 object-cover rounded-lg mb-1" />
+                          <span className="text-[10px] font-bold text-slate-700 block truncate">{preset.name}</span>
+                        </button>
                       ))}
                     </div>
 
-                    <input
-                      type="text"
-                      value={tripForm.coverImage}
-                      onChange={(e) => setTripForm(p => ({ ...p, coverImage: e.target.value }))}
-                      placeholder="https://..."
-                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"
-                    />
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        value={tripForm.coverImage}
+                        onChange={(e) => setTripForm(p => ({ ...p, coverImage: e.target.value }))}
+                        placeholder="O ingresá una URL personalizada de imagen (https://...)"
+                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-700 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
                   </div>
 
-                  {/* Clima Inicial Estimado */}
-                  <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
-                      <Sun className="w-4 h-4" /> Widget de Clima Inicial
+                  {/* Datos de Clima Estimado */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-200">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Ciudad para Widget de Clima</label>
+                      <input
+                        type="text"
+                        value={tripForm.weatherCity}
+                        onChange={(e) => setTripForm(p => ({ ...p, weatherCity: e.target.value }))}
+                        placeholder="Ej: Bariloche"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
+                      />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Ciudad Destino</label>
-                        <input
-                          type="text"
-                          value={tripForm.weatherCity}
-                          onChange={(e) => setTripForm(p => ({ ...p, weatherCity: e.target.value }))}
-                          placeholder="Ej: Bariloche"
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Temperatura Promedio (°C)</label>
-                        <input
-                          type="number"
-                          value={tripForm.weatherTemp}
-                          onChange={(e) => setTripForm(p => ({ ...p, weatherTemp: Number(e.target.value) }))}
-                          placeholder="18"
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Condición</label>
-                        <input
-                          type="text"
-                          value={tripForm.weatherCondition}
-                          onChange={(e) => setTripForm(p => ({ ...p, weatherCondition: e.target.value }))}
-                          placeholder="Soleado con brisa andina"
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
-                        />
-                      </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Temperatura Promedio (°C)</label>
+                      <input
+                        type="number"
+                        value={tripForm.weatherTemp}
+                        onChange={(e) => setTripForm(p => ({ ...p, weatherTemp: Number(e.target.value) }))}
+                        placeholder="18"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Condición Climática</label>
+                      <input
+                        type="text"
+                        value={tripForm.weatherCondition}
+                        onChange={(e) => setTripForm(p => ({ ...p, weatherCondition: e.target.value }))}
+                        placeholder="Ej: Soleado con brisa andina"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 font-medium"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1967,112 +1969,112 @@ export default function MyTripManagementPage() {
               {tripModalTab === 'coordinator' && (
                 <div className="space-y-6">
                   {/* Coordinador a Cargo */}
-                  <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
-                    <div className="flex items-center gap-2 text-sm font-bold text-white">
-                      <Users className="w-4 h-4 text-emerald-400" />
+                  <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-bold text-tech-blue">
+                      <Users className="w-4 h-4 text-emerald-600" />
                       Coordinador a Cargo del Viaje (Salida Propia)
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1">Nombre y Apellido</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Nombre y Apellido</label>
                         <input
                           type="text"
                           value={tripForm.coordName}
                           onChange={(e) => setTripForm(p => ({ ...p, coordName: e.target.value }))}
                           placeholder="Lucas Benítez"
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1">Teléfono / WhatsApp Directo</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Teléfono / WhatsApp Directo</label>
                         <input
                           type="text"
                           value={tripForm.coordPhone}
                           onChange={(e) => setTripForm(p => ({ ...p, coordPhone: e.target.value }))}
                           placeholder="+54 9 381 611-2233"
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-emerald-700 font-mono font-bold focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1">Foto / Avatar URL</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Foto / Avatar URL</label>
                         <input
                           type="text"
                           value={tripForm.coordAvatar}
                           onChange={(e) => setTripForm(p => ({ ...p, coordAvatar: e.target.value }))}
                           placeholder="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300"
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-700 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1">Biografía / Presentación</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Biografía / Presentación</label>
                         <input
                           type="text"
                           value={tripForm.coordBio}
                           onChange={(e) => setTripForm(p => ({ ...p, coordBio: e.target.value }))}
                           placeholder="Coordinador experto en destinos patagónicos con 8 años en TravelApp."
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Asistencia Médica al Viajero */}
-                  <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
-                    <div className="flex items-center gap-2 text-sm font-bold text-white">
-                      <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                  <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-bold text-tech-blue">
+                      <ShieldCheck className="w-4 h-4 text-indigo-600" />
                       Cobertura y Póliza de Asistencia al Viajero (Assist Card / Universal)
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1">Compañía Aseguradora</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Compañía Aseguradora</label>
                         <input
                           type="text"
                           value={tripForm.assistProvider}
                           onChange={(e) => setTripForm(p => ({ ...p, assistProvider: e.target.value }))}
                           placeholder="Assist Card Argentina"
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1">Número de Póliza / Voucher</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Número de Póliza / Voucher</label>
                         <input
                           type="text"
                           value={tripForm.assistPolicy}
                           onChange={(e) => setTripForm(p => ({ ...p, assistPolicy: e.target.value }))}
                           placeholder="AC-ARG-99201-TRV"
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-indigo-300 focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono text-indigo-700 font-bold focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1">Teléfono Central de Emergencias 24hs</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Teléfono Central de Emergencias 24hs</label>
                         <input
                           type="text"
                           value={tripForm.assistPhone24h}
                           onChange={(e) => setTripForm(p => ({ ...p, assistPhone24h: e.target.value }))}
                           placeholder="+54 11 5555-8000"
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono text-emerald-700 font-bold focus:outline-none focus:border-emerald-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 mb-1">URL del Voucher PDF Oficial</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">URL del Voucher PDF Oficial</label>
                         <input
                           type="text"
                           value={tripForm.assistPdfUrl}
                           onChange={(e) => setTripForm(p => ({ ...p, assistPdfUrl: e.target.value }))}
                           placeholder="https://..."
-                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-700 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
@@ -2080,32 +2082,32 @@ export default function MyTripManagementPage() {
 
                   {/* Operador Mayorista Específico */}
                   {tripForm.tripType === 'operador_mayorista' && (
-                    <div className="bg-slate-950/60 border border-amber-500/30 p-5 rounded-2xl space-y-4">
-                      <div className="flex items-center gap-2 text-sm font-bold text-amber-300">
-                        <Plane className="w-4 h-4 text-amber-400" />
+                    <div className="bg-amber-50 border border-amber-300 p-5 rounded-2xl space-y-4">
+                      <div className="flex items-center gap-2 text-sm font-bold text-amber-900">
+                        <Plane className="w-4 h-4 text-amber-600" />
                         Datos del Operador Mayorista
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-slate-400 mb-1">Nombre del Operador Mayorista</label>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Nombre del Operador Mayorista</label>
                           <input
                             type="text"
                             value={tripForm.operatorName}
                             onChange={(e) => setTripForm(p => ({ ...p, operatorName: e.target.value }))}
                             placeholder="Ej: Julia Tours / Tip Group / Logan"
-                            className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white"
+                            className="w-full px-3.5 py-2.5 bg-white border border-amber-200 rounded-xl text-sm text-slate-800"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-400 mb-1">Teléfono de Guardia Operador 24hs</label>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono de Guardia Operador 24hs</label>
                           <input
                             type="text"
                             value={tripForm.operatorEmergencyPhone}
                             onChange={(e) => setTripForm(p => ({ ...p, operatorEmergencyPhone: e.target.value }))}
                             placeholder="+54 9 11 9999-8888"
-                            className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-amber-300"
+                            className="w-full px-3.5 py-2.5 bg-white border border-amber-200 rounded-xl text-sm font-mono text-amber-800 font-bold"
                           />
                         </div>
                       </div>
@@ -2117,16 +2119,16 @@ export default function MyTripManagementPage() {
               {/* TAB 3: ITINERARIO DÍA POR DÍA */}
               {tripModalTab === 'itinerary' && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                     <div>
-                      <h4 className="text-sm font-bold text-white">Cronograma e Itinerario Día por Día</h4>
-                      <p className="text-xs text-slate-400">Los pasajeros podrán desplegar y seguir cada jornada desde su App móvil.</p>
+                      <h4 className="text-sm font-bold text-tech-blue">Cronograma e Itinerario Día por Día</h4>
+                      <p className="text-xs text-slate-500 font-medium">Los pasajeros podrán desplegar y seguir cada jornada desde su App móvil.</p>
                     </div>
 
                     <button
                       type="button"
                       onClick={handleAddItineraryDay}
-                      className="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
                     >
                       <Plus className="w-4 h-4" />
                       + Agregar Día
@@ -2135,9 +2137,9 @@ export default function MyTripManagementPage() {
 
                   <div className="space-y-3">
                     {tripForm.itinerary.map((day, idx) => (
-                      <div key={idx} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-3">
+                      <div key={idx} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                             Día {day.dayNumber}
                           </span>
 
@@ -2145,7 +2147,7 @@ export default function MyTripManagementPage() {
                             <button
                               type="button"
                               onClick={() => handleRemoveItineraryDay(idx)}
-                              className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                              className="text-slate-400 hover:text-rose-600 p-1 transition-colors"
                               title="Eliminar día"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -2155,36 +2157,36 @@ export default function MyTripManagementPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="md:col-span-2">
-                            <label className="block text-[11px] text-slate-400 mb-1">Título de la Jornada / Excursión</label>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Título de la Jornada / Excursión</label>
                             <input
                               type="text"
                               value={day.title}
                               onChange={(e) => handleUpdateItineraryDay(idx, 'title', e.target.value)}
                               placeholder="Ej: Circuito Chico y Cerro Campanario"
-                              className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-[11px] text-slate-400 mb-1">Horario de Encuentro / Salida</label>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Horario de Encuentro / Salida</label>
                             <input
                               type="text"
                               value={day.timeSlot}
                               onChange={(e) => handleUpdateItineraryDay(idx, 'timeSlot', e.target.value)}
                               placeholder="09:30 hs"
-                              className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-emerald-400"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-emerald-700"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-[11px] text-slate-400 mb-1">Descripción de Actividades</label>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Descripción de Actividades</label>
                           <textarea
                             rows={2}
                             value={day.description}
                             onChange={(e) => handleUpdateItineraryDay(idx, 'description', e.target.value)}
                             placeholder="Detallá los lugares a visitar, recomendaciones puntuales y paradas técnicas..."
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700"
                           />
                         </div>
                       </div>
@@ -2197,13 +2199,13 @@ export default function MyTripManagementPage() {
               {tripModalTab === 'services' && (
                 <div className="space-y-6">
                   {/* Servicios Incluidos */}
-                  <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+                  <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4">
                     <div>
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <h4 className="text-sm font-bold text-tech-blue flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         Servicios Incluidos en el Paquete
                       </h4>
-                      <p className="text-xs text-slate-400 mt-0.5">Se mostrarán en la sección "Servicios Contratados" de la App.</p>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">Se mostrarán en la sección "Servicios Contratados" de la App.</p>
                     </div>
 
                     <div className="flex gap-2">
@@ -2213,12 +2215,12 @@ export default function MyTripManagementPage() {
                         onChange={(e) => setTripForm(p => ({ ...p, newServiceInput: e.target.value }))}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddService(); } }}
                         placeholder="Ej: Bus Cama Ejecutivo con servicio a bordo..."
-                        className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                        className="flex-1 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
                       />
                       <button
                         type="button"
                         onClick={handleAddService}
-                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
                       >
                         <Plus className="w-4 h-4" />
                         Agregar
@@ -2227,15 +2229,15 @@ export default function MyTripManagementPage() {
 
                     <div className="space-y-2">
                       {tripForm.services.map((svc, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl">
-                          <span className="text-xs text-slate-200 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <div key={idx} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
+                          <span className="text-xs text-slate-700 font-medium flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             {svc}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleRemoveService(idx)}
-                            className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                            className="text-slate-400 hover:text-rose-600 p-1 transition-colors"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -2245,13 +2247,13 @@ export default function MyTripManagementPage() {
                   </div>
 
                   {/* Recomendaciones de Equipaje & Documentación */}
-                  <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+                  <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4">
                     <div>
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Luggage className="w-4 h-4 text-indigo-400" />
+                      <h4 className="text-sm font-bold text-tech-blue flex items-center gap-2">
+                        <Luggage className="w-4 h-4 text-indigo-600" />
                         Recomendaciones de Viaje & Equipaje
                       </h4>
-                      <p className="text-xs text-slate-400 mt-0.5">Tips de vestimenta, clima, calzado y documentación obligatoria.</p>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">Tips de vestimenta, clima, calzado y documentación obligatoria.</p>
                     </div>
 
                     <div className="flex gap-2">
@@ -2261,12 +2263,12 @@ export default function MyTripManagementPage() {
                         onChange={(e) => setTripForm(p => ({ ...p, newRecInput: e.target.value }))}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRecommendation(); } }}
                         placeholder="Ej: Llevar calzado deportivo y campera rompevientos..."
-                        className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+                        className="flex-1 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                       />
                       <button
                         type="button"
                         onClick={handleAddRecommendation}
-                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
                       >
                         <Plus className="w-4 h-4" />
                         Agregar
@@ -2275,15 +2277,15 @@ export default function MyTripManagementPage() {
 
                     <div className="space-y-2">
                       {tripForm.recommendations.map((rec, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl">
-                          <span className="text-xs text-slate-200 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                        <div key={idx} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
+                          <span className="text-xs text-slate-700 font-medium flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                             {rec}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleRemoveRecommendation(idx)}
-                            className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                            className="text-slate-400 hover:text-rose-600 p-1 transition-colors"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -2295,11 +2297,11 @@ export default function MyTripManagementPage() {
               )}
 
               {/* Footer de Acciones del Modal */}
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-between bg-slate-50 -mx-6 -mb-6 p-6">
                 <button
                   type="button"
                   onClick={() => setIsTripModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+                  className="px-5 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-colors shadow-xs"
                 >
                   Cancelar
                 </button>
@@ -2308,7 +2310,7 @@ export default function MyTripManagementPage() {
                   <button
                     type="submit"
                     disabled={isSavingTrip}
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2"
                   >
                     {isSavingTrip ? (
                       <>
@@ -2331,4 +2333,3 @@ export default function MyTripManagementPage() {
     </div>
   );
 }
-

@@ -18,8 +18,7 @@ import CompleteProfileScreen from '../screens/CompleteProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
-import { registerForPushNotificationsAsync } from '../lib/notifications';
-import * as Notifications from 'expo-notifications';
+import { registerForPushNotificationsAsync, setupNotificationResponseListener } from '../lib/notifications';
 
 export default function RootNavigator() {
   const [user, setUser] = useState<User | null>(null);
@@ -69,15 +68,9 @@ export default function RootNavigator() {
     });
 
     // Escuchar cuando el usuario toca una notificación (con protección contra errores)
-    let responseListener: { remove: () => void } | null = null;
-    try {
-      responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data;
-        console.log('[Notification Tapped]', data);
-      });
-    } catch (notifErr) {
-      console.warn('[Notification response listener non-fatal]:', notifErr);
-    }
+    const responseListener = setupNotificationResponseListener((data) => {
+      console.log('[Notification Tapped]', data);
+    });
 
     return () => {
       isMounted = false;

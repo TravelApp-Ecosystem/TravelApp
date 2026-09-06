@@ -1,21 +1,33 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { isRunningInExpoGo } from 'expo';
 import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-// 1. Configurar el comportamiento cuando la app recibe una notificación en primer plano (con protección contra errores)
-try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
-} catch (e) {
-  console.warn('[Notifications] setNotificationHandler skipped:', e);
+let _notificationsModule: any = null;
+let _handlerConfigured = false;
+
+function getNotificationsModule(): any {
+  if (_notificationsModule !== null) return _notificationsModule;
+  if (isRunningInExpoGo()) return null;
+  try {
+    _notificationsModule = require('expo-notifications');
+    if (_notificationsModule && _notificationsModule.setNotificationHandler && !_handlerConfigured) {
+      _notificationsModule.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+      _handlerConfigured = true;
+    }
+    return _notificationsModule;
+  } catch (e) {
+    console.warn('[Notifications] Native module not available:', e);
+    return null;
+  }
 }
 
 /**
@@ -23,14 +35,20 @@ try {
  * y guarda el token en el documento de Firestore del usuario o conductor.
  */
 export async function registerForPushNotificationsAsync(userId?: string): Promise<string | null> {
+  const NotificationsModule = getNotificationsModule();
+  if (isRunningInExpoGo() || !NotificationsModule) {
+    console.log('[Push Notifications] Expo Go detectado o modulo no disponible: Registro remoto omitido de forma segura.');
+    return null;
+  }
+
   let token: string | null = null;
 
   try {
     // Configuración específica de Canales para Android (Requerido para que suene y despierte con la app cerrada)
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
+    if (Platform.OS === 'android' && NotificationsModule.setNotificationChannelAsync) {
+      await NotificationsModule.setNotificationChannelAsync('default', {
         name: 'General',
-        importance: Notifications.AndroidImportance.MAX,
+        importance: NotificationsModule.AndroidImportance?.MAX || 4,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#2563EB',
         sound: 'default',
@@ -38,9 +56,9 @@ export async function registerForPushNotificationsAsync(userId?: string): Promis
         showBadge: true,
       });
 
-      await Notifications.setNotificationChannelAsync('trip_updates', {
+      await NotificationsModule.setNotificationChannelAsync('trip_updates', {
         name: 'Actualizaciones de Viaje y Alertas',
-        importance: Notifications.AndroidImportance.MAX,
+        importance: NotificationsModule.AndroidImportance?.MAX || 4,
         vibrationPattern: [0, 500, 250, 500],
         lightColor: '#10B981',
         sound: 'default',
@@ -48,9 +66,9 @@ export async function registerForPushNotificationsAsync(userId?: string): Promis
         showBadge: true,
       });
 
-      await Notifications.setNotificationChannelAsync('driver_alerts', {
+      await NotificationsModule.setNotificationChannelAsync('driver_alerts', {
         name: 'Alertas de Conductor y Nuevos Viajes',
-        importance: Notifications.AndroidImportance.MAX,
+        importance: NotificationsModule.AndroidImportance?.MAX || 4,
         vibrationPattern: [0, 800, 400, 800],
         lightColor: '#F59E0B',
         sound: 'default',
@@ -60,40 +78,60 @@ export async function registerForPushNotificationsAsync(userId?: string): Promis
     }
 
     // Solicitar permisos de notificación al sistema operativo
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    if (NotificationsModule.getPermissionsAsync) {
+      const { status: existingStatus } = await NotificationsModule.getPermissionsAsync();
+      let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
+      if (existingStatus !== 'granted' && NotificationsModule.requestPermissionsAsync) {
+        const { status } = await NotificationsModule.requestPermissionsAsync();
+        finalStatus = status;
+      }
 
-    if (finalStatus !== 'granted') {
-      console.warn('[Push Notifications] Permiso de notificaciones no concedido.');
-      return null;
+      if (finalStatus !== 'granted') {
+        console.warn('[Push Notifications] Permiso de notificaciones no concedido.');
+        return null;
+      }
     }
 
     // Obtener el Expo Push Token con projectId del proyecto
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: 'a687d59f-c1ec-4f94-b77f-eea980284d82',
-    }).catch(async () => {
-      return await Notifications.getExpoPushTokenAsync({
+    if (NotificationsModule.getExpoPushTokenAsync) {
+      const tokenData = await NotificationsModule.getExpoPushTokenAsync({
         projectId: 'a687d59f-c1ec-4f94-b77f-eea980284d82',
       });
-    });
 
-    token = tokenData.data;
-    console.log('[Push Notifications] Token obtenido:', token);
+      token = tokenData?.data || null;
+      console.log('[Push Notifications] Token obtenido:', token);
 
-    // Si tenemos el ID del usuario, sincronizarlo en Firestore
-    if (userId && token) {
-      await savePushTokenToFirestore(userId, token);
+      // Si tenemos el ID del usuario, sincronizarlo en Firestore
+      if (userId && token) {
+        await savePushTokenToFirestore(userId, token);
+      }
     }
   } catch (error) {
     console.warn('[Push Notifications] Error al registrar push token:', error);
   }
 
   return token;
+}
+
+/**
+ * Escucha cuando el usuario toca una notificación para navegar a la pantalla correspondiente
+ */
+export function setupNotificationResponseListener(handler: (data: any) => void): { remove: () => void } {
+  const NotificationsModule = getNotificationsModule();
+  if (isRunningInExpoGo() || !NotificationsModule || !NotificationsModule.addNotificationResponseReceivedListener) {
+    return { remove: () => {} };
+  }
+  try {
+    const sub = NotificationsModule.addNotificationResponseReceivedListener((response: any) => {
+      const data = response?.notification?.request?.content?.data;
+      handler(data);
+    });
+    return sub || { remove: () => {} };
+  } catch (e) {
+    console.warn('[Push Notifications] Listener non-fatal error:', e);
+    return { remove: () => {} };
+  }
 }
 
 /**
@@ -123,3 +161,4 @@ export async function savePushTokenToFirestore(userId: string, token: string, is
     console.warn('[Push Notifications] Error guardando token en Firestore:', err);
   }
 }
+

@@ -5,7 +5,7 @@ import {
   Settings, MapPin, DollarSign, Plus, FileText, CheckCircle2, Trash2, Edit, 
   AlertCircle, Sparkles, Car, Star, Shield, Crown, RefreshCw, Save, Upload, 
   X, Plane, ArrowLeftRight, Building2, Phone, Mail, Percent, ShieldAlert,
-  Search, Filter, Layers, SlidersHorizontal, Eye, Grid, ListFilter, XCircle,
+  Search, Filter, Layers, SlidersHorizontal, Eye, EyeOff, Grid, ListFilter, XCircle,
   Calendar, Clock, Coins, ShieldCheck, Check, AlertTriangle, ChevronRight,
   TrendingUp, Users, ArrowUpRight, Zap, Volume2, Play
 } from 'lucide-react';
@@ -355,6 +355,35 @@ export default function TravelCabSettingsPage() {
     } catch (err: any) {
       console.error("Error deactivating tariff:", err);
       alert("Error al desactivar tarifario: " + err.message);
+    }
+  };
+
+  const handleToggleFreeTripOnly = async (tariff: any) => {
+    try {
+      const nextVal = !tariff.isFreeTripOnly;
+      await setDoc(doc(db, 'tariffs', tariff.id), {
+        isFreeTripOnly: nextVal,
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      // Si es estándar y tiene alias, sincronizar alias
+      const categoryName = (tariff.category || 'estandar').toLowerCase();
+      if (categoryName === 'estandar' || categoryName === 'standard' || categoryName === 'std-001') {
+        const activeDocId = tariff.type === 'mu' ? 'mu_active' : 'arc_active';
+        await setDoc(doc(db, 'tariffs', activeDocId), {
+          isFreeTripOnly: nextVal,
+          updatedAt: Date.now()
+        }, { merge: true }).catch(() => {});
+      }
+
+      setMuTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isFreeTripOnly: nextVal } : t));
+      setArcTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isFreeTripOnly: nextVal } : t));
+      setTransferTariffs(prev => prev.map(t => t.id === tariff.id ? { ...t, isFreeTripOnly: nextVal } : t));
+
+      alert(`Tarifario "${tariff.name}" ahora está ${nextVal ? 'OCULTO para pasajeros (Exclusivo Taxímetro Chofer)' : 'VISIBLE para pasajeros en la app'}.`);
+    } catch (err: any) {
+      console.error("Error toggling free trip only:", err);
+      alert("Error al modificar visibilidad del tarifario: " + err.message);
     }
   };
 
@@ -1023,24 +1052,49 @@ export default function TravelCabSettingsPage() {
 
                             {/* Footer: Acciones */}
                             <div className="p-4 bg-slate-50 border-t border-slate-200/70 flex items-center justify-between">
-                              {/* Toggle Activar/Desactivar */}
-                              {!t.isActive ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                {/* Toggle Activar/Desactivar */}
+                                {!t.isActive ? (
+                                  <button
+                                    onClick={() => handleActivateTariff(t)}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-sm transition-all"
+                                  >
+                                    <Zap className="h-3.5 w-3.5" />
+                                    Activar en Producción
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleDeactivateTariff(t)}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all"
+                                  >
+                                    <XCircle className="h-3.5 w-3.5" />
+                                    Desactivar
+                                  </button>
+                                )}
+
+                                {/* Quick Toggle: Ocultar / Mostrar a Pasajeros (isFreeTripOnly) */}
                                 <button
-                                  onClick={() => handleActivateTariff(t)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-sm transition-all"
+                                  onClick={() => handleToggleFreeTripOnly(t)}
+                                  title={t.isFreeTripOnly ? "Hacer visible en la app de pasajeros" : "Ocultar de la app de pasajeros (Solo Taxímetro Chofer)"}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                    t.isFreeTripOnly 
+                                      ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100' 
+                                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                  }`}
                                 >
-                                  <Zap className="h-3.5 w-3.5" />
-                                  Activar en Producción
+                                  {t.isFreeTripOnly ? (
+                                    <>
+                                      <EyeOff className="h-3.5 w-3.5 text-amber-600" />
+                                      <span>Oculto Pasajeros</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                                      <span>Visible Pasajeros</span>
+                                    </>
+                                  )}
                                 </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleDeactivateTariff(t)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all"
-                                >
-                                  <XCircle className="h-3.5 w-3.5" />
-                                  Desactivar
-                                </button>
-                              )}
+                              </div>
 
                               {/* Botones Editar y Eliminar */}
                               <div className="flex items-center space-x-2">

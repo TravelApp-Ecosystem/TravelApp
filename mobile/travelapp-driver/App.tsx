@@ -8,6 +8,35 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { Colors } from './src/lib/constants';
 import { TravelCabLogo, TravelAppLogo } from './src/components/BrandLogos';
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("Driver ErrorBoundary caught an error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Ionicons name="warning-outline" size={54} color="#0A2A5B" style={{ marginBottom: 16 }} />
+          <Text style={{ color: '#0A2A5B', fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>
+            Aviso de Carga (Chofer)
+          </Text>
+          <Text style={{ color: '#334155', fontSize: 13, marginBottom: 20, textAlign: 'center' }}>
+            {String(this.state.error?.message || this.state.error || 'Ocurrió un problema menor.')}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     'Quicksand-Regular': Quicksand_400Regular,
@@ -76,16 +105,26 @@ export default function App() {
     outputRange: ['0deg', '360deg'],
   });
 
+  if (!fontsLoaded && !fontError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#0A2A5B" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <View style={{ flex: 1 }}>
-        <RootNavigator />
+        <ErrorBoundary>
+          <RootNavigator />
+        </ErrorBoundary>
 
         {showSplash && (
           <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
             <ImageBackground
-              source={require('./assets/splash-bg.jpg')}
+              source={require('./assets/splash-bg.png')}
               style={styles.backgroundImage}
               resizeMode="cover"
             >

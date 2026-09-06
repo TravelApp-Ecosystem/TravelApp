@@ -16,8 +16,7 @@ import WalletScreen from '../screens/WalletScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 
-import { registerForPushNotificationsAsync } from '../lib/notifications';
-import * as Notifications from 'expo-notifications';
+import { registerForPushNotificationsAsync, setupDriverNotificationResponseListener } from '../lib/notifications';
 
 const Stack = createNativeStackNavigator();
 
@@ -91,15 +90,9 @@ export default function RootNavigator() {
       }
     }
 
-    let responseListener: { remove: () => void } | null = null;
-    try {
-      responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data;
-        console.log('[Driver Notification Tapped]', data);
-      });
-    } catch (notifErr) {
-      console.warn('[Driver Notification listener setup failed]:', notifErr);
-    }
+    const responseListener = setupDriverNotificationResponseListener((data) => {
+      console.log('[Driver Notification Tapped]', data);
+    });
 
     return () => {
       isMounted = false;

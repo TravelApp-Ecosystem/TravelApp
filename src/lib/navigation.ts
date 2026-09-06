@@ -1,4 +1,4 @@
-import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator, Award } from 'lucide-react';
+import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator, Award, Smartphone } from 'lucide-react';
 
 export const topNavTabs = [
   { id: 'global', label: 'Visión Global', href: '/' },
@@ -93,6 +93,7 @@ export const getSidebarConfig = (pathname: string) => {
       title: 'Experiencias & Tours',
       items: [
         { id: 'dashboard', label: 'Principal', href: '/experiences', icon: LayoutDashboard },
+        { id: 'my-trip-mgmt', label: 'Gestión "Mi Viaje" (App)', href: '/experiences/my-trip-mgmt', icon: Smartphone },
         { id: 'quoter', label: 'Cotizador de Viajes', href: '/experiences/quoter', icon: Calculator },
         { id: 'catalog', label: 'Catálogo de viajes', href: '/experiences/catalog', icon: Palmtree },
         { id: 'create-customer', label: 'Crear Cliente', href: '/experiences/customers/new', icon: UserPlus },
