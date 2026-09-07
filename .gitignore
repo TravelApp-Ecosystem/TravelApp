@@ -48,3 +48,9 @@ mobile/*/node_modules
 mobile/*/.expo
 *.tsbuildinfo
 
+# local binaries & built apks
+platform-tools/
+release_apks/
+*.apk
+
+
