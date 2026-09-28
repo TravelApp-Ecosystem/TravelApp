@@ -3905,6 +3905,7 @@ export default function HomeScreen() {
                     mediaPlaybackRequiresUserAction={false}
                     javaScriptEnabled={true}
                     domStorageEnabled={true}
+                    androidLayerType="hardware"
                     androidCameraPermissionOptions={{
                       title: 'Permiso de Cámara',
                       message: 'TravelApp necesita usar la cámara para escanear el QR del conductor',
@@ -3919,6 +3920,7 @@ export default function HomeScreen() {
                       }
                     }}
                     source={{
+                      baseUrl: 'https://travelapp.ar',
                       html: `<!DOCTYPE html>
 <html>
 <head>

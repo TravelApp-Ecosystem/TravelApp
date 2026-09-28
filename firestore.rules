@@ -148,6 +148,28 @@ service cloud.firestore {
       }
     }
 
+    // --- SOLICITUDES DE PARTNERS Y CONDUCTORES (PARTNER APPLICATIONS) ---
+    match /partner_applications/{appId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // --- CRM CLIENTES & EXPEDIENTES ---
+    match /crm_customers/{customerId} {
+      allow read: if isAuthenticated() && (request.auth.uid == customerId || isAdmin());
+      allow create, update: if isAuthenticated() && (request.auth.uid == customerId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // --- AFILIADOS (AFFILIATES) ---
+    match /affiliates/{affiliateId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == affiliateId;
+      allow update: if isAuthenticated() && (request.auth.uid == affiliateId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
     // --- COORDINADORES DE EXPERIENCIAS ---
     match /coordinators/{coordId} {
       allow read: if isAuthenticated();

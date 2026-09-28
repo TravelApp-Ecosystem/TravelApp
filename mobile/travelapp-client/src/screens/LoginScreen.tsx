@@ -195,7 +195,8 @@ export default function LoginScreen() {
 
     let finalEmail = inputVal.toLowerCase();
     if (!finalEmail.includes('@')) {
-      finalEmail = `${inputVal.replace(/\D/g, '')}@pasajero.travelapp.ar`;
+      const cleanDigits = inputVal.replace(/\D/g, '');
+      finalEmail = `${cleanDigits}@pasajero.travelapp.ar`;
     }
 
     setLoading(true);
@@ -214,13 +215,17 @@ export default function LoginScreen() {
           }
         }
       } else {
-        if (!name || (!phone && !inputVal)) {
+        if (!name.trim()) {
           setLoading(false);
-          return Alert.alert('Campos requeridos', 'Completá tu nombre y teléfono.');
+          return Alert.alert('Campo requerido', 'Ingresá tu nombre completo.');
+        }
+        if (!phone.trim() && !inputVal) {
+          setLoading(false);
+          return Alert.alert('Campo requerido', 'Ingresá tu número de teléfono.');
         }
         userCred = await createUserWithEmailAndPassword(auth, finalEmail, password);
         if (userCred.user) {
-          await updateProfile(userCred.user, { displayName: name });
+          await updateProfile(userCred.user, { displayName: name.trim() });
         }
       }
 
@@ -231,9 +236,9 @@ export default function LoginScreen() {
         if (!snap.exists()) {
           const isMaster = MASTER_ADMIN_EMAILS.includes(finalEmail);
           await setDoc(userRef, {
-            customerName: name || userCred.user.displayName || (finalEmail.includes('fernando') ? 'Fernando Admin' : 'Pasajero TravelCab'),
+            customerName: name.trim() || userCred.user.displayName || (finalEmail.includes('fernando') ? 'Fernando Admin' : 'Pasajero TravelCab'),
             email: finalEmail,
-            phone: phone || inputVal,
+            phone: phone.trim() || inputVal,
             customerLevel: 1,
             customerStatus: 'Cliente',
             rewardsPoints: 500,
@@ -253,7 +258,7 @@ export default function LoginScreen() {
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         msg = 'Contraseña incorrecta. Verificá tu clave o presioná "¿Olvidé mi contraseña?".';
       } else if (err.code === 'auth/email-already-in-use') {
-        msg = 'Este usuario ya está registrado. Intentá iniciar sesión.';
+        msg = 'Este usuario ya está registrado. Intentá iniciar sesión con tu contraseña.';
       } else if (err.code === 'auth/weak-password') {
         msg = 'La contraseña debe tener al menos 6 caracteres.';
       } else if (err.message) {
@@ -323,10 +328,12 @@ export default function LoginScreen() {
               )}
 
               <View style={styles.inputBox}>
-                <Text style={styles.label}>Correo Electrónico o Número de Teléfono *</Text>
+                <Text style={styles.label}>
+                  {isLogin ? 'Correo Electrónico o Teléfono *' : 'Correo Electrónico (Opcional si usás teléfono) *'}
+                </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="ejemplo@email.com o +549..."
+                  placeholder={isLogin ? "ejemplo@email.com o +549..." : "ejemplo@email.com"}
                   placeholderTextColor={Colors.textMuted}
                   value={emailOrPhone}
                   onChangeText={setEmailOrPhone}

@@ -286,30 +286,64 @@ export default function CompleteProfileScreen() {
   };
 
   const pickDocumentPhoto = async (type: 'dniFront' | 'dniBack' | 'passport') => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para adjuntar el documento.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.6,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const asset = result.assets[0];
-        const dataUrl = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
-        if (type === 'dniFront') setDniFrontPhoto(dataUrl);
-        else if (type === 'dniBack') setDniBackPhoto(dataUrl);
-        else if (type === 'passport') setPassportPhoto(dataUrl);
-      }
-    } catch (e) {
-      console.warn('Error picking image:', e);
-    }
+    Alert.alert(
+      'Adjuntar Documento',
+      '¿Cómo deseas agregar la foto?',
+      [
+        {
+          text: 'Tomar Foto (Cámara)',
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') {
+                return Alert.alert('Permiso de Cámara', 'Necesitamos acceso a la cámara para capturar el documento.');
+              }
+              const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                quality: 0.5,
+                base64: true,
+              });
+              if (!result.canceled && result.assets && result.assets[0]) {
+                const asset = result.assets[0];
+                const dataUrl = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+                if (type === 'dniFront') setDniFrontPhoto(dataUrl);
+                else if (type === 'dniBack') setDniBackPhoto(dataUrl);
+                else if (type === 'passport') setPassportPhoto(dataUrl);
+              }
+            } catch (e) {
+              console.warn('Error taking photo:', e);
+            }
+          }
+        },
+        {
+          text: 'Elegir de Galería',
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                return Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para adjuntar el documento.');
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                quality: 0.5,
+                base64: true,
+              });
+              if (!result.canceled && result.assets && result.assets[0]) {
+                const asset = result.assets[0];
+                const dataUrl = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+                if (type === 'dniFront') setDniFrontPhoto(dataUrl);
+                else if (type === 'dniBack') setDniBackPhoto(dataUrl);
+                else if (type === 'passport') setPassportPhoto(dataUrl);
+              }
+            } catch (e) {
+              console.warn('Error picking image:', e);
+            }
+          }
+        },
+        { text: 'Cancelar', style: 'cancel' }
+      ]
+    );
   };
 
   // Guardar todo en Firebase

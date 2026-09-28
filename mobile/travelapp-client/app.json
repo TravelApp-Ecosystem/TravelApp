@@ -15,6 +15,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ar.travelapp.client",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TravelApp necesita usar la cámara para escanear el código QR del chofer y capturar fotos de documentación.",
+        "NSPhotoLibraryUsageDescription": "TravelApp necesita acceso a la galería para subir comprobantes y documentos."
+      },
       "config": {
         "googleMapsApiKey": "AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U"
       }
@@ -32,6 +36,10 @@
         }
       },
       "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "VIBRATE",
@@ -47,6 +55,13 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "TravelApp necesita tu ubicación para mostrarte conductores cercanos y calcular rutas."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TravelApp necesita acceso a tus fotos para subir documentos y comprobantes.",
+          "cameraPermission": "TravelApp necesita acceso a la cámara para escanear el código QR del vehículo y capturar fotos de documentación."
         }
       ],
       [

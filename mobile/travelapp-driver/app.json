@@ -15,6 +15,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ar.travelapp.driver",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TravelApp Conductor necesita acceso a la cámara para capturar fotos de tu vehículo y documentación oficial.",
+        "NSPhotoLibraryUsageDescription": "TravelApp Conductor necesita acceso a la galería para adjuntar fotos de tu registro, cédula y póliza."
+      },
       "config": {
         "googleMapsApiKey": "AIzaSyD4XIT5MNfECRy6wQe8BNgBb9pWC6lsr9U"
       }
@@ -32,6 +36,10 @@
         }
       },
       "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "VIBRATE",
@@ -47,6 +55,13 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "TravelApp Conductor necesita tu ubicación para compartirla con los pasajeros y recibir solicitudes de viaje."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TravelApp Conductor necesita acceso a la galería para adjuntar documentación.",
+          "cameraPermission": "TravelApp Conductor necesita acceso a la cámara para tomar fotos de tu vehículo y documentación."
         }
       ],
       "expo-font"

@@ -136,10 +136,13 @@ export default function LoginScreen() {
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        quality: 0.7,
+        quality: 0.5,
+        base64: true,
       });
       if (!res.canceled && res.assets && res.assets.length > 0) {
-        onSelected(res.assets[0].uri);
+        const asset = res.assets[0];
+        const dataUrl = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        onSelected(dataUrl);
       }
     } catch (e) {
       console.warn('Error picking image:', e);
@@ -155,10 +158,13 @@ export default function LoginScreen() {
       }
       const res = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
-        quality: 0.7,
+        quality: 0.5,
+        base64: true,
       });
       if (!res.canceled && res.assets && res.assets.length > 0) {
-        onSelected(res.assets[0].uri);
+        const asset = res.assets[0];
+        const dataUrl = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        onSelected(dataUrl);
       }
     } catch (e) {
       console.warn('Error taking photo:', e);
@@ -318,25 +324,30 @@ export default function LoginScreen() {
   };
 
   const handleRegisterSubmit = async () => {
-    if (!mpLinked) {
-      return Alert.alert(
-        'Mercado Pago requerido',
-        'Por favor conecta tu cuenta de Mercado Pago en el botón superior para habilitar el Split de pagos automático.'
-      );
-    }
-
     setSubmittingReg(true);
     try {
       const cleanEmail = regEmail.trim().toLowerCase();
-      let userUid = Date.now().toString();
+      let userUid = '';
 
       try {
         const userCred = await createUserWithEmailAndPassword(auth, cleanEmail, regPassword);
         userUid = userCred.user.uid;
       } catch (authErr: any) {
-        if (authErr.code !== 'auth/email-already-in-use') {
+        if (authErr.code === 'auth/email-already-in-use') {
+          // Intentar iniciar sesión para recuperar el UID legítimo
+          try {
+            const loggedCred = await signInWithEmailAndPassword(auth, cleanEmail, regPassword);
+            userUid = loggedCred.user.uid;
+          } catch (loginErr: any) {
+            throw new Error('Este correo ya está registrado con otra contraseña. Por favor iniciá sesión o restablecé tu clave.');
+          }
+        } else {
           throw authErr;
         }
+      }
+
+      if (!userUid) {
+        throw new Error('No se pudo verificar la sesión de conductor.');
       }
 
       const isMaster = MASTER_ADMIN_EMAILS.includes(cleanEmail);
@@ -347,7 +358,7 @@ export default function LoginScreen() {
         id: userUid,
         firstName,
         lastName,
-        name: `${firstName} ${lastName}`,
+        name: `${firstName} ${lastName}`.trim(),
         email: cleanEmail,
         phone: regPhone,
         photoUrl: profilePhotoUri || undefined,
@@ -372,41 +383,59 @@ export default function LoginScreen() {
           rto: rtoUri || undefined,
           seguro: seguroUri || undefined,
         },
-        mercadoPagoEmail: mpEmail,
-        mercadoPagoLinked: true,
+        mercadoPagoEmail: mpEmail || undefined,
+        mercadoPagoLinked: mpLinked,
         createdAt: Date.now(),
       });
 
-      // 2. Guardar en `partner_applications` para análisis completo de expediente
-      await addDoc(collection(db, 'partner_applications'), {
-        userId: userUid,
-        firstName,
-        lastName,
-        name: `${firstName} ${lastName}`,
-        dob,
-        email: cleanEmail,
-        phone: regPhone,
-        photoUrl: profilePhotoUri || undefined,
-        address: { street, streetNumber, floorApp, city, province, postalCode },
-        taxIdNumber,
-        cbuCvu,
-        vehicle: {
-          brand: `${vehicleMake} ${vehicleModel}`,
-          year: vehicleYear,
-          color: vehicleColor,
-          plate: vehiclePlate.toUpperCase(),
-        },
-        documents: {
-          driverLicense: driverLicenseUri || undefined,
-          cedula: cedulaUri || undefined,
-          rto: rtoUri || undefined,
-          seguro: seguroUri || undefined,
-        },
-        mercadoPagoEmail: mpEmail,
-        mercadoPagoLinked: true,
-        status: isMaster ? 'approved' : 'pending',
-        createdAt: Timestamp.now()
-      });
+      // 2. Guardar en `partner_applications` para expediente
+      try {
+        await addDoc(collection(db, 'partner_applications'), {
+          userId: userUid,
+          firstName,
+          lastName,
+          name: `${firstName} ${lastName}`.trim(),
+          dob,
+          email: cleanEmail,
+          phone: regPhone,
+          photoUrl: profilePhotoUri || undefined,
+          address: { street, streetNumber, floorApp, city, province, postalCode },
+          taxIdNumber,
+          cbuCvu,
+          vehicle: {
+            brand: `${vehicleMake} ${vehicleModel}`.trim(),
+            year: vehicleYear,
+            color: vehicleColor,
+            plate: vehiclePlate.toUpperCase(),
+          },
+          documents: {
+            driverLicense: driverLicenseUri || undefined,
+            cedula: cedulaUri || undefined,
+            rto: rtoUri || undefined,
+            seguro: seguroUri || undefined,
+          },
+          mercadoPagoEmail: mpEmail || undefined,
+          mercadoPagoLinked: mpLinked,
+          status: isMaster ? 'approved' : 'pending',
+          createdAt: Timestamp.now()
+        });
+      } catch (appErr) {
+        console.warn('partner_applications notice:', appErr);
+      }
+
+      // Guardar credenciales para acceso permanente
+      try {
+        await AsyncStorage.setItem(
+          SAVED_DRIVER_KEY,
+          JSON.stringify({
+            email: cleanEmail,
+            pass: regPassword,
+            name: `${firstName} ${lastName}`.trim(),
+          })
+        );
+      } catch (storageErr) {
+        console.warn('Could not save driver credentials:', storageErr);
+      }
 
       // Reiniciar formulario
       setRegisterModalVisible(false);
