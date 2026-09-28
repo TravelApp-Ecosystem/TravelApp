@@ -461,30 +461,7 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
       imageUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=600&q=80",
       modalDetail: "Disfruta de Mendoza y el norte con los mejores maridajes. Ofrecemos reservas directas en restaurantes de bodegas con estrella Michelin y catas dirigidas por sommeliers certificados."
     }
-  ],
-  rewardsBlock: {
-    title: "Viajá con TravelApp Rewards",
-    subtitle: "Acumulá puntos en cada viaje de experiencias y canjealos por traslados gratis con TravelCab o descuentos en tus próximos destinos.",
-    pointsText: "Obtené tarifas reducidas en todas nuestras experiencias al registrarte.",
-    badgeText: "ECOSISTEMA REWARDS",
-    imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80"
-  },
-  redesSociales: {
-    facebook: "https://facebook.com/travelapp.ar",
-    instagram: "https://instagram.com/travelapp.ar",
-    messenger: "https://m.me/travelapp.ar",
-    whatsapp: "https://wa.me/5493814188106",
-    youtube: "",
-    tiktok: ""
-  },
-  sellosLegales: {
-    arcaQr: "",
-    baseDatosSello: ""
-  },
-  footer: {
-    brandText: "TravelApp Experiences",
-    copyrightText: "© 2026 TravelApp Experiences. Una marca de TravelApp s.a.s."
-  }
+  ]
 };
 
 const DEFAULT_ECOSISTEMA_CMS_DATA = {
