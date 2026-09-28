@@ -256,14 +256,28 @@ const DEFAULT_CMS_DATA = {
 
 const DEFAULT_EXPERIENCE_CMS_DATA = {
   header: {
-    logo: "/assets/travelapp_logo.svg",
+    logo: "/assets/experience_blanco.svg",
     brand: "TravelApp",
-    product: "Experiences",
-    announcementText: "🔥 Preventa Temporada 2026: Reservá hoy en cuotas fijas o con Time-to-Pay garantizado",
+    product: "Experience",
+    phone: "+54 9 381 418-8106",
+    phoneFormatted: "+54 9 381 418-8106",
+    phoneCallUrl: "tel:+5493814188106",
+    announcementText: "🔥 Preventa Turismo Receptivo Norte 2026: Reservá hoy en 12 Cuotas Fijas o con Time-to-Pay garantizado",
     announcementUrl: "/marketplace",
-    ctaText: "Explorar Catálogo",
+    loginUrl: "/login",
+    registerUrl: "/login?mode=register"
+  },
+  promoPushPop: {
+    enabled: true,
+    badge: "🔥 OFERTA DE TEMPORADA",
+    title: "¡Viví el Norte Argentino con 12 Cuotas Fijas!",
+    subtitle: "Reservá tus excursiones y paquetes receptivos con 15% OFF extra en pagos por transferencia o congelá tu tarifa sin interés.",
+    imageUrl: "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1200&q=80",
+    discountCode: "NORTE2026",
+    ctaText: "Aprovechar Promoción",
     ctaUrl: "/marketplace",
-    loginUrl: "/login"
+    showCookiesConsent: true,
+    cookiesText: "Utilizamos cookies para garantizar la mejor experiencia y procesar tus reservas de forma segura."
   },
   heroPromoBanner: {
     enabled: true,
@@ -284,6 +298,52 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
     tagBgColor: "rgba(239, 68, 68, 0.15)",
     overlayOpacity: 45
   },
+  floatingBanners: [
+    {
+      icon: "DollarSign",
+      badge: "FINANCIACIÓN",
+      title: "12 Cuotas Fijas sin Interés",
+      description: "Congelá el valor de tu viaje en pesos hoy mismo con Time-to-Pay garantizado.",
+      ctaText: "Ver Medios de Pago",
+      ctaUrl: "/marketplace"
+    },
+    {
+      icon: "MapPin",
+      badge: "RECEPTIVO OFICIAL",
+      title: "Turismo Receptivo Norte",
+      description: "Salidas diarias a Salinas, Cafayate, Cachi, Iruya y Quebrada con guías locales.",
+      ctaText: "Ver Salidas",
+      ctaUrl: "#excursiones"
+    },
+    {
+      icon: "Car",
+      badge: "CONECTIVIDAD",
+      title: "Traslados In/Out con TravelCab",
+      description: "Vehículos habilitados para transfers Aeropuerto ↔ Hotel ↔ Terminal sin esperas.",
+      ctaText: "Cotizar Traslado",
+      ctaUrl: "/landing/travelcab"
+    },
+    {
+      icon: "Sparkles",
+      badge: "CLUB REWARDS",
+      title: "Sumá Puntos con tu Viaje",
+      description: "Acumulá beneficios en cada excursión y canjealos por viajes o traslados gratis.",
+      ctaText: "Conocer Rewards",
+      ctaUrl: "/landing/rewards"
+    }
+  ],
+  receptiveAbout: {
+    tag: "QUIÉNES SOMOS",
+    title: "Líderes en Turismo Receptivo y Experiencias en el Norte Argentino",
+    description: "Somos una empresa de viajes y turismo habilitada oficialmente, especializada en diseñar itinerarios auténticos en el Norte Argentino. Nuestra flota moderna, equipo de coordinadores en destino y plataforma tecnológica aseguran una experiencia inolvidable de punta a punta.",
+    points: [
+      "Guías matriculados y especialistas en historia, geografía y cultura andina",
+      "Unidades de transporte ejecutivas con seguro de viajero y seguimiento satelital",
+      "Atención omnicanal 24/7 en destino con Travis IA y equipo humano de guardia",
+      "Flexibilidad total de reserva con Time-to-Pay y cuotas fijas en pesos"
+    ],
+    image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80"
+  },
   enabledSearchTabs: {
     paquetes: true,
     vuelos: false,
@@ -294,27 +354,30 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
   },
   heroSlides: [
     {
-      title: "Viví Argentina y el Mundo con Calidad Premium",
-      subtitle: "Salidas Grupales con Bus Propio, Cruceros & Circuitos Internacionales",
-      text: "Recorridos acompañados por coordinadores 24/7, hoteles seleccionados y la mejor tarifa garantizada.",
-      bgImage: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1920&q=80",
-      ctaText: "Ver Salidas 2026",
-      ctaUrl: "/marketplace"
-    },
-    {
-      title: "Norte Argentino & Paisajes Mágicos",
-      subtitle: "Salta, Jujuy, Cafayate & Quebrada de Humahuaca",
-      text: "Transporte cama ejecutivo, pensión completa y excursiones exclusivas.",
+      title: "Turismo Receptivo en el Norte Argentino",
+      subtitle: "SALTA, JUJUY, CAFAYATE & QUEBRADA DE HUMAHUACA",
+      text: "Excursiones diarias en buses ejecutivos, guías matriculados, pensión completa y coordinación 24/7 en destino.",
       bgImage: "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1920&q=80",
-      ctaText: "Descubrir Itinerario",
-      ctaUrl: "/marketplace"
+      videoUrl: "",
+      ctaText: "Ver Excursiones Norte 2026",
+      ctaUrl: "#excursiones"
     },
     {
-      title: "Cruceros & Travesías Internacionales",
-      subtitle: "Brasil, Caribe y Mediterráneo All Inclusive",
-      text: "Cabinas con balcón, gastronomía de primer nivel y espectáculos a bordo.",
+      title: "Salinas Grandes, Purmamarca & Los Cardones",
+      subtitle: "PAISAJES MÁGICOS Y CULTURA ANDINA",
+      text: "Recorridos de día completo con traslados desde tu hotel, paradas fotográficas y la mejor tarifa garantizada.",
+      bgImage: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1920&q=80",
+      videoUrl: "",
+      ctaText: "Explorar Itinerarios",
+      ctaUrl: "#excursiones"
+    },
+    {
+      title: "Circuitos Mayoristas & Salidas Grupales",
+      subtitle: "CONECTIVIDAD TOTAL CON TRASLADOS TRAVELCAB",
+      text: "Combiná tus paquetes turísticos con traslados aeropuerto y sumá puntos canjeables en Club Rewards.",
       bgImage: "https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1920&q=80",
-      ctaText: "Cotizar Crucero",
+      videoUrl: "",
+      ctaText: "Cotizar Paquete Completo",
       ctaUrl: "/marketplace"
     }
   ],
@@ -350,6 +413,27 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
       avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80"
     }
   ],
+  rewardsBlock: {
+    title: "Viajá, Acumulá Puntos & Disfrutá Más",
+    subtitle: "Cada viaje con TravelApp Experience suma puntos en tu cuenta Club Rewards. Canjealos por traslados gratuitos con TravelCab o descuentos en tus próximas vacaciones.",
+    pointsText: "Obtené tarifas reducidas en todas nuestras salidas al registrarte gratis.",
+    badgeText: "ECOSISTEMA CLUB REWARDS",
+    imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80"
+  },
+  redesSociales: {
+    facebook: "https://facebook.com/travelapp.ar",
+    instagram: "https://instagram.com/travelapp.ar",
+    messenger: "https://m.me/travelapp.ar",
+    whatsapp: "https://wa.me/5493814188106"
+  },
+  sellosLegales: {
+    arcaQr: "https://www.afip.gob.ar/images/f960/DATAWEB.jpg",
+    baseDatosSello: ""
+  },
+  footer: {
+    brandText: "TravelApp Experiences",
+    copyrightText: "© 2026 TravelApp Experiences. Una marca oficial de TravelApp s.a.s. Todos los derechos reservados."
+  },
   carouselOffers: [
     {
       imageUrl: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=600&q=80",
@@ -623,7 +707,7 @@ const DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS = {
   }
 };
 
-type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_promo' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards' | 'afi_hero' | 'afi_cobro' | 'afi_faq' | 'afi_footer' | 'exp_marketplace' | 'exp_buscador' | 'exp_metrics' | 'exp_testimonials';
+type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_promo' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards' | 'afi_hero' | 'afi_cobro' | 'afi_faq' | 'afi_footer' | 'exp_pushpop' | 'exp_floating' | 'exp_quienes' | 'exp_marketplace' | 'exp_buscador' | 'exp_metrics' | 'exp_testimonials';
 
 export default function CMSPage() {
   const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards' | 'app-inicio' | 'afiliados'>('travelcab');
@@ -1419,7 +1503,7 @@ export default function CMSPage() {
         {(selectedLanding === 'travelcab' 
           ? ['hero', 'servicios', 'conductores', 'rewards', 'faq', 'legales'] 
           : selectedLanding === 'experience'
-          ? ['slider', 'exp_marketplace', 'exp_buscador', 'exp_metrics', 'exp_testimonials', 'rewards', 'social']
+          ? ['exp_pushpop', 'slider', 'exp_floating', 'exp_quienes', 'exp_marketplace', 'exp_buscador', 'exp_metrics', 'exp_testimonials', 'rewards', 'social']
           : selectedLanding === 'rewards'
           ? ['rew_slider', 'rew_beneficios', 'rew_social', 'rew_negocio', 'rew_legales']
           : selectedLanding === 'app-inicio'
@@ -1438,18 +1522,21 @@ export default function CMSPage() {
             }`}
           >
             {tab === 'hero' && '1. Heros y Portada'}
-            {tab === 'slider' && '1. Hero Slider & Promo Banner'}
-            {tab === 'exp_marketplace' && '2. Cabecera Marketplace'}
-            {tab === 'exp_buscador' && '3. Buscador Multiproducto (APIs)'}
-            {tab === 'exp_metrics' && '4. Métricas Institucionales'}
-            {tab === 'exp_testimonials' && '5. Testimonios de Pasajeros'}
+            {tab === 'exp_pushpop' && '🔔 1. Modal PushPop & Cookies'}
+            {tab === 'slider' && '🎬 2. Hero Video & Slider HD'}
+            {tab === 'exp_floating' && '🎴 3. Banners Flotantes'}
+            {tab === 'exp_quienes' && '🏔️ 4. Receptivo & Quiénes Somos'}
+            {tab === 'exp_marketplace' && '🛍️ 5. Cabecera Marketplace'}
+            {tab === 'exp_buscador' && '🔍 6. Buscador Multiproducto'}
+            {tab === 'exp_metrics' && '📊 7. Métricas Institucionales'}
+            {tab === 'exp_testimonials' && '⭐ 8. Testimonios de Pasajeros'}
             {tab === 'ofertas' && '2. Ofertas Carrusel (Max 6)'}
             {tab === 'servicios' && (selectedLanding === 'travelcab' ? '2. Servicios & Categorías' : '3. Tarjetas Servicios')}
             {tab === 'conductores' && '3. Híbrido Conductor'}
-            {tab === 'rewards' && (selectedLanding === 'travelcab' ? '4. Resumen Rewards' : '6. Bloque Rewards')}
+            {tab === 'rewards' && (selectedLanding === 'travelcab' ? '4. Resumen Rewards' : '9. Bloque Club Rewards')}
             {tab === 'faq' && '5. FAQ (Preguntas Frecuentes)'}
             {tab === 'legales' && '6. Legales & Redes'}
-            {tab === 'social' && (selectedLanding === 'experience' ? '7. Redes, Contacto & ARCA QR' : '5. Redes & Footer')}
+            {tab === 'social' && (selectedLanding === 'experience' ? '10. Redes, Teléfono & ARCA QR' : '5. Redes & Footer')}
             {tab === 'eco_hero' && '1. Hero (Imagen/Video)'}
             {tab === 'eco_promo' && '🔔 Push Pop Promocional (TravelSale / Puntos)'}
             {tab === 'eco_unidades' && '2. Unidades de Negocio'}
@@ -1951,12 +2038,120 @@ export default function CMSPage() {
         {/* EDITORES TRAVELAPP EXPERIENCE */}
         {/* ======================================================== */}
 
+        {/* EXPERIENCE: MODAL FULL-SCREEN PUSHPOP & COOKIES */}
+        {selectedLanding === 'experience' && activeTab === 'exp_pushpop' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                <span>🔔 Modal Promocional Full-Screen &amp; Cookies</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Ventana emergente de alto impacto con fotografía HD, cupón de descuento y política de cookies integrada que se muestra al abrir la web.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">Activar Modal Promocional al Abrir</h4>
+                <p className="text-[11px] text-slate-500">Si está desactivado, los usuarios no verán la ventana emergente al ingresar.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={data.promoPushPop?.enabled !== false}
+                  onChange={(e) => updateField('promoPushPop', 'enabled', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF4F5A]" />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput
+                label="Badge / Etiqueta Promocional"
+                value={data.promoPushPop?.badge || ''}
+                onChange={(val) => updateField('promoPushPop', 'badge', val)}
+                placeholder="Ej. 🔥 OFERTA DE TEMPORADA"
+              />
+              <CMSInput
+                label="Cupón de Descuento (opcional con botón de copiado)"
+                value={data.promoPushPop?.discountCode || ''}
+                onChange={(val) => updateField('promoPushPop', 'discountCode', val)}
+                placeholder="Ej. NORTE2026"
+              />
+            </div>
+
+            <CMSInput
+              label="Título Principal de la Promoción"
+              value={data.promoPushPop?.title || ''}
+              onChange={(val) => updateField('promoPushPop', 'title', val)}
+              placeholder="Ej. ¡Viví el Norte Argentino con 12 Cuotas Fijas!"
+            />
+
+            <CMSTextarea
+              label="Descripción de la Promoción / Beneficio"
+              value={data.promoPushPop?.subtitle || ''}
+              onChange={(val) => updateField('promoPushPop', 'subtitle', val)}
+              rows={3}
+              placeholder="Detalles sobre financiación, cuotas o excursiones destacadas..."
+            />
+
+            <ImageUploaderInput
+              label="Fotografía HD del Modal (Mitad Izquierda)"
+              section="promoPushPop"
+              field="imageUrl"
+              value={data.promoPushPop?.imageUrl || ''}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput
+                label="Texto del Botón CTA"
+                value={data.promoPushPop?.ctaText || ''}
+                onChange={(val) => updateField('promoPushPop', 'ctaText', val)}
+                placeholder="Ej. Aprovechar Promoción"
+              />
+              <CMSInput
+                label="Enlace del Botón CTA"
+                value={data.promoPushPop?.ctaUrl || ''}
+                onChange={(val) => updateField('promoPushPop', 'ctaUrl', val)}
+                placeholder="Ej. /marketplace"
+              />
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Consentimiento de Cookies en el Modal</h4>
+                  <p className="text-[11px] text-slate-400">Permite a los viajeros aceptar las cookies y política de privacidad al cerrar el modal.</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={data.promoPushPop?.showCookiesConsent !== false}
+                    onChange={(e) => updateField('promoPushPop', 'showCookiesConsent', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500" />
+                </label>
+              </div>
+
+              <CMSInput
+                label="Texto de Aviso de Cookies"
+                value={data.promoPushPop?.cookiesText || ''}
+                onChange={(val) => updateField('promoPushPop', 'cookiesText', val)}
+                placeholder="Utilizamos cookies para garantizar la mejor experiencia..."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* EXPERIENCE: SLIDER HERO & VIDEO LOOP */}
         {selectedLanding === 'experience' && activeTab === 'slider' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Slider Principal (Hasta 10 Diapositivas)</h3>
-                <p className="text-xs text-slate-400 mt-1">Configura las fotos de fondo, textos y botones del carrusel superior.</p>
+                <h3 className="text-base font-extrabold text-slate-800">Slider &amp; Video Hero Principal (Tipografía Quicksand)</h3>
+                <p className="text-xs text-slate-400 mt-1">Configura video en loop HD o fotos de fondo, textos con sombreado de alto impacto y botones CTA.</p>
               </div>
               <button
                 onClick={addHeroSlide}
@@ -1990,7 +2185,7 @@ export default function CMSPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Subtítulo</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Subtítulo / Badge</label>
                       <input
                         type="text"
                         value={slide.subtitle || ''}
@@ -1999,7 +2194,7 @@ export default function CMSPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto descriptivo</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Texto descriptivo (Familia Quicksand)</label>
                       <textarea
                         rows={2}
                         value={slide.text || ''}
@@ -2026,7 +2221,17 @@ export default function CMSPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de fondo</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">URL de Video HD en Loop (Opcional - MP4)</label>
+                      <input
+                        type="text"
+                        value={slide.videoUrl || ''}
+                        onChange={(e) => updateHeroSlide(idx, 'videoUrl', e.target.value)}
+                        placeholder="Ej: https://miservidor.com/video-norte-hd.mp4 (Dejar vacío si usa imagen)"
+                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white focus:outline-none font-mono"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Imagen de fondo (si no se usa video)</label>
                       <SlideImageUploader idx={idx} value={slide.bgImage} />
                     </div>
                     {slide.bgImage && (
@@ -2118,6 +2323,120 @@ export default function CMSPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* EXPERIENCE: SECCIÓN 2 BANNERS FLOTANTES SUPERPUESTOS */}
+        {selectedLanding === 'experience' && activeTab === 'exp_floating' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">🎴 Sección 2: Banners Flotantes Superpuestos</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                4 tarjetas flotantes con elevación sobre el Hero para promocionar Financiación, Receptivo, Traslados TravelCab y Club Rewards.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {(data.floatingBanners || DEFAULT_EXPERIENCE_CMS_DATA.floatingBanners).map((banner: any, idx: number) => (
+                <div key={idx} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="text-xs font-black text-slate-400 uppercase">Tarjeta Flotante N° {idx + 1}</div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <CMSInput
+                      label="Badge / Etiqueta"
+                      value={banner.badge || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.floatingBanners || DEFAULT_EXPERIENCE_CMS_DATA.floatingBanners)];
+                        updated[idx] = { ...updated[idx], badge: val };
+                        setData((prev: any) => ({ ...prev, floatingBanners: updated }));
+                      }}
+                    />
+                    <CMSInput
+                      label="Título"
+                      value={banner.title || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.floatingBanners || DEFAULT_EXPERIENCE_CMS_DATA.floatingBanners)];
+                        updated[idx] = { ...updated[idx], title: val };
+                        setData((prev: any) => ({ ...prev, floatingBanners: updated }));
+                      }}
+                    />
+                  </div>
+
+                  <CMSTextarea
+                    label="Descripción"
+                    value={banner.description || ''}
+                    onChange={(val) => {
+                      const updated = [...(data.floatingBanners || DEFAULT_EXPERIENCE_CMS_DATA.floatingBanners)];
+                      updated[idx] = { ...updated[idx], description: val };
+                      setData((prev: any) => ({ ...prev, floatingBanners: updated }));
+                    }}
+                    rows={2}
+                  />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <CMSInput
+                      label="Texto del Enlace"
+                      value={banner.ctaText || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.floatingBanners || DEFAULT_EXPERIENCE_CMS_DATA.floatingBanners)];
+                        updated[idx] = { ...updated[idx], ctaText: val };
+                        setData((prev: any) => ({ ...prev, floatingBanners: updated }));
+                      }}
+                    />
+                    <CMSInput
+                      label="URL de Destino"
+                      value={banner.ctaUrl || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.floatingBanners || DEFAULT_EXPERIENCE_CMS_DATA.floatingBanners)];
+                        updated[idx] = { ...updated[idx], ctaUrl: val };
+                        setData((prev: any) => ({ ...prev, floatingBanners: updated }));
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* EXPERIENCE: SECCIÓN QUIÉNES SOMOS / TURISMO RECEPTIVO */}
+        {selectedLanding === 'experience' && activeTab === 'exp_quienes' && data && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-slate-800">🏔️ Turismo Receptivo Norte &amp; Quiénes Somos</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Sección institucional que destaca la trayectoria, flota ejecutiva, guías matriculados y cobertura del operador receptivo.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CMSInput
+                label="Etiqueta Superior"
+                value={data.receptiveAbout?.tag || ''}
+                onChange={(val) => updateField('receptiveAbout', 'tag', val)}
+                placeholder="QUIÉNES SOMOS"
+              />
+              <CMSInput
+                label="Título Principal"
+                value={data.receptiveAbout?.title || ''}
+                onChange={(val) => updateField('receptiveAbout', 'title', val)}
+                placeholder="Líderes en Turismo Receptivo y Experiencias en el Norte Argentino"
+              />
+            </div>
+
+            <CMSTextarea
+              label="Descripción Institucional"
+              value={data.receptiveAbout?.description || ''}
+              onChange={(val) => updateField('receptiveAbout', 'description', val)}
+              rows={3}
+            />
+
+            <ImageUploaderInput
+              label="Fotografía del Bloque Receptivo"
+              section="receptiveAbout"
+              field="image"
+              value={data.receptiveAbout?.image || ''}
+            />
           </div>
         )}
 
@@ -2964,8 +3283,37 @@ export default function CMSPage() {
         {selectedLanding === 'experience' && activeTab === 'social' && (
           <div className="space-y-6">
             <div className="border-b border-slate-100 pb-4">
-              <h3 className="text-base font-extrabold text-slate-800">Enlaces de Redes Sociales (Experiencias)</h3>
-              <p className="text-xs text-slate-400 mt-1">Configura las redes oficiales de TravelApp Experience.</p>
+              <h3 className="text-base font-extrabold text-slate-800">📞 Contacto del Header, Topbar &amp; Redes Sociales</h3>
+              <p className="text-xs text-slate-400 mt-1">Configura el teléfono de atención comercial, aviso de preventa y redes de TravelApp Experience.</p>
+            </div>
+
+            {/* Cabecera & Topbar */}
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+              <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Teléfono &amp; Anuncio de Cabecera</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSInput
+                  label="Teléfono Visible en Header"
+                  value={data.header?.phoneFormatted || data.header?.phone || ''}
+                  onChange={(val) => {
+                    updateField('header', 'phoneFormatted', val);
+                    updateField('header', 'phone', val);
+                  }}
+                  placeholder="Ej. +54 9 381 418-8106"
+                />
+                <CMSInput
+                  label="Enlace Teléfono (Callto/Tel)"
+                  value={data.header?.phoneCallUrl || ''}
+                  onChange={(val) => updateField('header', 'phoneCallUrl', val)}
+                  placeholder="Ej. tel:+5493814188106"
+                />
+              </div>
+
+              <CMSInput
+                label="Texto de la Barra Superior de Preventa"
+                value={data.header?.announcementText || ''}
+                onChange={(val) => updateField('header', 'announcementText', val)}
+                placeholder="Ej. 🔥 Preventa Turismo Receptivo Norte 2026: Reservá hoy en 12 Cuotas Fijas..."
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
