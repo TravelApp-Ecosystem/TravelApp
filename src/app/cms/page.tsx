@@ -3289,7 +3289,15 @@ export default function CMSPage() {
 
             {/* Cabecera & Topbar */}
             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
-              <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Teléfono &amp; Anuncio de Cabecera</h4>
+              <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Logo, Teléfono &amp; Anuncio de Cabecera</h4>
+              
+              <ImageUploaderInput
+                label="Logo de Cabecera y Footer (SVG / PNG)"
+                section="header"
+                field="logo"
+                value={data.header?.logo || '/assets/experience_blanco.svg'}
+              />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <CMSInput
                   label="Teléfono Visible en Header"

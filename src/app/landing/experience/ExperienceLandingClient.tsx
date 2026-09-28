@@ -617,11 +617,15 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
           
           {/* Logo TravelApp Experience */}
-          <Link href="/landing/experience" className="flex items-center gap-2.5 cursor-pointer">
+          <Link href="/landing/experience" className="flex items-center gap-2.5 cursor-pointer py-0.5">
             <img 
               src={cmsData.header?.logo || "/assets/experience_blanco.svg"} 
               alt="TravelApp Experience" 
-              className="h-8 sm:h-9 w-auto object-contain" 
+              className="h-12 sm:h-14 md:h-16 w-auto object-contain transition-all duration-200" 
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "/assets/experience_blanco.svg";
+              }}
             />
           </Link>
 
@@ -1347,11 +1351,17 @@ export default function ExperienceLandingClient({ initialCms }: { initialCms?: a
           
           {/* Columna 1: Marca & Resumen */}
           <div className="space-y-4">
-            <img 
-              src={cmsData.header?.logo || "/assets/experience_blanco.svg"} 
-              alt="TravelApp Experiences" 
-              className="h-8 w-auto object-contain" 
-            />
+            <Link href="/landing/experience" className="inline-block">
+              <img 
+                src={cmsData.header?.logo || "/assets/experience_blanco.svg"} 
+                alt="TravelApp Experiences" 
+                className="h-12 sm:h-14 w-auto object-contain" 
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "/assets/experience_blanco.svg";
+                }}
+              />
+            </Link>
             <p className="text-slate-300 leading-relaxed font-medium">
               Especialistas en turismo receptivo en el Norte Argentino, salidas grupales y experiencias curadas por todo el país.
             </p>
