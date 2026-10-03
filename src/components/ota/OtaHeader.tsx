@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Phone,
-  MessageCircle,
   ChevronDown,
   Menu,
   X,
@@ -21,41 +20,61 @@ import {
   ShieldCheck,
   ArrowRight,
   ExternalLink,
+  Target,
+  Eye,
+  HeartHandshake,
+  MessageSquare,
+  Globe
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface OtaHeaderProps {
-  currency: "ARS" | "USD";
-  onCurrencyChange: (c: "ARS" | "USD") => void;
   phone?: string;
-  whatsappUrl?: string;
+  onOpenQuienesSomos?: (tab: "vision" | "mision" | "valores") => void;
+  onOpenContacto?: () => void;
 }
 
 export function OtaHeader({
-  currency,
-  onCurrencyChange,
-  phone = "+54 9 381 202-0050",
-  whatsappUrl = "https://wa.me/5493812020050?text=Hola%20TravelApp!%20Quiero%20consultar%20por%20un%20viaje",
+  phone = "0810-220-0018",
+  onOpenQuienesSomos,
+  onOpenContacto,
 }: OtaHeaderProps) {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [loginMenuOpen, setLoginMenuOpen] = useState(false);
+  const [quienesSomosOpen, setQuienesSomosOpen] = useState(false);
+  const [ecosistemaOpen, setEcosistemaOpen] = useState(false);
+  const [marketplaceOpen, setMarketplaceOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const loginRef = useRef<HTMLDivElement>(null);
+
+  const quienesSomosRef = useRef<HTMLDivElement>(null);
+  const ecosistemaRef = useRef<HTMLDivElement>(null);
+  const marketplaceRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 15);
+      setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Cerrar dropdown al hacer click afuera
+  // Cerrar dropdowns al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (loginRef.current && !loginRef.current.contains(event.target as Node)) {
-        setLoginMenuOpen(false);
+      const target = event.target as Node;
+      if (quienesSomosRef.current && !quienesSomosRef.current.contains(target)) {
+        setQuienesSomosOpen(false);
+      }
+      if (ecosistemaRef.current && !ecosistemaRef.current.contains(target)) {
+        setEcosistemaOpen(false);
+      }
+      if (marketplaceRef.current && !marketplaceRef.current.contains(target)) {
+        setMarketplaceOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setUserMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -66,360 +85,455 @@ export function OtaHeader({
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 font-sans ${
         isScrolled
-          ? "bg-white/95 backdrop-blur-md shadow-sm py-2.5 border-b border-slate-100"
-          : "bg-white py-3.5 border-b border-slate-100 shadow-xs"
+          ? "bg-[#0A2A5B]/95 backdrop-blur-md py-2.5 shadow-xl border-b border-blue-900/50"
+          : "bg-[#0A2A5B] py-3.5 shadow-md border-b border-blue-950"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-3 lg:gap-6">
-          {/* Logo Oficial SVG */}
-          <Link href="/landing/ecosistema" className="flex items-center gap-2 group shrink-0">
-            <div className="relative h-9 sm:h-10 w-36 sm:w-44">
+        <div className="flex items-center justify-between gap-4">
+          
+          {/* 1. LOGO TRAVELAPP ORIGINAL EN LETRAS BLANCAS CON BRILLO ANIMADO */}
+          <Link href="/landing/ecosistema" className="flex items-center gap-2 group shrink-0 relative">
+            <div className="relative h-9 sm:h-10 w-36 sm:w-44 overflow-hidden rounded-lg">
               <Image
-                src="/assets/travelapp_original.svg"
+                src="/assets/travelapp_blanco.svg"
                 alt="TravelApp Logo Oficial"
                 fill
                 priority
-                className="object-contain object-left transition-transform duration-200 group-hover:scale-[1.02]"
+                className="object-contain object-left transition-transform duration-300 group-hover:scale-[1.03]"
+              />
+              {/* Efecto de Brillo Sutil Animado (Shine Overlay) */}
+              <div 
+                className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-[-25deg] pointer-events-none animate-[shimmer_3.5s_infinite]"
+                style={{
+                  animation: "shimmer 4s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                }}
               />
             </div>
           </Link>
 
-          {/* Navegación Central Estilo Despegar (Pills con Iconos) */}
-          <nav className="hidden xl:flex items-center gap-1.5 2xl:gap-2">
-            {/* 1. Vuelos & Paquetes */}
-            <Link
-              href="/marketplace"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold text-slate-700 hover:text-[#0a2a5b] hover:bg-slate-50 border border-transparent hover:border-slate-200/60 transition-all"
-            >
-              <Plane className="w-4 h-4 text-[#0a2a5b]" />
-              <span>Vuelos & Paquetes</span>
-            </Link>
-
-            {/* 2. Alojamientos */}
-            <Link
-              href="/marketplace?tab=hoteles"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold text-slate-700 hover:text-[#0a2a5b] hover:bg-slate-50 border border-transparent hover:border-slate-200/60 transition-all"
-            >
-              <Building2 className="w-4 h-4 text-[#0a2a5b]" />
-              <span>Alojamientos</span>
-            </Link>
-
-            {/* 3. Experiencias (Coral #FF4F5A) */}
-            <Link
-              href="/landing/experience"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold text-slate-700 hover:text-[#ff4f5a] hover:bg-red-50/50 border border-transparent hover:border-red-100 transition-all group"
-            >
-              <Compass className="w-4 h-4 text-[#ff4f5a] group-hover:rotate-45 transition-transform" />
-              <span>Experiencias</span>
-            </Link>
-
-            {/* 4. TravelCab (Naranja #FF5A19) */}
-            <Link
-              href="/landing/travelcab"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold text-slate-700 hover:text-[#ff5a19] hover:bg-orange-50/50 border border-transparent hover:border-orange-100 transition-all"
-            >
-              <Car className="w-4 h-4 text-[#ff5a19]" />
-              <span>TravelCab</span>
-            </Link>
-
-            {/* 5. Rewards (Dorado #E5A93B) */}
-            <Link
-              href="/landing/rewards"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold text-slate-700 hover:text-[#e5a93b] hover:bg-amber-50/50 border border-transparent hover:border-amber-100 transition-all"
-            >
-              <Sparkles className="w-4 h-4 text-[#e5a93b]" />
-              <span>Rewards</span>
-            </Link>
-          </nav>
-
-          {/* Acciones del Header: Moneda, WhatsApp, y Login Dual (Estilo Despegar) */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* WhatsApp Concierge */}
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/60 transition-colors"
-              title="Atención inmediata por WhatsApp"
-            >
-              <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-600/20" />
-              <span className="hidden sm:inline">Ayuda</span>
-            </a>
-
-            {/* Selector de Moneda (ARS / USD) */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/60 text-xs font-bold text-slate-600">
+          {/* 2. MENÚ DE NAVEGACIÓN DESPLEGABLE (DESKTOP) */}
+          <nav className="hidden lg:flex items-center gap-1.5 xl:gap-3 text-white">
+            
+            {/* DESPLEGABLE 1: QUIÉNES SOMOS */}
+            <div className="relative" ref={quienesSomosRef}>
               <button
                 type="button"
-                onClick={() => onCurrencyChange("ARS")}
-                className={`px-2.5 py-1 rounded-full transition-all ${
-                  currency === "ARS"
-                    ? "bg-[#0a2a5b] text-white shadow-xs"
-                    : "hover:text-slate-900"
+                onClick={() => {
+                  setQuienesSomosOpen(!quienesSomosOpen);
+                  setEcosistemaOpen(false);
+                  setMarketplaceOpen(false);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  quienesSomosOpen 
+                    ? "bg-white/15 text-white" 
+                    : "text-slate-200 hover:text-white hover:bg-white/10"
                 }`}
               >
-                ARS $
+                <span>Quiénes somos</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${quienesSomosOpen ? "rotate-180" : ""}`} />
               </button>
-              <button
-                type="button"
-                onClick={() => onCurrencyChange("USD")}
-                className={`px-2.5 py-1 rounded-full transition-all ${
-                  currency === "USD"
-                    ? "bg-[#0a2a5b] text-white shadow-xs"
-                    : "hover:text-slate-900"
-                }`}
-              >
-                USD u$s
-              </button>
-            </div>
 
-            {/* Menú Login Dual Estilo Despegar */}
-            <div className="relative" ref={loginRef}>
-              {user ? (
-                /* Estado Logueado */
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={user.role === "admin" ? "/cms" : "/rewards"}
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200/80 text-xs font-bold text-amber-900 hover:bg-amber-100 transition-colors"
+              {quienesSomosOpen && (
+                <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 text-slate-800 animate-in fade-in zoom-in-95 duration-150">
+                  <a
+                    href="#vision"
+                    onClick={(e) => {
+                      setQuienesSomosOpen(false);
+                      if (onOpenQuienesSomos) {
+                        e.preventDefault();
+                        onOpenQuienesSomos("vision");
+                      }
+                    }}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-[#e5a93b]" />
-                    <span>Puntos Rewards</span>
-                  </Link>
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-tech-blue flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Eye className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-slate-800">Visión</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Hacia dónde vamos</span>
+                    </div>
+                  </a>
 
-                  <button
-                    type="button"
-                    onClick={() => setLoginMenuOpen(!loginMenuOpen)}
-                    className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors"
+                  <a
+                    href="#mision"
+                    onClick={(e) => {
+                      setQuienesSomosOpen(false);
+                      if (onOpenQuienesSomos) {
+                        e.preventDefault();
+                        onOpenQuienesSomos("mision");
+                      }
+                    }}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
                   >
-                    <div className="w-7 h-7 rounded-full bg-[#0a2a5b] text-white flex items-center justify-center text-xs font-bold">
-                      {user.email ? user.email.charAt(0).toUpperCase() : "U"}
+                    <div className="w-7 h-7 rounded-lg bg-orange-50 text-[#FF5A19] flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Target className="w-4 h-4" />
                     </div>
-                    <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${loginMenuOpen ? "rotate-180" : ""}`} />
-                  </button>
-
-                  {loginMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 text-xs z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                      <div className="px-3 py-2 border-b border-slate-100">
-                        <p className="text-[11px] text-slate-500">Sesión iniciada como</p>
-                        <p className="font-bold text-slate-800 truncate">{user.email}</p>
-                      </div>
-
-                      <div className="py-1">
-                        <Link
-                          href={user.role === "admin" ? "/cms" : "/marketplace"}
-                          className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 font-bold text-slate-700"
-                          onClick={() => setLoginMenuOpen(false)}
-                        >
-                          <span>{user.role === "admin" ? "Panel Administrador" : "Mis Reservas"}</span>
-                        </Link>
-                        <Link
-                          href="/rewards"
-                          className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 font-bold text-[#e5a93b]"
-                          onClick={() => setLoginMenuOpen(false)}
-                        >
-                          <span>Club Rewards</span>
-                          <Sparkles className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
-
-                      <div className="border-t border-slate-100 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLoginMenuOpen(false);
-                            logout();
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 font-bold text-left transition-colors"
-                        >
-                          <LogOut className="w-3.5 h-3.5" />
-                          <span>Cerrar Sesión</span>
-                        </button>
-                      </div>
+                    <div>
+                      <span className="block text-slate-800">Misión</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Nuestro propósito</span>
                     </div>
-                  )}
-                </div>
-              ) : (
-                /* Estado No Logueado: Botón Ingresar con Dropdown Dual */
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setLoginMenuOpen(!loginMenuOpen)}
-                    className="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full text-xs font-bold text-[#0a2a5b] bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-all shadow-2xs hover:shadow-xs"
+                  </a>
+
+                  <a
+                    href="#valores"
+                    onClick={(e) => {
+                      setQuienesSomosOpen(false);
+                      if (onOpenQuienesSomos) {
+                        e.preventDefault();
+                        onOpenQuienesSomos("valores");
+                      }
+                    }}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
                   >
-                    <UserIcon className="w-3.5 h-3.5 text-[#0a2a5b]" />
-                    <span>Ingresar</span>
-                    <ChevronDown
-                      className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
-                        loginMenuOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  {/* Dropdown Dual Despegar: Usuarios vs Embajadores */}
-                  {loginMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-80 sm:w-88 bg-white rounded-2xl shadow-2xl border border-slate-100 p-3 text-xs z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                      <div className="p-1 mb-2">
-                        <p className="text-xs font-bold text-slate-900">Elegí cómo ingresar al ecosistema:</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Acceso personalizado según tu rol</p>
-                      </div>
-
-                      {/* Opción 1: Soy Viajero */}
-                      <Link
-                        href="/login"
-                        onClick={() => setLoginMenuOpen(false)}
-                        className="flex items-start gap-3 p-3 rounded-xl hover:bg-blue-50/60 border border-transparent hover:border-blue-100 transition-colors group mb-2"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-[#0a2a5b]/10 text-[#0a2a5b] flex items-center justify-center shrink-0 group-hover:bg-[#0a2a5b] group-hover:text-white transition-colors">
-                          <UserIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-bold text-slate-900 group-hover:text-[#0a2a5b] flex items-center justify-between">
-                            <span>Soy Viajero / Usuario</span>
-                            <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                          <p className="text-[11px] text-slate-500 leading-snug mt-0.5">
-                            Gestioná tus compras, vuelos, traslados y canjeá puntos Rewards acumulados.
-                          </p>
-                        </div>
-                      </Link>
-
-                      {/* Opción 2: Embajadores & Afiliados */}
-                      <Link
-                        href="/landing/afiliados"
-                        onClick={() => setLoginMenuOpen(false)}
-                        className="flex items-start gap-3 p-3 rounded-xl hover:bg-emerald-50/60 border border-transparent hover:border-emerald-100 transition-colors group"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                          <Users className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-bold text-slate-900 group-hover:text-emerald-700 flex items-center justify-between">
-                            <span>Portal Embajadores & Afiliados</span>
-                            <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                          <p className="text-[11px] text-slate-500 leading-snug mt-0.5">
-                            Accedé a tus métricas de afiliado, generá links de recomendación y cobrá comisiones.
-                          </p>
-                        </div>
-                      </Link>
-
-                      {/* Footer del Dropdown: Registro Rápido */}
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 text-center">
-                        <Link
-                          href="/login?tab=register"
-                          onClick={() => setLoginMenuOpen(false)}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0a2a5b] hover:underline"
-                        >
-                          <span>¿Primera vez en TravelApp? Creá tu cuenta gratis</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </Link>
-                      </div>
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <HeartHandshake className="w-4 h-4" />
                     </div>
-                  )}
+                    <div>
+                      <span className="block text-slate-800">Valores</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Lo que nos define</span>
+                    </div>
+                  </a>
                 </div>
               )}
             </div>
 
-            {/* Botón Mobile Menu */}
+            {/* DESPLEGABLE 2: EL ECOSISTEMA */}
+            <div className="relative" ref={ecosistemaRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setEcosistemaOpen(!ecosistemaOpen);
+                  setQuienesSomosOpen(false);
+                  setMarketplaceOpen(false);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  ecosistemaOpen 
+                    ? "bg-white/15 text-white" 
+                    : "text-slate-200 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <span>El Ecosistema</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${ecosistemaOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {ecosistemaOpen && (
+                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 text-slate-800 animate-in fade-in zoom-in-95 duration-150">
+                  <Link
+                    href="/landing/ecosistema"
+                    onClick={() => setEcosistemaOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-tech-blue flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Globe className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-slate-800">TravelApp Institucional</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Plataforma OTA Global</span>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/landing/experience"
+                    onClick={() => setEcosistemaOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-red-50 text-[#FF4F5A] flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Compass className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-slate-800">TravelApp Experience</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Turismo Receptivo & Tours</span>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/landing/travelcab"
+                    onClick={() => setEcosistemaOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-orange-50 text-[#FF5A19] flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Car className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-slate-800">TravelCab</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Movilidad Urbana & Choferes</span>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/landing/rewards"
+                    onClick={() => setEcosistemaOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-amber-50 text-[#E5A93B] flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Gift className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-slate-800">TravelApp Rewards</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Puntos & Canjes en Comercios</span>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/landing/afiliados"
+                    onClick={() => setEcosistemaOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-slate-800">Red de Afiliados</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Embajadores & Comisiones</span>
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* DESPLEGABLE 3: TRAVELMARKET (EMISIVO Y RECEPTIVO) */}
+            <div className="relative" ref={marketplaceRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setMarketplaceOpen(!marketplaceOpen);
+                  setQuienesSomosOpen(false);
+                  setEcosistemaOpen(false);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  marketplaceOpen 
+                    ? "bg-white/15 text-white" 
+                    : "text-slate-200 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <span>travelmarket</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${marketplaceOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {marketplaceOpen && (
+                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 text-slate-800 animate-in fade-in zoom-in-95 duration-150">
+                  <Link
+                    href="/marketplace"
+                    onClick={() => setMarketplaceOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-tech-blue flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Plane className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-slate-800">Turismo Emisivo</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Paquetes, Cruceros y Mayoristas</span>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/landing/experience/marketplace"
+                    onClick={() => setMarketplaceOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-red-50 text-[#FF4F5A] flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Compass className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-slate-800">Turismo Receptivo</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Excursiones, Bodegas & Traslados</span>
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* BOTÓN CONTACTO */}
+            <a
+              href="#contacto"
+              onClick={(e) => {
+                if (onOpenContacto) {
+                  e.preventDefault();
+                  onOpenContacto();
+                }
+              }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition-all"
+            >
+              Contacto
+            </a>
+          </nav>
+
+          {/* 3. ZONA DERECHA: TELÉFONO 0810 + INGRESAR / REGISTRO */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            
+            {/* Teléfono 0810-220-0018 */}
+            <a
+              href={`tel:${phone.replace(/[^0-9]/g, "")}`}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 text-white transition-all text-xs font-black shadow-xs"
+            >
+              <Phone className="w-3.5 h-3.5 text-[#FF7A00]" />
+              <span className="tracking-wide">{phone}</span>
+            </a>
+
+            {/* Botones de Autenticación / Login */}
+            {user ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all text-xs font-bold"
+                >
+                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <UserIcon className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="max-w-[100px] truncate">{user.displayName || user.email?.split("@")[0]}</span>
+                  <ChevronDown className="w-3 h-3 text-slate-300" />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 text-slate-800 animate-in fade-in zoom-in-95 duration-150 divide-y divide-slate-100">
+                    <div className="px-4 py-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mi Cuenta</p>
+                      <p className="text-xs font-black text-tech-blue truncate">{user.displayName || user.email}</p>
+                    </div>
+                    <div className="py-1">
+                      <Link
+                        href="/marketplace"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                      >
+                        <Plane className="w-3.5 h-3.5 text-tech-blue" />
+                        <span>Mis Viajes & Reservas</span>
+                      </Link>
+                      <Link
+                        href="/landing/rewards"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                      >
+                        <Gift className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Puntos TravelRewards</span>
+                      </Link>
+                    </div>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setUserMenuOpen(false);
+                          await logout();
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 text-left"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Cerrar Sesión</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Link
+                  href="/login"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold text-white hover:bg-white/10 transition-all border border-white/20 bg-white/5"
+                >
+                  Ingresar
+                </Link>
+                <Link
+                  href="/registro"
+                  className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-black bg-[#FF5A19] hover:bg-[#e04c10] text-white shadow-md shadow-orange-900/30 hover:shadow-orange-900/50 transition-all transform hover:scale-[1.02]"
+                >
+                  Registro
+                </Link>
+              </div>
+            )}
+
+            {/* Botón Menú Mobile */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="xl:hidden p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-              aria-label="Abrir menú de navegación"
+              className="lg:hidden p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Drawer Mobile Responsivo */}
-      {mobileMenuOpen && (
-        <div className="xl:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 space-y-4 animate-in slide-in-from-top-4 duration-200">
-          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-            <Link
-              href="/marketplace"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-[#0a2a5b]"
+        {/* 4. MENÚ MOBILE DESPLEGABLE */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden mt-4 pt-4 border-t border-blue-900/60 pb-4 space-y-3 text-white animate-in slide-in-from-top-4 duration-200">
+            {/* Teléfono Mobile */}
+            <a
+              href={`tel:${phone.replace(/[^0-9]/g, "")}`}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-xs font-black"
             >
-              <Plane className="w-4 h-4 text-[#0a2a5b]" />
-              <span>Vuelos & Paquetes</span>
-            </Link>
+              <Phone className="w-4 h-4 text-[#FF7A00]" />
+              <span>{phone}</span>
+            </a>
 
-            <Link
-              href="/marketplace?tab=hoteles"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-[#0a2a5b]"
-            >
-              <Building2 className="w-4 h-4 text-[#0a2a5b]" />
-              <span>Alojamientos</span>
-            </Link>
+            {/* Links Mobile */}
+            <div className="space-y-1 text-xs font-bold">
+              <div className="px-3 py-1.5 text-[11px] font-black uppercase text-blue-300">travelmarket</div>
+              <Link
+                href="/marketplace"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 rounded-xl hover:bg-white/10"
+              >
+                ✈️ Turismo Emisivo
+              </Link>
+              <Link
+                href="/landing/experience/marketplace"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 rounded-xl hover:bg-white/10 text-red-300"
+              >
+                🏔️ Turismo Receptivo
+              </Link>
 
-            <Link
-              href="/landing/experience"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 p-3 rounded-xl bg-red-50/60 text-[#ff4f5a]"
-            >
-              <Compass className="w-4 h-4 text-[#ff4f5a]" />
-              <span>Experiencias</span>
-            </Link>
+              <div className="px-3 pt-3 pb-1 text-[11px] font-black uppercase text-blue-300">Ecosistema</div>
+              <Link
+                href="/landing/experience"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 rounded-xl hover:bg-white/10"
+              >
+                🌴 TravelApp Experience
+              </Link>
+              <Link
+                href="/landing/travelcab"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 rounded-xl hover:bg-white/10"
+              >
+                🚗 TravelCab Movilidad
+              </Link>
+              <Link
+                href="/landing/rewards"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 rounded-xl hover:bg-white/10"
+              >
+                🎁 TravelApp Rewards
+              </Link>
+              <Link
+                href="/landing/afiliados"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 rounded-xl hover:bg-white/10"
+              >
+                ⭐ Red de Afiliados
+              </Link>
 
-            <Link
-              href="/landing/travelcab"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 p-3 rounded-xl bg-orange-50/60 text-[#ff5a19]"
-            >
-              <Car className="w-4 h-4 text-[#ff5a19]" />
-              <span>TravelCab</span>
-            </Link>
+              <div className="px-3 pt-3 pb-1 text-[11px] font-black uppercase text-blue-300">Institucional</div>
+              <a
+                href="#vision"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 rounded-xl hover:bg-white/10"
+              >
+                Visión, Misión y Valores
+              </a>
+              <a
+                href="#contacto"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 rounded-xl hover:bg-white/10"
+              >
+                Contacto Directo
+              </a>
+            </div>
           </div>
-
-          <Link
-            href="/landing/rewards"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center justify-between p-3 rounded-xl bg-amber-50 text-amber-900 font-bold text-xs"
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#e5a93b]" />
-              <span>Club TravelApp Rewards</span>
-            </div>
-            <ArrowRight className="w-4 h-4 text-[#e5a93b]" />
-          </Link>
-
-          {/* Acceso Embajadores en Mobile */}
-          <Link
-            href="/landing/afiliados"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 text-emerald-800 font-bold text-xs"
-          >
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-emerald-600" />
-              <span>Portal Embajadores & Afiliados</span>
-            </div>
-            <ArrowRight className="w-4 h-4 text-emerald-600" />
-          </Link>
-
-          {/* Accesos de Login Mobile */}
-          {!user && (
-            <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="py-2.5 rounded-xl border border-slate-200 text-[#0a2a5b] font-bold text-center text-xs hover:bg-slate-50"
-              >
-                Iniciar Sesión
-              </Link>
-              <Link
-                href="/login?tab=register"
-                onClick={() => setMobileMenuOpen(false)}
-                className="py-2.5 rounded-xl bg-[#0a2a5b] text-white font-bold text-center text-xs hover:bg-[#071d3f]"
-              >
-                Crear Cuenta
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </header>
   );
 }

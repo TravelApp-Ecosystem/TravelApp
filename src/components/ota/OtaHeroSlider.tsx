@@ -8,12 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Search,
-  MapPin,
-  Calendar,
-  Compass,
-  ArrowRight,
-  SlidersHorizontal,
 } from "lucide-react";
 
 export interface HeroSlide {
@@ -94,18 +88,6 @@ export function OtaHeroSlider({ slides, children }: OtaHeroSliderProps) {
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [searchDestination, setSearchDestination] = useState("");
-  const [serviceType, setServiceType] = useState<"paquetes" | "vuelos" | "hoteles" | "experiencias">("paquetes");
-  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
-
-  // Rotación del placeholder estilo Ravello ("¿A dónde querés ir? Cancún / Bariloche...")
-  useEffect(() => {
-    const pTimer = setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % SUGGESTED_DESTINATIONS.length);
-    }, 2800);
-    return () => clearInterval(pTimer);
-  }, []);
 
   // Rotación automática suave del slider cada 8 segundos
   useEffect(() => {
@@ -124,12 +106,6 @@ export function OtaHeroSlider({ slides, children }: OtaHeroSliderProps) {
 
   const handleNext = () => {
     setCurrentIdx((prev) => (prev + 1) % cleanSlides.length);
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const target = searchDestination.trim() || SUGGESTED_DESTINATIONS[placeholderIndex];
-    router.push(`/marketplace?tab=${serviceType}&query=${encodeURIComponent(target)}`);
   };
 
   return (
@@ -203,116 +179,34 @@ export function OtaHeroSlider({ slides, children }: OtaHeroSliderProps) {
         </div>
       </div>
 
-      {/* 3. Buscador Minimalista Descomprimido (Estilo Ravello / Emirates) 
-          NO tapa la imagen, es una cápsula flotante ligera y elegante */}
-      <div className="relative z-30 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-14 sm:pb-20 w-full">
-        <div className="bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-full p-2.5 sm:p-2 shadow-2xl border border-white/60">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
-          >
-            {/* Selector de Categoría Rápida */}
-            <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-full shrink-0">
-              <button
-                type="button"
-                onClick={() => setServiceType("paquetes")}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  serviceType === "paquetes"
-                    ? "bg-[#0a2a5b] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Paquetes
-              </button>
-              <button
-                type="button"
-                onClick={() => setServiceType("vuelos")}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  serviceType === "vuelos"
-                    ? "bg-[#0a2a5b] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Vuelos
-              </button>
-              <button
-                type="button"
-                onClick={() => setServiceType("hoteles")}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  serviceType === "hoteles"
-                    ? "bg-[#0a2a5b] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Hoteles
-              </button>
-            </div>
+      {/* 3. Buscador Oficial Completo Desplegado (con Filtros Avanzados y Selector de Paquetes) */}
+      {children && (
+        <div className="relative z-30 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 w-full animate-in fade-in duration-300">
+          {children}
 
-            {/* Input con Placeholder Dinámico Estilo Ravello */}
-            <div className="flex-1 flex items-center gap-3 px-3.5 py-1.5">
-              <MapPin className="w-5 h-5 text-[#ff5a19] shrink-0" />
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={searchDestination}
-                  onChange={(e) => setSearchDestination(e.target.value)}
-                  placeholder={`¿A dónde querés viajar? Ej: ${SUGGESTED_DESTINATIONS[placeholderIndex]}`}
-                  className="w-full bg-transparent text-sm sm:text-base font-bold text-slate-800 placeholder-slate-400 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Botón de Búsqueda de Alto Impacto */}
-            <button
-              type="submit"
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#ff5a19] hover:bg-[#e04c10] text-white font-bold text-sm shadow-md hover:shadow-orange-500/30 transition-all shrink-0 cursor-pointer"
-            >
-              <Search className="w-4 h-4" />
-              <span>Explorar</span>
-            </button>
-          </form>
-        </div>
-
-        {/* Toggle para Buscador Avanzado / Completo si el usuario lo desea */}
-        <div className="mt-3 flex items-center justify-between text-xs text-white/90 px-3">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold drop-shadow-sm">Destinos populares:</span>
-            <div className="hidden md:flex items-center gap-2">
-              {SUGGESTED_DESTINATIONS.slice(0, 4).map((dest) => (
+          {/* Destinos Populares Sugeridos al pie del buscador */}
+          <div className="mt-3.5 flex flex-wrap items-center gap-2 text-xs text-white/90 px-2">
+            <span className="font-bold drop-shadow-sm flex items-center gap-1.5 text-white">
+              <Sparkles className="w-3.5 h-3.5 text-[#e5a93b]" />
+              Destinos sugeridos:
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {SUGGESTED_DESTINATIONS.slice(0, 5).map((dest) => (
                 <button
                   key={dest}
                   type="button"
                   onClick={() => {
-                    setSearchDestination(dest);
-                    router.push(`/marketplace?tab=${serviceType}&query=${encodeURIComponent(dest)}`);
+                    router.push(`/marketplace?destination=${encodeURIComponent(dest)}`);
                   }}
-                  className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-xs text-[11px] font-bold text-white transition-colors"
+                  className="px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-xs text-[11px] font-bold text-white transition-all hover:scale-105 border border-white/20 cursor-pointer"
                 >
                   {dest}
                 </button>
               ))}
             </div>
           </div>
-
-          {children && (
-            <button
-              type="button"
-              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
-              className="inline-flex items-center gap-1.5 font-bold hover:text-white transition-colors bg-black/25 hover:bg-black/40 px-3 py-1 rounded-full backdrop-blur-xs border border-white/15"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>{showAdvancedSearch ? "Ocultar filtros avanzados ▲" : "Filtros con fechas y pasajeros ▾"}</span>
-            </button>
-          )}
         </div>
-
-        {/* Desplegable del Buscador Omnicanal Completo (si el usuario pide filtros avanzados) */}
-        {showAdvancedSearch && children && (
-          <div className="mt-4 animate-in fade-in slide-in-from-top-4 duration-300">
-            {children}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* 4. Controles del Slider: Flechas y Dots Limpios */}
       {cleanSlides.length > 1 && (

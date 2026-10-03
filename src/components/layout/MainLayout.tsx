@@ -35,6 +35,8 @@ function AppShell({
     isLandingHost ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
+    pathname === "/registro" ||
+    pathname.startsWith("/registro/") ||
     pathname === "/marketplace" ||
     pathname.startsWith("/marketplace/") ||
     pathname === "/afiliados" ||

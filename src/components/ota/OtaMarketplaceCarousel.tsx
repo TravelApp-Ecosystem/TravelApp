@@ -126,6 +126,91 @@ const PIAMONTE_ITEMS: MarketplaceItem[] = [
     installmentsText: "12 cuotas fijas de $74.000",
     url: "/marketplace?id=calafate-glaciares",
   },
+  {
+    id: "item-ushuaia",
+    title: "Ushuaia Fin del Mundo & Canal Beagle",
+    category: "Tierra del Fuego",
+    destination: "Ushuaia, Argentina",
+    duration: "5 Días / 4 Noches",
+    imageUrl:
+      "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=90",
+    priceArs: 720000,
+    priceUsd: 580,
+    pointsEarned: 7200,
+    rating: 4.9,
+    badge: "Fin del Mundo",
+    includedServices: ["Aéreos incluidos", "Hotel céntrico 4★", "Navegación Canal Beagle"],
+    installmentsText: "12 cuotas fijas de $77.000",
+    url: "/marketplace?id=ushuaia-fin-del-mundo",
+  },
+  {
+    id: "item-salta-jujuy",
+    title: "Norte Argentino: Salta, Cafayate & Purmamarca",
+    category: "Paisajes & Tradición",
+    destination: "Salta y Jujuy, Argentina",
+    duration: "6 Días / 5 Noches",
+    imageUrl:
+      "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1200&q=90",
+    priceArs: 490000,
+    priceUsd: 395,
+    pointsEarned: 4900,
+    rating: 4.9,
+    badge: "Circuito Norte",
+    includedServices: ["Vuelos ida y vuelta", "Hoteles con desayuno", "Excursiones guiadas"],
+    installmentsText: "12 cuotas fijas de $52.500",
+    url: "/marketplace?id=norte-argentino",
+  },
+  {
+    id: "item-madrid-paris",
+    title: "Europa Soñada: Madrid, Barcelona & París",
+    category: "Circuito Europeo",
+    destination: "España y Francia",
+    duration: "14 Días / 12 Noches",
+    imageUrl:
+      "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=90",
+    priceArs: 4850000,
+    priceUsd: 3680,
+    pointsEarned: 48500,
+    rating: 5.0,
+    badge: "Operador Mayorista: Dertour",
+    includedServices: ["Vuelos intercontinentales", "Hoteles 4★ con desayuno", "Guía en español"],
+    installmentsText: "Financiación bancaria disponible",
+    url: "/marketplace?id=madrid-paris-europa",
+  },
+  {
+    id: "item-crucero-brasil",
+    title: "Crucero Costa: Río de Janeiro & Punta del Este",
+    category: "Cruceros Costa / Ola",
+    destination: "Brasil y Uruguay",
+    duration: "9 Días / 8 Noches",
+    imageUrl:
+      "https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1200&q=90",
+    priceArs: 2450000,
+    priceUsd: 1850,
+    pointsEarned: 24500,
+    rating: 4.9,
+    badge: "Pensión Completa",
+    includedServices: ["Cabina con balcón", "Todas las comidas", "Tasas y propinas incluidas"],
+    installmentsText: "6 cuotas fijas sin interés",
+    url: "/marketplace?id=crucero-costa-brasil",
+  },
+  {
+    id: "item-rio-janeiro",
+    title: "Río de Janeiro, Copacabana & Cristo Redentor",
+    category: "Playas de Brasil",
+    destination: "Río de Janeiro, Brasil",
+    duration: "7 Días / 6 Noches",
+    imageUrl:
+      "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=1200&q=90",
+    priceArs: 1150000,
+    priceUsd: 890,
+    pointsEarned: 11500,
+    rating: 4.8,
+    badge: "Sol & Bossa Nova",
+    includedServices: ["Vuelo directo", "Hotel frente al mar", "City Tour y Cristo Redentor"],
+    installmentsText: "12 cuotas fijas de $123.000",
+    url: "/marketplace?id=rio-de-janeiro-copacabana",
+  },
 ];
 
 export function OtaMarketplaceCarousel({
@@ -292,13 +377,13 @@ export function OtaMarketplaceCarousel({
         <div className="mt-12 p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-[#0a2a5b] to-[#071d3f] text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="max-w-2xl text-center md:text-left">
             <span className="px-3.5 py-1 rounded-full bg-white/15 text-amber-300 text-xs font-bold uppercase tracking-wider inline-block mb-3">
-              Catálogo Completo OTA
+              Catálogo Completo travelmarket
             </span>
             <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
               ¿Buscás otro destino o fechas personalizadas?
             </h3>
             <p className="text-sm sm:text-base text-slate-200 font-medium mt-2">
-              Explorá más de 150 paquetes, vuelos nacionales e internacionales, hoteles y actividades con confirmación inmediata.
+              Explorá más de 150 paquetes de Turismo Emisivo, vuelos nacionales e internacionales, hoteles y actividades con confirmación inmediata.
             </p>
           </div>
 
@@ -306,7 +391,7 @@ export function OtaMarketplaceCarousel({
             href="/marketplace"
             className="flex items-center gap-3 px-8 py-4 rounded-full bg-[#ff5a19] hover:bg-[#e04c10] text-white font-bold text-sm sm:text-base shadow-lg hover:shadow-orange-500/30 transition-all shrink-0 cursor-pointer"
           >
-            <span>Explorar Todo el Marketplace</span>
+            <span>Explorar travelmarket</span>
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>

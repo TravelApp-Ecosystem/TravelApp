@@ -12,7 +12,7 @@ const InstagramIcon = ({ className }: { className?: string }) => (
 );
 
 interface TravisOmnichannelWidgetProps {
-  businessUnit: "TravelCab" | "Experiences" | "Rewards" | "General";
+  businessUnit: "TravelCab" | "Experiences" | "Rewards" | "General" | "OTA";
   whatsappUrl?: string;
   messengerUrl?: string;
   instagramUrl?: string;
@@ -48,6 +48,8 @@ export const TravisOmnichannelWidget: React.FC<TravisOmnichannelWidgetProps> = (
   // Initial message based on business unit
   const getInitialMessage = () => {
     switch (businessUnit) {
+      case "OTA":
+        return "¡Hola! ✈️ Soy Travis, tu copiloto de viajes de TravelApp. 🌴 ¿En qué puedo ayudarte? Consultame sobre paquetes turísticos, vuelos, cruceros o financiación en cuotas fijas.";
       case "TravelCab":
         return "¡Hola! 👋 Soy Travis, el asistente de TravelCab. 🚕 ¿En qué puedo ayudarte hoy? Consultame sobre tarifas, traslados urbanos o cómo pedir un móvil.";
       case "Experiences":

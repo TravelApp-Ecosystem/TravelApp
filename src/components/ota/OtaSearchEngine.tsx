@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import {
   Plane,
   Building2,
-  Package,
-  Compass,
   Bus,
+  Compass,
   Car,
+  Key,
+  ShieldCheck,
+  Ticket,
   Search,
   Calendar,
   MapPin,
@@ -18,17 +20,73 @@ import {
   X,
   MessageSquare,
   CheckCircle2,
+  Palmtree
 } from "lucide-react";
 
-type SearchTab = "vuelos" | "hoteles" | "paquetes" | "excursiones" | "buses" | "traslados";
+export type OtaSearchTab = 
+  | "paquetes"
+  | "vuelos" 
+  | "hoteles" 
+  | "buses" 
+  | "actividades" 
+  | "traslados" 
+  | "autos" 
+  | "asistencia" 
+  | "parques";
 
-interface OtaSearchEngineProps {
-  onSearch?: (tab: SearchTab, params: any) => void;
+export interface OtaSearchEngineProps {
+  enabledTabs?: {
+    paquetes?: boolean;
+    vuelos?: boolean;
+    hoteles?: boolean;
+    buses?: boolean;
+    actividades?: boolean;
+    traslados?: boolean;
+    autos?: boolean;
+    asistencia?: boolean;
+    parques?: boolean;
+  };
+  onSearch?: (tab: OtaSearchTab, params: any) => void;
 }
 
-export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
+export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<SearchTab>("vuelos");
+
+  // Configuración de pestañas activables por switch (por defecto todas true)
+  const isEnabled = (tab: OtaSearchTab) => {
+    if (!enabledTabs) return true;
+    return enabledTabs[tab] !== false;
+  };
+
+  const allTabs: { id: OtaSearchTab; label: string; icon: React.ReactNode; badge?: string }[] = [
+    {
+      id: "paquetes",
+      label: "Paquetes",
+      icon: <Palmtree className="w-4 h-4 text-[#FF5A19]" />,
+    },
+    { id: "vuelos", label: "Vuelos", icon: <Plane className="w-4 h-4" /> },
+    { id: "hoteles", label: "Hoteles", icon: <Building2 className="w-4 h-4" /> },
+    { id: "buses", label: "Buses", icon: <Bus className="w-4 h-4" /> },
+    {
+      id: "actividades",
+      label: "Actividades",
+      icon: <Compass className="w-4 h-4 text-[#FF4F5A]" />,
+    },
+    {
+      id: "traslados",
+      label: "Traslados",
+      icon: <Car className="w-4 h-4 text-[#FF5A19]" />,
+    },
+    { id: "autos", label: "Autos", icon: <Key className="w-4 h-4 text-emerald-500" /> },
+    { id: "asistencia", label: "Asistencia al Viajero", icon: <ShieldCheck className="w-4 h-4 text-blue-500" /> },
+    { id: "parques", label: "Parques", icon: <Ticket className="w-4 h-4 text-amber-500" /> },
+  ];
+
+  // Filtrar solo las pestañas habilitadas mediante switch
+  const visibleTabs = allTabs.filter((t) => isEnabled(t.id));
+
+  // Tab activo actual (por defecto paquetes)
+  const [activeTab, setActiveTab] = useState<OtaSearchTab>(visibleTabs[0]?.id || "paquetes");
 
   // Form State
   const [origin, setOrigin] = useState("Buenos Aires (BUE)");
@@ -37,32 +95,23 @@ export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
   const [returnDate, setReturnDate] = useState("");
   const [passengers, setPassengers] = useState("2 Pasajeros");
 
-  // Modal para cotización asistida en Vuelos/Hoteles/Buses mientras se adquieren APIs
+  // Modal para cotización asistida en servicios sin API directa
   const [assistedQuoteModal, setAssistedQuoteModal] = useState(false);
-
-  const tabs: { id: SearchTab; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: "vuelos", label: "Vuelos", icon: <Plane className="w-4 h-4" /> },
-    { id: "hoteles", label: "Hoteles", icon: <Building2 className="w-4 h-4" /> },
-    { id: "paquetes", label: "Paquetes", icon: <Package className="w-4 h-4" /> },
-    {
-      id: "excursiones",
-      label: "Excursiones",
-      icon: <Compass className="w-4 h-4 text-[#ff4f5a]" />,
-      badge: "Experience",
-    },
-    { id: "buses", label: "Buses", icon: <Bus className="w-4 h-4" /> },
-    {
-      id: "traslados",
-      label: "Traslados",
-      icon: <Car className="w-4 h-4 text-[#ff5a19]" />,
-      badge: "TravelCab",
-    },
-  ];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (activeTab === "excursiones") {
+    if (onSearch) {
+      onSearch(activeTab, { origin, destination, departureDate, returnDate, passengers });
+      return;
+    }
+
+    if (activeTab === "paquetes") {
+      router.push(`/marketplace?destination=${encodeURIComponent(destination)}`);
+      return;
+    }
+
+    if (activeTab === "actividades") {
       router.push(`/landing/experience/marketplace?destination=${encodeURIComponent(destination)}`);
       return;
     }
@@ -72,37 +121,43 @@ export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
       return;
     }
 
-    // Para vuelos, hoteles, paquetes y buses (fase APIs en trámite)
+    if (activeTab === "vuelos" || activeTab === "hoteles" || activeTab === "buses") {
+      router.push(`/marketplace?destination=${encodeURIComponent(destination)}&tab=${activeTab}`);
+      return;
+    }
+
+    // Para autos, asistencia y parques (cotización asistida inmediata)
     setAssistedQuoteModal(true);
   };
 
   const getWhatsAppQuoteUrl = () => {
-    const text = `Hola TravelApp! Quiero cotizar ${activeTab.toUpperCase()}:\n• Origen: ${origin}\n• Destino: ${destination}\n• Fecha salida: ${departureDate || "A convenir"}\n• Fecha regreso: ${returnDate || "Solo ida"}\n• Pasajeros: ${passengers}\n¿Tienen promociones o cuotas fijas disponibles?`;
+    const text = `Hola TravelApp! Quiero cotizar ${activeTab.toUpperCase()}:\n• Origen/Punto: ${origin}\n• Destino: ${destination}\n• Fecha salida: ${departureDate || "A convenir"}\n• Fecha regreso: ${returnDate || "Solo ida"}\n• Pasajeros/Personas: ${passengers}\n¿Tienen tarifas vigentes y promociones?`;
     return `https://wa.me/5493812020050?text=${encodeURIComponent(text)}`;
   };
 
   return (
-    <div className="w-full bg-white/95 backdrop-blur-md rounded-3xl p-4 sm:p-6 shadow-2xl border border-white/40 font-sans">
-      {/* Pestañas de Servicios */}
-      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-3 scrollbar-none border-b border-slate-100">
-        {tabs.map((tab) => {
+    <div className="w-full bg-white/95 backdrop-blur-md rounded-3xl p-4 sm:p-6 shadow-2xl border border-white/60 font-sans text-slate-800">
+      
+      {/* Pestañas de Servicios (Hasta 8 activables por switch) */}
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-3 no-scrollbar border-b border-slate-100">
+        {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${
+              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
                 isActive
-                  ? "bg-[#0a2a5b] text-white shadow-md shadow-blue-950/20 scale-[1.02]"
-                  : "bg-slate-100/80 hover:bg-slate-200/80 text-slate-700"
+                  ? "bg-[#0A2A5B] text-white shadow-md shadow-blue-950/20 scale-[1.02]"
+                  : "bg-slate-100/90 hover:bg-slate-200 text-slate-700 hover:text-slate-900"
               }`}
             >
               {tab.icon}
               <span>{tab.label}</span>
               {tab.badge && (
                 <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                  className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
                     isActive
                       ? "bg-white/20 text-white"
                       : "bg-slate-200 text-slate-800"
@@ -116,16 +171,17 @@ export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
         })}
       </div>
 
-      {/* Formulario de Búsqueda */}
+      {/* Formulario de Búsqueda Adaptativo */}
       <form onSubmit={handleSearchSubmit} className="mt-4 sm:mt-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {/* Origen */}
+          
+          {/* Campo 1: Origen o Lugar */}
           <div className="relative group">
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              {activeTab === "hoteles" || activeTab === "excursiones" ? "Destino o Ciudad" : "Origen"}
+              {activeTab === "hoteles" || activeTab === "actividades" || activeTab === "parques" ? "Destino o Ciudad" : "Origen / Partida"}
             </label>
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0a2a5b] focus-within:bg-white transition-all">
-              <MapPin className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#ff5a19]" />
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
+              <MapPin className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#FF5A19]" />
               <input
                 type="text"
                 value={origin}
@@ -136,29 +192,29 @@ export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
             </div>
           </div>
 
-          {/* Destino */}
+          {/* Campo 2: Destino */}
           <div className="relative group">
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              {activeTab === "hoteles" || activeTab === "excursiones" ? "Zona o Alojamiento" : "Destino"}
+              {activeTab === "hoteles" ? "Alojamiento / Hotel" : activeTab === "actividades" ? "Tour o Excursión" : activeTab === "parques" ? "Parque Temático" : activeTab === "paquetes" ? "Destino del Paquete" : "Destino / Llegada"}
             </label>
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0a2a5b] focus-within:bg-white transition-all">
-              <MapPin className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#0a2a5b]" />
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
+              <MapPin className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#0A2A5B]" />
               <input
                 type="text"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
-                placeholder="Ciudad de llegada o hotel..."
+                placeholder={activeTab === "paquetes" ? "Ej. Cancún, Bariloche, Europa, Río..." : "Ciudad de llegada, hotel o parque..."}
                 className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Fechas (Salida y Regreso) */}
+          {/* Campo 3: Fechas de Viaje */}
           <div className="relative group">
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               Fechas de Viaje
             </label>
-            <div className="grid grid-cols-2 gap-1.5 px-3 py-2 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0a2a5b] focus-within:bg-white transition-all">
+            <div className="grid grid-cols-2 gap-1.5 px-3 py-2 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <input
@@ -179,13 +235,13 @@ export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
             </div>
           </div>
 
-          {/* Pasajeros / Botón Buscar */}
+          {/* Campo 4: Pasajeros y Botón Buscar */}
           <div className="flex items-end gap-2">
-            <div className="flex-1 relative group">
+            <div className="relative flex-1">
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                Viajeros
+                Pasajeros / Cupos
               </label>
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0a2a5b] focus-within:bg-white transition-all">
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
                 <Users className="w-4 h-4 text-slate-400 shrink-0" />
                 <select
                   value={passengers}
@@ -202,7 +258,7 @@ export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-2xl bg-[#ff5a19] hover:bg-[#e04c10] text-white font-bold text-sm shadow-lg hover:shadow-orange-500/30 transition-all flex items-center justify-center gap-2 shrink-0 h-[42px] cursor-pointer"
+              className="px-6 py-2.5 rounded-2xl bg-[#FF5A19] hover:bg-[#e04c10] text-white font-black text-sm shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all flex items-center justify-center gap-2 shrink-0 h-[44px] cursor-pointer"
             >
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Buscar</span>
@@ -211,10 +267,10 @@ export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
         </div>
       </form>
 
-      {/* Modal de Cotización Asistida VIP mientras se habilitan APIs de vuelos/hoteles */}
+      {/* Modal de Cotización Asistida para Autos, Asistencia y Parques */}
       {assistedQuoteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100 text-slate-800">
             <button
               onClick={() => setAssistedQuoteModal(false)}
               className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
@@ -222,60 +278,54 @@ export function OtaSearchEngine({ onSearch }: OtaSearchEngineProps) {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-[#0a2a5b] text-xs font-bold uppercase mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-[#ff5a19]" />
-              <span>Cotización Prioritaria TravelApp</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-[#0A2A5B] text-xs font-bold uppercase mb-3">
+              <Sparkles className="w-3.5 h-3.5 text-[#FF5A19]" />
+              <span>Cotización Inmediata TravelApp</span>
             </div>
 
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-2">
-              Estamos buscando tu tarifa para {destination}
+              Cotizar {activeTab.toUpperCase()} para {destination}
             </h3>
 
             <p className="text-slate-600 text-sm leading-relaxed mb-6">
-              Para garantizarte la tarifa más conveniente, promociones en cuotas fijas y congelamiento de precio inmediato, te conectamos directamente con nuestro equipo de emisión.
+              Te conectamos directamente con nuestro equipo de emisión para congelar tarifa, confirmar cupos y ofrecerte financiación en cuotas fijas.
             </p>
 
             <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-100 text-xs space-y-1.5 text-slate-700">
               <div className="flex justify-between">
                 <span className="font-bold">Servicio:</span>
-                <span className="capitalize">{activeTab}</span>
+                <span className="font-extrabold uppercase text-[#0A2A5B]">{activeTab}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-bold">Trayecto:</span>
-                <span>{origin} ➔ {destination}</span>
+                <span className="font-bold">Ruta / Destino:</span>
+                <span className="font-semibold">{origin} → {destination}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-bold">Fechas:</span>
-                <span>{departureDate || "A definir"} {returnDate ? `- ${returnDate}` : ""}</span>
+                <span className="font-semibold">{departureDate || "A convenir"} al {returnDate || "A convenir"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-bold">Viajeros:</span>
-                <span>{passengers}</span>
+                <span className="font-bold">Pasajeros:</span>
+                <span className="font-semibold">{passengers}</span>
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <a
                 href={getWhatsAppQuoteUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setAssistedQuoteModal(false)}
-                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-600/25 transition-all"
+                className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
               >
                 <MessageSquare className="w-4 h-4" />
-                <span>Congelar Tarifa por WhatsApp</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Consultar por WhatsApp</span>
               </a>
-
               <button
                 type="button"
-                onClick={() => {
-                  setAssistedQuoteModal(false);
-                  router.push(`/landing/experience/marketplace`);
-                }}
-                className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                onClick={() => setAssistedQuoteModal(false)}
+                className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
               >
-                Explorar experiencias y paquetes disponibles hoy
+                Volver
               </button>
             </div>
           </div>

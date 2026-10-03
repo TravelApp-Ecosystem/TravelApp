@@ -16,10 +16,11 @@ import {
   Send,
   AlertTriangle,
   RotateCcw,
-  Sliders,
+  Award,
+  FileCheck
 } from "lucide-react";
 
-// Íconos SVG para redes sociales oficiales
+// Íconos SVG oficiales de redes sociales
 const FacebookIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
@@ -52,33 +53,65 @@ const TiktokIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export interface TrustBadgeConfig {
+  id: string;
+  name: string;
+  codeOrImageUrl?: string;
+  active: boolean;
+}
+
 export interface FooterConfig {
   razonSocial?: string;
   cuit?: string;
-  dnavLegajo?: string;
   domicilio?: string;
   phone?: string;
   email?: string;
+  // Redes con switch
+  showFacebook?: boolean;
   facebookUrl?: string;
+  showInstagram?: boolean;
   instagramUrl?: string;
+  showYoutube?: boolean;
   youtubeUrl?: string;
-  linkedinUrl?: string;
+  showTiktok?: boolean;
   tiktokUrl?: string;
+  showLinkedin?: boolean;
+  linkedinUrl?: string;
+  // Distintivos de confianza cargables desde CMS
+  trustBadges?: TrustBadgeConfig[];
 }
 
 interface OtaFooterProps {
   config?: FooterConfig;
 }
 
+const DEFAULT_TRUST_BADGES: TrustBadgeConfig[] = [
+  { id: "arca", name: "ARCA Fiscal", active: true },
+  { id: "bases_datos", name: "Bases de Datos (Ley 25.326)", active: true },
+  { id: "atavyt", name: "ATAVyT", active: true },
+  { id: "faevyt", name: "FAEVYT", active: true },
+  { id: "iata", name: "IATA Member", active: true },
+];
+
 export function OtaFooter({ config }: OtaFooterProps) {
-  const razonSocial = config?.razonSocial || "TravelApp s.a.s.";
+  const razonSocial = config?.razonSocial || "TravelApp S.A.S.";
   const cuit = config?.cuit || "30-71829304-8";
-  const dnavLegajo = config?.dnavLegajo || "EVyT Legajo N° 18.942 - Res. 412/2024";
   const domicilio = config?.domicilio || "San Miguel de Tucumán, Argentina";
-  const phone = config?.phone || "+54 9 381 202-0050";
+  const phone = config?.phone || "0810-220-0018";
   const email = config?.email || "hola@travelapp.ar";
 
-  // Modales legales y de arrepentimiento
+  // Redes
+  const showFb = config?.showFacebook !== false;
+  const showIg = config?.showInstagram !== false;
+  const showYt = config?.showYoutube !== false;
+  const showTt = config?.showTiktok !== false;
+  const showLi = config?.showLinkedin !== false;
+
+  const trustBadges = config?.trustBadges && config.trustBadges.length > 0
+    ? config.trustBadges.filter(b => b.active)
+    : DEFAULT_TRUST_BADGES;
+
+  // Modales
   const [legalModal, setLegalModal] = useState<{ title: string; content: string } | null>(null);
   const [arrepentimientoModal, setArrepentimientoModal] = useState(false);
   const [arrepentimientoSent, setArrepentimientoSent] = useState(false);
@@ -86,29 +119,29 @@ export function OtaFooter({ config }: OtaFooterProps) {
   const [dni, setDni] = useState("");
   const [reason, setReason] = useState("");
 
-  const handleOpenCookieSettings = () => {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("open-cookie-settings"));
-    }
-  };
-
   const handleArrepentimientoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setArrepentimientoSent(true);
     setTimeout(() => {
       setArrepentimientoSent(false);
       setArrepentimientoModal(false);
-    }, 3000);
+      setBookingCode("");
+      setDni("");
+      setReason("");
+    }, 3500);
   };
 
   return (
     <footer className="bg-slate-950 text-white font-sans pt-16 pb-12 border-t border-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Fila Principal: Logo, Ecosistema, Contacto, Redes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10 pb-12 border-b border-slate-800/80">
-          {/* Columna 1: Marca & Misión */}
-          <div className="lg:col-span-2 space-y-4">
-            <Link href="/" className="inline-block relative h-9 w-40">
+        
+        {/* FILA PRINCIPAL: 3 COLUMNAS EXACTAS */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 pb-12 border-b border-slate-800/80 items-start">
+          
+          {/* COLUMNA 1 (IZQUIERDA): LOGO PEQUEÑO + DISTINTIVOS Y QR DE CONFIANZA */}
+          <div className="lg:col-span-4 space-y-5">
+            {/* Logo TravelApp pequeño pero legible */}
+            <Link href="/landing/ecosistema" className="inline-block relative h-8 w-36">
               <Image
                 src="/assets/travelapp_blanco.svg"
                 alt="TravelApp Logo"
@@ -117,378 +150,277 @@ export function OtaFooter({ config }: OtaFooterProps) {
               />
             </Link>
 
-            <p className="text-xs sm:text-sm text-slate-400 font-medium leading-relaxed max-w-sm">
-              La plataforma de viajes y movilidad inteligente de Argentina. Conectamos experiencias auténticas, alojamientos, vuelos, traslados urbanos y recompensas exclusivas en un solo lugar.
+            <p className="text-xs text-slate-400 font-medium leading-relaxed max-w-sm">
+              Plataforma integral de turismo, paquetes de operadores mayoristas y movilidad urbana de Argentina.
             </p>
 
-            {/* Redes Sociales Oficiales */}
-            <div className="flex items-center gap-3 pt-2">
-              <a
-                href={config?.facebookUrl || "https://facebook.com/travelapp.ar"}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook"
-                className="w-8 h-8 rounded-full bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
-              >
-                <FacebookIcon className="w-4 h-4" />
-              </a>
-              <a
-                href={config?.instagramUrl || "https://instagram.com/travelapp.ar"}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="w-8 h-8 rounded-full bg-slate-900 hover:bg-pink-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
-              >
-                <InstagramIcon className="w-4 h-4" />
-              </a>
-              <a
-                href={config?.youtubeUrl || "https://youtube.com/@travelapp"}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="YouTube"
-                className="w-8 h-8 rounded-full bg-slate-900 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
-              >
-                <YoutubeIcon className="w-4 h-4" />
-              </a>
-              <a
-                href={config?.linkedinUrl || "https://linkedin.com/company/travelapp-ar"}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="LinkedIn"
-                className="w-8 h-8 rounded-full bg-slate-900 hover:bg-blue-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
-              >
-                <LinkedinIcon className="w-4 h-4" />
-              </a>
-              <a
-                href={config?.tiktokUrl || "https://tiktok.com/@travelapp.ar"}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="TikTok"
-                className="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
-              >
-                <TiktokIcon className="w-4 h-4" />
-              </a>
+            {/* Espacio para Distintivos de Confianza (ARCA, Bases de Datos, ATAVyT, FAEVYT, DNAV, IATA) */}
+            <div className="pt-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-2.5">
+                Certificaciones & Distintivos de Confianza
+              </span>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {trustBadges.map((badge) => (
+                  <div
+                    key={badge.id}
+                    className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center gap-2 hover:border-slate-700 transition-colors"
+                  >
+                    <div className="w-5 h-5 rounded-md bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                      <FileCheck className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-300 leading-tight">
+                      {badge.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Columna 2: Ecosistema & Servicios */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Ecosistema
+          {/* COLUMNA 2 (CENTRO): SEGUINOS EN NUESTRAS REDES SOCIALES */}
+          <div className="lg:col-span-4 flex flex-col items-center justify-center text-center space-y-4 py-4 lg:py-0">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-300">
+              Seguinos en nuestras redes sociales
             </h4>
-            <ul className="space-y-2 text-xs text-slate-400">
-              <li>
-                <Link href="/landing/experience" className="hover:text-white transition-colors">
-                  TravelApp Experience
-                </Link>
-              </li>
-              <li>
-                <Link href="/landing/rewards" className="hover:text-white transition-colors">
-                  TravelApp Rewards
-                </Link>
-              </li>
-              <li>
-                <Link href="/landing/afiliados" className="hover:text-white transition-colors">
-                  Red de Afiliados
-                </Link>
-              </li>
-              <li>
-                <Link href="/landing/travelcab" className="hover:text-white transition-colors">
-                  TravelCab Movilidad
-                </Link>
-              </li>
-              <li>
-                <Link href="/landing/experience/marketplace" className="hover:text-white transition-colors">
-                  Marketplace de Viajes
-                </Link>
-              </li>
-              <li>
-                <Link href="#blog" className="hover:text-white transition-colors">
-                  Blog & Guías de Destinos
-                </Link>
-              </li>
-            </ul>
-          </div>
 
-          {/* Columna 3: Sucursales & Puntos Físicos */}
-          <div id="sucursales" className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Sucursales
-            </h4>
-            <ul className="space-y-2 text-xs text-slate-400">
-              <li className="flex items-start gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#ff5a19] shrink-0 mt-0.5" />
-                <span>Casa Central: San Miguel de Tucumán</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#ff5a19] shrink-0 mt-0.5" />
-                <span>Punto Retiro: Terminal Retiro, CABA</span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#ff5a19] shrink-0 mt-0.5" />
-                <span>Punto Pilar: KM 50 Panamericana, Bs As</span>
-              </li>
-              <li className="pt-1 text-[11px] text-slate-500">
-                Atención presencial de Lunes a Sábados de 9 a 20 hs.
-              </li>
-            </ul>
-          </div>
+            <p className="text-xs text-slate-400 max-w-xs">
+              Enterate antes que nadie de promociones relámpago, cupos de temporada y novedades del ecosistema.
+            </p>
 
-          {/* Columna 4: Contacto & Administración */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Contacto & Soporte
-            </h4>
-            <ul className="space-y-2.5 text-xs text-slate-400">
-              <li className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                <a href={`tel:${phone}`} className="hover:text-white transition-colors">
-                  {phone}
-                </a>
-              </li>
-              <li className="flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5 text-blue-400" />
-                <a href={`mailto:${email}`} className="hover:text-white transition-colors">
-                  {email}
-                </a>
-              </li>
-              <li className="pt-2">
+            {/* Íconos Oficiales Activables desde CMS */}
+            <div className="flex items-center gap-3 pt-1">
+              {showFb && (
                 <a
-                  href="https://admin.travelapp.ar"
+                  href={config?.facebookUrl || "https://facebook.com/travelapp.ar"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-[11px] font-bold border border-slate-800 transition-colors"
+                  aria-label="Facebook"
+                  className="w-10 h-10 rounded-2xl bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white flex items-center justify-center transition-all border border-slate-800 hover:border-blue-500 shadow-md cursor-pointer"
                 >
-                  <Lock className="w-3 h-3 text-amber-400" />
-                  <span>Acceso Operadores & Admin</span>
-                  <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                  <FacebookIcon className="w-4 h-4" />
                 </a>
-              </li>
-            </ul>
+              )}
+
+              {showIg && (
+                <a
+                  href={config?.instagramUrl || "https://instagram.com/travelapp.ar"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="w-10 h-10 rounded-2xl bg-slate-900 hover:bg-pink-600 text-slate-300 hover:text-white flex items-center justify-center transition-all border border-slate-800 hover:border-pink-500 shadow-md cursor-pointer"
+                >
+                  <InstagramIcon className="w-4 h-4" />
+                </a>
+              )}
+
+              {showYt && (
+                <a
+                  href={config?.youtubeUrl || "https://youtube.com/@travelapp"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="YouTube"
+                  className="w-10 h-10 rounded-2xl bg-slate-900 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center transition-all border border-slate-800 hover:border-red-500 shadow-md cursor-pointer"
+                >
+                  <YoutubeIcon className="w-4 h-4" />
+                </a>
+              )}
+
+              {showTt && (
+                <a
+                  href={config?.tiktokUrl || "https://tiktok.com/@travelapp.ar"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="TikTok"
+                  className="w-10 h-10 rounded-2xl bg-slate-900 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all border border-slate-800 hover:border-slate-600 shadow-md cursor-pointer"
+                >
+                  <TiktokIcon className="w-4 h-4" />
+                </a>
+              )}
+
+              {showLi && (
+                <a
+                  href={config?.linkedinUrl || "https://linkedin.com/company/travelapp-ar"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                  className="w-10 h-10 rounded-2xl bg-slate-900 hover:bg-blue-700 text-slate-300 hover:text-white flex items-center justify-center transition-all border border-slate-800 hover:border-blue-600 shadow-md cursor-pointer"
+                >
+                  <LinkedinIcon className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+
+            <div className="pt-2">
+              <span className="text-[11px] font-bold text-slate-500">
+                Atención Telefónica Oficial:{" "}
+                <a href={`tel:${phone.replace(/[^0-9]/g, "")}`} className="text-[#FF7A00] font-black hover:underline">
+                  {phone}
+                </a>
+              </span>
+            </div>
+          </div>
+
+          {/* COLUMNA 3 (DERECHA): POLÍTICA, TÉRMINOS Y BOTÓN DE ARREPENTIMIENTO */}
+          <div className="lg:col-span-4 flex flex-col items-center lg:items-end text-center lg:text-right space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-300">
+              Marco Legal & Transparencia
+            </h4>
+
+            <div className="space-y-2 text-xs font-semibold w-full max-w-xs">
+              <button
+                type="button"
+                onClick={() =>
+                  setLegalModal({
+                    title: "Política de Privacidad y Protección de Datos",
+                    content:
+                      "En TravelApp S.A.S. la confidencialidad de tus datos personales es prioridad absoluta. En estricto cumplimiento de la Ley N° 25.326 de Protección de los Datos Personales de la República Argentina, te garantizamos que la información suministrada es utilizada únicamente para la emisión de pasajes, reservas de hotel, contratación de seguros y gestión de tu cuenta TravelApp Rewards. Tus datos están resguardados en servidores seguros con cifrado de grado bancario. Podés ejercer tus derechos de acceso, rectificación y supresión en cualquier momento mediante solicitud formal a legal@travelapp.ar.",
+                  })
+                }
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all text-xs font-bold text-left lg:text-right cursor-pointer"
+              >
+                Política de Privacidad
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setLegalModal({
+                    title: "Términos y Condiciones Generales de Contratación",
+                    content:
+                      "Los presentes Términos y Condiciones regulan la intermediación turística de viajes, vuelos, traslados y excursiones provistos por TravelApp S.A.S. Toda contratación de servicios mayoristas, aéreos o de transporte terrestre está sujeta a las condiciones generales de transporte de IATA y la legislación comercial y aeronáutica aplicable. Las tarifas publicadas están expresadas con los tributos e impuestos vigentes de acuerdo con la legislación argentina. Los puntos Rewards acumulados no tienen valor monetario transferible fuera del ecosistema.",
+                  })
+                }
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all text-xs font-bold text-left lg:text-right cursor-pointer"
+              >
+                Términos y Condiciones
+              </button>
+
+              {/* BOTÓN DE ARREPENTIMIENTO (LEY DE DEFENSA DEL CONSUMIDOR - RES. 424/2020) */}
+              <button
+                type="button"
+                onClick={() => setArrepentimientoModal(true)}
+                className="w-full py-2.5 px-4 rounded-xl bg-red-950/40 hover:bg-red-950/70 border border-red-800/60 text-red-300 hover:text-red-100 transition-all text-xs font-black text-left lg:text-right flex items-center justify-between lg:justify-end gap-2 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-red-400" />
+                <span>Botón de Arrepentimiento</span>
+              </button>
+            </div>
+
+            <p className="text-[10px] text-slate-500 max-w-xs leading-relaxed pt-1">
+              Conforme Resolución 424/2020 de la Secretaría de Comercio Interior: revocación directa de compras dentro de los 10 días corridos de contratado el servicio.
+            </p>
           </div>
         </div>
 
-        {/* Sellos Regulatorios y Fiscales (DNAV, ARCA, Datos Personales) */}
-        <div className="py-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-b border-slate-800/80">
-          {/* Sello DNAV EVyT */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-950 text-blue-400 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-white uppercase">Sello DNAV</div>
-              <div className="text-[10px] text-slate-400">{dnavLegajo}</div>
-            </div>
-          </div>
-
-          {/* QR ARCA (ex AFIP F960/D) */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center shrink-0">
-              <QrCode className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-white uppercase">QR ARCA / AFIP</div>
-              <div className="text-[10px] text-slate-400">Formulario 960/D Fiscal Digital</div>
-            </div>
-          </div>
-
-          {/* Base de Datos Personales (Ley 25.326) */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-950 text-emerald-400 flex items-center justify-center shrink-0">
-              <Lock className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-white uppercase">Protección de Datos</div>
-              <div className="text-[10px] text-slate-400">Reg. Nacional Ley 25.326</div>
-            </div>
-          </div>
-
-          {/* Botón de Arrepentimiento (Defensa del Consumidor Argentina) */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-2">
-            <div>
-              <div className="text-[11px] font-bold text-white uppercase">Defensa del Consumidor</div>
-              <div className="text-[10px] text-slate-400">Cancelación en 10 días corridos</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setArrepentimientoModal(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-[#ff5a19] hover:bg-[#e04c10] text-white text-[11px] font-bold transition-colors shrink-0 cursor-pointer"
-            >
-              Arrepentimiento
-            </button>
-          </div>
-        </div>
-
-        {/* Fila Inferior: Razón Social, CUIT, Enlaces Legales y Cookies */}
-        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        {/* AL PIE: DATOS LEGALES, DOMICILIO Y CONTACTO */}
+        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-medium">
           <div className="text-center md:text-left space-y-1">
-            <p>
-              © 2026 {razonSocial} — CUIT {cuit} — Domicilio: {domicilio}.
+            <p className="font-bold text-slate-300">
+              {razonSocial} · CUIT: {cuit}
             </p>
-            <p className="text-[11px] text-slate-600">
-              Agencia de Viajes y Turismo habilitada por la Secretaría de Turismo de la Nación.
+            <p className="text-[11px] text-slate-500">
+              Domicilio: {domicilio} · Tel: {phone} · Email: {email}
             </p>
           </div>
 
-          {/* Enlaces Legales y Botón Cookies */}
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-400">
-            <button
-              type="button"
-              onClick={() =>
-                setLegalModal({
-                  title: "Términos y Condiciones Generales",
-                  content:
-                    "Al utilizar nuestros servicios, el usuario acepta los términos y condiciones vigentes de TravelApp. Todos los servicios de viaje, excursiones y transporte son prestados conforme a la legislación turística argentina aplicable (Ley 18.829 y concordantes). Las reservas quedan confirmadas únicamente contra emisión de voucher oficial.",
-                })
-              }
-              className="hover:text-white transition-colors cursor-pointer"
-            >
-              Términos y Condiciones
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setLegalModal({
-                  title: "Política de Privacidad de Datos",
-                  content:
-                    "TravelApp garantiza la debida custodia y confidencialidad de los datos personales suministrados por los usuarios en conformidad con la Ley 25.326. Los datos no son comercializados ni compartidos con terceros ajenos a la prestación de los servicios contratados.",
-                })
-              }
-              className="hover:text-white transition-colors cursor-pointer"
-            >
-              Política de Privacidad
-            </button>
-
-            <Link
-              href="/politica-de-cookies"
-              className="hover:text-white transition-colors font-semibold text-slate-300"
-            >
-              Política de Cookies
-            </Link>
-
-            <button
-              type="button"
-              onClick={handleOpenCookieSettings}
-              className="inline-flex items-center gap-1 text-[#ff5a19] hover:text-orange-400 transition-colors font-bold cursor-pointer"
-            >
-              <Sliders className="w-3 h-3" />
-              <span>Configurar Cookies</span>
-            </button>
+          <div className="text-center md:text-right text-[11px] text-slate-500 font-bold">
+            Todos los derechos reservados por TravelApp s.a.s. - 2026
           </div>
         </div>
       </div>
 
-      {/* Modal Legal (Términos / Privacidad) */}
+      {/* MODAL LEGAL (POLÍTICA / TÉRMINOS) */}
       {legalModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs"
-          onClick={() => setLegalModal(null)}
-        >
-          <div
-            className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100 text-slate-900"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 text-white relative shadow-2xl">
             <button
               onClick={() => setLegalModal(null)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-xl font-black mb-4">{legalModal.title}</h3>
-            <p className="text-sm text-slate-600 leading-relaxed mb-6">
+            <h3 className="text-xl font-black mb-4 text-[#FF7A00]">{legalModal.title}</h3>
+            <p className="text-sm text-slate-300 leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
               {legalModal.content}
             </p>
-            <button
-              type="button"
-              onClick={() => setLegalModal(null)}
-              className="w-full py-2.5 rounded-xl bg-[#0a2a5b] text-white font-bold text-xs"
-            >
-              Entendido
-            </button>
           </div>
         </div>
       )}
 
-      {/* Modal Botón de Arrepentimiento */}
+      {/* MODAL BOTÓN DE ARREPENTIMIENTO */}
       {arrepentimientoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs text-slate-900">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-red-900/60 rounded-3xl max-w-lg w-full p-6 sm:p-8 text-white relative shadow-2xl">
             <button
               onClick={() => setArrepentimientoModal(false)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 text-xs font-bold w-fit mb-3">
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Revocación de Compra Online (Ley 24.240)</span>
+            </div>
+
+            <h3 className="text-xl font-black mb-2">Formulario de Arrepentimiento</h3>
+            <p className="text-xs text-slate-300 leading-relaxed mb-6">
+              Tenés derecho a revocar la contratación dentro de los 10 días corridos contados a partir de la fecha de compra, sin costo ni penalidad alguna.
+            </p>
+
             {arrepentimientoSent ? (
-              <div className="text-center py-6">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle2 className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-black mb-2">Solicitud de Cancelación Recibida</h3>
-                <p className="text-xs text-slate-600">
-                  Hemos registrado tu solicitud de arrepentimiento. Se te enviará el comprobante de reintegro conforme a la Res. 424/2020 de Defensa del Consumidor.
+              <div className="p-6 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                <h4 className="text-base font-black text-emerald-200">¡Solicitud de Revocación Recibida!</h4>
+                <p className="text-xs text-emerald-300">
+                  Hemos generado tu código de cancelación y te enviamos la confirmación a tu correo. El reembolso se procesará por el mismo medio de pago.
                 </p>
               </div>
             ) : (
-              <>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 text-[#ff5a19] text-xs font-bold uppercase mb-3">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Botón de Arrepentimiento Legal</span>
+              <form onSubmit={handleArrepentimientoSubmit} className="space-y-3.5 text-xs font-semibold">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">Código de Reserva / Localizador *</label>
+                  <input
+                    type="text"
+                    required
+                    value={bookingCode}
+                    onChange={(e) => setBookingCode(e.target.value)}
+                    placeholder="Ej. OTA-PKG-8823 o TRP-9021"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white outline-none focus:border-red-500"
+                  />
                 </div>
-                <h3 className="text-xl font-black mb-1">Solicitar Cancelación de Compra</h3>
-                <p className="text-xs text-slate-500 mb-5">
-                  Conforme a la normativa argentina de Defensa del Consumidor, podés solicitar la revocación dentro de los 10 días corridos de realizada la compra online.
-                </p>
 
-                <form onSubmit={handleArrepentimientoSubmit} className="space-y-3.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Código de Reserva o Factura
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={bookingCode}
-                      onChange={(e) => setBookingCode(e.target.value)}
-                      placeholder="Ej. TRP-9842"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#0a2a5b]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      DNI / CUIT del Titular
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={dni}
-                      onChange={(e) => setDni(e.target.value)}
-                      placeholder="Ej. 35123456"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#0a2a5b]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Motivo (Opcional)
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      placeholder="Contanos brevemente el motivo..."
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#0a2a5b]"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full py-3 rounded-xl bg-[#ff5a19] hover:bg-[#e04c10] text-white font-bold text-sm shadow-md transition-colors"
-                  >
-                    Confirmar Solicitud de Arrepentimiento
-                  </button>
-                </form>
-              </>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">DNI o CUIT del Titular *</label>
+                  <input
+                    type="text"
+                    required
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value)}
+                    placeholder="Ej. 34.567.890"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white outline-none focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1">Motivo (Opcional)</label>
+                  <textarea
+                    rows={2}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Contanos brevemente el motivo de la cancelación..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white outline-none focus:border-red-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer"
+                >
+                  Confirmar Revocación de Compra
+                </button>
+              </form>
             )}
           </div>
         </div>

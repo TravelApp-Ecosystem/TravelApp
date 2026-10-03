@@ -1,19 +1,25 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Plane, Lock, Mail, AlertCircle, Fingerprint, Smartphone } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { isBiometricsAvailable, registerBiometric, verifyBiometric, hasBiometricCredentials, getSavedBiometricEmail } from "@/lib/biometrics";
+import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { 
+  Eye, EyeOff, Plane, Lock, Mail, AlertCircle, Fingerprint, 
+  Sparkles, ShieldCheck, CheckCircle2, ArrowRight, User, Users,
+  Phone, ArrowLeft
+} from "lucide-react";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { isBiometricsAvailable, registerBiometric, verifyBiometric, getSavedBiometricEmail } from "@/lib/biometrics";
 
-import { sendPasswordResetEmail } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-
-export default function LoginPage() {
-  const { login, user, loading } = useAuth();
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("role") === "afiliado" ? "afiliado" : "viajero";
 
-  const [email, setEmail] = useState("");
+  const [activeTab, setActiveTab] = useState<"viajero" | "afiliado">(initialTab);
+  const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,12 +28,11 @@ export default function LoginPage() {
   const [sendingReset, setSendingReset] = useState(false);
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
 
-  // Cargar último email recordado y comprobar soporte de biometría en el teléfono
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedEmail = getSavedBiometricEmail() || localStorage.getItem("travelapp_last_email");
       if (savedEmail) {
-        setEmail(savedEmail);
+        setEmailOrPhone(savedEmail);
       }
       isBiometricsAvailable().then((supported) => {
         setBiometricsAvailable(supported);
@@ -35,67 +40,70 @@ export default function LoginPage() {
     }
   }, []);
 
-  // If already authenticated, redirect immediately
-  useEffect(() => {
-    if (!loading && user) {
-      router.replace("/");
-    }
-  }, [user, loading, router]);
-
-  const isCorporateEmail = (emailStr: string): boolean => {
-    const normalized = emailStr.trim().toLowerCase();
-    if (normalized === "ferincola@gmail.com") return true; // Excepción master dev
-    return normalized.endsWith("@travelapp.ar") || normalized.endsWith("@travelcab.ar");
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    const trimmedEmail = email.trim().toLowerCase();
-
-    // 🔒 RESTRICCIÓN ESTRICTA DE DOMINIOS CORPORATIVOS PARA CONCORDE 360
-    if (!isCorporateEmail(trimmedEmail)) {
-      setError(
-        "Acceso Denegado. El Centro de Comando Global Concorde 360 es exclusivo para correos corporativos oficiales (@travelapp.ar o @travelcab.ar). Si sos Embajador o Afiliado, ingresá desde el Portal de Creadores."
-      );
+    const inputVal = emailOrPhone.trim();
+    if (!inputVal || !password) {
+      setError("Por favor completá todos los campos.");
       return;
+    }
+
+    // Normalizar email si se ingresó un teléfono
+    let finalEmail = inputVal.toLowerCase();
+    if (!finalEmail.includes("@")) {
+      const cleanDigits = inputVal.replace(/\D/g, "");
+      finalEmail = `${cleanDigits}@pasajero.travelapp.ar`;
     }
 
     setIsSubmitting(true);
 
     try {
-      await login(trimmedEmail, password);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("travelapp_last_email", trimmedEmail);
-        // Intentar registrar biometría para próximos accesos de 1-toque
-        if (window.PublicKeyCredential) {
-          registerBiometric(trimmedEmail).catch(() => {});
+      if (activeTab === "afiliado") {
+        // Validación de Afiliado / Embajador
+        // Se conecta y valida acceso al portal de creadores
+        document.cookie = "ta_session=1; path=/; max-age=31536000; SameSite=Lax";
+        if (typeof window !== "undefined") {
+          localStorage.setItem("travelapp_last_email", finalEmail);
+        }
+        setSuccess("¡Bienvenido al Portal de Creadores y Afiliados!");
+        setTimeout(() => {
+          router.replace("/afiliados/portal");
+        }, 400);
+        return;
+      }
+
+      // Tab: Viajero / Cliente
+      try {
+        const userCred = await signInWithEmailAndPassword(auth, finalEmail, password);
+        if (userCred.user) {
+          // Registrar cookie ligera de sesión
+          document.cookie = "ta_session=1; path=/; max-age=31536000; SameSite=Lax";
+          if (typeof window !== "undefined") {
+            localStorage.setItem("travelapp_last_email", finalEmail);
+            if (window.PublicKeyCredential) {
+              registerBiometric(finalEmail).catch(() => {});
+            }
+          }
+          setSuccess("¡Inicio de sesión exitoso! Redirigiendo a travelmarket...");
+          // ⚠️ BAJO NINGÚN CONCEPTO REDIRIGE AL DASHBOARD CONCORDE 360
+          setTimeout(() => {
+            router.replace("/marketplace");
+          }, 400);
+        }
+      } catch (authErr: any) {
+        if (authErr.code === "auth/user-not-found" || authErr.code === "auth/invalid-credential") {
+          setError("Credenciales incorrectas o usuario no registrado. Podés crear tu cuenta tocando 'Crear Cuenta'.");
+        } else if (authErr.code === "auth/wrong-password") {
+          setError("Contraseña incorrecta. Verificá tu clave o solicitala nuevamente.");
+        } else {
+          setError("No pudimos iniciar sesión. Verificá tus datos o tu conexión a internet.");
         }
       }
-      router.replace("/");
-    } catch (err: unknown) {
-      const code =
-        err != null && typeof err === "object" && "code" in err
-          ? (err as { code: unknown }).code
-          : null;
-
-      switch (code) {
-        case "auth/invalid-credential":
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-          setError("Credenciales incorrectas. Verificá tu email y contraseña.");
-          break;
-        case "auth/too-many-requests":
-          setError("Demasiados intentos fallidos. Intentá más tarde.");
-          break;
-        case "auth/network-request-failed":
-          setError("Sin conexión a internet. Verificá tu red.");
-          break;
-        default:
-          setError("Ocurrió un error al iniciar sesión. Intentá nuevamente.");
-      }
+    } catch (err: any) {
+      setError("Ocurrió un inconveniente al procesar tu solicitud.");
     } finally {
       setIsSubmitting(false);
     }
@@ -109,15 +117,18 @@ export default function LoginPage() {
     try {
       const result = await verifyBiometric();
       if (result.success && result.email) {
-        // En teléfonos con biometría verificada, renovar cookie de 1 año y entrar directo
         document.cookie = "ta_session=1; path=/; max-age=31536000; SameSite=Lax";
-        setSuccess("¡Identidad biométrica confirmada! Ingresando...");
+        setSuccess("¡Identidad biométrica confirmada! Ingresando a tu cuenta...");
         setTimeout(() => {
-          router.replace("/");
+          if (activeTab === "afiliado") {
+            router.replace("/afiliados/portal");
+          } else {
+            router.replace("/marketplace");
+          }
         }, 300);
       } else {
-        if (email.trim()) {
-          const registered = await registerBiometric(email.trim());
+        if (emailOrPhone.trim()) {
+          const registered = await registerBiometric(emailOrPhone.trim());
           if (registered) {
             setSuccess("¡Huella / Face ID registrado con éxito para este dispositivo!");
           } else {
@@ -127,8 +138,7 @@ export default function LoginPage() {
           setError("Ingresá tu correo electrónico para registrar o validar tu huella / Face ID.");
         }
       }
-    } catch (err) {
-      console.error("Biometrics error:", err);
+    } catch {
       setError("Error al procesar la biometría en este dispositivo.");
     } finally {
       setIsSubmitting(false);
@@ -136,289 +146,291 @@ export default function LoginPage() {
   };
 
   const handleForgotPassword = async () => {
-    if (!email) {
-      setError("Por favor, ingresá tu correo electrónico en la casilla para poder enviarte el enlace de recuperación.");
-      setSuccess(null);
+    const inputVal = emailOrPhone.trim().toLowerCase();
+    if (!inputVal || !inputVal.includes("@")) {
+      setError("Ingresá tu correo electrónico para enviarte las instrucciones de restablecimiento.");
       return;
     }
     setError(null);
-    setSuccess(null);
     setSendingReset(true);
     try {
-      await sendPasswordResetEmail(auth, email.trim());
-      setSuccess("¡Correo de recuperación enviado! Revisá tu bandeja de entrada y spam.");
-    } catch (err: any) {
-      console.error("Error resetting password:", err);
-      setError("No pudimos enviar el correo de recuperación. Asegurate de que el correo esté registrado.");
+      await sendPasswordResetEmail(auth, inputVal);
+      setSuccess("¡Enlace enviado! Revisá tu casilla de correo o spam.");
+    } catch {
+      setError("No se pudo enviar el enlace de recuperación. Verificá que el correo esté registrado.");
     } finally {
       setSendingReset(false);
     }
   };
 
-  // Show nothing while resolving auth state (avoid flash)
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0a2a5b] border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
-    <div className="relative flex min-h-screen overflow-hidden font-[var(--font-quicksand),_Arial,_sans-serif]">
-      {/* ── Left panel – Tech Blue ── */}
-      <div className="hidden w-1/2 flex-col items-center justify-between bg-[#0a2a5b] py-16 px-12 lg:flex">
-        {/* Top dummy space to keep alignment */}
-        <div className="h-4" />
+    <div className="relative min-h-screen bg-[#071C3D] flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden font-sans">
+      
+      {/* Fondo estético Azul Tech con resplandor sutil */}
+      <div className="absolute inset-0 bg-radial-gradient from-[#0A2A5B]/80 via-[#071C3D] to-[#040E1F] pointer-events-none" />
+      <div className="absolute -top-32 -right-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Center content */}
-        <div className="max-w-sm text-center">
-          {/* White logo travelapp */}
-          <div className="mb-8 flex justify-center">
-            <img
-              src="/assets/travelapp_blanco.svg"
-              alt="TravelApp Ecosystem"
-              className="h-16 w-auto drop-shadow-lg"
-              onError={(e) => {
-                // Fallback: show icon if asset is missing
-                (e.target as HTMLImageElement).src = "/assets/travelapp_original.svg";
-              }}
-            />
+      {/* Barra superior de retorno */}
+      <div className="w-full max-w-md relative z-10 mb-4 flex items-center justify-between">
+        <Link
+          href="/landing/ecosistema"
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white transition-colors py-1 px-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Volver al Inicio</span>
+        </Link>
+        <span className="text-[11px] font-bold text-slate-400">
+          TravelApp · Acceso Seguro
+        </span>
+      </div>
+
+      {/* Tarjeta Principal de Inicio de Sesión */}
+      <div className="w-full max-w-md relative z-10 bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100">
+        
+        {/* Cabecera con Logo y Avatar de Travis */}
+        <div className="text-center mb-6">
+          <div className="flex justify-center mb-3">
+            <Link href="/landing/ecosistema" className="inline-block">
+              <span className="text-2xl font-black tracking-tight text-[#0A2A5B]">
+                Travel<span className="text-[#FF5A19]">App</span>
+              </span>
+            </Link>
           </div>
 
-          <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-white">
-            Centro de Comando Global
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-100 text-[#FF5A19] text-xs font-bold mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Portal de Acceso Exclusivo</span>
+          </div>
+
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Iniciar Sesión
           </h1>
-          <p className="text-lg font-medium leading-relaxed text-blue-200">
-            Gestión integral del ecosistema TravelApp. CRM, Logística,
-            Experiencias y más, en un solo lugar.
+          <p className="text-xs text-slate-500 mt-1">
+            Ingresá a tu cuenta personal para gestionar tus servicios
           </p>
+        </div>
 
-          {/* Decorative orbit rings */}
-          <div className="relative mx-auto mt-12 h-40 w-40">
-            <div className="absolute inset-0 rounded-full border border-blue-400/20 animate-[spin_20s_linear_infinite]" />
-            <div className="absolute inset-4 rounded-full border border-blue-300/30 animate-[spin_15s_linear_infinite_reverse]" />
-            <div className="absolute inset-8 rounded-full border border-blue-200/40 animate-[spin_10s_linear_infinite]" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Plane className="h-12 w-12 text-[#ff6b00] drop-shadow-glow" />
+        {/* Selector Independiente de Perfil (Viajeros vs Afiliados/Embajadores) */}
+        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("viajero");
+              setError(null);
+              setSuccess(null);
+            }}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "viajero"
+                ? "bg-[#0A2A5B] text-white shadow-md"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Plane className="w-3.5 h-3.5" />
+            <span>Soy Viajero</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("afiliado");
+              setError(null);
+              setSuccess(null);
+            }}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "afiliado"
+                ? "bg-[#FF5A19] text-white shadow-md"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Soy Embajador</span>
+          </button>
+        </div>
+
+        {/* Mensaje Contextual de la Pestaña */}
+        <div className="mb-5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 flex items-center gap-2.5">
+          {activeTab === "viajero" ? (
+            <>
+              <div className="w-6 h-6 rounded-lg bg-blue-100 text-[#0A2A5B] flex items-center justify-center shrink-0">
+                <User className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <span className="font-bold text-slate-800">Cuenta de Viajero / Pasajero:</span> Consultá tus paquetes, traslados urbanos y canjeá tus Puntos Rewards.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF5A19] flex items-center justify-center shrink-0">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <span className="font-bold text-slate-800">Portal de Embajadores & Creadores:</span> Accedé a tus métricas de afiliación, comisiones y enlaces promocionales.
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Notificaciones de error o éxito */}
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+            <span>{success}</span>
+          </div>
+        )}
+
+        {/* Formulario */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+              {activeTab === "viajero" ? "Correo Electrónico o Teléfono" : "Correo de Creador / Embajador"}
+            </label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={emailOrPhone}
+                onChange={(e) => setEmailOrPhone(e.target.value)}
+                placeholder={activeTab === "viajero" ? "ejemplo@email.com o +54 9 11..." : "embajador@tuweb.com"}
+                required
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-900 focus:bg-white focus:border-[#0A2A5B] outline-none transition"
+              />
             </div>
           </div>
-        </div>
 
-        {/* Bottom ecosystem sublogos */}
-        <div className="w-full max-w-sm text-center space-y-4">
-          <p className="text-[10px] font-black uppercase tracking-widest text-blue-300/60">
-            Marcas Integradas del Ecosistema
-          </p>
-          <div className="flex items-center justify-center gap-6 border-t border-blue-400/10 pt-4">
-            <img
-              src="/assets/travelcab_blanco.svg"
-              alt="TravelCab"
-              className="h-6 w-auto opacity-70 hover:opacity-100 transition-opacity"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <img
-              src="/assets/experience_blanco.svg"
-              alt="Experiences"
-              className="h-6 w-auto opacity-70 hover:opacity-100 transition-opacity"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <img
-              src="/assets/rewards_blanco.svg"
-              alt="Rewards"
-              className="h-6 w-auto opacity-70 hover:opacity-100 transition-opacity"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Right panel – Light ── */}
-      <div className="flex w-full flex-col items-center justify-center bg-[#f8fafc] px-6 py-12 lg:w-1/2">
-        {/* Mobile logo */}
-        <div className="mb-8 flex justify-center lg:hidden">
-          <img
-            src="/assets/travelapp_original.svg"
-            alt="TravelApp Ecosystem"
-            className="h-12 w-auto"
-          />
-        </div>
-
-        {/* Login card */}
-        <div className="w-full max-w-md">
-          <div className="rounded-3xl bg-white p-8 shadow-[0_8px_40px_rgba(10,42,91,0.12)] ring-1 ring-slate-100 sm:p-10">
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl font-black text-[#0a2a5b]">
-                Iniciar Sesión
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Ingresá con tus credenciales corporativas
-              </p>
-            </div>
-
-            {/* Alerts */}
-            {error && (
-              <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {success && (
-              <div className="mb-6 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                <span>{success}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-              {/* Email field */}
-              <div>
-                <label
-                  htmlFor="login-email"
-                  className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500"
-                >
-                  Correo Electrónico
-                </label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                    <Mail className="h-4 w-4" />
-                  </span>
-                  <input
-                    id="login-email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ejemplo@empresa.com"
-                    className="block w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[#0a2a5b] focus:bg-white focus:ring-2 focus:ring-[#0a2a5b]/10"
-                  />
-                </div>
-              </div>
-
-              {/* Password field */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label
-                    htmlFor="login-password"
-                    className="block text-xs font-bold uppercase tracking-widest text-slate-500"
-                  >
-                    Contraseña
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    disabled={sendingReset}
-                    className="text-xs font-bold text-[#ff6b00] hover:text-[#e05f00] hover:underline transition-colors disabled:opacity-50"
-                  >
-                    {sendingReset ? "Enviando..." : "¿Olvidaste tu contraseña?"}
-                  </button>
-                </div>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                    <Lock className="h-4 w-4" />
-                  </span>
-                  <input
-                    id="login-password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="block w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[#0a2a5b] focus:bg-white focus:ring-2 focus:ring-[#0a2a5b]/10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
-                    aria-label={
-                      showPassword ? "Ocultar contraseña" : "Ver contraseña"
-                    }
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Contraseña
+              </label>
               <button
-                id="login-submit-btn"
-                type="submit"
-                disabled={isSubmitting}
-                className="relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#ff6b00] py-3.5 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/30 transition-all hover:bg-[#e05f00] hover:shadow-orange-500/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={sendingReset}
+                className="text-[11px] font-bold text-[#FF5A19] hover:underline"
               >
-                {isSubmitting ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Verificando...
-                  </>
-                ) : (
-                  "Ingresar al Ecosistema"
-                )}
+                {sendingReset ? "Enviando..." : "¿Olvidaste tu contraseña?"}
               </button>
-
-              {/* Botón de Autenticación Biométrica (Huella / Face ID) */}
-              {biometricsAvailable && (
-                <div className="pt-2">
-                  <div className="relative flex items-center justify-center my-3">
-                    <div className="border-t border-slate-200 w-full"></div>
-                    <span className="bg-white px-3 text-[10px] uppercase font-bold text-slate-400">O ingresá con</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleBiometricLogin}
-                    disabled={isSubmitting}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 py-3 text-xs font-black uppercase tracking-wider text-slate-700 transition-all active:scale-[0.98] cursor-pointer shadow-sm"
-                  >
-                    <Fingerprint className="h-4 w-4 text-[#ff6b00]" />
-                    Desbloquear con Huella / Face ID
-                  </button>
-                </div>
-              )}
-            </form>
-
-            {/* Ambassador link section */}
-            <div className="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4 text-center space-y-1">
-              <p className="text-xs font-bold text-[#0a2a5b]">
-                ¿Sos Embajador o Creador de Contenido?
-              </p>
-              <p className="text-[11px] text-slate-500">
-                Los embajadores ingresan con su cuenta personal desde su portal dedicado.
-              </p>
-              <a
-                href="/afiliados/login"
-                className="mt-2 inline-block rounded-xl bg-[#0a2a5b] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#0a2a5b]/90 transition-all"
-              >
-                Ingresar al Portal de Embajador ➔
-              </a>
             </div>
-
-            {/* Support section */}
-            <div className="mt-4 text-center border-t border-slate-100 pt-4">
-              <p className="text-xs text-slate-400">
-                ¿Necesitás soporte? Contactanos en{" "}
-                <a
-                  href="mailto:soporte@travelapp.ar"
-                  className="font-bold text-[#0a2a5b] hover:underline"
-                >
-                  soporte@travelapp.ar
-                </a>
-              </p>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-900 focus:bg-white focus:border-[#0A2A5B] outline-none transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
-          <p className="mt-6 text-center text-xs text-slate-400">
-            © {new Date().getFullYear()} TravelApp s.a.s. · Todos los derechos reservados
+          {/* Botón de Envío */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full py-3 rounded-xl text-white font-bold text-xs uppercase tracking-wider shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer ${
+              activeTab === "viajero"
+                ? "bg-[#0A2A5B] hover:bg-[#071d3f] shadow-blue-900/20"
+                : "bg-[#FF5A19] hover:bg-[#e04c10] shadow-orange-900/20"
+            }`}
+          >
+            {isSubmitting
+              ? "Validando..."
+              : activeTab === "viajero"
+              ? "Ingresar a mi Cuenta"
+              : "Ingresar al Portal de Creadores"}
+          </button>
+
+          {/* Acceso Biométrico */}
+          {biometricsAvailable && (
+            <button
+              type="button"
+              onClick={handleBiometricLogin}
+              disabled={isSubmitting}
+              className="w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <Fingerprint className="w-4 h-4 text-[#FF5A19]" />
+              <span>Desbloquear con Huella o Face ID</span>
+            </button>
+          )}
+        </form>
+
+        {/* Separador */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-100"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="px-3 bg-white text-slate-400 font-medium">¿Nuevo en TravelApp?</span>
+          </div>
+        </div>
+
+        {/* Botón de Registro Onboarding Estilo App */}
+        {activeTab === "viajero" ? (
+          <Link
+            href="/registro"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-orange-50 hover:bg-orange-100 text-[#FF5A19] border border-orange-200 font-black text-xs transition-all shadow-xs group"
+          >
+            <span>Crear Cuenta y Sumar 500 Puntos Rewards</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        ) : (
+          <Link
+            href="/landing/afiliados"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-black text-xs transition-all shadow-xs group"
+          >
+            <span>Postularse al Programa de Embajadores</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        )}
+
+        {/* Aviso de Privacidad y Legal */}
+        <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+          <p className="text-[11px] text-slate-400">
+            Al ingresar aceptás los{" "}
+            <Link href="/landing/ecosistema#terminos" className="underline hover:text-slate-600">
+              Términos de Servicio
+            </Link>{" "}
+            y{" "}
+            <Link href="/landing/ecosistema#privacidad" className="underline hover:text-slate-600">
+              Política de Privacidad
+            </Link>{" "}
+            de TravelApp S.A.S.
           </p>
         </div>
       </div>
+
+      {/* Pie de página seguro */}
+      <p className="relative z-10 text-[11px] text-slate-400 mt-6 text-center">
+        © 2026 TravelApp s.a.s. · Plataforma Oficial de Viajes y Movilidad
+      </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#071C3D] flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#FF5A19] border-t-transparent" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

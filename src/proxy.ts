@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
  * PUBLIC_ROUTES – paths that never require authentication.
  * Everything else in the ecosystem is considered protected.
  */
-const PUBLIC_ROUTES = ["/login", "/landing", "/marketplace", "/canjes", "/rewards", "/afiliados", "/politica-de-cookies"];
+const PUBLIC_ROUTES = ["/login", "/registro", "/landing", "/marketplace", "/canjes", "/rewards", "/afiliados", "/politica-de-cookies"];
 
 /**
  * SESSION_COOKIE – lightweight presence signal set by AuthContext on login/logout.
@@ -28,15 +28,14 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // B) experience.travelapp.ar ➡️ Landing de Experience directamente
-  if (hostname.includes("experience") && !hostname.includes("travelapp.ar")) {
+  // B) experience.travelapp.ar ➡️ Landing de Experience & Marketplace Receptivo
+  const isExperienceHost = (hostname.includes("experience") && !hostname.includes("travelapp.ar")) || hostname.startsWith("experience.");
+  if (isExperienceHost) {
     if (cleanPath === "" || cleanPath === "/home") {
       return NextResponse.rewrite(new URL("/landing/experience", request.url));
     }
-  }
-  if (hostname.startsWith("experience.")) {
-    if (cleanPath === "" || cleanPath === "/home") {
-      return NextResponse.rewrite(new URL("/landing/experience", request.url));
+    if (cleanPath === "/marketplace" || cleanPath === "/marketplaces") {
+      return NextResponse.rewrite(new URL("/landing/experience/marketplace", request.url));
     }
   }
 
@@ -55,11 +54,6 @@ export function proxy(request: NextRequest) {
   }
 
   // ─── 2. GLOBAL PUBLIC REWRITES ─────────────────────────────────────────────
-  
-  // El catálogo de marketplace funciona en cualquier dominio del ecosistema
-  if (cleanPath === "/marketplace" || cleanPath === "/marketplaces") {
-    return NextResponse.rewrite(new URL("/landing/experience/marketplace", request.url));
-  }
 
   // El catálogo de canjes de Rewards funciona públicamente en cualquier dominio
   if (cleanPath === "/canjes") {
