@@ -31,18 +31,27 @@ export const LeadDetailSlideOver: React.FC<LeadDetailSlideOverProps> = ({ lead, 
 
   // Source Badge Styles
   const sourceStyles: Record<string, string> = {
-    WhatsApp: 'bg-green-500/10 text-green-500 border-green-500/20',
-    Web: 'bg-tech-blue/10 text-tech-blue border-blue-500/20',
-    IG: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
-    Messenger: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+    WhatsApp: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
+    Web: 'bg-sky-500/10 text-sky-700 border-sky-500/20',
+    IG: 'bg-gradient-to-r from-pink-500/10 to-purple-500/10 text-pink-700 border-pink-500/20',
+    Messenger: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
   };
 
   // Unit Badge Styles
-  const unitStyles = {
-    TravelCab: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-    Experiencias: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    Rewards: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+  const unitStyles: Record<string, string> = {
+    'TravelCab (Usuario)': 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20',
+    'TravelCab (Conductor)': 'bg-amber-500/10 text-amber-700 border-amber-500/20',
+    'TravelApp Experience': 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+    'TravelApp Rewards': 'bg-purple-500/10 text-purple-700 border-purple-500/20',
+    'TravelApp Afiliados': 'bg-teal-500/10 text-teal-700 border-teal-500/20',
+    'TravelApp': 'bg-blue-500/10 text-blue-700 border-blue-500/20',
+    'TravelCab': 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20',
+    'Experiencias': 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+    'Rewards': 'bg-purple-500/10 text-purple-700 border-purple-500/20',
   };
+
+  const currentUnitStyle = unitStyles[lead.businessUnit] || 'bg-slate-100 text-slate-700 border-slate-200';
+  const currentSourceStyle = sourceStyles[lead.origin] || 'bg-slate-100 text-slate-700 border-slate-200';
 
   return (
     <>
@@ -60,10 +69,10 @@ export const LeadDetailSlideOver: React.FC<LeadDetailSlideOverProps> = ({ lead, 
           <div>
             <h2 className="text-xl font-bold text-tech-blue">{lead.customerName}</h2>
             <div className="mt-2 flex gap-2">
-              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${sourceStyles[lead.origin]}`}>
+              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${currentSourceStyle}`}>
                 {lead.origin}
               </span>
-              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${unitStyles[lead.businessUnit]}`}>
+              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${currentUnitStyle}`}>
                 {lead.businessUnit}
               </span>
             </div>

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverAddDoc, serverGetDoc, serverSetDoc, serverGetDocs, serverUpdateDoc } from '@/lib/firestore-server';
-import { processTravisMessage } from '@/app/api/travis/chat/route';
+import { processTravisMessage, detectDetailedBusinessUnit } from '@/app/api/travis/chat/route';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { conversationId, userMessage, userName = 'Usuario Web', userEmail = '' } = body;
+    const { conversationId, userMessage, userName = 'Usuario Web', userEmail = '', userPhone = '' } = body;
 
     if (!userMessage || !userMessage.trim()) {
       return NextResponse.json({ error: 'Message content is required' }, { status: 400 });
@@ -13,35 +13,55 @@ export async function POST(req: NextRequest) {
 
     const id = conversationId || `web_chat_${Date.now()}`;
     const timestamp = Date.now();
+    const detectedUnit = detectDetailedBusinessUnit(userMessage);
 
     // 1. Ensure conversation document exists
-    const convRef = `conversations/${id}`;
     let convDoc = await serverGetDoc('conversations', id);
 
     if (!convDoc.exists) {
       await serverSetDoc('conversations', id, {
         channel: 'web',
         status: 'bot',
+        customerName: userName,
         participants: [
-          { id: 'web_user', name: userName, email: userEmail, role: 'customer' },
+          { id: 'web_user', name: userName, email: userEmail, phone: userPhone, role: 'customer' },
           { id: 'travis', name: 'Travis IA', role: 'travis' }
         ],
-        lastMessage: {
-          content: userMessage,
-          timestamp,
-          senderId: 'web_user'
-        },
+        lastMessage: userMessage,
+        lastMessageAt: timestamp,
         unreadCount: 1,
+        metadata: {
+          businessUnit: detectedUnit,
+          passengerName: userName,
+        },
         createdAt: timestamp,
         updatedAt: timestamp
       });
+
+      // Crear lead inicial en CRM
+      try {
+        await serverAddDoc('leads', {
+          customerName: userName,
+          phone: userPhone || '',
+          email: userEmail || '',
+          origin: 'Web',
+          status: 'Nuevos',
+          customerStatus: 'Prospecto',
+          customerLevel: 1,
+          businessUnit: detectedUnit,
+          chatHistory: [{ sender: 'Client', message: userMessage, timestamp }],
+          conversationId: id,
+          createdAt: timestamp,
+          lastInteraction: timestamp,
+        });
+      } catch (crmErr) {
+        console.warn('[Web Chat] Error creating initial lead:', crmErr);
+      }
     } else {
       await serverUpdateDoc('conversations', id, {
-        lastMessage: {
-          content: userMessage,
-          timestamp,
-          senderId: 'web_user'
-        },
+        lastMessage: userMessage,
+        lastMessageAt: timestamp,
+        'metadata.businessUnit': detectedUnit,
         updatedAt: timestamp
       });
     }
@@ -61,6 +81,7 @@ export async function POST(req: NextRequest) {
     convDoc = await serverGetDoc('conversations', id);
     const convData = convDoc.data();
     let travisReplyText = '';
+    let buttons = undefined;
 
     if (convData?.status === 'bot') {
       // Get last 10 messages for context
@@ -77,9 +98,10 @@ export async function POST(req: NextRequest) {
         };
       });
 
-      // Call Travis AI engine directly without ManyChat
-      const travisResult = await processTravisMessage(userMessage, history, 'Experiences', id);
-      travisReplyText = travisResult.response || 'Hola, ¿en qué te puedo ayudar sobre nuestras experiencias de viaje?';
+      // Call Travis AI engine with detected 6-way business unit
+      const travisResult = await processTravisMessage(userMessage, history, detectedUnit, id);
+      travisReplyText = travisResult.response || 'Hola, ¿en qué te puedo ayudar hoy con los servicios de TravelApp?';
+      buttons = travisResult.buttons;
 
       // Save Travis message in Firestore
       const travisMsgData = {
@@ -91,12 +113,21 @@ export async function POST(req: NextRequest) {
         status: 'delivered'
       };
       await serverAddDoc(`conversations/${id}/messages`, travisMsgData);
+
+      // Actualizar último mensaje de la conversación
+      await serverUpdateDoc('conversations', id, {
+        lastMessage: travisReplyText.substring(0, 120),
+        lastMessageAt: Date.now(),
+        'metadata.businessUnit': travisResult.businessUnit || detectedUnit,
+      });
     }
 
     return NextResponse.json({
       success: true,
       conversationId: id,
-      response: travisReplyText
+      response: travisReplyText,
+      buttons,
+      businessUnit: detectedUnit,
     });
   } catch (error) {
     console.error('[Web Chat API] Error:', error);

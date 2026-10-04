@@ -110,7 +110,9 @@ function ConversationList({
     // Excluir conversaciones cerradas de la vista de chats activos
     if (c.status === 'closed') return false;
 
-    const matchSearch = !search || c.participants.some(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    const matchSearch = !search || 
+      (c.participants || []).some(p => p.name.toLowerCase().includes(search.toLowerCase())) ||
+      ((c as any).customerName && (c as any).customerName.toLowerCase().includes(search.toLowerCase()));
     if (filter === 'all') return matchSearch;
     if (filter === 'bot') return c.status === 'bot' && matchSearch;
     if (filter === 'pending') return c.status === 'pending' && matchSearch;
@@ -118,16 +120,29 @@ function ConversationList({
     if (filter === 'whatsapp') return c.channel === 'whatsapp' && matchSearch;
     if (filter === 'instagram') return c.channel === 'instagram' && matchSearch;
     if (filter === 'messenger') return c.channel === 'messenger' && matchSearch;
+    if (filter === 'web') return c.channel === 'web' && matchSearch;
+    if (filter === 'cab_driver') return (c.metadata?.businessUnit || '').includes('Conductor') && matchSearch;
+    if (filter === 'cab_user') return (c.metadata?.businessUnit || '').includes('TravelCab') && !(c.metadata?.businessUnit || '').includes('Conductor') && matchSearch;
+    if (filter === 'experiences') return ((c.metadata?.businessUnit || '').includes('Experience') || (c.metadata?.businessUnit || '').includes('Experiencias')) && matchSearch;
+    if (filter === 'rewards') return (c.metadata?.businessUnit || '').includes('Rewards') && matchSearch;
+    if (filter === 'afiliados') return (c.metadata?.businessUnit || '').includes('Afiliados') && matchSearch;
     return matchSearch;
   });
 
   const FILTERS = [
     { key: 'all', label: 'Todos' },
     { key: 'bot', label: '🤖 Travis' },
-    { key: 'pending', label: '⏳ Pendiente' },
+    { key: 'pending', label: '⏳ Esperando Operador' },
     { key: 'active', label: '👤 Operador' },
-    { key: 'whatsapp', label: '📱 WA' },
-    { key: 'instagram', label: '📷 IG' },
+    { key: 'whatsapp', label: '📱 WhatsApp' },
+    { key: 'instagram', label: '📷 Instagram' },
+    { key: 'messenger', label: '💬 Messenger' },
+    { key: 'web', label: '🌐 Web' },
+    { key: 'cab_user', label: '🚕 Pasajeros' },
+    { key: 'cab_driver', label: '👨‍✈️ Choferes' },
+    { key: 'experiences', label: '🗺️ Tours' },
+    { key: 'rewards', label: '🎁 Rewards' },
+    { key: 'afiliados', label: '🤝 Afiliados' },
   ];
 
   return (
@@ -167,7 +182,7 @@ function ConversationList({
           </div>
         ) : (
           filtered.map(conv => {
-            const mainParticipant = conv.participants.find(p => p.role === 'customer' || p.role === 'driver');
+            const mainParticipant = (conv.participants || []).find(p => p.role === 'customer' || p.role === 'driver') || { name: (conv as any).customerName || 'Contacto' };
             const isActive = conv.id === activeId;
             return (
               <button
@@ -269,19 +284,24 @@ function ChatWindow({
         operatorName,
       });
       setInput('');
-      // Si hay suscriptor de ManyChat, enviar via API
-      if (conversation.manyChatSubscriberId) {
-        await fetch('/api/broadcast', {
+      // Despachar el mensaje al canal correspondiente (WhatsApp Cloud API o ManyChat)
+      const customerParticipant = conversation.participants?.find(p => p.role === 'customer' || p.role === 'driver');
+      const recipientPhone = customerParticipant?.phone || (conversation as any).externalId;
+
+      try {
+        await fetch('/api/messages/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            title: 'Respuesta Operador',
-            message: input.trim(),
-            audience: 'specific',
-            specificIds: [conversation.manyChatSubscriberId],
+            conversationId: conversation.id,
+            content: input.trim(),
             channel: conversation.channel,
+            recipientPhone,
+            manyChatSubscriberId: conversation.manyChatSubscriberId,
           }),
         });
+      } catch (sendErr) {
+        console.warn('Error dispatching operator reply externally:', sendErr);
       }
     } catch (e) {
       console.error('Error sending message:', e);
@@ -325,7 +345,7 @@ function ChatWindow({
     });
   };
 
-  const mainParticipant = conversation.participants.find(p => p.role === 'customer' || p.role === 'driver');
+  const mainParticipant = (conversation.participants || []).find(p => p.role === 'customer' || p.role === 'driver') || { name: (conversation as any).customerName || 'Contacto' };
 
   return (
     <div className="flex flex-col h-full">

@@ -35,13 +35,25 @@ export interface ConversationParticipant {
   avatarUrl?: string;
 }
 
+export type BusinessUnit = 
+  | 'TravelCab (Usuario)' 
+  | 'TravelCab (Conductor)' 
+  | 'TravelApp Experience' 
+  | 'TravelApp Rewards' 
+  | 'TravelApp Afiliados' 
+  | 'TravelApp'
+  | 'TravelCab' 
+  | 'Experiences' 
+  | 'Rewards' 
+  | 'General';
+
 export interface ConversationMetadata {
   leadId?: string;
   tripId?: string;
   groupId?: string;
   driverName?: string;
   passengerName?: string;
-  businessUnit?: 'TravelCab' | 'Experiences' | 'Rewards' | 'General';
+  businessUnit?: BusinessUnit;
 }
 
 export interface Conversation {

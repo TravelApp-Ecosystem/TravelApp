@@ -368,6 +368,46 @@ function ChannelsTab({ config, onSave }: { config: TravisConfig; onSave: (partia
         </div>
       </div>
 
+      {/* Configuración Meta WhatsApp Cloud API Oficial */}
+      <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
+            <Phone className="h-4 w-4" />
+          </div>
+          <div>
+            <h4 className="font-bold text-slate-800 text-sm">Conexión Oficial Meta WhatsApp Cloud API</h4>
+            <p className="text-xs text-slate-500">Parámetros para configurar en Meta for Developers (WhatsApp Webhook)</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
+            <span className="text-slate-400 block font-medium mb-1">Callback URL (Webhook de Meta):</span>
+            <code className="text-emerald-700 font-mono font-semibold break-all select-all">
+              https://travelapp.ar/api/webhooks/whatsapp
+            </code>
+          </div>
+
+          <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
+            <span className="text-slate-400 block font-medium mb-1">Verify Token (Token de Verificación):</span>
+            <code className="text-emerald-700 font-mono font-semibold select-all">
+              travelapp_meta_verify_2026
+            </code>
+          </div>
+        </div>
+
+        <div className="bg-white/90 p-3 rounded-xl border border-emerald-100 text-xs text-slate-600 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <Check className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+            <span><strong>Campo a suscribir:</strong> En Meta Webhooks suscripción de campos, marcar <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-800 font-bold">messages</code>.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Check className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+            <span><strong>Motor Cognitivo:</strong> Impulsado por <strong>Google Gemini 2.5 Flash</strong> (soporta texto, notas de voz en audio nativo y pines GPS).</span>
+          </div>
+        </div>
+      </div>
+
       {/* Handoff triggers */}
       <div>
         <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -414,6 +454,8 @@ interface TrainMessage {
   content: string;
   feedback?: 'good' | 'bad' | null;
   businessUnit?: string;
+  source?: string;
+  buttons?: { id: string; title: string }[];
 }
 
 function TrainingTab() {
@@ -427,9 +469,9 @@ function TrainingTab() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg = input.trim();
+  const sendMessage = async (textToSend?: string) => {
+    const userMsg = (textToSend || input).trim();
+    if (!userMsg || loading) return;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setLoading(true);
@@ -446,6 +488,8 @@ function TrainingTab() {
         content: data.response || 'Error al obtener respuesta.',
         feedback: null,
         businessUnit: data.businessUnit,
+        source: data.source,
+        buttons: data.buttons,
       }]);
     } catch {
       setMessages(prev => [...prev, { role: 'travis', content: 'Error de conexión con Travis.', feedback: null }]);
@@ -464,7 +508,7 @@ function TrainingTab() {
       <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 mb-3 flex gap-2">
         <Bot className="h-4 w-4 text-tech-blue flex-shrink-0 mt-0.5" />
         <div className="text-xs text-slate-600">
-          <strong>Chat de Entrenamiento:</strong> Probá cómo responde Travis. Marcá cada respuesta con 👍 o 👎 para identificar qué mejorar en el System Prompt o la Base de Conocimiento.
+          <strong>Chat de Entrenamiento:</strong> Probá cómo responde Travis en tiempo real con <strong>Gemini 2.5 Flash</strong>. Simulá preguntas de traslados, tours y rewards, o hacé clic en los botones interactivos.
         </div>
       </div>
 
@@ -495,23 +539,41 @@ function TrainingTab() {
             <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${msg.role === 'travis' ? 'bg-gradient-to-br from-tech-blue to-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
               {msg.role === 'travis' ? <Bot className="h-4 w-4" /> : 'TU'}
             </div>
-            <div className={`max-w-[75%] flex flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`px-3 py-2 rounded-2xl text-sm ${msg.role === 'travis' ? 'bg-gradient-to-br from-tech-blue to-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-800'}`}>
+            <div className={`max-w-[75%] flex flex-col gap-1.5 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'travis' ? 'bg-white border border-slate-200 text-slate-800 shadow-sm' : 'bg-tech-blue text-white'}`}>
                 {msg.content}
               </div>
-              {msg.role === 'travis' && msg.feedback !== undefined && (
-                <div className="flex items-center gap-2">
-                  {msg.businessUnit && (
-                    <span className="text-[10px] text-slate-400">→ {msg.businessUnit}</span>
-                  )}
-                  <button onClick={() => setFeedback(idx, 'good')} className={`p-1 rounded-lg transition-all ${msg.feedback === 'good' ? 'bg-emerald-100 text-emerald-600' : 'hover:bg-slate-100 text-slate-300'}`}>
-                    <ThumbsUp className="h-3 w-3" />
-                  </button>
-                  <button onClick={() => setFeedback(idx, 'bad')} className={`p-1 rounded-lg transition-all ${msg.feedback === 'bad' ? 'bg-red-100 text-red-500' : 'hover:bg-slate-100 text-slate-300'}`}>
-                    <ThumbsDown className="h-3 w-3" />
-                  </button>
-                  {msg.feedback === 'bad' && (
-                    <span className="text-[10px] text-red-500">Mejorá el System Prompt o la Base de Conocimiento ↗</span>
+
+              {/* Botones Interactivos de WhatsApp simulados */}
+              {msg.role === 'travis' && msg.buttons && msg.buttons.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-0.5">
+                  {msg.buttons.map(btn => (
+                    <button
+                      key={btn.id}
+                      onClick={() => sendMessage(btn.title)}
+                      className="px-3 py-1.5 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 border border-slate-200 text-slate-700 hover:text-emerald-700 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                    >
+                      <span>{btn.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {msg.role === 'travis' && (
+                <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                  <span className={`font-semibold ${msg.source === 'gemini_2_5_flash' ? 'text-indigo-600' : 'text-slate-400'}`}>
+                    {msg.source === 'gemini_2_5_flash' ? '✨ Gemini 2.5 Flash' : msg.source === 'local_handoff' ? '🛡️ Handoff' : '🤖 Fallback Mock'}
+                  </span>
+                  {msg.businessUnit && <span>• {msg.businessUnit}</span>}
+                  {msg.feedback !== undefined && (
+                    <div className="flex items-center gap-1 ml-1">
+                      <button onClick={() => setFeedback(idx, 'good')} className={`p-1 rounded-lg transition-all ${msg.feedback === 'good' ? 'bg-emerald-100 text-emerald-600' : 'hover:bg-slate-100 text-slate-300'}`}>
+                        <ThumbsUp className="h-3 w-3" />
+                      </button>
+                      <button onClick={() => setFeedback(idx, 'bad')} className={`p-1 rounded-lg transition-all ${msg.feedback === 'bad' ? 'bg-red-100 text-red-500' : 'hover:bg-slate-100 text-slate-300'}`}>
+                        <ThumbsDown className="h-3 w-3" />
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -543,7 +605,7 @@ function TrainingTab() {
           className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-tech-blue/20"
         />
         <button
-          onClick={sendMessage}
+          onClick={() => sendMessage()}
           disabled={loading || !input.trim()}
           className="p-2.5 bg-tech-blue hover:bg-blue-700 text-white rounded-xl transition-colors disabled:opacity-50"
         >

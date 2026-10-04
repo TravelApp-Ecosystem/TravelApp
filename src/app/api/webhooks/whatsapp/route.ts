@@ -1,73 +1,123 @@
+// =============================================================================
+// META WHATSAPP WEBHOOK — TravelApp Ecosystem
+// Omnichannel Gateway & Travis AI Multimodal Engine
+// =============================================================================
+
 import { NextRequest, NextResponse } from 'next/server';
-import { collection, addDoc, query, where, getDocs, doc, updateDoc, orderBy, limit, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, updateDoc, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Conversation, Message, MessageChannel, ConversationStatus } from '@/types/messaging';
-import { processTravisMessage } from '../../travis/chat/route';
+import { processTravisMessage, detectDetailedBusinessUnit } from '@/app/api/travis/chat/route';
+import {
+  getMetaWhatsAppConfig,
+  sendWhatsAppTextMessage,
+  sendWhatsAppInteractiveButtons,
+  markWhatsAppMessageAsRead,
+  fetchMetaMediaAsBase64,
+} from '@/lib/meta-whatsapp';
 
-// GET: Verificación del webhook de Meta
+// -----------------------------------------------------------------------------
+// GET: Verificación del Webhook de Meta (Handshake inicial)
+// -----------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mode = searchParams.get('hub.mode');
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
-  const VERIFY_TOKEN = process.env.META_WHATSAPP_VERIFY_TOKEN || 'travelapp_verify_token';
+  const { verifyToken } = getMetaWhatsAppConfig();
 
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('[Meta Webhook] Verificado con éxito.');
+  if (mode === 'subscribe' && token === verifyToken) {
+    console.log('[Meta Webhook] Verificado con éxito por Meta.');
     return new NextResponse(challenge, { status: 200 });
   } else {
-    console.warn('[Meta Webhook] Falla en verificación de token.');
+    console.warn(`[Meta Webhook] Token de verificación inválido. Recibido: "${token}", Esperado: "${verifyToken}"`);
     return new NextResponse('Forbidden', { status: 403 });
   }
 }
 
-// POST: Recibir notificaciones de mensajes
+// -----------------------------------------------------------------------------
+// POST: Recepción de Eventos y Mensajes de WhatsApp
+// -----------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
-    // Validar estructura de Meta WhatsApp notification
+    // 1. Extraer objeto de cambio de Meta
     const entry = body.entry?.[0];
     const change = entry?.changes?.[0];
     const val = change?.value;
-    const msg = val?.messages?.[0];
     
+    // Ignorar eventos de estado (sent, delivered, read) si no traen mensajes
+    if (val?.statuses && !val?.messages) {
+      return NextResponse.json({ status: 'status_ack' });
+    }
+
+    const msg = val?.messages?.[0];
     if (!msg) {
-      // Ignorar actualizaciones de estado u otros eventos no relacionados a mensajes recibidos
       return NextResponse.json({ status: 'ignored' });
     }
 
     const phone_number_id = val.metadata?.phone_number_id;
-    const from = msg.from; // Teléfono del remitente
-    const userMessage = msg.text?.body;
-    const senderName = val.contacts?.[0]?.profile?.name || `WhatsApp User (${from})`;
+    const from = msg.from; // Número de teléfono del usuario (ej: 549381...)
+    const senderName = val.contacts?.[0]?.profile?.name || `Usuario (${from})`;
     const channel: MessageChannel = 'whatsapp';
+    const messageId = msg.id;
 
-    if (!userMessage) {
-      return NextResponse.json({ status: 'no_text_body' });
+    // 2. Marcar inmediatamente el mensaje como leído en WhatsApp (doble tilde azul)
+    if (messageId) {
+      markWhatsAppMessageAsRead(messageId, { phoneNumberId: phone_number_id }).catch(() => {});
     }
 
-    console.log(`[Meta Webhook] Mensaje recibido de ${senderName} (${from}): "${userMessage}"`);
+    // 3. Procesar distintos tipos de mensajes entrantes
+    let userMessage = '';
+    let audioInput: { base64: string; mimeType: string } | undefined = undefined;
 
-    // Detectar unidad de negocio basándonos en el contenido (al igual que ManyChat)
-    const lowerMsg = userMessage.toLowerCase();
-    let businessUnit: 'TravelCab' | 'Experiences' | 'Rewards' | 'General' = 'General';
-    if (lowerMsg.includes('remis') || lowerMsg.includes('taxi') || lowerMsg.includes('viaje') || lowerMsg.includes('conductor') || lowerMsg.includes('chofer') || lowerMsg.includes('travelcab')) {
-      businessUnit = 'TravelCab';
-    } else if (lowerMsg.includes('tour') || lowerMsg.includes('excursion') || lowerMsg.includes('experiencia') || lowerMsg.includes('viaje grupal')) {
-      businessUnit = 'Experiences';
-    } else if (lowerMsg.includes('punto') || lowerMsg.includes('reward') || lowerMsg.includes('beneficio') || lowerMsg.includes('canje')) {
-      businessUnit = 'Rewards';
+    if (msg.type === 'text') {
+      userMessage = msg.text?.body || '';
+    } else if (msg.type === 'audio') {
+      const audioId = msg.audio?.id;
+      if (audioId) {
+        const audioData = await fetchMetaMediaAsBase64(audioId);
+        if (audioData) {
+          audioInput = audioData;
+          userMessage = '[Nota de voz de WhatsApp recibida]';
+        } else {
+          userMessage = 'Te envié un mensaje de voz pero no se pudo reproducir.';
+        }
+      }
+    } else if (msg.type === 'location') {
+      const lat = msg.location?.latitude;
+      const lng = msg.location?.longitude;
+      const address = msg.location?.address || '';
+      const name = msg.location?.name || '';
+      userMessage = `Mi ubicación actual es: ${name ? name + ' - ' : ''}${address} (Coordenadas: ${lat}, ${lng})`;
+    } else if (msg.type === 'interactive') {
+      if (msg.interactive?.type === 'button_reply') {
+        userMessage = msg.interactive.button_reply?.title || '';
+      } else if (msg.interactive?.type === 'list_reply') {
+        userMessage = msg.interactive.list_reply?.title || '';
+      }
+    } else if (msg.type === 'image') {
+      userMessage = msg.image?.caption || 'Te comparto esta foto.';
     }
 
-    // 1. Buscar conversación activa en Firestore
+    if (!userMessage && !audioInput) {
+      return NextResponse.json({ status: 'no_supported_content' });
+    }
+
+    console.log(`[Meta Webhook] Mensaje (${msg.type}) de ${senderName} (${from}): "${userMessage}"`);
+
+    // 4. Detectar unidad de negocio sugerida (6 unidades oficiales)
+    const businessUnit = detectDetailedBusinessUnit(userMessage);
+
+    // 5. Buscar conversación activa en Firestore (compatibilidad completa con /messages)
     const convsRef = collection(db, 'conversations');
     const qConvs = query(
       convsRef,
       where('channel', '==', channel),
       where('externalId', '==', from),
-      where('status', 'in', ['bot', 'open']),
+      where('status', 'in', ['bot', 'pending', 'active']),
       limit(1)
     );
     const snapConvs = await getDocs(qConvs);
@@ -78,60 +128,79 @@ export async function POST(req: NextRequest) {
     if (!snapConvs.empty) {
       const docConv = snapConvs.docs[0];
       conversationId = docConv.id;
-      conversationStatus = docConv.data().status as ConversationStatus;
+      const docData = docConv.data();
+      conversationStatus = docData.status as ConversationStatus;
       
-      // Actualizar timestamp
+      // Actualizar timestamp y último mensaje
       await updateDoc(doc(db, 'conversations', conversationId), {
+        lastMessage: userMessage,
         lastMessageAt: Date.now(),
-        lastMessageText: userMessage,
+        unreadCount: (docData.unreadCount || 0) + 1,
+        'metadata.businessUnit': businessUnit,
       });
     } else {
-      // Crear nueva conversación
-      const newConversation = {
-        externalId: from,
-        customerName: senderName,
+      // Crear nueva conversación estructurada según modelo Conversation
+      const newConversation: Omit<Conversation, 'id'> = {
+        type: 'customer_support',
         channel,
         status: 'bot',
+        participants: [
+          { id: from, name: senderName, role: 'customer', phone: from },
+          { id: 'travis', name: 'Travis IA', role: 'travis' },
+        ],
+        lastMessage: userMessage,
         lastMessageAt: Date.now(),
-        lastMessageText: userMessage,
+        unreadCount: 1,
         metadata: {
           businessUnit,
-          phone_number_id,
+          passengerName: senderName,
         },
         createdAt: Date.now(),
       };
-      const newDoc = await addDoc(convsRef, newConversation);
+
+      const newDoc = await addDoc(convsRef, {
+        ...newConversation,
+        externalId: from,
+        customerName: senderName,
+      });
       conversationId = newDoc.id;
 
-      // Crear lead en CRM
-      const leadsRef = collection(db, 'leads');
-      await addDoc(leadsRef, {
-        customerName: senderName,
-        phone: from,
-        origin: 'WhatsApp',
-        status: 'Nuevos',
-        customerStatus: 'Prospecto',
-        customerLevel: 1,
-        businessUnit,
-        chatHistory: [{ sender: 'Client', message: userMessage, timestamp: Date.now() }],
-        conversationId,
-      });
+      // Crear o sincronizar Lead en el CRM de Firestore
+      try {
+        const leadsRef = collection(db, 'leads');
+        await addDoc(leadsRef, {
+          customerName: senderName,
+          phone: from,
+          origin: 'WhatsApp',
+          status: 'Nuevos',
+          customerStatus: 'Prospecto',
+          customerLevel: 1,
+          businessUnit,
+          chatHistory: [{ sender: 'Client', message: userMessage, timestamp: Date.now() }],
+          conversationId,
+          createdAt: Date.now(),
+          lastInteraction: Date.now(),
+        });
+      } catch (crmErr) {
+        console.warn('[Meta Webhook] Error creating lead:', crmErr);
+      }
     }
 
-    // 2. Registrar el mensaje recibido en Firestore
-    const messageData: Omit<Message, 'id'> = {
+    // 6. Registrar mensaje del usuario en la subcolección de Firestore
+    const userMsgData: Omit<Message, 'id'> = {
       conversationId,
       sender: { id: from, name: senderName, role: 'customer' },
       content: userMessage,
       timestamp: Date.now(),
-      type: 'text',
+      type: msg.type === 'audio' ? 'text' : (msg.type as any) || 'text',
       channel,
+      isRead: true,
     };
-    await addDoc(collection(db, `conversations/${conversationId}/messages`), messageData);
+    await addDoc(collection(db, `conversations/${conversationId}/messages`), userMsgData);
 
-    // 3. Responder usando Travis IA si corresponde
+    // 7. Si la conversación está en modo 'bot', responder usando Travis IA
     if (conversationStatus === 'bot') {
-      // Cargar historial de chat reciente para contexto
+      // Cargar historial reciente de la conversación
       const historySnap = await getDocs(
         query(
           collection(db, `conversations/${conversationId}/messages`),
@@ -139,64 +208,67 @@ export async function POST(req: NextRequest) {
           limit(10)
         )
       );
+
       const history = historySnap.docs
         .map(d => d.data())
         .reverse()
         .map(m => ({
-          role: m.sender.role === 'customer' ? 'user' : 'assistant',
-          content: m.content,
+          role: m.sender?.role === 'customer' ? 'user' : 'assistant',
+          content: m.content || '',
         }));
 
-      // Procesar con Travis AI
-      const travisResult = await processTravisMessage(userMessage, history, businessUnit, conversationId);
+      // Procesar respuesta con el motor cognitivo de Travis
+      const travisResult = await processTravisMessage(
+        userMessage, 
+        history, 
+        businessUnit, 
+        conversationId, 
+        audioInput
+      );
+      
       const travisReply = travisResult.response;
 
       if (travisReply) {
-        // Enviar respuesta por WhatsApp vía API de Meta Cloud
-        const metaToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
-        if (metaToken && metaToken !== 'TU_META_ACCESS_TOKEN_AQUI') {
-          try {
-            const sendUrl = `https://graph.facebook.com/v19.0/${phone_number_id || 'me'}/messages`;
-            await fetch(sendUrl, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${metaToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                messaging_product: 'whatsapp',
-                recipient_type: 'individual',
-                to: from,
-                type: 'text',
-                text: {
-                  preview_url: false,
-                  body: travisReply,
-                },
-              }),
-            });
-            console.log(`[Meta Webhook] Respuesta enviada con éxito a ${from} via Meta API.`);
-          } catch (sendErr) {
-            console.error('[Meta Webhook] Error al enviar mensaje por Meta API:', sendErr);
-          }
+        // Enviar respuesta a WhatsApp usando Meta Cloud API
+        if (travisResult.buttons && travisResult.buttons.length > 0) {
+          // Enviar con botones interactivos si Travis generó opciones
+          await sendWhatsAppInteractiveButtons(
+            from,
+            travisReply,
+            travisResult.buttons,
+            { phoneNumberId: phone_number_id }
+          );
         } else {
-          console.warn('[Meta Webhook] META_WHATSAPP_ACCESS_TOKEN no configurado. Se simuló envío de respuesta.');
+          // Enviar texto regular
+          await sendWhatsAppTextMessage(
+            from,
+            travisReply,
+            { phoneNumberId: phone_number_id }
+          );
         }
 
-        // Registrar respuesta de Travis en la base de datos
+        // Registrar respuesta de Travis en Firestore
         await addDoc(collection(db, `conversations/${conversationId}/messages`), {
           conversationId,
-          sender: { id: 'travis', name: 'Travis', role: 'travis' },
+          sender: { id: 'travis', name: 'Travis IA', role: 'travis' },
           content: travisReply,
           timestamp: Date.now() + 1,
           type: 'text',
           channel,
+          isRead: false,
+        });
+
+        // Actualizar último mensaje de la conversación
+        await updateDoc(doc(db, 'conversations', conversationId), {
+          lastMessage: travisReply.substring(0, 120),
+          lastMessageAt: Date.now(),
         });
       }
     }
 
     return NextResponse.json({ status: 'success' });
   } catch (error: any) {
-    console.error('[Meta Webhook] Error procesando el webhook:', error);
+    console.error('[Meta Webhook] Error procesando notificación:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

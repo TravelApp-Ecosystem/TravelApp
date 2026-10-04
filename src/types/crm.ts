@@ -1,8 +1,19 @@
 import { PointTransaction } from './rewards';
 
-export type Source = 'WhatsApp' | 'Web' | 'IG' | 'Messenger';
-export type Unit = 'TravelCab' | 'Experiencias' | 'Rewards';
-export type LeadStatus = 'Nuevos' | 'Agendados' | 'En Negociación' | 'Ganados/Perdidos';
+export type Source = 'WhatsApp' | 'Web' | 'IG' | 'Messenger' | 'whatsapp' | 'web' | 'instagram' | 'messenger';
+export type Unit = 
+  | 'TravelCab (Usuario)' 
+  | 'TravelCab (Conductor)' 
+  | 'TravelApp Experience' 
+  | 'TravelApp Rewards' 
+  | 'TravelApp Afiliados' 
+  | 'TravelApp'
+  | 'TravelCab' 
+  | 'Experiencias' 
+  | 'Experiences' 
+  | 'Rewards' 
+  | 'General';
+export type LeadStatus = 'Nuevos' | 'Agendados' | 'En Negociación' | 'Ganados/Perdidos' | 'En Espera Operador';
 export type CustomerLevel = 1 | 2;
 
 export interface ChatMessage {

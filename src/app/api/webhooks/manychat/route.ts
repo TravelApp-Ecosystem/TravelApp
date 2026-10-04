@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverGetDoc, serverGetDocs, serverAddDoc, serverUpdateDoc } from '@/lib/firestore-server';
 import { Conversation, Message, MessageChannel, ConversationStatus } from '@/types/messaging';
-import { processTravisMessage } from '../../travis/chat/route';
+import { processTravisMessage, detectDetailedBusinessUnit } from '../../travis/chat/route';
 
 // ----- Helpers ----------------------------------------------------------------
 
@@ -19,18 +19,8 @@ function detectChannel(rawChannel: string): MessageChannel {
   return 'web';
 }
 
-function detectBusinessUnit(message: string): 'TravelCab' | 'Experiences' | 'Rewards' | 'General' {
-  const msg = message?.toLowerCase() || '';
-  if (msg.includes('remis') || msg.includes('taxi') || msg.includes('viaje') || msg.includes('conductor') || msg.includes('chofer') || msg.includes('travelcab')) {
-    return 'TravelCab';
-  }
-  if (msg.includes('tour') || msg.includes('excursion') || msg.includes('experiencia') || msg.includes('viaje grupal')) {
-    return 'Experiences';
-  }
-  if (msg.includes('punto') || msg.includes('reward') || msg.includes('beneficio') || msg.includes('canje')) {
-    return 'Rewards';
-  }
-  return 'General';
+function detectBusinessUnit(message: string) {
+  return detectDetailedBusinessUnit(message);
 }
 
 async function callTravis(

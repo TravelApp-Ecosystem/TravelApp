@@ -10,36 +10,80 @@ interface LeadCardProps {
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({ customerName, origin, businessUnit, onClick }) => {
-  // Source Badge Styles
-  const sourceStyles = {
-    WhatsApp: 'bg-green-500/10 text-green-500 border-green-500/20',
-    Web: 'bg-tech-blue/10 text-tech-blue border-blue-500/20',
-    IG: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
-    Messenger: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
-  };
+  const normOrigin = (origin || 'Web').toLowerCase();
+  const normUnit = businessUnit || 'TravelApp';
 
-  // Unit Badge Styles
-  const unitStyles = {
-    TravelCab: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-    Experiencias: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    Rewards: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-  };
-
-  // Dynamic Icon for Origin
-  const getSourceIcon = (source: Source) => {
-    switch (source) {
-      case 'WhatsApp':
-        return <MessageCircle className="h-4 w-4 text-green-500" />;
-      case 'IG':
-        return <Camera className="h-4 w-4 text-pink-500" />;
-      case 'Messenger':
-        return <MessageSquare className="h-4 w-4 text-indigo-500" />;
-      case 'Web':
-        return <Globe className="h-4 w-4 text-tech-blue" />;
-      default:
-        return <MessageCircle className="h-4 w-4 text-slate-500" />;
+  // Source Badge Styles (Omnichannel)
+  const getSourceBadge = () => {
+    if (normOrigin.includes('whatsapp')) {
+      return {
+        style: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+        label: 'WhatsApp',
+        icon: <MessageCircle className="h-3.5 w-3.5 text-emerald-500 mr-1" />
+      };
     }
+    if (normOrigin.includes('ig') || normOrigin.includes('instagram')) {
+      return {
+        style: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
+        label: 'Instagram',
+        icon: <Camera className="h-3.5 w-3.5 text-pink-500 mr-1" />
+      };
+    }
+    if (normOrigin.includes('messenger')) {
+      return {
+        style: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+        label: 'Messenger',
+        icon: <MessageSquare className="h-3.5 w-3.5 text-blue-500 mr-1" />
+      };
+    }
+    return {
+      style: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
+      label: 'Chat Web',
+      icon: <Globe className="h-3.5 w-3.5 text-sky-500 mr-1" />
+    };
   };
+
+  // Unit Badge Styles (6 Business Units)
+  const getUnitBadge = () => {
+    const u = String(normUnit);
+    if (u.includes('Conductor')) {
+      return {
+        style: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
+        label: '🚕 Chofer TravelCab'
+      };
+    }
+    if (u.includes('TravelCab') || u.includes('Usuario')) {
+      return {
+        style: 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20',
+        label: '🚕 Pasajero TravelCab'
+      };
+    }
+    if (u.includes('Experience') || u.includes('Experiencias')) {
+      return {
+        style: 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+        label: '🗺️ Experience'
+      };
+    }
+    if (u.includes('Rewards')) {
+      return {
+        style: 'bg-purple-500/10 text-purple-700 border-purple-500/20',
+        label: '🎁 Rewards'
+      };
+    }
+    if (u.includes('Afiliados')) {
+      return {
+        style: 'bg-teal-500/10 text-teal-700 border-teal-500/20',
+        label: '🤝 Afiliados'
+      };
+    }
+    return {
+      style: 'bg-slate-500/10 text-slate-700 border-slate-500/20',
+      label: '🌐 TravelApp'
+    };
+  };
+
+  const srcBadge = getSourceBadge();
+  const unitBadge = getUnitBadge();
 
   return (
     <div 
@@ -54,12 +98,12 @@ export const LeadCard: React.FC<LeadCardProps> = ({ customerName, origin, busine
           <div>
             <h4 className="text-sm font-semibold text-tech-blue">{customerName}</h4>
             <div className="mt-1 flex gap-2">
-              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${sourceStyles[origin]}`}>
-                <span className="mr-1">{getSourceIcon(origin)}</span>
-                {origin}
+              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${srcBadge.style}`}>
+                {srcBadge.icon}
+                {srcBadge.label}
               </span>
-              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${unitStyles[businessUnit]}`}>
-                {businessUnit}
+              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${unitBadge.style}`}>
+                {unitBadge.label}
               </span>
             </div>
           </div>

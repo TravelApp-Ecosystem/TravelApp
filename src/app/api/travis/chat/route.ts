@@ -5,7 +5,122 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { serverGetDoc, serverGetDocs, serverAddDoc, serverUpdateDoc } from '@/lib/firestore-server';
-import { TravisConfig, DEFAULT_TRAVIS_CONFIG } from '@/types/messaging';
+import { TravisConfig, DEFAULT_TRAVIS_CONFIG, BusinessUnit } from '@/types/messaging';
+import { queryExternalServiceProviders, formatExternalProvidersForPrompt } from '@/lib/external-providers';
+
+// -----------------------------------------------------------------------------
+// HELPER: Detector de Unidades de Negocio (6 Unidades Oficiales)
+// -----------------------------------------------------------------------------
+export function detectDetailedBusinessUnit(
+  message: string, 
+  existingUnit?: string
+): 'TravelCab (Usuario)' | 'TravelCab (Conductor)' | 'TravelApp Experience' | 'TravelApp Rewards' | 'TravelApp Afiliados' | 'TravelApp' {
+  const msg = (message || '').toLowerCase();
+
+  // 1. Chofer / Conductor de TravelCab
+  if (
+    msg.includes('quiero ser chofer') || 
+    msg.includes('trabajar como chofer') || 
+    msg.includes('ser conductor') || 
+    msg.includes('requisitos para chofer') || 
+    msg.includes('requisitos para conductor') ||
+    msg.includes('inscribir mi auto') || 
+    msg.includes('registrar mi auto') || 
+    msg.includes('app de conductor') || 
+    msg.includes('app chofer') || 
+    msg.includes('comision de chofer') || 
+    msg.includes('ganancias chofer') || 
+    msg.includes('manejar en travelcab') || 
+    msg.includes('dar de alta auto') ||
+    msg.includes('licencia profesional')
+  ) {
+    return 'TravelCab (Conductor)';
+  }
+
+  // 2. Afiliados / Referidos / Agencias
+  if (
+    msg.includes('afiliado') || 
+    msg.includes('afiliados') || 
+    msg.includes('programa de afiliados') || 
+    msg.includes('comisionar') || 
+    msg.includes('comision por referir') || 
+    msg.includes('referido') || 
+    msg.includes('codigo de referido') || 
+    msg.includes('link de afiliado') || 
+    msg.includes('soy agencia') || 
+    msg.includes('agencia asociada') || 
+    msg.includes('partner')
+  ) {
+    return 'TravelApp Afiliados';
+  }
+
+  // 3. Rewards / Fidelización / Puntos
+  if (
+    msg.includes('punto') || 
+    msg.includes('puntos') || 
+    msg.includes('reward') || 
+    msg.includes('rewards') || 
+    msg.includes('canjear') || 
+    msg.includes('canje') || 
+    msg.includes('beneficio') || 
+    msg.includes('beneficios') || 
+    msg.includes('comercio adherido') || 
+    msg.includes('billetera') || 
+    msg.includes('cashback')
+  ) {
+    return 'TravelApp Rewards';
+  }
+
+  // 4. Experiencias / Turismo / Tours
+  if (
+    msg.includes('tour') || 
+    msg.includes('tours') || 
+    msg.includes('excursion') || 
+    msg.includes('excursiones') || 
+    msg.includes('experiencia') || 
+    msg.includes('paseo') || 
+    msg.includes('tafi') || 
+    msg.includes('quilmes') || 
+    msg.includes('san javier') || 
+    msg.includes('cadillal') || 
+    msg.includes('paquete turistico') || 
+    msg.includes('guia') || 
+    msg.includes('turismo')
+  ) {
+    return 'TravelApp Experience';
+  }
+
+  // 5. Usuario / Pasajero de TravelCab (traslado, remis, taxi, viaje)
+  if (
+    msg.includes('viaje') || 
+    msg.includes('viajar') || 
+    msg.includes('remis') || 
+    msg.includes('taxi') || 
+    msg.includes('auto') || 
+    msg.includes('cuanto sale') || 
+    msg.includes('precio de') || 
+    msg.includes('cotizar') || 
+    msg.includes('traslado') || 
+    msg.includes('pedir un auto') || 
+    msg.includes('pedir remis') || 
+    msg.includes('aeropuerto') || 
+    msg.includes('terminal') || 
+    msg.includes('travelcab')
+  ) {
+    return 'TravelCab (Usuario)';
+  }
+
+  // 6. Si ya venía una unidad previa específica
+  if (existingUnit) {
+    if (existingUnit.includes('Conductor')) return 'TravelCab (Conductor)';
+    if (existingUnit.includes('Usuario') || existingUnit === 'TravelCab') return 'TravelCab (Usuario)';
+    if (existingUnit.includes('Experience') || existingUnit.includes('Experiencias')) return 'TravelApp Experience';
+    if (existingUnit.includes('Rewards')) return 'TravelApp Rewards';
+    if (existingUnit.includes('Afiliados')) return 'TravelApp Afiliados';
+  }
+
+  return 'TravelApp';
+}
 
 // -----------------------------------------------------------------------------
 // HELPER: Load Configuration and Catalogs from Firestore
@@ -157,8 +272,19 @@ async function estimateTravelCabFare(
 // -----------------------------------------------------------------------------
 // Reusable Core AI Processor
 // -----------------------------------------------------------------------------
-export async function processTravisMessage(message: string, history: any[], businessUnit: string, conversationId?: string) {
-  // 1. Cargar Configuración base e incorporar Catálogos de Experiencias y Rewards
+export async function processTravisMessage(
+  message: string, 
+  history: any[], 
+  businessUnit: string, 
+  conversationId?: string,
+  audioInput?: { base64: string; mimeType: string }
+) {
+  // 1. Detectar Unidad de Negocio Heurística inicial y consultar Proveedores Externos
+  const detectedUnit = detectDetailedBusinessUnit(message, businessUnit);
+  const externalProvidersData = await queryExternalServiceProviders(message, detectedUnit);
+  const externalProvidersPrompt = formatExternalProvidersForPrompt(externalProvidersData);
+
+  // 2. Cargar Configuración base e incorporar Catálogos de Experiencias y Rewards
   const config = await getTravisConfig();
   const catalogs = await getEcosystemCatalogs();
   
@@ -182,19 +308,30 @@ export async function processTravisMessage(message: string, history: any[], busi
   // Instrucciones cognitivas ocultas para habilitar Cotizador, Captura de Leads y Handoff
   systemPrompt += `
 \nINSTRUCCIONES CRÍTICAS DE SISTEMA (OCULTAS AL USUARIO):
-1. **Cotización de Viajes (TravelCab)**: Si el usuario te pide cotizar o saber el precio de un traslado de TravelCab entre dos puntos, responde normalmente PERO incluye obligatoriamente en tu respuesta la siguiente etiqueta exacta: [QUOTE: ORIGEN TO DESTINO] reemplazando ORIGEN y DESTINO por las direcciones indicadas. Ejemplo: [QUOTE: Yerba Buena TO Plaza Independencia]. El sistema calculará el precio exacto y reemplazará esta etiqueta.
-   * REGLA DE CAPTURA: Para cotizar, solo necesitas el Origen y Destino (no exijas nombre ni teléfono para dar el precio estimado, cotiza primero). Una vez que le des el precio estimado, si el usuario desea confirmar o pedir el traslado, entonces sí pídele su Nombre, Teléfono y Forma de Pago (Efectivo, Billetera Virtual o Puntos Rewards) para proceder al despacho.
-2. **Despacho de Viajes**: Si el cliente confirma de manera explícita que desea reservar/pedir el traslado cotizado (ej: "sí, pedilo", "confirmar traslado"), responde de manera entusiasta e incluye la etiqueta invisible: [DISPATCH: TIPO_SERVICIO | ORIGEN TO DESTINO | PASAJERO | TELEFONO | ASIENTOS | PAGO | CATEGORIA] usando los datos capturados.
-   * TIPO_SERVICIO: Debe ser "MU" (Movilidad Urbana) o "ARC" (Auto Rural Compartido) según lo que solicite el usuario.
-   * ASIENTOS: Cantidad de asientos solicitados (ej: 1, 2, 3, 4). Default 1.
-   * PAGO: "Efectivo", "Billetera Virtual" o "Puntos Rewards".
-   * CATEGORIA: La categoría del viaje cotizado (ej: "Estandar", "Premium" o "Taxi"). Default "Estandar".
-   * REGLA DE DISPOSITIVO MÓVIL: Si el usuario te escribe por WhatsApp desde un celular (o si te pide pedir un viaje desde su celular), indícale amablemente que debe utilizar la aplicación móvil de TravelApp. Bajo ningún concepto le cotices o asignes el viaje por chat en este caso. En su lugar, genera la etiqueta: [REDIRECT: APP_MOVIL].
-   * REGLA DE HORARIO OPERATIVO: Actualmente la hora en Tucumán es: ${currentHour}:00 hs. ¿El despacho por IA está habilitado?: ${isDispatchAllowed ? 'SÍ' : 'NO'}. Si está deshabilitado ("NO"), debes explicar amablemente al cliente que en este horario (de 08:00 a 22:00) la asignación la realiza el despachador humano de nuestras sucursales y que aguarde o se contacte allí. NO generes la etiqueta [DISPATCH: ...] bajo ningún concepto si el despacho por IA está deshabilitado.
-3. **Captura de Leads y Datos**: Si el cliente te menciona datos personales suyos (nombre, teléfono, email) o si te solicita cotizar/comprar y ya cuentas con estos datos, debes añadir al final de tu respuesta de forma invisible el siguiente bloque: [DATA: {"name": "...", "phone": "...", "email": "...", "handoff": true/false}].
-4. **Escalamiento Humano (Handoff)**: Si el cliente solicita pagar, cerrar un trato, realizar el cobro, o tiene un problema/pregunta que requiere atención personalizada, o menciona palabras de handoff (como "hablar con operador"), pon "handoff": true en el bloque [DATA: ...] y despide amigablemente aclarando que un operador humano continuará la charla.
-5. **Ventas y Cobros de Tours (Experiences)**: Puedes cotizar y recomendar tours usando la base de conocimiento o buscando información en línea (recomendar operadores asociados, sugerir hoteles). Para viajes organizados por nosotros, indica que puedes reservar cupos a través de Nave (Banco Galicia) y ofrecer planes de financiación. Si cotizas un viaje turístico de Experiences, genera al final de tu respuesta el tag invisible: [PDF_GENERATE: Experiencia | Detalles del Tour] para armarle un PDF.
-6. **Localización de Lenguaje**: Debes responder de forma cálida, en español rioplatense argentino (usando el "vos", "tenés", "comentame"). Si el cliente inicia la conversación en otro idioma (inglés, portugués, etc.), respóndele en ese mismo idioma.
+1. **Identificación y Segmentación en 6 Unidades de Negocio**:
+   Al final de cada respuesta que des, debes clasificar internamente la consulta del usuario agregando de forma invisible la siguiente etiqueta: [UNIT: NOMBRE_UNIDAD]. Las únicas opciones válidas son:
+   * [UNIT: TravelCab (Usuario)] - Traslados, viajes, remis, taxi, estimaciones de precios, horarios o viajes al aeropuerto/terminal.
+   * [UNIT: TravelCab (Conductor)] - Personas interesadas en manejar, ser chofer, registrar su auto, requisitos mecánicos/legales, comisiones y cobros.
+   * [UNIT: TravelApp Experience] - Excursiones turísticas, tours en Tucumán y Norte (Tafí del Valle, Quilmes, San Javier, Cadillal, Cafayate), paquetes de turismo.
+   * [UNIT: TravelApp Rewards] - Programa de fidelización, cómo sumar puntos (1 punto x $100), canje por viajes o comida, comercios adheridos, niveles VIP.
+   * [UNIT: TravelApp Afiliados] - Programa de afiliados para agencias, hoteles, comercios y creadores para ganar comisiones en dinero real refiriendo clientes o choferes.
+   * [UNIT: TravelApp] - Consultas institucionales generales de la plataforma y super-app.
+
+2. **Pautas específicas por Unidad de Negocio**:
+   * **TravelCab (Usuario)**: Para cotizar, solo necesitas Origen y Destino. Responde normalmente e incluye la etiqueta exacta: [QUOTE: ORIGEN TO DESTINO]. Ejemplo: [QUOTE: Yerba Buena TO Plaza Independencia]. El sistema calculará la tarifa en base a Google Maps y categorías (Estándar, Premium, Taxi). Si el cliente confirma, solicita Nombre, Teléfono y Forma de Pago (Efectivo, Mercado Pago / Billetera Virtual o Puntos Rewards).
+   * **TravelCab (Conductor)**: ¡Gran oportunidad laboral con la comisión más baja de Tucumán y el Norte (10-15%)! Requisitos obligatorios: Licencia de conducir profesional al día, auto modelo 2013 en adelante en excelente estado, seguro automotor, cédula verde/azul, VTV/RTO y certificado de antecedentes penales. Cobros semanales directos. Enlace de registro: https://travelapp.ar/conductores. Si te dan sus datos, captura su Nombre, Teléfono y Auto para que el equipo de soporte lo contacte.
+   * **TravelApp Experience**: Tours destacados en Tucumán: Tafí del Valle & Ruinas de Quilmes; Circuito de Las Yungas (San Javier, Cristo Bendicente, Villa Nougués y El Cadillal); Cafayate (Ruta del Vino); Termas de Río Hondo. Pagos financiados con Nave (Banco Galicia) y Mercado Pago. Si cotizas un tour, añade [PDF_GENERATE: Experiencia | Detalles].
+   * **TravelApp Rewards**: Los usuarios acumulan 1 punto por cada $100 gastados en traslados o comercios de la red. Canjes por traslados gratuitos o consumos en bares y locales asociados. Niveles: Nivel 1 (Pasajero Frecuente) y Nivel 2 (VIP con atención prioritaria).
+   * **TravelApp Afiliados**: Programa de socios para agencias de viajes, hoteles, guías y personas independientes. Ganancias en efectivo por cada pasajero que viaje o chofer que se sume con su código o link.
+
+3. **Despacho de Viajes**: Si el cliente confirma de manera explícita que desea pedir el traslado cotizado (ej: "sí, pedilo", "confirmar traslado"), incluye la etiqueta invisible: [DISPATCH: TIPO_SERVICIO | ORIGEN TO DESTINO | PASAJERO | TELEFONO | ASIENTOS | PAGO | CATEGORIA].
+   * TIPO_SERVICIO: "MU" (Movilidad Urbana) o "ARC" (Auto Rural Compartido).
+   * REGLA DE HORARIO OPERATIVO: Hora actual en Tucumán: ${currentHour}:00 hs. ¿Despacho IA habilitado?: ${isDispatchAllowed ? 'SÍ' : 'NO'}. Si es "NO", explica amablemente que de 08:00 a 22:00 la asignación la realiza el operador humano de guardia y que aguarde confirmación.
+
+4. **Botones Interactivos de WhatsApp**: Si es oportuno brindar opciones de respuesta rápida, añade al final la etiqueta: [BUTTONS: Opcion 1 | Opcion 2 | Opcion 3] (máximo 20 caracteres por botón).
+5. **Captura de Leads y Datos**: Si el cliente menciona datos personales o solicita contacto, añade invisiblemente: [DATA: {"name": "...", "phone": "...", "email": "...", "handoff": true/false}].
+6. **Escalamiento Humano (Handoff)**: Si solicita hablar con una persona, pagar un tour complejo, resolver un problema o dice "hablar con operador", pon "handoff": true en [DATA: ...] y despide informando que un operador humano se comunicará a la brevedad.
+7. **Localización de Lenguaje**: Habla en español rioplatense argentino cálido y profesional (usando "vos", "tenés", "contame").
 `;
 
   // 2. Comprobar si hay handoff triggers de texto plano configurados
@@ -211,6 +348,7 @@ export async function processTravisMessage(message: string, history: any[], busi
     });
     return {
       response: 'Entendido, che. En este momento te conecto con un miembro de nuestro equipo para que te asista de forma personalizada. Por favor, aguardá un instante. 🙏',
+      buttons: [{ id: 'btn_talk_human', title: '👤 Esperar Operador' }],
       needsHandoff: true,
       businessUnit,
       source: 'local_handoff'
@@ -219,7 +357,6 @@ export async function processTravisMessage(message: string, history: any[], busi
 
   // 3. Llamar a la API REST de Gemini directamente
   let geminiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  // Si no está en el .env, advertimos por consola
   if (!geminiKey) {
     console.warn("GEMINI_API_KEY is not defined in environment variables.");
   }
@@ -242,13 +379,29 @@ export async function processTravisMessage(message: string, history: any[], busi
           });
         });
       }
-      // Agregar mensaje actual
-      contents.push({
-        role: 'user',
-        parts: [{ text: message }]
-      });
+      
+      // Agregar mensaje actual (soporta texto y audio multimodal)
+      if (audioInput && audioInput.base64) {
+        contents.push({
+          role: 'user',
+          parts: [
+            { text: message && message !== '[Nota de voz de WhatsApp recibida]' ? message : 'Escuchá atentamente este mensaje de audio del cliente de WhatsApp y responde de forma completa y cordial como Travis de TravelApp:' },
+            {
+              inlineData: {
+                mimeType: audioInput.mimeType || 'audio/ogg',
+                data: audioInput.base64
+              }
+            }
+          ]
+        });
+      } else {
+        contents.push({
+          role: 'user',
+          parts: [{ text: message }]
+        });
+      }
 
-      const fullPrompt = `${systemPrompt}\n\nBASE DE CONOCIMIENTOS DE LA EMPRESA (RAG):\n${knowledgeBaseSerialized}`;
+      const fullPrompt = `${systemPrompt}\n\nBASE DE CONOCIMIENTOS DE LA EMPRESA (RAG):\n${knowledgeBaseSerialized}${externalProvidersPrompt}`;
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
         method: 'POST',
@@ -461,6 +614,25 @@ export async function processTravisMessage(message: string, history: any[], busi
     }
   }
 
+  // 5.3. Interceptar y procesar etiqueta cognitiva de Unidad de Negocio [UNIT: ...]
+  const unitRegex = /\[UNIT:\s*([^\]]+?)\]/i;
+  const unitMatch = aiResponse.match(unitRegex);
+  let finalUnit: string = detectedUnit;
+  if (unitMatch) {
+    const rawUnit = unitMatch[1].trim();
+    if (
+      rawUnit === 'TravelCab (Usuario)' ||
+      rawUnit === 'TravelCab (Conductor)' ||
+      rawUnit === 'TravelApp Experience' ||
+      rawUnit === 'TravelApp Rewards' ||
+      rawUnit === 'TravelApp Afiliados' ||
+      rawUnit === 'TravelApp'
+    ) {
+      finalUnit = rawUnit;
+    }
+    aiResponse = aiResponse.replace(unitRegex, '').trim();
+  }
+
   // Sincronizar con el CRM Leads de Firestore si hay datos o si forzamos Handoff
   const hasLeadData = parsedData.name || parsedData.phone || parsedData.email;
   const executionHandoff = parsedData.handoff || needsHandoffDirect;
@@ -473,11 +645,11 @@ export async function processTravisMessage(message: string, history: any[], busi
         customerName: parsedData.name || 'Prospecto Omnicanal',
         phone: parsedData.phone || '',
         email: parsedData.email || '',
-        origin: businessUnit,
+        origin: 'WhatsApp',
         status: executionHandoff ? 'En Espera Operador' : 'Nuevos',
         customerStatus: 'Prospecto',
         customerLevel: 1,
-        businessUnit: businessUnit === 'General' ? 'General' : businessUnit,
+        businessUnit: finalUnit,
         lastInteraction: Date.now(),
         conversationId: conversationId || ''
       };
@@ -514,10 +686,10 @@ export async function processTravisMessage(message: string, history: any[], busi
       }
 
       // Si es handoff, actualizar estado de la conversación en Firestore
-      if (executionHandoff && conversationId) {
+      if (conversationId) {
         await serverUpdateDoc('conversations', conversationId, {
-          status: 'pending',
-          lastMessage: 'Handoff activado por IA',
+          ...(executionHandoff ? { status: 'pending', lastMessage: 'Handoff activado por IA' } : {}),
+          'metadata.businessUnit': finalUnit,
           lastMessageAt: Date.now()
         });
       }
@@ -526,10 +698,33 @@ export async function processTravisMessage(message: string, history: any[], busi
     }
   }
 
+  // 5.5. Interceptar y procesar etiqueta [BUTTONS: Opcion 1 | Opcion 2 | Opcion 3]
+  const buttonsRegex = /\[BUTTONS:\s*([^\]]+?)\]/i;
+  const buttonsMatch = aiResponse.match(buttonsRegex);
+  let extractedButtons: { id: string; title: string }[] = [];
+
+  if (buttonsMatch) {
+    const rawButtons = buttonsMatch[1].split('|').map((s: string) => s.trim()).filter(Boolean);
+    extractedButtons = rawButtons.slice(0, 3).map((title: string, idx: number) => ({
+      id: `btn_${idx}_${Date.now()}`,
+      title: title.slice(0, 20),
+    }));
+    aiResponse = aiResponse.replace(buttonsRegex, '').trim();
+  }
+
+  // Si hubo una cotización de TravelCab y no hay botones, añadimos opciones inmediatas de confirmación
+  if (quoteMatch && extractedButtons.length === 0) {
+    extractedButtons = [
+      { id: 'btn_confirm_trip', title: '🚕 Pedir Traslado' },
+      { id: 'btn_talk_operator', title: '👤 Operador Humano' },
+    ];
+  }
+
   return {
     response: aiResponse.trim(),
-    businessUnit,
-    source: isMock ? 'mock_fallback' : 'vertex_ai',
+    buttons: extractedButtons.length > 0 ? extractedButtons : undefined,
+    businessUnit: finalUnit,
+    source: isMock ? 'mock_fallback' : 'gemini_2_5_flash',
     needsHandoff: executionHandoff,
   };
 }
@@ -544,14 +739,15 @@ export async function POST(req: NextRequest) {
       message, 
       conversationId, 
       businessUnit = 'General',
-      history = []
+      history = [],
+      audioInput
     } = body;
 
-    if (!message?.trim()) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    if (!message?.trim() && !audioInput) {
+      return NextResponse.json({ error: 'Message or audioInput is required' }, { status: 400 });
     }
 
-    const result = await processTravisMessage(message, history, businessUnit, conversationId);
+    const result = await processTravisMessage(message || '', history, businessUnit, conversationId, audioInput);
     return NextResponse.json(result);
 
   } catch (error: any) {
