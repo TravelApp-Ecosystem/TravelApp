@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Phone,
@@ -50,15 +51,16 @@ export function ExperienceFooter({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 sm:gap-12">
           
-          {/* Columna Izquierda: Logo TravelApp Experience y Distintivos de Confianza */}
+          {/* Columna Izquierda: Logo Oficial del Ecosistema TravelApp Blanco */}
           <div className="md:col-span-5 space-y-4 sm:space-y-6">
-            <Link href="/landing/experience" className="inline-flex items-center gap-2 group">
-              <span className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                Travel<span className="font-light text-white/90">App</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-[#ff4f5a] text-white text-[10px] font-black uppercase tracking-wider">
-                Experience
-              </span>
+            <Link href="/landing/ecosistema" className="inline-flex items-center gap-2 group">
+              <Image
+                src="/assets/travelapp_blanco.svg"
+                alt="TravelApp Ecosistema"
+                width={165}
+                height={45}
+                className="h-9 sm:h-11 w-auto object-contain transition-opacity group-hover:opacity-90"
+              />
             </Link>
 
             <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed max-w-sm">
