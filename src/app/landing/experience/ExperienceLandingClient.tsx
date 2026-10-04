@@ -68,8 +68,11 @@ export default function ExperienceLandingClient({
         onOpenContacto={() => setContactoModal(true)}
       />
 
-      {/* 2. Hero Slider con Buscador Receptivo Embebido */}
-      <ExperienceHeroSlider>
+      {/* 2. Hero Slider con Buscador Receptivo Embebido (Conectado con CMS Web) */}
+      <ExperienceHeroSlider
+        slides={initialCms?.heroSlides || initialCms?.slides}
+        cmsHero={initialCms?.marketplaceHero || initialCms?.hero}
+      >
         <ExperienceSearchEngine />
       </ExperienceHeroSlider>
 

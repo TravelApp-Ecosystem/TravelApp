@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Sparkles, MapPin, Compass } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, Compass } from "lucide-react";
 
 export interface ExperienceHeroSlide {
   id: string;
@@ -19,6 +19,14 @@ export interface ExperienceHeroSlide {
 
 interface ExperienceHeroSliderProps {
   slides?: ExperienceHeroSlide[];
+  cmsHero?: {
+    bgType?: "image" | "video";
+    bgImageUrl?: string;
+    bgVideoUrl?: string;
+    title?: string;
+    subtitle?: string;
+    tag?: string;
+  };
   children?: React.ReactNode; // Buscador Receptivo
 }
 
@@ -82,42 +90,65 @@ const SUGGESTED_EXPERIENCES = [
   "Tafí del Valle",
 ];
 
-export function ExperienceHeroSlider({ slides, children }: ExperienceHeroSliderProps) {
+export function ExperienceHeroSlider({
+  slides,
+  cmsHero,
+  children,
+}: ExperienceHeroSliderProps) {
   const router = useRouter();
-  const cleanSlides = slides && slides.length > 0 ? slides : DEFAULT_EXPERIENCE_SLIDES;
+
+  // Si el CMS Control Center tiene configurado un hero personalizado (imagen o video), lo integramos de forma prioritaria
+  const resolvedSlides: ExperienceHeroSlide[] = React.useMemo(() => {
+    if (slides && slides.length > 0) return slides;
+
+    if (cmsHero && (cmsHero.bgImageUrl || cmsHero.bgVideoUrl)) {
+      const cmsSlide: ExperienceHeroSlide = {
+        id: "slide-cms",
+        mediaType: cmsHero.bgType === "video" || cmsHero.bgVideoUrl ? "video" : "image",
+        mediaUrl: cmsHero.bgVideoUrl || cmsHero.bgImageUrl || DEFAULT_EXPERIENCE_SLIDES[0].mediaUrl,
+        badge: cmsHero.tag || "✦ TURISMO RECEPTIVO OFICIAL",
+        title: cmsHero.title || "Sentí la inmensidad del Norte",
+        subtitle: cmsHero.subtitle || "Salinas Grandes, Purmamarca y Cafayate con guías matriculados.",
+      };
+      return [cmsSlide, ...DEFAULT_EXPERIENCE_SLIDES.slice(1)];
+    }
+
+    return DEFAULT_EXPERIENCE_SLIDES;
+  }, [slides, cmsHero]);
+
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
   // Autoplay cada 7 segundos
   useEffect(() => {
-    if (cleanSlides.length <= 1 || isPaused) return;
+    if (resolvedSlides.length <= 1 || isPaused) return;
 
     const interval = setInterval(() => {
-      setCurrentIdx((prev) => (prev + 1) % cleanSlides.length);
+      setCurrentIdx((prev) => (prev + 1) % resolvedSlides.length);
     }, 7000);
 
     return () => clearInterval(interval);
-  }, [cleanSlides.length, isPaused]);
+  }, [resolvedSlides.length, isPaused]);
 
   const handlePrev = () => {
-    setCurrentIdx((prev) => (prev - 1 + cleanSlides.length) % cleanSlides.length);
+    setCurrentIdx((prev) => (prev - 1 + resolvedSlides.length) % resolvedSlides.length);
   };
 
   const handleNext = () => {
-    setCurrentIdx((prev) => (prev + 1) % cleanSlides.length);
+    setCurrentIdx((prev) => (prev + 1) % resolvedSlides.length);
   };
 
-  const currentSlide = cleanSlides[currentIdx] || cleanSlides[0];
+  const currentSlide = resolvedSlides[currentIdx] || resolvedSlides[0];
 
   return (
     <section
-      className="relative w-full min-h-[560px] sm:min-h-[640px] lg:min-h-[700px] flex flex-col justify-between overflow-hidden bg-slate-950 font-sans"
+      className="relative w-full min-h-[560px] sm:min-h-[640px] lg:min-h-[700px] flex flex-col justify-between overflow-hidden font-sans"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* 1. Fondo Visual HD con Transición Suave */}
+      {/* 1. Fondo Visual HD 100% Limpio (Sin sombra ni cortinas oscuras) */}
       <div className="absolute inset-0 z-0">
-        {cleanSlides.map((slide, idx) => {
+        {resolvedSlides.map((slide, idx) => {
           const isActive = idx === currentIdx;
           return (
             <div
@@ -143,36 +174,32 @@ export function ExperienceHeroSlider({ slides, children }: ExperienceHeroSliderP
                     alt={slide.title}
                     fill
                     priority={idx === 0}
-                    quality={92}
+                    quality={95}
                     sizes="100vw"
-                    className="object-cover object-center transform scale-105 transition-transform duration-10000 ease-out"
+                    className="object-cover object-center transform scale-100 transition-transform duration-10000 ease-out"
                   />
                 </div>
               )}
             </div>
           );
         })}
-
-        {/* Gradiente Coral-Azul Institucional de Contraste */}
-        <div className="absolute inset-0 z-20 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-black/30 pointer-events-none" />
-        <div className="absolute inset-0 z-20 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none" />
       </div>
 
-      {/* 2. Encabezado Editorial Superior Estilo National Geographic */}
+      {/* 2. Encabezado Editorial Superior Estilo National Geographic con Imagen Limpia */}
       <div className="relative z-30 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14 pb-4 sm:pb-6 w-full flex-1 flex flex-col justify-center">
         <div className="max-w-3xl">
           {currentSlide.badge && (
-            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-[#ff4f5a]/30 backdrop-blur-md border border-[#ff4f5a]/50 text-white text-[10px] sm:text-xs font-bold tracking-wider uppercase mb-2 sm:mb-4 shadow-sm">
-              <Compass className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#ff4f5a]" />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/40 text-white text-[10px] sm:text-xs font-medium tracking-wider uppercase mb-2 sm:mb-4 shadow-sm drop-shadow-md">
+              <Compass className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
               <span>{currentSlide.badge}</span>
             </div>
           )}
 
-          <h1 className="text-2xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-[1.12] sm:leading-[1.08] mb-2 sm:mb-4 drop-shadow-lg">
+          <h1 className="text-2xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-[1.12] sm:leading-[1.08] mb-2 sm:mb-4 drop-shadow-[0_3px_10px_rgba(0,0,0,0.8)]">
             {currentSlide.title}
           </h1>
 
-          <p className="text-xs sm:text-lg md:text-xl text-white/95 font-medium max-w-2xl mb-3 sm:mb-6 leading-relaxed drop-shadow-md">
+          <p className="text-xs sm:text-lg md:text-xl text-white font-medium max-w-2xl mb-3 sm:mb-6 leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
             {currentSlide.subtitle}
           </p>
         </div>
@@ -184,9 +211,9 @@ export function ExperienceHeroSlider({ slides, children }: ExperienceHeroSliderP
           {children}
 
           {/* Destinos Populares Sugeridos al pie del buscador */}
-          <div className="mt-2.5 sm:mt-3.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-white/90 px-1 sm:px-2">
-            <span className="font-bold drop-shadow-sm flex items-center gap-1 text-white">
-              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#ff4f5a]" />
+          <div className="mt-2.5 sm:mt-3.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-white px-1 sm:px-2">
+            <span className="font-medium drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] flex items-center gap-1 text-white">
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300" />
               Experiencias más buscadas:
             </span>
             <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
@@ -199,7 +226,7 @@ export function ExperienceHeroSlider({ slides, children }: ExperienceHeroSliderP
                       `/landing/experience/marketplace?destino=${encodeURIComponent(dest)}`
                     );
                   }}
-                  className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-xs text-[10px] sm:text-[11px] font-bold text-white transition-all hover:scale-105 border border-white/20 cursor-pointer"
+                  className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md text-[10px] sm:text-[11px] font-medium text-white transition-all hover:scale-105 border border-white/30 cursor-pointer shadow-sm"
                 >
                   {dest}
                 </button>
@@ -210,13 +237,13 @@ export function ExperienceHeroSlider({ slides, children }: ExperienceHeroSliderP
       )}
 
       {/* 4. Flechas y Dots Indicadores */}
-      {cleanSlides.length > 1 && (
+      {resolvedSlides.length > 1 && (
         <>
           <button
             type="button"
             onClick={handlePrev}
             aria-label="Slide anterior"
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md border border-white/20 transition-all hidden sm:flex items-center justify-center cursor-pointer"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 transition-all hidden sm:flex items-center justify-center cursor-pointer shadow-lg"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -224,14 +251,14 @@ export function ExperienceHeroSlider({ slides, children }: ExperienceHeroSliderP
             type="button"
             onClick={handleNext}
             aria-label="Slide siguiente"
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/30 hover:bg-black/60 text-white backdrop-blur-md border border-white/20 transition-all hidden sm:flex items-center justify-center cursor-pointer"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 transition-all hidden sm:flex items-center justify-center cursor-pointer shadow-lg"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
 
           {/* Dots Indicadores */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
-            {cleanSlides.map((_, idx) => (
+            {resolvedSlides.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
@@ -239,8 +266,8 @@ export function ExperienceHeroSlider({ slides, children }: ExperienceHeroSliderP
                 aria-label={`Slide ${idx + 1}`}
                 className={`transition-all duration-300 rounded-full cursor-pointer ${
                   idx === currentIdx
-                    ? "w-8 h-2 bg-[#ff4f5a]"
-                    : "w-2 h-2 bg-white/60 hover:bg-white"
+                    ? "w-8 h-2 bg-[#ff4f5a] shadow-md"
+                    : "w-2 h-2 bg-white/70 hover:bg-white shadow"
                 }`}
               />
             ))}

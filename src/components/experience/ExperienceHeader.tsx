@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Phone,
@@ -40,17 +41,17 @@ export function ExperienceHeader({
   const [regionesOpen, setRegionesOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#0a2a5b] text-white shadow-lg border-b border-white/10 font-sans selection:bg-[#ff4f5a] selection:text-white">
+    <header className="sticky top-0 z-50 w-full bg-[#0a2a5b] text-white shadow-md border-b border-white/10 font-sans selection:bg-[#ff4f5a] selection:text-white">
       {/* 1. Top Bar Corporativa */}
       <div className="w-full bg-[#071d3f] border-b border-white/5 py-1.5 px-4 sm:px-6 lg:px-8 text-[11px] sm:text-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">
-            <span className="inline-flex items-center gap-1.5 font-bold text-[#ff4f5a] tracking-wide">
-              <Compass className="w-3.5 h-3.5 animate-spin-slow" />
+            <span className="inline-flex items-center gap-1.5 font-medium text-[#ff4f5a] tracking-wide">
+              <Compass className="w-3.5 h-3.5" />
               TRAVELAPP EXPERIENCE · TURISMO RECEPTIVO OFICIAL
             </span>
-            <span className="hidden md:inline text-white/40">|</span>
-            <span className="hidden md:inline text-white/80">
+            <span className="hidden md:inline text-white/30">|</span>
+            <span className="hidden md:inline text-white/70 font-normal">
               Salidas diarias en Salta, Jujuy & Tucumán con guías matriculados
             </span>
           </div>
@@ -58,7 +59,7 @@ export function ExperienceHeader({
           <div className="flex items-center gap-3 sm:gap-4">
             <a
               href="tel:08102200018"
-              className="flex items-center gap-1.5 text-white/90 hover:text-white font-bold transition-colors"
+              className="flex items-center gap-1.5 text-white/80 hover:text-white font-medium transition-colors"
             >
               <Phone className="w-3 h-3 text-[#ff4f5a]" />
               <span>0810-220-0018</span>
@@ -67,7 +68,7 @@ export function ExperienceHeader({
               href="https://wa.me/5493812020050"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden xs:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-bold border border-emerald-500/30 transition-all"
+              className="hidden xs:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-medium border border-emerald-500/30 transition-all"
             >
               <MessageCircle className="w-3 h-3" />
               <span>WhatsApp Receptivo</span>
@@ -80,28 +81,23 @@ export function ExperienceHeader({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20 gap-2 sm:gap-4">
           
-          {/* Logo TravelApp Experience Oficial */}
+          {/* Logo TravelApp Experience Oficial en formato SVG Real con Texto Blanco */}
           <Link
             href="/landing/experience"
             className="flex items-center gap-2 sm:gap-3 group shrink-0"
           >
-            <div className="relative">
-              <span className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white group-hover:text-white/95 transition-all">
-                Travel<span className="text-white/90 font-light">App</span>
-              </span>
-              {/* Brillo sutil institucional */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
-            </div>
-
-            {/* Badge Coral de Experience */}
-            <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-md bg-[#ff4f5a] text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-sm shadow-[#ff4f5a]/30">
-              <Compass className="w-3 h-3" />
-              Experience
-            </span>
+            <Image
+              src="/assets/experience_blanco.svg"
+              alt="TravelApp Experience"
+              width={165}
+              height={44}
+              priority
+              className="h-9 sm:h-11 w-auto object-contain transition-opacity group-hover:opacity-95"
+            />
           </Link>
 
           {/* Menú de Navegación Desktop */}
-          <nav className="hidden xl:flex items-center gap-1 lg:gap-2">
+          <nav className="hidden xl:flex items-center gap-1 lg:gap-1.5">
             
             {/* 1. Desplegable Quienes Somos */}
             <div
@@ -111,10 +107,10 @@ export function ExperienceHeader({
             >
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-white/90 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
               >
                 <span>Quiénes somos</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${quienesSomosOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform duration-200 ${quienesSomosOpen ? "rotate-180" : ""}`} />
               </button>
 
               {quienesSomosOpen && (
@@ -181,10 +177,10 @@ export function ExperienceHeader({
             >
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-white/90 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
               >
                 <span>El Ecosistema</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${ecosistemaOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform duration-200 ${ecosistemaOpen ? "rotate-180" : ""}`} />
               </button>
 
               {ecosistemaOpen && (
@@ -193,11 +189,11 @@ export function ExperienceHeader({
                     href="/landing/ecosistema"
                     className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 font-black text-xs">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 font-medium text-xs">
                       TA
                     </div>
                     <div>
-                      <div className="text-xs font-bold">TravelApp Oficial</div>
+                      <div className="text-xs font-medium">TravelApp Oficial</div>
                       <div className="text-[11px] text-white/60">Portal matriz y turismo emisivo</div>
                     </div>
                   </Link>
@@ -210,7 +206,7 @@ export function ExperienceHeader({
                       <Compass className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-[#ff4f5a]">TravelApp Experience</div>
+                      <div className="text-xs font-medium text-[#ff4f5a]">TravelApp Experience</div>
                       <div className="text-[11px] text-white/60">Turismo receptivo en territorio</div>
                     </div>
                   </Link>
@@ -223,7 +219,7 @@ export function ExperienceHeader({
                       <Car className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold">TravelCab</div>
+                      <div className="text-xs font-medium">TravelCab</div>
                       <div className="text-[11px] text-white/60">Traslados oficiales y transfers</div>
                     </div>
                   </Link>
@@ -236,7 +232,7 @@ export function ExperienceHeader({
                       <Gift className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold">TravelApp Rewards</div>
+                      <div className="text-xs font-medium">TravelApp Rewards</div>
                       <div className="text-[11px] text-white/60">Club de puntos y beneficios</div>
                     </div>
                   </Link>
@@ -249,7 +245,7 @@ export function ExperienceHeader({
                       <Users className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold">Afiliados & Embajadores</div>
+                      <div className="text-xs font-medium">Afiliados & Embajadores</div>
                       <div className="text-[11px] text-white/60">Ganá comisiones por recomendar</div>
                     </div>
                   </Link>
@@ -265,10 +261,10 @@ export function ExperienceHeader({
             >
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-white/90 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
               >
                 <span>Turismo Receptivo</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${receptivoOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform duration-200 ${receptivoOpen ? "rotate-180" : ""}`} />
               </button>
 
               {receptivoOpen && (
@@ -281,7 +277,7 @@ export function ExperienceHeader({
                       <Sun className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold">Excursiones de 1 Día</div>
+                      <div className="text-xs font-medium">Excursiones de 1 Día</div>
                       <div className="text-[11px] text-white/60">Salinas, Cafayate, Cachi, Iruya</div>
                     </div>
                   </Link>
@@ -294,7 +290,7 @@ export function ExperienceHeader({
                       <Mountain className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold">Aventura & Trekking</div>
+                      <div className="text-xs font-medium">Aventura & Trekking</div>
                       <div className="text-[11px] text-white/60">Cabalgatas, 4x4 y yungas</div>
                     </div>
                   </Link>
@@ -307,7 +303,7 @@ export function ExperienceHeader({
                       <Wine className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold">Ruta del Vino & Bodegas</div>
+                      <div className="text-xs font-medium">Ruta del Vino & Bodegas</div>
                       <div className="text-[11px] text-white/60">Catas en altura y maridajes</div>
                     </div>
                   </Link>
@@ -320,7 +316,7 @@ export function ExperienceHeader({
                       <Calendar className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold">Circuitos Multidía</div>
+                      <div className="text-xs font-medium">Circuitos Multidía</div>
                       <div className="text-[11px] text-white/60">Norte completo de 3 a 7 días</div>
                     </div>
                   </Link>
@@ -331,10 +327,10 @@ export function ExperienceHeader({
             {/* 4. Enlace Directo al Marketplace Receptivo */}
             <Link
               href="/landing/experience/marketplace"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-white/90 hover:text-white hover:bg-white/10 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all"
             >
               <span>Catálogo Receptivo</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-[#ff4f5a] text-white text-[9px] font-black uppercase">
+              <span className="px-1.5 py-0.5 rounded-full bg-[#ff4f5a] text-white text-[9px] font-medium tracking-wide">
                 2026
               </span>
             </Link>
@@ -343,7 +339,7 @@ export function ExperienceHeader({
             <button
               type="button"
               onClick={onOpenContacto}
-              className="px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-white/90 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              className="px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             >
               Contacto
             </button>
@@ -353,14 +349,14 @@ export function ExperienceHeader({
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/login"
-              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold text-white hover:bg-white/10 transition-all cursor-pointer"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             >
               Ingresar
             </Link>
 
             <Link
               href="/registro"
-              className="px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl bg-[#ff4f5a] hover:bg-[#e63e49] text-white text-xs sm:text-sm font-bold shadow-md shadow-[#ff4f5a]/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              className="px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl bg-[#ff4f5a] hover:bg-[#e63e49] text-white text-xs sm:text-sm font-medium shadow-sm transition-all hover:opacity-95 active:scale-95 cursor-pointer"
             >
               Registrarse
             </Link>
@@ -382,68 +378,68 @@ export function ExperienceHeader({
       {mobileMenuOpen && (
         <div className="xl:hidden bg-[#071d3f] border-t border-white/10 px-4 pt-3 pb-6 space-y-3 animate-in fade-in duration-200">
           <div className="space-y-1">
-            <div className="px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#ff4f5a]">
+            <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-[#ff4f5a]">
               Navegación
             </div>
             <Link
               href="/landing/experience"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               Inicio Experience
             </Link>
             <Link
               href="/landing/experience/marketplace"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               Catálogo de Excursiones Receptivas
             </Link>
             <Link
               href="/landing/experience/marketplace?tipo=aventura"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               Aventura & Trekking
             </Link>
             <Link
               href="/landing/experience/marketplace?tipo=vinos"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               Ruta del Vino & Bodegas
             </Link>
           </div>
 
           <div className="pt-2 border-t border-white/10 space-y-1">
-            <div className="px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
               El Ecosistema
             </div>
             <Link
               href="/landing/ecosistema"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               TravelApp Oficial (OTA)
             </Link>
             <Link
               href="/landing/travelcab"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               TravelCab (Traslados Oficiales)
             </Link>
             <Link
               href="/landing/rewards"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               TravelApp Rewards (Club de Puntos)
             </Link>
             <Link
               href="/landing/afiliados"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               Afiliados & Embajadores
             </Link>
@@ -456,13 +452,13 @@ export function ExperienceHeader({
                 setMobileMenuOpen(false);
                 onOpenContacto?.();
               }}
-              className="w-full text-left px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10"
+              className="w-full text-left px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
             >
               Contacto Directo
             </button>
             <a
               href="tel:08102200018"
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-emerald-400 bg-emerald-500/10"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-emerald-400 bg-emerald-500/10"
             >
               <Phone className="w-4 h-4" />
               <span>0810-220-0018</span>
