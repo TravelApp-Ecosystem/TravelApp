@@ -139,7 +139,7 @@ export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps)
     <div className="w-full bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-2xl border border-white/60 font-sans text-slate-800">
       
       {/* Pestañas de Servicios (Hasta 8 activables por switch) */}
-      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-3 scrollbar-none touch-pan-x flex-nowrap border-b border-slate-100">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-3 scrollbar-none overscroll-x-contain select-none flex-nowrap border-b border-slate-100">
         {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (

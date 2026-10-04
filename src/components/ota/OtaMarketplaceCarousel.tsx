@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -218,11 +218,21 @@ export function OtaMarketplaceCarousel({
   items,
 }: OtaMarketplaceCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
   const activeItems = items && items.length > 0 ? items : PIAMONTE_ITEMS;
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const cardWidth = 320;
+      const newIdx = Math.round(scrollLeft / cardWidth);
+      setActiveIdx(Math.min(Math.max(newIdx, 0), activeItems.length - 1));
+    }
+  };
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const offset = direction === "left" ? -360 : 360;
+      const offset = direction === "left" ? -340 : 340;
       scrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
     }
   };
@@ -268,7 +278,8 @@ export function OtaMarketplaceCarousel({
         {/* Carrusel de Tarjetas Estilo Piamonte */}
         <div
           ref={scrollRef}
-          className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 pt-2 scrollbar-none touch-pan-x snap-x snap-mandatory"
+          onScroll={handleScroll}
+          className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 pt-2 scrollbar-none overscroll-x-contain select-none snap-x snap-proximity scroll-smooth"
         >
           {activeItems.map((item) => {
             const formattedPrice =
@@ -371,6 +382,31 @@ export function OtaMarketplaceCarousel({
               </div>
             );
           })}
+          {/* Espaciador final para permitir scroll completo */}
+          <div className="w-4 flex-none" />
+        </div>
+
+        {/* Indicadores de puntos en mobile */}
+        <div className="flex justify-center items-center gap-1.5 mt-3 sm:hidden">
+          {activeItems.slice(0, 8).map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                if (scrollRef.current) {
+                  const cardWidth = 320;
+                  scrollRef.current.scrollTo({ left: idx * cardWidth, behavior: "smooth" });
+                  setActiveIdx(idx);
+                }
+              }}
+              aria-label={`Ir al paquete ${idx + 1}`}
+              className={`transition-all duration-300 rounded-full cursor-pointer ${
+                idx === activeIdx
+                  ? "w-6 h-1.5 bg-[#FF5A19]"
+                  : "w-1.5 h-1.5 bg-slate-300 hover:bg-slate-400"
+              }`}
+            />
+          ))}
         </div>
 
         {/* 4. Llamado a la Acción (CTA) para el Marketplace Completo */}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import {
   CreditCard,
@@ -11,12 +11,12 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck,
   Percent,
 } from "lucide-react";
 
 export function OtaFloatingPromos() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
 
   const promos = [
     {
@@ -76,10 +76,27 @@ export function OtaFloatingPromos() {
     },
   ];
 
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const cardWidth = 280;
+      const newIdx = Math.round(scrollLeft / cardWidth);
+      setActiveIdx(Math.min(Math.max(newIdx, 0), promos.length - 1));
+    }
+  };
+
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const offset = direction === "left" ? -300 : 300;
+      const offset = direction === "left" ? -280 : 280;
       scrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
+    }
+  };
+
+  const scrollToIdx = (idx: number) => {
+    if (scrollRef.current) {
+      const cardWidth = 280;
+      scrollRef.current.scrollTo({ left: idx * cardWidth, behavior: "smooth" });
+      setActiveIdx(idx);
     }
   };
 
@@ -87,28 +104,28 @@ export function OtaFloatingPromos() {
     <section className="relative z-30 mt-3 sm:-mt-10 lg:-mt-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 font-sans">
       {/* Contenedor Flotante Estilo Dock */}
       <div className="relative">
-        {/* Controles de Navegación sutiles en desktop */}
-        <div className="hidden lg:flex items-center justify-between absolute -top-8 left-0 right-0 pointer-events-none px-1">
-          <span className="text-xs font-bold text-white/90 drop-shadow-sm flex items-center gap-1.5 pointer-events-auto">
+        {/* Barra de Título y Controles (accesibles en mobile y desktop) */}
+        <div className="flex items-center justify-between mb-2.5 sm:mb-2 px-1">
+          <span className="text-xs font-bold text-slate-800 sm:text-white/90 drop-shadow-sm flex items-center gap-1.5">
             <Percent className="w-3.5 h-3.5 text-[#e5a93b]" />
-            Beneficios & Financiación del Ecosistema
+            Beneficios & Financiación ({promos.length})
           </span>
-          <div className="flex items-center gap-1.5 pointer-events-auto">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => scroll("left")}
               aria-label="Beneficio anterior"
-              className="p-1.5 rounded-full bg-white/90 hover:bg-white text-slate-700 shadow-sm border border-slate-200 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full bg-white text-slate-700 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
               onClick={() => scroll("right")}
               aria-label="Beneficio siguiente"
-              className="p-1.5 rounded-full bg-white/90 hover:bg-white text-slate-700 shadow-sm border border-slate-200 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full bg-white text-slate-700 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -116,13 +133,15 @@ export function OtaFloatingPromos() {
         {/* Carrusel Horizontal de Tarjetas Flotantes */}
         <div
           ref={scrollRef}
-          className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none touch-pan-x snap-x snap-mandatory"
+          onScroll={handleScroll}
+          className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 pt-1 scrollbar-none overscroll-x-contain select-none snap-x snap-proximity scroll-smooth"
         >
           {promos.map((item) => (
             <Link
               key={item.id}
               href={item.href}
-              className={`flex-none w-[78vw] max-w-[280px] sm:w-[290px] bg-white rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all duration-300 border ${item.accent} flex flex-col justify-between group snap-start`}
+              draggable={false}
+              className={`flex-none w-[76vw] max-w-[275px] sm:w-[290px] bg-white rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all duration-300 border ${item.accent} flex flex-col justify-between group snap-start cursor-pointer`}
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-3">
@@ -148,6 +167,25 @@ export function OtaFloatingPromos() {
                 <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
+          ))}
+          {/* Espaciador final para permitir scroll completo de la 5ta tarjeta */}
+          <div className="w-4 flex-none" />
+        </div>
+
+        {/* Indicadores de puntos en mobile */}
+        <div className="flex justify-center items-center gap-1.5 mt-2 sm:hidden">
+          {promos.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => scrollToIdx(idx)}
+              aria-label={`Ir al beneficio ${idx + 1}`}
+              className={`transition-all duration-300 rounded-full cursor-pointer ${
+                idx === activeIdx
+                  ? "w-5 h-1.5 bg-[#FF5A19]"
+                  : "w-1.5 h-1.5 bg-slate-300 hover:bg-slate-400"
+              }`}
+            />
           ))}
         </div>
       </div>
