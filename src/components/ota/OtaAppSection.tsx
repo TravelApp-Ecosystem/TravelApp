@@ -29,22 +29,22 @@ export function OtaAppSection({
   appStoreUrl = "#",
 }: OtaAppSectionProps) {
   return (
-    <section id="app" className="py-20 sm:py-28 bg-white font-sans overflow-hidden border-t border-slate-100">
+    <section id="app" className="py-14 sm:py-28 bg-white font-sans overflow-hidden border-t border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-center">
           
           {/* Columna Izquierda: Información de la App & Descargas */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center sm:text-left">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 text-[#0A2A5B] text-xs font-black uppercase tracking-wider">
               <Smartphone className="w-4 h-4 text-[#FF5A19]" />
               <span>TravelApp en tu Celular</span>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
               Toda tu experiencia de viaje en la palma de tu mano
             </h2>
 
-            <p className="text-base sm:text-lg text-slate-600 font-medium leading-relaxed">
+            <p className="text-sm sm:text-lg text-slate-600 font-medium leading-relaxed">
               Descargá la aplicación oficial de TravelApp. Pedí traslados en TravelCab en segundos, consultá tus vouchers de vuelo y hotel sin conexión a internet y canjeá tus puntos Rewards en comercios adheridos.
             </p>
 
@@ -92,20 +92,20 @@ export function OtaAppSection({
             </div>
 
             {/* Botones de Descarga y CTA de Registro */}
-            <div className="pt-4 space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="pt-2 sm:pt-4 space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
                 {showPlayStore && (
                   <a
                     href={playStoreUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-md group cursor-pointer"
+                    className="flex items-center justify-center gap-3 px-5 py-2.5 sm:py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-md group cursor-pointer"
                   >
-                    <svg className="w-6 h-6 fill-current text-emerald-400" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-emerald-400" viewBox="0 0 24 24">
                       <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z" />
                     </svg>
                     <div className="text-left">
-                      <span className="block text-[10px] text-slate-400 font-bold uppercase leading-none">Disponible en</span>
+                      <span className="block text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase leading-none">Disponible en</span>
                       <span className="block text-xs font-black leading-tight mt-0.5">Google Play</span>
                     </div>
                   </a>
@@ -116,36 +116,36 @@ export function OtaAppSection({
                     href={appStoreUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-md group cursor-pointer"
+                    className="flex items-center justify-center gap-3 px-5 py-2.5 sm:py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-md group cursor-pointer"
                   >
-                    <svg className="w-6 h-6 fill-current text-white" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-white" viewBox="0 0 24 24">
                       <path d="M18.71,19.5C17.88,20.74 17,21.95 15.66,21.97C14.32,22 13.89,21.18 12.37,21.18C10.84,21.18 10.37,21.95 9.09,22C7.79,22.05 6.8,20.68 5.96,19.47C4.25,17 2.94,12.45 4.7,9.39C5.57,7.87 7.13,6.91 8.82,6.88C10.1,6.86 11.32,7.75 12.11,7.75C12.89,7.75 14.37,6.68 15.92,6.84C16.57,6.87 18.39,7.1 19.56,8.82C19.47,8.88 17.39,10.1 17.41,12.63C17.44,15.65 20.06,16.66 20.13,16.69C20.1,16.79 19.71,18.14 18.71,19.5M15.97,4.88C16.65,4.06 17.11,2.92 16.98,1.77C15.97,1.81 14.77,2.45 14.06,3.28C13.43,4 12.88,5.16 13.03,6.29C14.15,6.38 15.29,5.7 15.97,4.88Z" />
                     </svg>
                     <div className="text-left">
-                      <span className="block text-[10px] text-slate-400 font-bold uppercase leading-none">Descargar de</span>
+                      <span className="block text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase leading-none">Descargar de</span>
                       <span className="block text-xs font-black leading-tight mt-0.5">App Store</span>
                     </div>
                   </a>
                 )}
 
                 <Link
-                  href="/login?tab=register"
-                  className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#FF5A19] hover:bg-[#e04c10] text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all cursor-pointer"
+                  href="/registro"
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-[#FF5A19] hover:bg-[#e04c10] text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all cursor-pointer"
                 >
                   <span>Crear Cuenta Gratis</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
 
-              <p className="text-xs text-slate-400 font-medium">
-                ✦ Registro 100% gratuito. Al crear tu cuenta recibís 150 puntos de bienvenida en Rewards.
+              <p className="text-[11px] sm:text-xs text-slate-400 font-medium">
+                ✦ Registro 100% gratuito. Al crear tu cuenta recibís 500 puntos de bienvenida en Rewards.
               </p>
             </div>
           </div>
 
           {/* Columna Derecha: Mockup Interactivo del Smartphone */}
-          <div className="lg:col-span-5 flex justify-center">
-            <div className="relative w-72 sm:w-80 h-[580px] bg-slate-900 rounded-[48px] p-3.5 shadow-2xl border-4 border-slate-800 ring-12 ring-slate-100">
+          <div className="lg:col-span-5 flex justify-center w-full overflow-hidden py-2">
+            <div className="relative w-[270px] xs:w-72 sm:w-80 h-[520px] sm:h-[580px] bg-slate-900 rounded-[40px] sm:rounded-[48px] p-3 sm:p-3.5 shadow-2xl border-4 border-slate-800 sm:ring-8 lg:ring-12 ring-slate-100 max-w-full">
               {/* Parlante / Cámara Superior */}
               <div className="absolute top-6 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-950 rounded-full z-30"></div>
 

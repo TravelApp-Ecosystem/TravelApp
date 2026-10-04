@@ -332,16 +332,17 @@ export function OtaFooter({ config }: OtaFooterProps) {
 
       {/* MODAL LEGAL (POLÍTICA / TÉRMINOS) */}
       {legalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 text-white relative shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-5 sm:p-8 text-white relative shadow-2xl max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setLegalModal(null)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
+              aria-label="Cerrar modal"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-xl font-black mb-4 text-[#FF7A00]">{legalModal.title}</h3>
-            <p className="text-sm text-slate-300 leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
+            <h3 className="text-lg sm:text-xl font-black mb-4 text-[#FF7A00] pr-8">{legalModal.title}</h3>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pr-2">
               {legalModal.content}
             </p>
           </div>
@@ -350,11 +351,12 @@ export function OtaFooter({ config }: OtaFooterProps) {
 
       {/* MODAL BOTÓN DE ARREPENTIMIENTO */}
       {arrepentimientoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-red-900/60 rounded-3xl max-w-lg w-full p-6 sm:p-8 text-white relative shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-red-900/60 rounded-3xl max-w-lg w-full p-5 sm:p-8 text-white relative shadow-2xl max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setArrepentimientoModal(false)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
+              aria-label="Cerrar modal"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>

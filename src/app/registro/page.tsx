@@ -146,7 +146,7 @@ export default function RegistroPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#071C3D] flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden font-sans">
+    <div className="relative min-h-screen bg-[#071C3D] flex flex-col items-center justify-center px-3 py-6 sm:p-6 overflow-x-hidden w-full font-sans">
       
       {/* Fondo Azul Tech con resplandor sutil */}
       <div className="absolute inset-0 bg-radial-gradient from-[#0A2A5B]/90 via-[#071C3D] to-[#040E1F] pointer-events-none" />
@@ -168,7 +168,7 @@ export default function RegistroPage() {
       </div>
 
       {/* Tarjeta Flotante Blanca - Copia fiel del Onboarding de la App */}
-      <div className="w-full max-w-lg relative z-10 bg-white rounded-3xl p-6 sm:p-9 shadow-2xl border border-slate-100">
+      <div className="w-full max-w-lg relative z-10 bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-9 shadow-2xl border border-slate-100">
         
         {/* Cabecera de Marca con Travis en primer plano */}
         <div className="text-center mb-6">

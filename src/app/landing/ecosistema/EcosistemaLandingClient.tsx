@@ -138,7 +138,7 @@ export default function EcosistemaLandingClient({
   const promoConfig: PromoPushPopConfig = cms.pushPopPromo || DEFAULT_PROMO_PUSHPOP;
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 font-sans flex flex-col selection:bg-tech-blue selection:text-white">
+    <div className="min-h-screen bg-white text-slate-800 font-sans flex flex-col selection:bg-tech-blue selection:text-white w-full overflow-x-hidden">
       
       {/* 1. Header Oficial: Fondo Azul Tech, Logo con Brillo, 3 Dropdowns, 0810-220-0018 */}
       <OtaHeader
@@ -162,23 +162,23 @@ export default function EcosistemaLandingClient({
       />
 
       {/* 5. Sección Institucional: El Ecosistema Integrado */}
-      <section id="ecosistema" className="py-16 sm:py-24 bg-slate-50 font-sans border-t border-slate-100">
+      <section id="ecosistema" className="py-12 sm:py-24 bg-slate-50 font-sans border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-14">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 text-[#0A2A5B] text-xs font-black uppercase tracking-wider mb-3">
               <Building2 className="w-3.5 h-3.5 text-[#FF5A19]" />
               <span>Conocé el Ecosistema</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-4">
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-3 sm:mb-4">
               La Red Integrada de Turismo y Movilidad de Argentina
             </h2>
-            <p className="text-base sm:text-lg text-slate-600 font-medium leading-relaxed">
+            <p className="text-sm sm:text-lg text-slate-600 font-medium leading-relaxed">
               Combinamos tecnología de vanguardia, pasarelas de pago seguras y coordinación en territorio para brindarte una solución integral en cada etapa de tu viaje.
             </p>
           </div>
 
           {/* Grid de las 4 Unidades del Ecosistema */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {/* Unidad 1: Experience */}
             <Link
               href="/landing/experience"
@@ -309,17 +309,18 @@ export default function EcosistemaLandingClient({
 
       {/* MODAL INSTITUCIONAL: VISIÓN, MISIÓN Y VALORES */}
       {quienesSomosModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100 text-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-8 shadow-2xl relative border border-slate-100 text-slate-800 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setQuienesSomosModal(null)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+              aria-label="Cerrar modal"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
             {/* Tabs Visión / Misión / Valores */}
-            <div className="flex gap-2 border-b border-slate-100 pb-4 mb-6">
+            <div className="flex gap-2 border-b border-slate-100 pb-3 sm:pb-4 mb-4 sm:mb-6">
               <button
                 type="button"
                 onClick={() => setQuienesSomosModal("vision")}
@@ -357,8 +358,8 @@ export default function EcosistemaLandingClient({
 
             {quienesSomosModal === "vision" && (
               <div className="space-y-3 animate-in fade-in">
-                <h3 className="text-2xl font-black text-slate-900">Nuestra Visión</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900">Nuestra Visión</h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Ser la plataforma líder de turismo y movilidad integrada de Argentina y Latinoamérica, unificando paquetes emisivos de clase mundial, turismo receptivo regional y traslados seguros bajo un modelo de innovación continua, transparencia y fidelización real.
                 </p>
               </div>
@@ -366,8 +367,8 @@ export default function EcosistemaLandingClient({
 
             {quienesSomosModal === "mision" && (
               <div className="space-y-3 animate-in fade-in">
-                <h3 className="text-2xl font-black text-slate-900">Nuestra Misión</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900">Nuestra Misión</h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Empoderar a cada viajero conectándolo con las mejores opciones de transporte, alojamiento y experiencias guiadas con tarifas transparentes, atención 24/7 impulsada por IA y un ecosistema que premia cada kilómetro recorrido.
                 </p>
               </div>
@@ -375,8 +376,8 @@ export default function EcosistemaLandingClient({
 
             {quienesSomosModal === "valores" && (
               <div className="space-y-3 animate-in fade-in">
-                <h3 className="text-2xl font-black text-slate-900">Nuestros Valores</h3>
-                <ul className="text-sm text-slate-600 space-y-2">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900">Nuestros Valores</h3>
+                <ul className="text-xs sm:text-sm text-slate-600 space-y-2">
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span><strong>Transparencia:</strong> Tarifas claras sin cargos ocultos ni sorpresas.</span>
@@ -398,11 +399,12 @@ export default function EcosistemaLandingClient({
 
       {/* MODAL DE CONTACTO DIRECTO */}
       {contactoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100 text-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-8 shadow-2xl relative border border-slate-100 text-slate-800 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setContactoModal(false)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+              aria-label="Cerrar modal"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>

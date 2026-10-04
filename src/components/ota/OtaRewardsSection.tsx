@@ -25,39 +25,39 @@ export function OtaRewardsSection() {
   ];
 
   return (
-    <section id="rewards" className="py-16 sm:py-24 bg-gradient-to-b from-white to-amber-50/40 font-sans border-t border-slate-100">
+    <section id="rewards" className="py-12 sm:py-24 bg-gradient-to-b from-white to-amber-50/40 font-sans border-t border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           {/* Columna Izquierda: Información y Funcionamiento */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center sm:text-left">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-100 border border-amber-200/80 text-amber-900 text-xs font-bold uppercase">
               <Sparkles className="w-3.5 h-3.5 text-[#e5a93b]" />
               <span>Programa de Fidelidad Exclusivo</span>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
               Tus viajes ahora tienen premio con{" "}
               <span className="text-[#e5a93b]">TravelApp Rewards</span>
             </h2>
 
-            <p className="text-base sm:text-lg text-slate-600 font-medium leading-relaxed">
+            <p className="text-sm sm:text-lg text-slate-600 font-medium leading-relaxed">
               No dejes que tus kilómetros se pierdan. Convertí cada experiencia en crédito directo para tus próximas vacaciones. Sin letra chica ni vencimientos sorpresivos.
             </p>
 
             {/* 3 Pasos Ilustrativos */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-2 text-left">
               {steps.map((s, idx) => (
                 <div
                   key={idx}
                   className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-100 shadow-xs hover:shadow-md transition-shadow"
                 >
-                  <div className="text-2xl font-black text-[#e5a93b]/50 mb-2">
+                  <div className="text-xl sm:text-2xl font-black text-[#e5a93b]/50 mb-1.5 sm:mb-2">
                     {s.num}
                   </div>
-                  <h4 className="text-sm font-bold text-slate-900 mb-1">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 mb-1">
                     {s.title}
                   </h4>
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-slate-500 font-medium leading-relaxed">
                     {s.desc}
                   </p>
                 </div>
@@ -65,18 +65,18 @@ export function OtaRewardsSection() {
             </div>
 
             {/* Llamados a la Acción */}
-            <div className="flex flex-wrap items-center gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-start gap-3 sm:gap-4 pt-2 sm:pt-4">
               <Link
                 href="/landing/rewards"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#e5a93b] hover:bg-[#d49626] text-slate-950 font-bold text-sm shadow-lg hover:shadow-amber-500/20 transition-all transform hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#e5a93b] hover:bg-[#d49626] text-slate-950 font-bold text-xs sm:text-sm shadow-lg hover:shadow-amber-500/20 transition-all transform hover:-translate-y-0.5 cursor-pointer"
               >
                 <span>Conocer Más de Rewards</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
 
               <Link
-                href="/login?tab=register"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm border border-slate-200 transition-colors shadow-xs"
+                href="/registro"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm border border-slate-200 transition-colors shadow-xs cursor-pointer"
               >
                 <span>Registrarme y Ganar 500 Puntos</span>
               </Link>

@@ -110,7 +110,7 @@ export function OtaHeroSlider({ slides, children }: OtaHeroSliderProps) {
 
   return (
     <section
-      className="relative min-h-[620px] sm:min-h-[700px] lg:min-h-[760px] w-full overflow-hidden bg-slate-900 font-sans pt-20 sm:pt-24 flex flex-col justify-between"
+      className="relative min-h-[540px] sm:min-h-[660px] lg:min-h-[760px] w-full overflow-hidden bg-slate-900 font-sans pt-16 sm:pt-24 flex flex-col justify-between"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -152,53 +152,51 @@ export function OtaHeroSlider({ slides, children }: OtaHeroSliderProps) {
           );
         })}
 
-        {/* Gradiente Ultra Sutil (Scrim Liviano): 
-            Solo sombra suave al pie y arriba para legibilidad del header y textos, 
-            dejando el 85% de la imagen nítida, viva y con colores HD */}
-        <div className="absolute inset-0 z-20 bg-gradient-to-t from-slate-950/60 via-transparent to-black/25 pointer-events-none" />
-        <div className="absolute inset-0 z-20 bg-gradient-to-r from-black/40 via-black/10 to-transparent pointer-events-none" />
+        {/* Gradiente Ultra Sutil (Scrim Liviano) */}
+        <div className="absolute inset-0 z-20 bg-gradient-to-t from-slate-950/70 via-transparent to-black/30 pointer-events-none" />
+        <div className="absolute inset-0 z-20 bg-gradient-to-r from-black/50 via-black/15 to-transparent pointer-events-none" />
       </div>
 
       {/* 2. Contenido Editorial Superior Estilo Emirates (Despejado y Limpio) */}
-      <div className="relative z-30 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-6 w-full flex-1 flex flex-col justify-center">
+      <div className="relative z-30 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-14 pb-4 sm:pb-6 w-full flex-1 flex flex-col justify-center">
         <div className="max-w-3xl">
           {currentSlide.badge && (
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold tracking-wider uppercase mb-4 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-[#e5a93b]" />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-[10px] sm:text-xs font-bold tracking-wider uppercase mb-2 sm:mb-4 shadow-sm">
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#e5a93b]" />
               <span>{currentSlide.badge}</span>
             </div>
           )}
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-[1.08] mb-4 drop-shadow-lg">
+          <h1 className="text-2xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-[1.12] sm:leading-[1.08] mb-2 sm:mb-4 drop-shadow-lg">
             {currentSlide.title}
           </h1>
 
-          <p className="text-lg sm:text-xl text-white/95 font-medium max-w-2xl mb-6 leading-relaxed drop-shadow-md">
+          <p className="text-xs sm:text-lg md:text-xl text-white/95 font-medium max-w-2xl mb-3 sm:mb-6 leading-relaxed drop-shadow-md">
             {currentSlide.subtitle}
           </p>
         </div>
       </div>
 
-      {/* 3. Buscador Oficial Completo Desplegado (con Filtros Avanzados y Selector de Paquetes) */}
+      {/* 3. Buscador Oficial Completo Desplegado */}
       {children && (
-        <div className="relative z-30 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 w-full animate-in fade-in duration-300">
+        <div className="relative z-30 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pb-8 sm:pb-16 w-full animate-in fade-in duration-300">
           {children}
 
           {/* Destinos Populares Sugeridos al pie del buscador */}
-          <div className="mt-3.5 flex flex-wrap items-center gap-2 text-xs text-white/90 px-2">
-            <span className="font-bold drop-shadow-sm flex items-center gap-1.5 text-white">
-              <Sparkles className="w-3.5 h-3.5 text-[#e5a93b]" />
+          <div className="mt-2.5 sm:mt-3.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-white/90 px-1 sm:px-2">
+            <span className="font-bold drop-shadow-sm flex items-center gap-1 text-white">
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#e5a93b]" />
               Destinos sugeridos:
             </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {SUGGESTED_DESTINATIONS.slice(0, 5).map((dest) => (
+            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+              {SUGGESTED_DESTINATIONS.slice(0, 4).map((dest) => (
                 <button
                   key={dest}
                   type="button"
                   onClick={() => {
                     router.push(`/marketplace?destination=${encodeURIComponent(dest)}`);
                   }}
-                  className="px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-xs text-[11px] font-bold text-white transition-all hover:scale-105 border border-white/20 cursor-pointer"
+                  className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-xs text-[10px] sm:text-[11px] font-bold text-white transition-all hover:scale-105 border border-white/20 cursor-pointer"
                 >
                   {dest}
                 </button>

@@ -93,8 +93,8 @@ export function OtaHeader({
         <div className="flex items-center justify-between gap-4">
           
           {/* 1. LOGO TRAVELAPP ORIGINAL EN LETRAS BLANCAS CON BRILLO ANIMADO */}
-          <Link href="/landing/ecosistema" className="flex items-center gap-2 group shrink-0 relative">
-            <div className="relative h-9 sm:h-10 w-36 sm:w-44 overflow-hidden rounded-lg">
+          <Link href="/landing/ecosistema" className="flex items-center gap-1 sm:gap-2 group shrink-0 relative">
+            <div className="relative h-8 sm:h-10 w-28 xs:w-36 sm:w-44 overflow-hidden rounded-lg">
               <Image
                 src="/assets/travelapp_blanco.svg"
                 alt="TravelApp Logo Oficial"
@@ -428,16 +428,16 @@ export function OtaHeader({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <Link
                   href="/login"
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold text-white hover:bg-white/10 transition-all border border-white/20 bg-white/5"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold text-white hover:bg-white/10 transition-all border border-white/20 bg-white/5 whitespace-nowrap"
                 >
                   Ingresar
                 </Link>
                 <Link
                   href="/registro"
-                  className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-black bg-[#FF5A19] hover:bg-[#e04c10] text-white shadow-md shadow-orange-900/30 hover:shadow-orange-900/50 transition-all transform hover:scale-[1.02]"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-black bg-[#FF5A19] hover:bg-[#e04c10] text-white shadow-md shadow-orange-900/30 hover:shadow-orange-900/50 transition-all transform hover:scale-[1.02] whitespace-nowrap"
                 >
                   Registro
                 </Link>
@@ -448,7 +448,8 @@ export function OtaHeader({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+              aria-label="Abrir menú"
+              className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white shrink-0"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -457,7 +458,7 @@ export function OtaHeader({
 
         {/* 4. MENÚ MOBILE DESPLEGABLE */}
         {mobileMenuOpen && (
-          <div className="lg:hidden mt-4 pt-4 border-t border-blue-900/60 pb-4 space-y-3 text-white animate-in slide-in-from-top-4 duration-200">
+          <div className="lg:hidden mt-3 pt-3 border-t border-blue-900/60 pb-4 space-y-3 text-white animate-in slide-in-from-top-4 duration-200">
             {/* Teléfono Mobile */}
             <a
               href={`tel:${phone.replace(/[^0-9]/g, "")}`}

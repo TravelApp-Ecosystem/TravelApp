@@ -108,13 +108,13 @@ export function OtaCareersSection({ positions = DEFAULT_POSITIONS }: OtaCareersS
           </div>
 
           {/* Lado Derecho: Botón CTA */}
-          <div className="shrink-0">
+          <div className="w-full sm:w-auto shrink-0">
             <button
               onClick={() => {
                 setModalOpen(true);
                 setSubmitted(false);
               }}
-              className="inline-flex items-center gap-2.5 px-7 py-4 rounded-2xl bg-[#0A2A5B] hover:bg-[#071d3f] text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer transform hover:scale-[1.02]"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3.5 sm:py-4 rounded-2xl bg-[#0A2A5B] hover:bg-[#071d3f] text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer transform hover:scale-[1.02]"
             >
               <Upload className="w-4 h-4 text-[#FF7A00]" />
               <span>Cargá tu CV / Postulate</span>
@@ -125,11 +125,12 @@ export function OtaCareersSection({ positions = DEFAULT_POSITIONS }: OtaCareersS
 
       {/* Modal para Carga de CV / Postulación */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100 text-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-8 shadow-2xl relative border border-slate-100 text-slate-800 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setModalOpen(false)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+              aria-label="Cerrar modal"
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>

@@ -164,7 +164,7 @@ function LoginContent() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#071C3D] flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden font-sans">
+    <div className="relative min-h-screen bg-[#071C3D] flex flex-col items-center justify-center px-3 py-6 sm:p-6 overflow-x-hidden w-full font-sans">
       
       {/* Fondo estético Azul Tech con resplandor sutil */}
       <div className="absolute inset-0 bg-radial-gradient from-[#0A2A5B]/80 via-[#071C3D] to-[#040E1F] pointer-events-none" />
@@ -186,7 +186,7 @@ function LoginContent() {
       </div>
 
       {/* Tarjeta Principal de Inicio de Sesión */}
-      <div className="w-full max-w-md relative z-10 bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100">
+      <div className="w-full max-w-md relative z-10 bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl border border-slate-100">
         
         {/* Cabecera con Logo y Avatar de Travis */}
         <div className="text-center mb-6">

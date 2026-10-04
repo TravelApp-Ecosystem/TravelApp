@@ -24,79 +24,79 @@ export function OtaTravisSection({
   whatsappUrl = "https://wa.me/5493812020050?text=Hola%20Travis!%20Quiero%20planificar%20un%20viaje%20con%20TravelApp",
 }: OtaTravisSectionProps) {
   return (
-    <section id="travis" className="py-20 sm:py-28 bg-slate-900 text-white font-sans relative overflow-hidden">
+    <section id="travis" className="py-14 sm:py-28 bg-slate-900 text-white font-sans relative overflow-hidden">
       {/* Luces y degradados de fondo */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-[#FF5A19]/15 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-center">
           
           {/* Columna Izquierda: Presentación y Funciones de Travis */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center sm:text-left">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-black uppercase tracking-wider">
               <Bot className="w-4 h-4 text-[#FF7A00]" />
               <span>Inteligencia Artificial de Viajes</span>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
               Conocé a <span className="text-[#FF7A00]">Travis</span>, tu copiloto y asistente virtual 24/7
             </h2>
 
-            <p className="text-base sm:text-lg text-slate-300 font-medium leading-relaxed">
+            <p className="text-sm sm:text-lg text-slate-300 font-medium leading-relaxed">
               Travis no es un chatbot tradicional: es un asistente inteligente entrenado exclusivamente con las tarifas, rutas, hoteles y excursiones del ecosistema TravelApp. Te atiende en segundos, sin esperas y por el canal que prefieras.
             </p>
 
             {/* Grilla de 4 Capacidades Principales */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-blue-500/40 transition-colors">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 text-left">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-blue-500/40 transition-colors">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-2.5 sm:mb-3">
                   <Zap className="w-4 h-4" />
                 </div>
-                <h4 className="text-sm font-black text-white">Cotizaciones al Instante</h4>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                <h4 className="text-xs sm:text-sm font-black text-white">Cotizaciones al Instante</h4>
+                <p className="text-[11px] sm:text-xs text-slate-400 mt-1 leading-relaxed">
                   Decile qué presupuesto tenés y cuántos viajan. Travis busca las mejores combinaciones de aéreo + hotel.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-orange-500/40 transition-colors">
-                <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-[#FF7A00] flex items-center justify-center mb-3">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-orange-500/40 transition-colors">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-[#FF7A00] flex items-center justify-center mb-2.5 sm:mb-3">
                   <Clock className="w-4 h-4" />
                 </div>
-                <h4 className="text-sm font-black text-white">Disponibilidad 24/7</h4>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                <h4 className="text-xs sm:text-sm font-black text-white">Disponibilidad 24/7</h4>
+                <p className="text-[11px] sm:text-xs text-slate-400 mt-1 leading-relaxed">
                   Respondé dudas a las 3 de la mañana, fines de semana o feriados. Travis siempre está despierto para vos.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/40 transition-colors">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/40 transition-colors">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2.5 sm:mb-3">
                   <MessageSquare className="w-4 h-4" />
                 </div>
-                <h4 className="text-sm font-black text-white">Omnicanal por WhatsApp</h4>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                <h4 className="text-xs sm:text-sm font-black text-white">Omnicanal por WhatsApp</h4>
+                <p className="text-[11px] sm:text-xs text-slate-400 mt-1 leading-relaxed">
                   Podés chatear desde la web o directamente agregarlo a WhatsApp para enviar notas de voz o mensajes.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-500/40 transition-colors">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-3">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-500/40 transition-colors">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-2.5 sm:mb-3">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <h4 className="text-sm font-black text-white">Soporte Operativo</h4>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                <h4 className="text-xs sm:text-sm font-black text-white">Soporte Operativo</h4>
+                <p className="text-[11px] sm:text-xs text-slate-400 mt-1 leading-relaxed">
                   Consultá el estado de tu vuelo, tu reserva de hotel o pedí un móvil de TravelCab a través de Travis.
                 </p>
               </div>
             </div>
 
             {/* Botones de Acción */}
-            <div className="pt-4 flex flex-wrap items-center gap-4">
+            <div className="pt-2 sm:pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center sm:justify-start gap-3 sm:gap-4">
               <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/40 transition-all cursor-pointer transform hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-900/40 transition-all cursor-pointer transform hover:-translate-y-0.5"
               >
                 <MessageSquare className="w-4 h-4" />
                 <span>Hablar con Travis por WhatsApp</span>
@@ -104,7 +104,7 @@ export function OtaTravisSection({
 
               <a
                 href="#contacto"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/20 transition-all"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs sm:text-sm border border-white/20 transition-all"
               >
                 <span>Conocer Más</span>
                 <ArrowRight className="w-4 h-4" />
@@ -113,8 +113,8 @@ export function OtaTravisSection({
           </div>
 
           {/* Columna Derecha: Tarjeta / Interfaz Interactiva de Travis */}
-          <div className="lg:col-span-5 flex justify-center">
-            <div className="w-full max-w-md bg-slate-800/90 rounded-3xl p-6 border border-slate-700 shadow-2xl backdrop-blur-md relative">
+          <div className="lg:col-span-5 flex justify-center w-full">
+            <div className="w-full max-w-md bg-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-700 shadow-2xl backdrop-blur-md relative">
               {/* Header del Chat */}
               <div className="flex items-center gap-3.5 pb-4 border-b border-slate-700/80">
                 <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#0A2A5B] to-blue-600 p-0.5 shadow-md flex items-center justify-center overflow-hidden">

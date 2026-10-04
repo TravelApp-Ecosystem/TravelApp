@@ -1,10 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { headers } from "next/headers";
 import "./globals.css";
 import { MainLayout } from "@/components/layout/MainLayout";
 
 const quicksand = { variable: "font-sans" };
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#0A2A5B",
+};
 
 export const metadata: Metadata = {
   title: "TravelApp Ecosystem",

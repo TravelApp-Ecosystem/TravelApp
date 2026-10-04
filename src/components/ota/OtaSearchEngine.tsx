@@ -136,10 +136,10 @@ export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps)
   };
 
   return (
-    <div className="w-full bg-white/95 backdrop-blur-md rounded-3xl p-4 sm:p-6 shadow-2xl border border-white/60 font-sans text-slate-800">
+    <div className="w-full bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-2xl border border-white/60 font-sans text-slate-800">
       
       {/* Pestañas de Servicios (Hasta 8 activables por switch) */}
-      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-3 no-scrollbar border-b border-slate-100">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-3 scrollbar-none touch-pan-x flex-nowrap border-b border-slate-100">
         {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -147,7 +147,7 @@ export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps)
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
                 isActive
                   ? "bg-[#0A2A5B] text-white shadow-md shadow-blue-950/20 scale-[1.02]"
                   : "bg-slate-100/90 hover:bg-slate-200 text-slate-700 hover:text-slate-900"
@@ -172,15 +172,15 @@ export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps)
       </div>
 
       {/* Formulario de Búsqueda Adaptativo */}
-      <form onSubmit={handleSearchSubmit} className="mt-4 sm:mt-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <form onSubmit={handleSearchSubmit} className="mt-3.5 sm:mt-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           
           {/* Campo 1: Origen o Lugar */}
           <div className="relative group">
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            <label className="block text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               {activeTab === "hoteles" || activeTab === "actividades" || activeTab === "parques" ? "Destino o Ciudad" : "Origen / Partida"}
             </label>
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
+            <div className="flex items-center gap-2 sm:gap-2.5 px-3 sm:px-3.5 py-2.5 rounded-xl sm:rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
               <MapPin className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#FF5A19]" />
               <input
                 type="text"
@@ -194,16 +194,16 @@ export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps)
 
           {/* Campo 2: Destino */}
           <div className="relative group">
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            <label className="block text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               {activeTab === "hoteles" ? "Alojamiento / Hotel" : activeTab === "actividades" ? "Tour o Excursión" : activeTab === "parques" ? "Parque Temático" : activeTab === "paquetes" ? "Destino del Paquete" : "Destino / Llegada"}
             </label>
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
+            <div className="flex items-center gap-2 sm:gap-2.5 px-3 sm:px-3.5 py-2.5 rounded-xl sm:rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
               <MapPin className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-[#0A2A5B]" />
               <input
                 type="text"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
-                placeholder={activeTab === "paquetes" ? "Ej. Cancún, Bariloche, Europa, Río..." : "Ciudad de llegada, hotel o parque..."}
+                placeholder={activeTab === "paquetes" ? "Ej. Cancún, Bariloche, Europa..." : "Ciudad de llegada o hotel..."}
                 className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none"
               />
             </div>
@@ -211,37 +211,37 @@ export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps)
 
           {/* Campo 3: Fechas de Viaje */}
           <div className="relative group">
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Fechas de Viaje
+            <label className="block text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Fechas de Viaje (Ida / Vuelta)
             </label>
-            <div className="grid grid-cols-2 gap-1.5 px-3 py-2 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
-              <div className="flex items-center gap-1.5">
+            <div className="grid grid-cols-2 gap-1 px-2.5 sm:px-3 py-2 rounded-xl sm:rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
+              <div className="flex items-center gap-1 min-w-0">
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <input
                   type="date"
                   value={departureDate}
                   onChange={(e) => setDepartureDate(e.target.value)}
-                  className="w-full bg-transparent text-xs font-semibold text-slate-800 focus:outline-none"
+                  className="w-full bg-transparent text-[11px] sm:text-xs font-semibold text-slate-800 focus:outline-none min-w-0"
                 />
               </div>
-              <div className="flex items-center gap-1.5 border-l border-slate-200 pl-1.5">
+              <div className="flex items-center gap-1 border-l border-slate-200 pl-1.5 min-w-0">
                 <input
                   type="date"
                   value={returnDate}
                   onChange={(e) => setReturnDate(e.target.value)}
-                  className="w-full bg-transparent text-xs font-semibold text-slate-800 focus:outline-none"
+                  className="w-full bg-transparent text-[11px] sm:text-xs font-semibold text-slate-800 focus:outline-none min-w-0"
                 />
               </div>
             </div>
           </div>
 
           {/* Campo 4: Pasajeros y Botón Buscar */}
-          <div className="flex items-end gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-2">
             <div className="relative flex-1">
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                 Pasajeros / Cupos
               </label>
-              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
+              <div className="flex items-center gap-2 px-3 sm:px-3.5 py-2.5 rounded-xl sm:rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus-within:border-[#0A2A5B] focus-within:bg-white transition-all">
                 <Users className="w-4 h-4 text-slate-400 shrink-0" />
                 <select
                   value={passengers}
@@ -258,10 +258,10 @@ export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps)
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-2xl bg-[#FF5A19] hover:bg-[#e04c10] text-white font-black text-sm shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all flex items-center justify-center gap-2 shrink-0 h-[44px] cursor-pointer"
+              className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-2.5 rounded-xl sm:rounded-2xl bg-[#FF5A19] hover:bg-[#e04c10] text-white font-black text-xs sm:text-sm shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all flex items-center justify-center gap-2 shrink-0 h-[44px] cursor-pointer"
             >
               <Search className="w-4 h-4" />
-              <span className="hidden sm:inline">Buscar</span>
+              <span>Buscar</span>
             </button>
           </div>
         </div>

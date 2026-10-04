@@ -228,39 +228,39 @@ export function OtaMarketplaceCarousel({
   };
 
   return (
-    <section id="paquetes-destacados" className="py-16 sm:py-24 bg-white font-sans">
+    <section id="paquetes-destacados" className="py-12 sm:py-24 bg-white font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Encabezado Editorial Estilo Piamonte */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-10">
           <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-50 text-[#0a2a5b] text-xs font-bold uppercase mb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-[#0a2a5b] text-xs font-bold uppercase mb-2">
               <Sparkles className="w-3.5 h-3.5 text-[#ff5a19]" />
               <span>Salidas Seleccionadas</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
               Paquetes de Viaje Recomendados
             </h2>
-            <p className="text-base text-slate-500 font-medium mt-2 max-w-2xl">
+            <p className="text-xs sm:text-base text-slate-500 font-medium mt-1.5 sm:mt-2 max-w-2xl">
               Salidas confirmadas con aéreos, hotelería de excelencia, traslados y el respaldo del equipo TravelApp.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => scroll("left")}
               aria-label="Ver anterior"
-              className="p-3 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+              className="p-2.5 sm:p-3 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               type="button"
               onClick={() => scroll("right")}
               aria-label="Ver siguiente"
-              className="p-3 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+              className="p-2.5 sm:p-3 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
@@ -268,7 +268,7 @@ export function OtaMarketplaceCarousel({
         {/* Carrusel de Tarjetas Estilo Piamonte */}
         <div
           ref={scrollRef}
-          className="flex gap-6 overflow-x-auto pb-6 pt-2 scrollbar-none snap-x snap-mandatory"
+          className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 pt-2 scrollbar-none touch-pan-x snap-x snap-mandatory"
         >
           {activeItems.map((item) => {
             const formattedPrice =
@@ -279,7 +279,7 @@ export function OtaMarketplaceCarousel({
             return (
               <div
                 key={item.id}
-                className="flex-none w-[300px] sm:w-[350px] bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 flex flex-col snap-start group"
+                className="flex-none w-[82vw] max-w-[340px] sm:w-[350px] bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 flex flex-col snap-start group"
               >
                 {/* 1. Fotografía HD con Badges de Piamonte (Duración y Categoría) */}
                 <div className="relative h-60 w-full overflow-hidden bg-slate-900">

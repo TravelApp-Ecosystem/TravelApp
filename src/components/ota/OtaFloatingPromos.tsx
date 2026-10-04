@@ -84,7 +84,7 @@ export function OtaFloatingPromos() {
   };
 
   return (
-    <section className="relative z-30 -mt-10 sm:-mt-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 font-sans">
+    <section className="relative z-30 mt-3 sm:-mt-10 lg:-mt-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 font-sans">
       {/* Contenedor Flotante Estilo Dock */}
       <div className="relative">
         {/* Controles de Navegación sutiles en desktop */}
@@ -116,13 +116,13 @@ export function OtaFloatingPromos() {
         {/* Carrusel Horizontal de Tarjetas Flotantes */}
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none snap-x snap-mandatory"
+          className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none touch-pan-x snap-x snap-mandatory"
         >
           {promos.map((item) => (
             <Link
               key={item.id}
               href={item.href}
-              className={`flex-none w-[260px] sm:w-[290px] bg-white rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all duration-300 border ${item.accent} flex flex-col justify-between group snap-start`}
+              className={`flex-none w-[78vw] max-w-[280px] sm:w-[290px] bg-white rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all duration-300 border ${item.accent} flex flex-col justify-between group snap-start`}
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-3">
