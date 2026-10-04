@@ -4,8 +4,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { collection, addDoc, query, where, getDocs, doc, updateDoc, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { serverGetDocs, serverAddDoc, serverUpdateDoc, serverSetDoc } from '@/lib/firestore-server';
 import { Conversation, Message, MessageChannel, ConversationStatus } from '@/types/messaging';
 import { processTravisMessage, detectDetailedBusinessUnit } from '@/app/api/travis/chat/route';
 import {
@@ -15,6 +14,8 @@ import {
   markWhatsAppMessageAsRead,
   fetchMetaMediaAsBase64,
 } from '@/lib/meta-whatsapp';
+
+export const maxDuration = 60; // Máxima duración permitida en Vercel Serverless
 
 // -----------------------------------------------------------------------------
 // GET: Verificación del Webhook de Meta (Handshake inicial)
@@ -64,9 +65,13 @@ export async function POST(req: NextRequest) {
     const channel: MessageChannel = 'whatsapp';
     const messageId = msg.id;
 
+    console.log(`[Meta Webhook] 📩 Mensaje entrante de ${senderName} (${from}) - Tipo: ${msg.type}`);
+
     // 2. Marcar inmediatamente el mensaje como leído en WhatsApp (doble tilde azul)
     if (messageId) {
-      markWhatsAppMessageAsRead(messageId, { phoneNumberId: phone_number_id }).catch(() => {});
+      markWhatsAppMessageAsRead(messageId, { phoneNumberId: phone_number_id })
+        .then(() => console.log(`[Meta Webhook] ✔ Doble tilde azul enviado para mensaje ${messageId}`))
+        .catch(err => console.warn('[Meta Webhook] No se pudo marcar leído:', err));
     }
 
     // 3. Procesar distintos tipos de mensajes entrantes
@@ -78,12 +83,17 @@ export async function POST(req: NextRequest) {
     } else if (msg.type === 'audio') {
       const audioId = msg.audio?.id;
       if (audioId) {
-        const audioData = await fetchMetaMediaAsBase64(audioId);
-        if (audioData) {
-          audioInput = audioData;
-          userMessage = '[Nota de voz de WhatsApp recibida]';
-        } else {
-          userMessage = 'Te envié un mensaje de voz pero no se pudo reproducir.';
+        try {
+          const audioData = await fetchMetaMediaAsBase64(audioId);
+          if (audioData) {
+            audioInput = audioData;
+            userMessage = '[Nota de voz de WhatsApp recibida]';
+          } else {
+            userMessage = 'Te envié un mensaje de voz pero no se pudo reproducir.';
+          }
+        } catch (mediaErr) {
+          console.warn('[Meta Webhook] Error obteniendo audio de Meta:', mediaErr);
+          userMessage = 'Te envié un mensaje de voz.';
         }
       }
     } else if (msg.type === 'location') {
@@ -106,169 +116,135 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'no_supported_content' });
     }
 
-    console.log(`[Meta Webhook] Mensaje (${msg.type}) de ${senderName} (${from}): "${userMessage}"`);
-
     // 4. Detectar unidad de negocio sugerida (6 unidades oficiales)
     const businessUnit = detectDetailedBusinessUnit(userMessage);
+    const conversationId = `wa_${from}`;
 
-    // 5. Buscar conversación activa en Firestore (compatibilidad completa con /messages)
-    const convsRef = collection(db, 'conversations');
-    const qConvs = query(
-      convsRef,
-      where('channel', '==', channel),
-      where('externalId', '==', from),
-      where('status', 'in', ['bot', 'pending', 'active']),
-      limit(1)
-    );
-    const snapConvs = await getDocs(qConvs);
-
-    let conversationId = '';
-    let conversationStatus: ConversationStatus = 'bot';
-
-    if (!snapConvs.empty) {
-      const docConv = snapConvs.docs[0];
-      conversationId = docConv.id;
-      const docData = docConv.data();
-      conversationStatus = docData.status as ConversationStatus;
-      
-      // Actualizar timestamp y último mensaje
-      await updateDoc(doc(db, 'conversations', conversationId), {
-        lastMessage: userMessage,
-        lastMessageAt: Date.now(),
-        unreadCount: (docData.unreadCount || 0) + 1,
-        'metadata.businessUnit': businessUnit,
+    // 5. Cargar historial previo de forma segura con firestore-server
+    let history: { role: 'user' | 'assistant'; content: string }[] = [];
+    try {
+      const historySnap = await serverGetDocs(`conversations/${conversationId}/messages`, {
+        orderBy: [['timestamp', 'asc']],
+        limit: 8,
       });
-    } else {
-      // Crear nueva conversación estructurada según modelo Conversation
-      const newConversation: Omit<Conversation, 'id'> = {
-        type: 'customer_support',
-        channel,
-        status: 'bot',
-        participants: [
-          { id: from, name: senderName, role: 'customer', phone: from },
-          { id: 'travis', name: 'Travis IA', role: 'travis' },
-        ],
-        lastMessage: userMessage,
-        lastMessageAt: Date.now(),
-        unreadCount: 1,
-        metadata: {
-          businessUnit,
-          passengerName: senderName,
-        },
-        createdAt: Date.now(),
-      };
 
-      const newDoc = await addDoc(convsRef, {
-        ...newConversation,
-        externalId: from,
-        customerName: senderName,
-      });
-      conversationId = newDoc.id;
-
-      // Crear o sincronizar Lead en el CRM de Firestore
-      try {
-        const leadsRef = collection(db, 'leads');
-        await addDoc(leadsRef, {
-          customerName: senderName,
-          phone: from,
-          origin: 'WhatsApp',
-          status: 'Nuevos',
-          customerStatus: 'Prospecto',
-          customerLevel: 1,
-          businessUnit,
-          chatHistory: [{ sender: 'Client', message: userMessage, timestamp: Date.now() }],
-          conversationId,
-          createdAt: Date.now(),
-          lastInteraction: Date.now(),
+      if (historySnap?.docs && historySnap.docs.length > 0) {
+        history = historySnap.docs.map((d: any) => {
+          const data = typeof d.data === 'function' ? d.data() : d;
+          return {
+            role: data.sender?.role === 'customer' ? 'user' : 'assistant',
+            content: data.content || '',
+          };
         });
-      } catch (crmErr) {
-        console.warn('[Meta Webhook] Error creating lead:', crmErr);
       }
+    } catch (histErr) {
+      console.warn('[Meta Webhook] Historial no disponible (usando contexto vacío):', histErr);
     }
 
-    // 6. Registrar mensaje del usuario en la subcolección de Firestore
-    const userMsgData: Omit<Message, 'id'> = {
+    // 6. PROCESAR RESPUESTA CON TRAVIS IA (GEMINI 2.5 FLASH)
+    console.log(`[Meta Webhook] 🧠 Consultando a Travis para ${from} [${businessUnit}]...`);
+    const travisResult = await processTravisMessage(
+      userMessage,
+      history,
+      businessUnit,
       conversationId,
-      sender: { id: from, name: senderName, role: 'customer' },
-      content: userMessage,
-      timestamp: Date.now(),
-      type: msg.type === 'audio' ? 'text' : (msg.type as any) || 'text',
-      channel,
-      isRead: true,
-    };
-    await addDoc(collection(db, `conversations/${conversationId}/messages`), userMsgData);
+      audioInput
+    );
 
-    // 7. Si la conversación está en modo 'bot', responder usando Travis IA
-    if (conversationStatus === 'bot') {
-      // Cargar historial reciente de la conversación
-      const historySnap = await getDocs(
-        query(
-          collection(db, `conversations/${conversationId}/messages`),
-          orderBy('timestamp', 'desc'),
-          limit(10)
-        )
-      );
+    const travisReply = travisResult.response;
+    console.log(`[Meta Webhook] 🤖 Travis respondió: "${travisReply?.substring(0, 80)}..."`);
 
-      const history = historySnap.docs
-        .map(d => d.data())
-        .reverse()
-        .map(m => ({
-          role: m.sender?.role === 'customer' ? 'user' : 'assistant',
-          content: m.content || '',
-        }));
+    // 7. ENVIAR RESPUESTA INMEDIATAMENTE AL WHATSAPP DEL USUARIO
+    if (travisReply) {
+      let sendRes: { success: boolean; data?: any; error?: string };
 
-      // Procesar respuesta con el motor cognitivo de Travis
-      const travisResult = await processTravisMessage(
-        userMessage, 
-        history, 
-        businessUnit, 
-        conversationId, 
-        audioInput
-      );
-      
-      const travisReply = travisResult.response;
+      if (travisResult.buttons && travisResult.buttons.length > 0) {
+        console.log(`[Meta Webhook] 🔘 Enviando ${travisResult.buttons.length} botones interactivos a ${from}`);
+        sendRes = await sendWhatsAppInteractiveButtons(
+          from,
+          travisReply,
+          travisResult.buttons,
+          { phoneNumberId: phone_number_id }
+        );
+      } else {
+        console.log(`[Meta Webhook] 💬 Enviando texto simple a ${from}`);
+        sendRes = await sendWhatsAppTextMessage(
+          from,
+          travisReply,
+          { phoneNumberId: phone_number_id }
+        );
+      }
 
+      console.log(`[Meta Webhook] 📤 Resultado envío WhatsApp:`, sendRes.success ? 'EXITOSO' : sendRes.error);
+    }
+
+    // 8. Persistir en Firestore de manera asíncrona / segura (no bloqueante)
+    try {
+      const now = Date.now();
+      // Guardar mensaje del usuario
+      await serverAddDoc(`conversations/${conversationId}/messages`, {
+        conversationId,
+        sender: { id: from, name: senderName, role: 'customer' },
+        content: userMessage,
+        timestamp: now,
+        type: msg.type === 'audio' ? 'audio' : 'text',
+        channel,
+        isRead: true,
+      });
+
+      // Guardar respuesta de Travis
       if (travisReply) {
-        // Enviar respuesta a WhatsApp usando Meta Cloud API
-        if (travisResult.buttons && travisResult.buttons.length > 0) {
-          // Enviar con botones interactivos si Travis generó opciones
-          await sendWhatsAppInteractiveButtons(
-            from,
-            travisReply,
-            travisResult.buttons,
-            { phoneNumberId: phone_number_id }
-          );
-        } else {
-          // Enviar texto regular
-          await sendWhatsAppTextMessage(
-            from,
-            travisReply,
-            { phoneNumberId: phone_number_id }
-          );
-        }
-
-        // Registrar respuesta de Travis en Firestore
-        await addDoc(collection(db, `conversations/${conversationId}/messages`), {
+        await serverAddDoc(`conversations/${conversationId}/messages`, {
           conversationId,
           sender: { id: 'travis', name: 'Travis IA', role: 'travis' },
           content: travisReply,
-          timestamp: Date.now() + 1,
+          timestamp: now + 1,
           type: 'text',
           channel,
           isRead: false,
         });
-
-        // Actualizar último mensaje de la conversación
-        await updateDoc(doc(db, 'conversations', conversationId), {
-          lastMessage: travisReply.substring(0, 120),
-          lastMessageAt: Date.now(),
-        });
       }
+
+      // Sincronizar estado de la conversación
+      await serverSetDoc('conversations', conversationId, {
+        channel,
+        status: 'bot',
+        customerName: senderName,
+        externalId: from,
+        participants: [
+          { id: from, name: senderName, role: 'customer', phone: from },
+          { id: 'travis', name: 'Travis IA', role: 'travis' },
+        ],
+        lastMessage: (travisReply || userMessage).substring(0, 120),
+        lastMessageAt: now,
+        unreadCount: 0,
+        metadata: {
+          businessUnit: travisResult.businessUnit || businessUnit,
+          passengerName: senderName,
+        },
+        updatedAt: now,
+      });
+
+      // Sincronizar Lead en CRM si es necesario
+      await serverAddDoc('leads', {
+        customerName: senderName,
+        phone: from,
+        origin: 'WhatsApp',
+        status: 'Nuevos',
+        customerStatus: 'Prospecto',
+        customerLevel: 1,
+        businessUnit: travisResult.businessUnit || businessUnit,
+        conversationId,
+        createdAt: now,
+        lastInteraction: now,
+      });
+    } catch (saveErr) {
+      console.warn('[Meta Webhook] Aviso al persistir conversación en Firestore (no crítico):', saveErr);
     }
 
     return NextResponse.json({ status: 'success' });
   } catch (error: any) {
-    console.error('[Meta Webhook] Error procesando notificación:', error);
+    console.error('[Meta Webhook] Error fatal procesando notificación:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
