@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View, StyleSheet, Text, Animated } from 'react-native';
 import { useFonts, Quicksand_400Regular, Quicksand_500Medium, Quicksand_600SemiBold, Quicksand_700Bold } from '@expo-google-fonts/quicksand';
+import * as Updates from 'expo-updates';
 import RootNavigator from './src/navigation/RootNavigator';
 import { Colors } from './src/lib/constants';
 import { TravelAppLogo } from './src/components/BrandLogos';
@@ -17,6 +18,23 @@ export default function App() {
 
   const [showSplash, setShowSplash] = useState(true);
   const splashOpacity = useRef(new Animated.Value(1)).current;
+
+  // Comprobar y aplicar actualizaciones OTA automáticamente
+  useEffect(() => {
+    async function checkOTAUpdates() {
+      if (__DEV__) return;
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch (err) {
+        console.log('OTA update check error:', err);
+      }
+    }
+    checkOTAUpdates();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
