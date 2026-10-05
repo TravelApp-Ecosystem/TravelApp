@@ -37,7 +37,7 @@ export default function HomeScreen({ navigation }: any) {
 
         <TouchableOpacity 
           style={styles.actionBtn}
-          onPress={() => navigation.navigate('Wallet')}
+          onPress={() => navigation.navigate('WalletSupervisor')}
         >
           <Text style={styles.actionBtnText}>Solicitar Retiro de Haberes</Text>
         </TouchableOpacity>
@@ -57,6 +57,33 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={styles.cardLabel}>Recaudación Mes</Text>
         </View>
       </View>
+
+      {/* Hero Banner: Geolocalización en Tiempo Real */}
+      <TouchableOpacity 
+        style={styles.mapHeroCard}
+        onPress={() => navigation.navigate('FleetMap')}
+        activeOpacity={0.85}
+      >
+        <View style={styles.mapHeroHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={styles.mapHeroIconBox}>
+              <Ionicons name="map" size={24} color="#38BDF8" />
+            </View>
+            <View>
+              <Text style={styles.mapHeroTitle}>Geolocalización de Flota</Text>
+              <Text style={styles.mapHeroSub}>Monitoreo satelital y rutas en vivo</Text>
+            </View>
+          </View>
+          <View style={styles.mapLiveBadge}>
+            <View style={styles.livePulseDot} />
+            <Text style={styles.mapLiveText}>EN VIVO</Text>
+          </View>
+        </View>
+        <View style={styles.mapHeroFooter}>
+          <Text style={styles.mapHeroCta}>Abrir Mapa de Flota</Text>
+          <Ionicons name="arrow-forward" size={16} color="#38BDF8" />
+        </View>
+      </TouchableOpacity>
 
       {/* Action Quick Links */}
       <Text style={styles.sectionTitle}>Gestión Rápida</Text>
@@ -158,4 +185,76 @@ const styles = StyleSheet.create({
   codeText: { color: '#F59E0B', fontWeight: '900', fontSize: 14, letterSpacing: 1, marginBottom: 20 },
   closeBtn: { backgroundColor: '#334155', paddingVertical: 12, paddingHorizontal: 32, borderRadius: 12 },
   closeBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
+  mapHeroCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#38BDF8',
+    marginBottom: 24,
+    shadowColor: '#38BDF8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+  },
+  mapHeroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  mapHeroIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapHeroTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  mapHeroSub: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  mapLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  mapLiveText: {
+    color: '#10B981',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  mapHeroFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+  },
+  mapHeroCta: {
+    color: '#38BDF8',
+    fontSize: 13,
+    fontWeight: '800',
+  },
 });

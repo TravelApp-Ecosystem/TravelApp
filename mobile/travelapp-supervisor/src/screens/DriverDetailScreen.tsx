@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function DriverDetailScreen({ route }: any) {
+export default function DriverDetailScreen({ route, navigation }: any) {
   const driver = route.params?.driver || {
     name: 'Carlos Mamani',
     id: 'DRV-001',
@@ -18,6 +18,14 @@ export default function DriverDetailScreen({ route }: any) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+        <Text style={styles.backButtonText}>Volver</Text>
+      </TouchableOpacity>
+
       <View style={styles.profileHeader}>
         <View style={styles.avatar}>
           <Ionicons name="person" size={32} color="#F59E0B" />
@@ -30,7 +38,15 @@ export default function DriverDetailScreen({ route }: any) {
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.wsBtn} onPress={handleWhatsApp}>
           <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
-          <Text style={styles.wsBtnText}>Mensaje WhatsApp</Text>
+          <Text style={styles.wsBtnText}>WhatsApp</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.mapBtn} 
+          onPress={() => navigation.navigate('FleetMap', { driverId: driver.id })}
+        >
+          <Ionicons name="map-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.mapBtnText}>Ver en Mapa</Text>
         </TouchableOpacity>
       </View>
 
@@ -73,6 +89,10 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   wsBtn: { flex: 1, backgroundColor: '#25D366', borderRadius: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   wsBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
+  mapBtn: { flex: 1, backgroundColor: '#38BDF8', borderRadius: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  mapBtnText: { color: '#0F172A', fontWeight: '800', fontSize: 13 },
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+  backButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   sectionCard: { backgroundColor: '#1E293B', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 16 },
   sectionTitle: { color: '#F59E0B', fontSize: 13, fontWeight: '800', marginBottom: 12 },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#334155' },

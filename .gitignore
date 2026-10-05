@@ -52,5 +52,6 @@ mobile/*/.expo
 platform-tools/
 release_apks/
 *.apk
+scratch/
 
 

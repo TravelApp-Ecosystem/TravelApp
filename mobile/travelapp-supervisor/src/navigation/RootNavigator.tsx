@@ -13,6 +13,7 @@ import DriverDetailScreen from '../screens/DriverDetailScreen';
 import DocumentAlertsScreen from '../screens/DocumentAlertsScreen';
 import WalletSupervisorScreen from '../screens/WalletSupervisorScreen';
 import MessagingScreen from '../screens/MessagingScreen';
+import FleetMapScreen from '../screens/FleetMapScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -78,6 +79,7 @@ export default function RootNavigator() {
         ) : (
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="FleetMap" component={FleetMapScreen} />
             <Stack.Screen name="DriversList" component={DriversListScreen} />
             <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
             <Stack.Screen name="DocumentAlerts" component={DocumentAlertsScreen} />

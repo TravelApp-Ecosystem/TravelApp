@@ -910,7 +910,7 @@ export default function DashboardScreen() {
             activeOpacity={0.85}
           >
             <Ionicons name="calculator-outline" size={24} color={Colors.white} style={{ marginRight: 8 }} />
-            <Text style={[styles.taximeterBtnText, { fontSize: 15, fontWeight: '800' }]}>Modo Taxímetro (Viaje Libre / SUTRAPPA)</Text>
+            <Text style={[styles.taximeterBtnText, { fontSize: 15, fontWeight: '800' }]}>Taxímetro Digital</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -992,7 +992,7 @@ export default function DashboardScreen() {
                   <Ionicons name="calculator" size={24} color={Colors.primary} />
                 </View>
                 <View>
-                  <Text style={styles.taximeterTitle}>Taxímetro SUTRAPPA</Text>
+                  <Text style={styles.taximeterTitle}>Taxímetro Digital</Text>
                   <Text style={styles.taximeterSubtitle}>Modo Viaje Libre en Calle</Text>
                 </View>
               </View>

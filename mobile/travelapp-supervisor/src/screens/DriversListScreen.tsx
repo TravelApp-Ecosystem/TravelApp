@@ -20,16 +20,26 @@ export default function DriversListScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Search Input */}
-      <View style={styles.searchBox}>
-        <Ionicons name="search" size={18} color="#94A3B8" />
-        <TextInput
-          placeholder="Buscar chofer por nombre o patente..."
-          placeholderTextColor="#64748B"
-          value={search}
-          onChangeText={setSearch}
-          style={styles.searchInput}
-        />
+      {/* Search & Map Bar */}
+      <View style={styles.topBar}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={18} color="#94A3B8" />
+          <TextInput
+            placeholder="Buscar chofer o patente..."
+            placeholderTextColor="#64748B"
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchInput}
+          />
+        </View>
+        <TouchableOpacity 
+          style={styles.mapShortcutBtn}
+          onPress={() => navigation.navigate('FleetMap')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="map" size={18} color="#0F172A" />
+          <Text style={styles.mapShortcutText}>Mapa</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -42,14 +52,23 @@ export default function DriversListScreen({ navigation }: any) {
             onPress={() => navigation.navigate('DriverDetail', { driver: item })}
           >
             <View style={styles.cardHeader}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.driverName}>{item.name}</Text>
                 <Text style={styles.driverId}>{item.id} · {item.vehicle}</Text>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: item.status === 'Inactivo' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)' }]}>
-                <Text style={[styles.statusText, { color: item.status === 'Inactivo' ? '#EF4444' : '#10B981' }]}>
-                  {item.status}
-                </Text>
+              <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                <View style={[styles.statusBadge, { backgroundColor: item.status === 'Inactivo' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)' }]}>
+                  <Text style={[styles.statusText, { color: item.status === 'Inactivo' ? '#EF4444' : '#10B981' }]}>
+                    {item.status}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.locateBtn}
+                  onPress={() => navigation.navigate('FleetMap', { driverId: item.id })}
+                >
+                  <Ionicons name="navigate-outline" size={13} color="#38BDF8" />
+                  <Text style={styles.locateBtnText}>Ubicación</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -73,8 +92,31 @@ export default function DriversListScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F172A', padding: 16 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E293B', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#334155', marginBottom: 16 },
+  topBar: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 16 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E293B', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#334155' },
   searchInput: { flex: 1, color: '#FFFFFF', fontSize: 13, marginLeft: 8 },
+  mapShortcutBtn: {
+    backgroundColor: '#38BDF8',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 14,
+  },
+  mapShortcutText: { color: '#0F172A', fontWeight: '800', fontSize: 13 },
+  locateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+  },
+  locateBtnText: { color: '#38BDF8', fontSize: 10, fontWeight: '800' },
   list: { paddingBottom: 20 },
   card: { backgroundColor: '#1E293B', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
