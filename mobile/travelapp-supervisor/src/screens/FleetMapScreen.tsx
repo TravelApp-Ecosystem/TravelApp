@@ -13,125 +13,59 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { FleetMapView, FleetVehicle } from '../components/FleetMapView';
 
-// Fallback flota base de supervisión (San Miguel de Tucumán y Gran Tucumán)
-const INITIAL_FLEET: FleetVehicle[] = [
-  {
-    id: 'DRV-001',
-    name: 'Carlos Mamani',
-    vehicle: 'VW Gol Trend (AB 123 CD)',
-    plate: 'AB 123 CD',
-    status: 'Activo',
-    phone: '+54 381 445-1234',
-    speed: 32,
-    location: { latitude: -26.8285, longitude: -65.2050 }, // Plaza Independencia
-    heading: 90,
-    lastUpdate: 'Hace 1 min',
-  },
-  {
-    id: 'DRV-003',
-    name: 'Jorge Ruiz',
-    vehicle: 'Toyota Corolla (GH 789 IJ)',
-    plate: 'GH 789 IJ',
-    status: 'Activo',
-    phone: '+54 381 556-7890',
-    speed: 45,
-    location: { latitude: -26.8150, longitude: -65.2180 }, // Av. Sarmiento / Urquiza
-    heading: 180,
-    lastUpdate: 'Hace 30 seg',
-  },
-  {
-    id: 'DRV-005',
-    name: 'Mariano Silva',
-    vehicle: 'Fiat Cronos (AB 456 EF)',
-    plate: 'AB 456 EF',
-    status: 'Activo',
-    phone: '+54 381 667-8901',
-    speed: 28,
-    location: { latitude: -26.8360, longitude: -65.2020 }, // Terminal de Ómnibus
-    heading: 45,
-    lastUpdate: 'Hace 2 min',
-  },
-  {
-    id: 'DRV-007',
-    name: 'Valeria Luna',
-    vehicle: 'Chevrolet Onix (DC 789 GH)',
-    plate: 'DC 789 GH',
-    status: 'En Ruta',
-    phone: '+54 381 778-9012',
-    speed: 55,
-    location: { latitude: -26.8190, longitude: -65.2850 }, // Yerba Buena / Av. Aconquija
-    heading: 270,
-    lastUpdate: 'En vivo',
-  },
-  {
-    id: 'DRV-009',
-    name: 'Esteban Morales',
-    vehicle: 'Renault Logan (AE 112 KL)',
-    plate: 'AE 112 KL',
-    status: 'Inactivo',
-    phone: '+54 381 889-0123',
-    speed: 0,
-    location: { latitude: -26.8450, longitude: -65.2200 }, // Barrio Sur
-    heading: 0,
-    lastUpdate: 'Hace 25 min',
-  },
-];
-
 export default function FleetMapScreen({ route, navigation }: any) {
   const initialSelectedId = route.params?.driverId || null;
-  const [fleet, setFleet] = useState<FleetVehicle[]>(INITIAL_FLEET);
+  const [fleet, setFleet] = useState<FleetVehicle[]>([]);
   const [selectedDriver, setSelectedDriver] = useState<FleetVehicle | null>(null);
   const [filter, setFilter] = useState<'all' | 'Activo' | 'En Ruta' | 'Inactivo'>('all');
   const [loading, setLoading] = useState(false);
 
-  // Escuchar conductores reales en Firestore en tiempo real
+  // Escuchar conductores reales en Firestore en tiempo real (100% REAL)
   useEffect(() => {
     let unsub = () => {};
     try {
       unsub = onSnapshot(
         collection(db, 'drivers'),
         (snapshot) => {
-          if (!snapshot.empty) {
-            const liveDrivers: FleetVehicle[] = [];
-            snapshot.forEach((docSnap) => {
-              const data = docSnap.data();
-              if (data.location && typeof data.location.latitude === 'number') {
-                liveDrivers.push({
-                  id: docSnap.id,
-                  name: data.name || data.displayName || 'Chofer Flota',
-                  vehicle: data.vehicleModel || data.vehicle || 'Vehículo Registrado',
-                  plate: data.licensePlate || data.plate || '',
-                  status: data.isOnline ? (data.currentTripId ? 'En Ruta' : 'Activo') : 'Inactivo',
-                  phone: data.phone || data.phoneNumber || '',
-                  speed: data.speed ?? (data.isOnline ? 30 : 0),
-                  location: {
-                    latitude: data.location.latitude,
-                    longitude: data.location.longitude,
-                  },
-                  heading: data.heading ?? 0,
-                  lastUpdate: 'En vivo',
-                });
-              }
-            });
+          const liveDrivers: FleetVehicle[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const loc = data.location || (typeof data.latitude === 'number' ? { latitude: data.latitude, longitude: data.longitude } : null);
+            if (loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number') {
+              const vehicleObj = data.activeVehicle || data.vehicle || {};
+              const vehicleModel = vehicleObj.model 
+                ? `${vehicleObj.brand || ''} ${vehicleObj.model}`.trim()
+                : (data.vehicleModel || 'Vehículo Registrado');
+              const plate = vehicleObj.plate || data.licensePlate || data.plate || '';
 
-            if (liveDrivers.length > 0) {
-              // Combinar conductores en vivo con la flota base si son pocos
-              const combined = [...liveDrivers];
-              INITIAL_FLEET.forEach((baseDrv) => {
-                if (!combined.some((c) => c.id === baseDrv.id)) {
-                  combined.push(baseDrv);
-                }
+              liveDrivers.push({
+                id: docSnap.id,
+                name: data.name || data.displayName || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Conductor Flota',
+                vehicle: `${vehicleModel} ${plate ? `(${plate})` : ''}`.trim(),
+                plate,
+                status: data.isOnline ? (data.currentTripId ? 'En Ruta' : 'Activo') : 'Inactivo',
+                phone: data.phone || data.phoneNumber || '',
+                speed: data.speed ?? (data.isOnline ? (data.currentTripId ? 45 : 25) : 0),
+                location: {
+                  latitude: loc.latitude,
+                  longitude: loc.longitude,
+                },
+                heading: data.heading ?? 0,
+                lastUpdate: 'En vivo',
               });
-              setFleet(combined);
             }
-          }
+          });
+
+          setFleet(liveDrivers);
         },
         (err) => {
           console.warn('Firestore live drivers listener note:', err);
+          setFleet([]);
         }
       );
     } catch (e) {
       console.warn('Live drivers snapshot catch:', e);
+      setFleet([]);
     }
 
     return () => unsub();
@@ -246,6 +180,14 @@ export default function FleetMapScreen({ route, navigation }: any) {
           onSelectDriver={(d) => setSelectedDriver(d)}
           centerCoords={selectedDriver ? selectedDriver.location : null}
         />
+        {fleet.length === 0 && (
+          <View style={styles.emptyFleetBanner}>
+            <Ionicons name="radio-outline" size={18} color="#38BDF8" />
+            <Text style={styles.emptyFleetText}>
+              0 vehículos con GPS activo. Al iniciar sesión en la app Conductor, circularán en vivo en este mapa.
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Floating Selected Driver Card */}
@@ -515,5 +457,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '800',
+  },
+  emptyFleetBanner: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    borderRadius: 14,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  emptyFleetText: {
+    flex: 1,
+    color: '#E2E8F0',
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
   },
 });

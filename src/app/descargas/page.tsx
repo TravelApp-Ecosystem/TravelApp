@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Smartphone, Car, ShieldCheck, Download, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Smartphone, Car, ShieldCheck, Download, CheckCircle2, AlertCircle, UserCheck } from 'lucide-react';
 
 export const metadata = {
   title: 'Descargas de APKs — TravelApp Testing',
@@ -49,7 +49,14 @@ const APKS = [
   }
 ];
 
-export default function DescargasPage() {
+export default async function DescargasPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ ref?: string; supervisor?: string }>;
+}) {
+  const resolvedParams = searchParams ? await searchParams : {};
+  const supervisorCode = resolvedParams.ref || resolvedParams.supervisor;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
       {/* Background Glow */}
@@ -59,7 +66,7 @@ export default function DescargasPage() {
 
       <main className="relative max-w-4xl mx-auto w-full px-4 sm:px-6 py-12 flex-1">
         {/* Header */}
-        <div className="text-center space-y-4 mb-12">
+        <div className="text-center space-y-4 mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-emerald-400 tracking-wide uppercase">
             <CheckCircle2 className="w-3.5 h-3.5" /> Ecosistema TravelApp — APKs Oficiales
           </div>
@@ -71,14 +78,44 @@ export default function DescargasPage() {
           </p>
         </div>
 
+        {/* Supervisor Invitation Banner if ref present */}
+        {supervisorCode && (
+          <div className="mb-10 bg-gradient-to-r from-amber-500/15 via-slate-900 to-amber-500/10 border-2 border-amber-500/40 rounded-3xl p-6 sm:p-7 backdrop-blur-md shadow-2xl shadow-amber-950/20">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+              <div className="p-3.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 shrink-0">
+                <UserCheck className="w-7 h-7" />
+              </div>
+              <div className="flex-1 space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-xs uppercase tracking-wider">
+                  Vinculación de Flota Oficial
+                </div>
+                <h2 className="text-lg sm:text-xl font-bold text-white">
+                  Invitación de Supervisor asignada
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  Estás ingresando con el código de supervisor: <strong className="text-amber-400 font-mono text-base px-2 py-0.5 bg-slate-950 rounded border border-amber-500/30">{supervisorCode}</strong>.
+                  Descargá la app <strong className="text-white">TravelApp Conductor</strong> a continuación para completar tu alta de chofer bajo este equipo.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {APKS.map((apk) => {
             const Icon = apk.icon;
+            const isDriver = apk.id === 'conductor';
+            const isHighlighted = Boolean(supervisorCode && isDriver);
+
             return (
               <div
                 key={apk.id}
-                className="group relative bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/60 backdrop-blur-md"
+                className={`group relative bg-slate-900/80 rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/60 backdrop-blur-md border ${
+                  isHighlighted 
+                    ? 'border-amber-500/80 ring-2 ring-amber-500/30 shadow-xl shadow-amber-950/40 bg-slate-900' 
+                    : 'border-slate-800/80 hover:border-slate-700'
+                }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-5">

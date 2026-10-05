@@ -1,66 +1,219 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { subscribeToRealFleet, FleetMetrics } from '../lib/supervisorService';
 
-export default function WalletSupervisorScreen() {
-  const [requested, setRequested] = useState(false);
+interface PayoutItem {
+  id: string;
+  amount: number;
+  status: string;
+  date: string;
+}
 
-  const wallet = {
-    balance: 29700,
-    companyFeeBase: 297000,
-    history: [
-      { id: 'LIQ-2026-07', period: 'Julio 2026', amount: 29700, status: 'Pagado', date: '2026-08-01' },
-      { id: 'LIQ-2026-06', period: 'Junio 2026', amount: 24500, status: 'Pagado', date: '2026-07-01' },
-    ]
-  };
+export default function WalletSupervisorScreen({ route, navigation }: any) {
+  const [metrics, setMetrics] = useState<FleetMetrics>(
+    route.params?.metrics || {
+      totalRecruited: 0,
+      activeDriversToday: 0,
+      fleetRevenueMonth: 0,
+      companyFee: 0,
+      supervisorCommission: 0,
+    }
+  );
 
-  const handleRequestPayout = () => {
-    setRequested(true);
-    Alert.alert(
-      'Solicitud Enviada',
-      'Tu solicitud de liquidación de haberes por $29.700 fue transmitida al área de Finanzas.'
-    );
+  const [payouts, setPayouts] = useState<PayoutItem[]>([]);
+  const [loadingPayouts, setLoadingPayouts] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Escuchar métricas en tiempo real si no vinieron por params
+  useEffect(() => {
+    const uid = auth.currentUser?.uid || '';
+    const unsub = subscribeToRealFleet(uid, (_, realMetrics) => {
+      setMetrics(realMetrics);
+    });
+
+    return () => unsub();
+  }, []);
+
+  // Escuchar solicitudes de liquidación reales en Firestore
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      setLoadingPayouts(false);
+      return;
+    }
+
+    try {
+      const q = query(
+        collection(db, 'payout_requests'),
+        where('supervisorId', '==', uid)
+      );
+
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          const list: PayoutItem[] = [];
+          snap.forEach((docSnap) => {
+            const data = docSnap.data();
+            const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+            const dateStr = createdAt.toLocaleDateString('es-AR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            });
+
+            list.push({
+              id: docSnap.id.slice(0, 8).toUpperCase(),
+              amount: Number(data.amount || 0),
+              status: data.status === 'approved' ? 'Pagado' : data.status === 'rejected' ? 'Rechazado' : 'En Proceso',
+              date: dateStr,
+            });
+          });
+
+          setPayouts(list);
+          setLoadingPayouts(false);
+        },
+        (err) => {
+          console.warn('Error escuchando payout_requests:', err);
+          setPayouts([]);
+          setLoadingPayouts(false);
+        }
+      );
+
+      return () => unsub();
+    } catch (e) {
+      console.warn('Catch payout listener:', e);
+      setLoadingPayouts(false);
+    }
+  }, []);
+
+  const handleRequestPayout = async () => {
+    const commission = metrics.supervisorCommission;
+    if (commission <= 0) {
+      return Alert.alert(
+        'Saldo Insuficiente',
+        'Tu comisión acumulada actual es $0. A medida que tus choferes realicen viajes, se generarán haberes disponibles para retiro.'
+      );
+    }
+
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    setSubmitting(true);
+    try {
+      await addDoc(collection(db, 'payout_requests'), {
+        supervisorId: uid,
+        supervisorEmail: auth.currentUser?.email || '',
+        supervisorName: auth.currentUser?.displayName || 'Supervisor',
+        amount: commission,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+
+      Alert.alert(
+        'Solicitud Enviada',
+        `Tu solicitud de liquidación de haberes por $${commission.toLocaleString(
+          'es-AR'
+        )} fue registrada y transmitida al área de Finanzas.`
+      );
+    } catch (err: any) {
+      console.warn('Error al solicitar retiro:', err);
+      Alert.alert('Error', 'No se pudo registrar la solicitud. Verificá tu conexión.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.headerTitle}>Liquidación & Retiro de Haberes</Text>
-      <Text style={styles.headerSub}>Administración de sueldos y comisiones de supervisión</Text>
+      {/* Top Navigation */}
+      <View style={styles.navBar}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Liquidación de Haberes</Text>
+      </View>
 
-      {/* Balance Card */}
+      <Text style={styles.headerSub}>Administración de comisiones de supervisión de flota</Text>
+
+      {/* Balance Card (100% Real) */}
       <View style={styles.card}>
         <Text style={styles.cardLabel}>COMISIÓN PENDIENTE DE LIQUIDACIÓN</Text>
-        <Text style={styles.cardAmount}>${wallet.balance.toLocaleString('es-AR')}</Text>
-        <Text style={styles.cardSub}>Calculado sobre Fee de Empresa acumulado ($297.000)</Text>
+        <Text style={styles.cardAmount}>
+          ${metrics.supervisorCommission.toLocaleString('es-AR')}
+        </Text>
+        <Text style={styles.cardSub}>
+          Calculado sobre Fee de Empresa acumulado (${metrics.companyFee.toLocaleString('es-AR')})
+        </Text>
 
-        <TouchableOpacity 
-          disabled={requested}
-          style={[styles.payoutBtn, { backgroundColor: requested ? '#334155' : '#10B981' }]}
+        <TouchableOpacity
+          disabled={submitting}
+          style={[
+            styles.payoutBtn,
+            { backgroundColor: metrics.supervisorCommission > 0 ? '#10B981' : '#334155' },
+          ]}
           onPress={handleRequestPayout}
+          activeOpacity={0.85}
         >
-          <Ionicons name="card-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.payoutBtnText}>
-            {requested ? 'Solicitud en Proceso 🟡' : 'Solicitar Retiro / Transferencia'}
-          </Text>
+          {submitting ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="card-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.payoutBtnText}>
+                {metrics.supervisorCommission > 0
+                  ? 'Solicitar Retiro / Transferencia'
+                  : 'Sin saldo para retirar ($0)'}
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* History */}
+      {/* History (100% Real) */}
       <Text style={styles.sectionTitle}>Historial de Liquidaciones</Text>
 
-      {wallet.history.map(item => (
-        <View key={item.id} style={styles.historyCard}>
-          <View>
-            <Text style={styles.itemTitle}>{item.period}</Text>
-            <Text style={styles.itemId}>{item.id} · {item.date}</Text>
-          </View>
-
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.itemAmount}>${item.amount.toLocaleString('es-AR')}</Text>
-            <Text style={styles.itemBadge}>🟢 {item.status}</Text>
-          </View>
+      {loadingPayouts ? (
+        <ActivityIndicator size="small" color="#38BDF8" style={{ marginVertical: 20 }} />
+      ) : payouts.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Ionicons name="receipt-outline" size={32} color="#64748B" />
+          <Text style={styles.emptyTitle}>Sin liquidaciones solicitadas</Text>
+          <Text style={styles.emptySub}>
+            Cuando generes solicitudes de retiro de comisión, aparecerán registradas aquí.
+          </Text>
         </View>
-      ))}
+      ) : (
+        payouts.map((item) => (
+          <View key={item.id} style={styles.historyCard}>
+            <View>
+              <Text style={styles.itemTitle}>Liquidación #{item.id}</Text>
+              <Text style={styles.itemId}>Fecha: {item.date}</Text>
+            </View>
+
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.itemAmount}>${item.amount.toLocaleString('es-AR')}</Text>
+              <Text
+                style={[
+                  styles.itemBadge,
+                  {
+                    color:
+                      item.status === 'Pagado'
+                        ? '#10B981'
+                        : item.status === 'Rechazado'
+                        ? '#EF4444'
+                        : '#F59E0B',
+                  },
+                ]}
+              >
+                ● {item.status}
+              </Text>
+            </View>
+          </View>
+        ))
+      )}
     </ScrollView>
   );
 }
@@ -68,18 +221,65 @@ export default function WalletSupervisorScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F172A' },
   content: { padding: 16 },
+  navBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+    paddingTop: 8,
+  },
+  backBtn: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: '#1E293B',
+  },
   headerTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
-  headerSub: { color: '#94A3B8', fontSize: 12, marginBottom: 16 },
-  card: { backgroundColor: '#1E293B', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#334155', marginBottom: 24 },
+  headerSub: { color: '#94A3B8', fontSize: 12, marginBottom: 16, marginTop: 4 },
+  card: {
+    backgroundColor: '#1E293B',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 24,
+  },
   cardLabel: { color: '#94A3B8', fontSize: 10, fontWeight: '800' },
   cardAmount: { color: '#10B981', fontSize: 32, fontWeight: '900', marginVertical: 6 },
   cardSub: { color: '#CBD5E1', fontSize: 11, marginBottom: 16 },
-  payoutBtn: { borderRadius: 14, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  payoutBtn: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
   payoutBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
   sectionTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', marginBottom: 12 },
-  historyCard: { backgroundColor: '#1E293B', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  emptyCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 14,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', marginTop: 8 },
+  emptySub: { color: '#94A3B8', fontSize: 12, textAlign: 'center', marginTop: 4, lineHeight: 18 },
+  historyCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   itemTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
   itemId: { color: '#94A3B8', fontSize: 11, marginTop: 2 },
   itemAmount: { color: '#F1F5F9', fontSize: 15, fontWeight: '900' },
-  itemBadge: { color: '#10B981', fontSize: 10, fontWeight: '800', marginTop: 2 },
+  itemBadge: { fontSize: 11, fontWeight: '800', marginTop: 2 },
 });

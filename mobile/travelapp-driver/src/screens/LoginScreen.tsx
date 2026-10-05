@@ -94,6 +94,7 @@ export default function LoginScreen() {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [supervisorReferralCode, setSupervisorReferralCode] = useState('');
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
 
   // Paso 2: Dirección y Datos Fiscales / CBU
@@ -385,6 +386,7 @@ export default function LoginScreen() {
         },
         mercadoPagoEmail: mpEmail || undefined,
         mercadoPagoLinked: mpLinked,
+        supervisorCode: supervisorReferralCode.trim().toUpperCase() || undefined,
         createdAt: Date.now(),
       });
 
@@ -399,6 +401,7 @@ export default function LoginScreen() {
           email: cleanEmail,
           phone: regPhone,
           photoUrl: profilePhotoUri || undefined,
+          supervisorCode: supervisorReferralCode.trim().toUpperCase() || undefined,
           address: { street, streetNumber, floorApp, city, province, postalCode },
           taxIdNumber,
           cbuCvu,
@@ -702,6 +705,18 @@ export default function LoginScreen() {
                       value={regPhone}
                       onChangeText={setRegPhone}
                       keyboardType="phone-pad"
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>Código de Supervisor / Referido (Opcional)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="Ej. SUP-FERNANDO-ABCD"
+                      placeholderTextColor={Colors.textMuted}
+                      value={supervisorReferralCode}
+                      onChangeText={(val) => setSupervisorReferralCode(val.toUpperCase())}
+                      autoCapitalize="characters"
                     />
                   </View>
                 </View>
