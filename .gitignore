@@ -50,6 +50,7 @@ mobile/*/.expo
 
 # local binaries & built apks
 platform-tools/
+mobile/*/dist
 release_apks/
 *.apk
 scratch/
