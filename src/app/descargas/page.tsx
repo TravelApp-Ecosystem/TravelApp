@@ -38,13 +38,13 @@ const APKS = [
     id: 'supervisor',
     name: 'TravelApp Supervisor',
     subtitle: 'Monitoreo de flota en vivo con mapa satelital Leaflet y gestión',
-    version: '1.0.0 (v1 Preview)',
-    size: '89.0 MB',
+    version: '1.0.0 (v2 OTA Ready)',
+    size: '92.7 MB',
     icon: ShieldCheck,
     iconColor: 'text-blue-400',
     iconBg: 'bg-blue-500/10 border-blue-500/20',
     btnGradient: 'from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-950/50',
-    url: 'https://firebasestorage.googleapis.com/v0/b/mvp-travelapp.firebasestorage.app/o/apks%2Ftravelapp-supervisor.apk?alt=media&token=0b7633dc-c6ec-448c-b1cd-9fc5167468fa',
+    url: 'https://firebasestorage.googleapis.com/v0/b/mvp-travelapp.firebasestorage.app/o/apks%2Ftravelapp-supervisor.apk?alt=media&token=4705b9b2-d9c5-493c-a64a-db951cef3b40',
     badge: 'Supervisión'
   }
 ];

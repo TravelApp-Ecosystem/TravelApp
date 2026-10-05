@@ -43,7 +43,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/descargar/supervisor',
-        destination: 'https://firebasestorage.googleapis.com/v0/b/mvp-travelapp.firebasestorage.app/o/apks%2Ftravelapp-supervisor.apk?alt=media&token=0b7633dc-c6ec-448c-b1cd-9fc5167468fa',
+        destination: 'https://firebasestorage.googleapis.com/v0/b/mvp-travelapp.firebasestorage.app/o/apks%2Ftravelapp-supervisor.apk?alt=media&token=4705b9b2-d9c5-493c-a64a-db951cef3b40',
         permanent: false,
       },
       {
@@ -58,7 +58,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/apk/supervisor',
-        destination: 'https://firebasestorage.googleapis.com/v0/b/mvp-travelapp.firebasestorage.app/o/apks%2Ftravelapp-supervisor.apk?alt=media&token=0b7633dc-c6ec-448c-b1cd-9fc5167468fa',
+        destination: 'https://firebasestorage.googleapis.com/v0/b/mvp-travelapp.firebasestorage.app/o/apks%2Ftravelapp-supervisor.apk?alt=media&token=4705b9b2-d9c5-493c-a64a-db951cef3b40',
         permanent: false,
       },
     ];
