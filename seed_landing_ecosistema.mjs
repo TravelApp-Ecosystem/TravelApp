@@ -1,6 +1,38 @@
-import { OtaPackage } from "@/types/ota";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
-export const DEFAULT_OTA_PACKAGES: OtaPackage[] = [
+const envPath = resolve(process.cwd(), ".env.local");
+const envContent = readFileSync(envPath, "utf-8");
+const env = Object.fromEntries(
+  envContent
+    .split("\n")
+    .filter((line) => line.includes("="))
+    .map((line) => {
+      const [key, ...rest] = line.split("=");
+      return [key.trim(), rest.join("=").trim()];
+    })
+);
+
+const firebaseConfig = {
+  apiKey: env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const TEST_EMAIL = "admin@travelapp.ar";
+const TEST_PASSWORD = "admin123";
+
+const DEFAULT_OTA_PACKAGES = [
   {
     id: "OTA-PKG-001",
     title: "Cancún & Riviera Maya All Inclusive",
@@ -10,7 +42,7 @@ export const DEFAULT_OTA_PACKAGES: OtaPackage[] = [
     type: "paquete",
     providerType: "mayorista",
     providerCategory: "operador_verificado",
-    operatorName: "Juliá Tours", // Interno
+    operatorName: "Juliá Tours",
     modality: "Individual",
     durationDays: 8,
     durationNights: 7,
@@ -41,12 +73,6 @@ export const DEFAULT_OTA_PACKAGES: OtaPackage[] = [
       "7 noches All Inclusive 24hs",
       "Acceso ilimitado a restaurantes temáticos",
       "Asistencia al viajero internacional"
-    ],
-    itinerarySummary: [
-      { day: 1, title: "Llegada al paraíso", description: "Vuelo internacional, recepción y check-in en resort de Cancún." },
-      { day: 2, title: "Día de playa y relax", description: "Disfrute de playas privadas, deportes acuáticos y gastronomía gourmet." },
-      { day: 5, title: "Excursión a Chichén Itzá (Opcional)", description: "Visita a una de las 7 maravillas del mundo moderno." },
-      { day: 8, title: "Regreso", description: "Check-out, traslado a aeropuerto y vuelo de regreso." }
     ],
     featured: true
   },
@@ -268,3 +294,50 @@ export const DEFAULT_OTA_PACKAGES: OtaPackage[] = [
     featured: false
   }
 ];
+
+async function run() {
+  console.log(`\n🔗 Actualizando paquetes en Firestore (ota_packages y experiences)...\n`);
+  try {
+    const cred = await signInWithEmailAndPassword(auth, TEST_EMAIL, TEST_PASSWORD);
+    console.log(`✅ Autenticado como ${TEST_EMAIL}`);
+
+    for (const pkg of DEFAULT_OTA_PACKAGES) {
+      await setDoc(doc(db, "ota_packages", pkg.id), {
+        ...pkg,
+        updatedAt: new Date().toISOString()
+      });
+
+      const tourSync = {
+        id: pkg.id,
+        title: pkg.title,
+        location: `${pkg.destination}, ${pkg.country}`,
+        price: pkg.price,
+        currency: pkg.currency,
+        priceRewards: pkg.memberPrice || Math.round(pkg.price * 0.9),
+        pointsEarned: pkg.rewardsPointsEarned || 500,
+        tripType: pkg.modality === 'Salida Grupal Acompañada' ? 'Grupal' : 'Individual',
+        scope: pkg.region === 'Nacional' ? 'Nacional' : 'Internacional',
+        tourismVertical: 'emisivo',
+        productType: pkg.type === 'crucero' ? 'crucero' : pkg.providerCategory === 'propio' ? 'salida_propia' : 'operador_mayorista',
+        transportation: `${pkg.transportType} ${pkg.airline || ''}`.trim(),
+        departureDate: pkg.departureDates?.[0] || '2026-11-12',
+        departureOrigin: pkg.departureOrigin,
+        services: pkg.includedServices,
+        imageUrl: pkg.imageUrl,
+        description: pkg.description,
+        observations: `Operador: ${pkg.operatorName || 'TravelApp'} · Régimen: ${pkg.foodPlan} · ${pkg.durationDays}D / ${pkg.durationNights}N`,
+        availability: 'Disponible',
+      };
+      await setDoc(doc(db, "experiences", pkg.id), tourSync);
+      console.log(`   + ${pkg.id}: ${pkg.title} (${pkg.currency} ${pkg.price})`);
+    }
+
+    console.log(`\n🎉 SEED DE PAQUETES ACTUALIZADO CON ÉXITO.`);
+    process.exit(0);
+  } catch (err) {
+    console.error("❌ Error en seeder:", err);
+    process.exit(1);
+  }
+}
+
+run();

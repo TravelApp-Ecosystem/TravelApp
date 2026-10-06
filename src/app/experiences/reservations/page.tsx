@@ -6,7 +6,7 @@ import {
   Ticket, Plus, Search, Filter, ArrowUpRight, DollarSign, Calendar,
   User, CheckCircle2, Clock, AlertCircle, Phone, Mail, FileText,
   CreditCard, Printer, QrCode, Trash2, ArrowLeft, RefreshCw, Sparkles,
-  MapPin, Users, ChevronRight, X, Eye, Briefcase, Smartphone
+  MapPin, Users, ChevronRight, X, Eye, Briefcase, Smartphone, Copy, Check, ExternalLink
 } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -115,8 +115,59 @@ export default function ExperiencesReservationsPage() {
   const [extendedHours, setExtendedHours] = useState<number>(24);
   const [extending, setExtending] = useState<boolean>(false);
 
+  // Modal: Cobro con NAVE (Banco Galicia / QR)
+  const [selectedResForNave, setSelectedResForNave] = useState<ReservationData | null>(null);
+  const [naveLoading, setNaveLoading] = useState<boolean>(false);
+  const [naveCheckoutUrl, setNaveCheckoutUrl] = useState<string | null>(null);
+  const [naveQrData, setNaveQrData] = useState<string | null>(null);
+  const [naveAmount, setNaveAmount] = useState<number>(0);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
   // Modal: Ver Voucher / Manifiesto
   const [selectedResForVoucher, setSelectedResForVoucher] = useState<ReservationData | null>(null);
+
+  // Handler para generar intención de cobro con Nave Banco Galicia
+  const handleOpenNavePayment = async (res: ReservationData) => {
+    setSelectedResForNave(res);
+    const amount = res.financials?.balanceDue || res.amount || 0;
+    setNaveAmount(amount);
+    setNaveLoading(true);
+    setNaveCheckoutUrl(null);
+    setNaveQrData(null);
+    setCopiedLink(false);
+
+    try {
+      const resp = await fetch('/api/checkout/nave-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          externalPaymentId: res.reservationCode || res.id,
+          amount,
+          currency: res.financials?.currency || 'ARS',
+          productName: res.tourTitle,
+          reservationId: res.id,
+          buyer: {
+            name: res.nombrePasajero,
+            email: res.emailPasajero,
+            phone: res.telefonoPasajero,
+            docNumber: res.dniPasajero
+          }
+        })
+      });
+      const data = await resp.json();
+      if (data.success && data.checkoutUrl) {
+        setNaveCheckoutUrl(data.checkoutUrl);
+        setNaveQrData(data.qrData);
+      } else {
+        alert(`Error al generar cobro Nave: ${data.error || 'Respuesta inválida'}`);
+      }
+    } catch (err: any) {
+      console.error('Error invoking nave intent:', err);
+      alert(`Error al conectar con Nave Banco Galicia: ${err.message}`);
+    } finally {
+      setNaveLoading(false);
+    }
+  };
 
   // 1. Sync reservations & supplier deadlines in real-time from Firestore
   useEffect(() => {
@@ -700,17 +751,27 @@ export default function ExperiencesReservationsPage() {
                           <td className="p-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               {fin.balanceDue > 0 && res.estado !== 'Cancelada' && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedResForPayment(res);
-                                    setPaymentAmount(fin.balanceDue);
-                                  }}
-                                  title="Registrar Cobro de Saldo"
-                                  className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
-                                >
-                                  <DollarSign className="h-4 w-4" />
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenNavePayment(res)}
+                                    title="Cobrar con NAVE Galicia (Link + QR)"
+                                    className="p-1.5 rounded-lg bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                                  >
+                                    <CreditCard className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedResForPayment(res);
+                                      setPaymentAmount(fin.balanceDue);
+                                    }}
+                                    title="Registrar Cobro Manual (Caja / Transferencia)"
+                                    className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
+                                  >
+                                    <DollarSign className="h-4 w-4" />
+                                  </button>
+                                </>
                               )}
 
                               {!isPaid && res.estado !== 'Cancelada' && (
@@ -894,7 +955,148 @@ export default function ExperiencesReservationsPage() {
         </div>
       )}
 
-      {/* MODAL 1: REGISTRAR COBRO AL PASAJERO */}
+      {/* MODAL NAVE: COBRO CON BANCO GALICIA / MODO / QR */}
+      {selectedResForNave && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-orange-100 text-orange-700">
+                  <CreditCard className="h-5 w-5" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-black text-slate-800">
+                    Cobro Inmediato con NAVE Galicia
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Banco Galicia · Tarjetas · QR MODO · Naranja X
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedResForNave(null)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Datos del File */}
+            <div className="bg-orange-50/70 p-3.5 rounded-2xl text-xs space-y-1.5 border border-orange-200">
+              <div className="flex justify-between">
+                <span className="text-orange-900 font-medium">Expediente / File:</span>
+                <span className="font-bold font-mono text-orange-950">
+                  {selectedResForNave.reservationCode || selectedResForNave.id}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-orange-900 font-medium">Pasajero Titular:</span>
+                <span className="font-bold text-orange-950">{selectedResForNave.nombrePasajero}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-orange-200/80">
+                <span className="text-orange-900 font-bold">Importe a Cobrar:</span>
+                <span className="font-black text-orange-900 text-base">
+                  ${naveAmount.toLocaleString()} {selectedResForNave.financials?.currency || 'ARS'}
+                </span>
+              </div>
+            </div>
+
+            {naveLoading ? (
+              <div className="py-8 text-center space-y-2">
+                <RefreshCw className="h-8 w-8 text-orange-500 animate-spin mx-auto" />
+                <p className="text-xs font-bold text-slate-600">
+                  Generando intención de pago en API NAVE Galicia...
+                </p>
+              </div>
+            ) : naveCheckoutUrl ? (
+              <div className="space-y-4">
+                {/* QR Display */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center flex flex-col items-center">
+                  <div className="bg-white p-3 rounded-2xl shadow-inner border border-slate-200 inline-block mb-2">
+                    {/* QR Code preview using quickchart / placeholder if string */}
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(naveCheckoutUrl)}`}
+                      alt="Código QR NAVE Galicia"
+                      className="w-40 h-40 object-contain mx-auto rounded-lg"
+                    />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-600 block">
+                    Escaneá con Galicia, MODO o cualquier billetera interoperable
+                  </span>
+                </div>
+
+                {/* Link de Pago */}
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-slate-600">
+                    Enlace de Pago Oficial NAVE:
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={naveCheckoutUrl}
+                      className="flex-1 p-2 bg-slate-100 rounded-xl border border-slate-200 text-xs font-mono text-slate-700 truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(naveCheckoutUrl);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2500);
+                      }}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                    >
+                      {copiedLink ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                      {copiedLink ? '¡Copiado!' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Acciones Rápidas */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <a
+                    href={`https://wa.me/${selectedResForNave.telefonoPasajero?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                      `¡Hola ${selectedResForNave.nombrePasajero}! Te compartimos el enlace oficial de pago de tu viaje (${selectedResForNave.tourTitle}) a través de NAVE Banco Galicia:\n\n${naveCheckoutUrl}\n\nPodés abonar con tarjetas de crédito/débito o QR interoperable MODO. ¡Muchas gracias!`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                  >
+                    <Smartphone className="h-4 w-4" />
+                    Enviar por WhatsApp
+                  </a>
+                  <a
+                    href={naveCheckoutUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir Checkout NAVE
+                  </a>
+                </div>
+
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-[10px] text-blue-900 font-medium">
+                  <strong>⚡ Conciliación en Tiempo Real:</strong> Cuando el pasajero complete la operación, el Webhook oficial de Galicia actualizará el estado de la reserva y el saldo en este ERP automáticamente.
+                </div>
+              </div>
+            ) : null}
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedResForNave(null)}
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+              >
+                Cerrar Ventana
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1: REGISTRAR COBRO MANUAL AL PASAJERO */}
       {selectedResForPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in duration-150">

@@ -1,6 +1,7 @@
 export type AvailabilityStatus = 'Disponible' | 'Cupos Limitados' | 'Agotado';
 export type TripType = 'Individual' | 'Grupal';
 export type TripScope = 'Nacional' | 'Internacional';
+export type TourismVertical = 'emisivo' | 'receptivo';
 export type CurrencyType = 'ARS' | 'USD';
 export type IvaRate = 'Exento' | '21' | '10.5' | '0';
 
@@ -314,6 +315,7 @@ export interface MasterTrip {
   roomPricing?: Record<string, number>;
   quoteId?: string;
   showOnLanding?: boolean;
+  tourismVertical?: TourismVertical;
   productType?: 'salida_propia' | 'operador_mayorista' | 'crucero' | 'paquete_individual' | 'experiencia_dia';
   createdAt: string;
   updatedAt?: string;
@@ -329,6 +331,7 @@ export interface Tour {
   pointsEarned: number;
   tripType: TripType;
   scope?: TripScope;
+  tourismVertical?: TourismVertical;
   transportation: string;
   departureDate: string;
   departureOrigin: string;
@@ -350,6 +353,8 @@ export interface Tour {
 
 export interface Reservation {
   id: string;
+  fileNumber?: string;
+  tourismVertical?: TourismVertical;
   tourId: string;
   customerName: string;
   paxCount: number;
@@ -507,9 +512,11 @@ export interface ContractedTrip {
   userEmail?: string;
   userName?: string;
   userPhone?: string;
+  fileNumber?: string; // Ej: 'FILE-EMIS-2026-0042'
   reservationCode: string; // Ej: 'RES-89241-TRV'
   tourCode: string; // Ej: 'TRV-EXP-BARILOCHE-2026'
   tourId: string;
+  tourismVertical?: TourismVertical;
   tripType: 'salida_propia' | 'operador_mayorista';
   title: string;
   destination: string;

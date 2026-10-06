@@ -1,10 +1,10 @@
-import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator, Award, Smartphone } from 'lucide-react';
+import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator, Award, Smartphone, Plane, FileSpreadsheet } from 'lucide-react';
 
 export const topNavTabs = [
   { id: 'global', label: 'Visión Global', href: '/' },
   { id: 'crm', label: 'CRM Ventas', href: '/crm' },
   { id: 'travelcab', label: 'TravelCab', href: '/travelcab' },
-  { id: 'experiences', label: 'Experience', href: '/experiences' },
+  { id: 'experiences', label: 'TravelApp Turismo', href: '/experiences' },
   { id: 'rewards', label: 'Rewards', href: '/rewards/analytics' },
   { id: 'hr', label: 'RRHH', href: '/hr' },
   { id: 'cms', label: 'CMS Web', href: '/cms' },
@@ -87,21 +87,21 @@ export const getSidebarConfig = (pathname: string) => {
     };
   }
 
-  // Configuración para Experiencias
+  // Configuración para TravelApp Turismo (Emisivo & Receptivo)
   if (pathname.startsWith('/experiences')) {
     return {
-      title: 'Experiencias & Tours',
+      title: 'Turismo Emisivo',
       items: [
-        { id: 'dashboard', label: 'Principal', href: '/experiences', icon: LayoutDashboard },
+        { id: 'dashboard', label: 'Dashboard Emisivo', href: '/experiences', icon: LayoutDashboard },
+        { id: 'catalog', label: 'TravelMarket Emisivo', href: '/experiences/catalog', icon: Palmtree },
+        { id: 'quoter', label: 'Cotizador Emisivo', href: '/experiences/quoter', icon: Calculator },
+        { id: 'reservations', label: 'ERP Reservas & Files', href: '/experiences/reservations', icon: FileSpreadsheet },
+        { id: 'create-reservation', label: 'Nuevo Expediente / File', href: '/experiences/reservations/new', icon: Ticket },
+        { id: 'spots', label: 'Cupos & Salidas', href: '/experiences/spots', icon: Users },
         { id: 'my-trip-mgmt', label: 'Gestión "Mi Viaje" (App)', href: '/experiences/my-trip-mgmt', icon: Smartphone },
-        { id: 'quoter', label: 'Cotizador de Viajes', href: '/experiences/quoter', icon: Calculator },
-        { id: 'catalog', label: 'Catálogo de viajes', href: '/experiences/catalog', icon: Palmtree },
-        { id: 'create-customer', label: 'Crear Cliente', href: '/experiences/customers/new', icon: UserPlus },
-        { id: 'create-reservation', label: 'Crear Reserva', href: '/experiences/reservations/new', icon: Ticket },
-        { id: 'create-group-trip', label: 'Crear Viaje Grupal', href: '/experiences/group-trips/new', icon: PlusCircle },
-        { id: 'spots', label: 'Cupos disponibles', href: '/experiences/spots', icon: Users },
-        { id: 'coordinators', label: 'Gestión de Coordinadores', href: '/experiences/coordinators', icon: UserCheck },
-        { id: 'coordinator-app', label: 'Gestión de App Coordinador', href: '/experiences/coordinator-app', icon: Radio },
+        { id: 'coordinators', label: 'Coordinadores & App', href: '/experiences/coordinators', icon: UserCheck },
+        { id: 'create-customer', label: 'Nuevo Cliente IATA', href: '/experiences/customers/new', icon: UserPlus },
+        { id: 'customers', label: 'Clientes (Ecosistema)', href: '/crm/customers', icon: Users },
       ]
     };
   }

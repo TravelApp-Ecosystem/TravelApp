@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Palmtree, Ticket, Award, CheckCircle2, ChevronRight, AlertCircle,
   RefreshCw, Eye, Landmark, Compass, TrendingUp, ArrowUpRight, ShieldAlert,
-  Plane, Bus, MessageSquare, CheckSquare, Clock, Trash2, HelpCircle, Smartphone
+  Plane, Bus, MessageSquare, CheckSquare, Clock, Trash2, HelpCircle, Smartphone, Calculator
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -48,6 +48,7 @@ interface SupplierDeadline {
 }
 
 export default function ExperiencesDashboardPage() {
+  const [tourismUnit, setTourismUnit] = useState<'emisivo' | 'receptivo' | 'global'>('emisivo');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [supplierDeadlines, setSupplierDeadlines] = useState<SupplierDeadline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,27 +158,113 @@ export default function ExperiencesDashboardPage() {
   return (
     <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-50 space-y-8">
       
-      {/* Header */}
-      <div className="flex justify-between items-center border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-tech-blue flex items-center gap-2">
-            <Palmtree className="h-7 w-7 text-green-500" />
-            Principal Experience
-          </h1>
-          <p className="mt-1.5 text-sm text-slate-500 font-medium">Consola panorámica de reservas, pasajes y consultas de Tours de Concorde 360.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/experiences/my-trip-mgmt"
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm"
-          >
-            <Smartphone className="h-4 w-4" />
-            Gestor "Mi Viaje" (App Móvil)
-          </Link>
-          <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm text-xs font-bold text-slate-500">
-            <RefreshCw className="h-4 w-4 animate-spin text-green-500" />
-            Sincronizado
+      {/* Header & Sub-Module Unit Switcher */}
+      <div className="space-y-4 border-b border-slate-200 pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                Módulo Turismo
+              </span>
+              <span className="text-xs text-slate-400 font-bold">· Unidades de Negocio Independientes</span>
+            </div>
+            <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-tech-blue flex items-center gap-2.5 mt-1">
+              {tourismUnit === 'emisivo' ? (
+                <>
+                  <Plane className="h-7 w-7 text-sky-500" />
+                  TravelApp Turismo Emisivo
+                </>
+              ) : tourismUnit === 'receptivo' ? (
+                <>
+                  <Compass className="h-7 w-7 text-emerald-500" />
+                  TravelApp Turismo Receptivo
+                </>
+              ) : (
+                <>
+                  <Palmtree className="h-7 w-7 text-green-500" />
+                  TravelApp Turismo · Visión Consolidada
+                </>
+              )}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 font-medium">
+              {tourismUnit === 'emisivo'
+                ? 'Consola de gestión para salidas grupales propias, paquetes de operadores mayoristas y expedientes con Time-to-Pay.'
+                : tourismUnit === 'receptivo'
+                ? 'Gestión de excursiones de día, actividades locales, transfers con TravelCab y prestadores receptivos.'
+                : 'Consola global unificada de turismo emisivo y receptivo con balance multi-divisa y ERP de expedientes.'}
+            </p>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/experiences/reservations/new"
+              className="flex items-center gap-1.5 bg-tech-blue hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm"
+            >
+              <Ticket className="h-4 w-4" />
+              + Nuevo File Emisivo
+            </Link>
+            <Link
+              href="/experiences/quoter"
+              className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm"
+            >
+              <Calculator className="h-4 w-4 text-purple-600" />
+              Cotizador
+            </Link>
+            <Link
+              href="/experiences/catalog"
+              className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm"
+            >
+              <Palmtree className="h-4 w-4 text-amber-500" />
+              TravelMarket
+            </Link>
+            <Link
+              href="/experiences/my-trip-mgmt"
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm"
+            >
+              <Smartphone className="h-4 w-4" />
+              App "Mi Viaje"
+            </Link>
+          </div>
+        </div>
+
+        {/* Selector de Unidades de Negocio */}
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setTourismUnit('emisivo')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              tourismUnit === 'emisivo'
+                ? 'bg-tech-blue text-white shadow-sm ring-2 ring-blue-300'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Plane className={`h-4 w-4 ${tourismUnit === 'emisivo' ? 'text-sky-300' : 'text-slate-400'}`} />
+            ✈️ Turismo Emisivo (Activo)
+          </button>
+          <button
+            type="button"
+            onClick={() => setTourismUnit('receptivo')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              tourismUnit === 'receptivo'
+                ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-300'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Compass className={`h-4 w-4 ${tourismUnit === 'receptivo' ? 'text-emerald-300' : 'text-slate-400'}`} />
+            🏔️ Turismo Receptivo
+          </button>
+          <button
+            type="button"
+            onClick={() => setTourismUnit('global')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              tourismUnit === 'global'
+                ? 'bg-slate-800 text-white shadow-sm ring-2 ring-slate-400'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Palmtree className={`h-4 w-4 ${tourismUnit === 'global' ? 'text-amber-400' : 'text-slate-400'}`} />
+            🌐 Visión Consolidada
+          </button>
         </div>
       </div>
 

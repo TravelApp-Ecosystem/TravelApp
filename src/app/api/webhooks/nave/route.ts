@@ -41,10 +41,16 @@ export async function POST(req: NextRequest) {
 
     // If transaction is approved, reconcile in Firestore
     if ((status === 'APPROVED' || status === 'APROBADO' || status === 'COMPLETED') && externalRef) {
-      // 1. Search matching reservation
-      const reservationsSnap = await serverGetDocs('experience_reservations', {
+      // 1. Search matching reservation (by fileNumber or reservationCode)
+      let reservationsSnap = await serverGetDocs('experience_reservations', {
         where: [['fileNumber', '==', externalRef]]
       });
+
+      if (reservationsSnap.empty) {
+        reservationsSnap = await serverGetDocs('experience_reservations', {
+          where: [['reservationCode', '==', externalRef]]
+        });
+      }
 
       if (!reservationsSnap.empty) {
         const resDoc = reservationsSnap.docs[0];

@@ -8,7 +8,7 @@ import {
   Landmark, Phone, Mail, CreditCard, DollarSign, Calendar, MapPin,
   Users, Plus, Trash2, ShieldCheck, UserPlus, AlertCircle, FileText,
   Clock, ArrowRight, ExternalLink, QrCode, Plane, Bus, Hotel,
-  Briefcase, Percent, Award, ShoppingBag, X
+  Briefcase, Percent, Award, ShoppingBag, X, Copy, Check, Smartphone
 } from 'lucide-react';
 import { collection, onSnapshot, setDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -172,9 +172,51 @@ function NewReservationForm() {
   const [paymentMethod, setPaymentMethod] = useState<string>('Transferencia Bancaria');
   const [paymentNotes, setPaymentNotes] = useState<string>('Seña de confirmación de reserva');
 
-  // Submission State
+  // Submission State & Nave Galicia Intent
   const [saving, setSaving] = useState<boolean>(false);
   const [successReservationId, setSuccessReservationId] = useState<string | null>(null);
+  const [successFileNumber, setSuccessFileNumber] = useState<string>('');
+  const [naveIntentLoading, setNaveIntentLoading] = useState<boolean>(false);
+  const [generatedNaveUrl, setGeneratedNaveUrl] = useState<string | null>(null);
+  const [generatedNaveQr, setGeneratedNaveQr] = useState<string | null>(null);
+  const [copiedSuccessLink, setCopiedSuccessLink] = useState<boolean>(false);
+
+  // Handler para invocar Nave Banco Galicia en el momento de crear el expediente
+  const handleGenerateNavePayment = async (fileCode: string, amount: number, tripName: string) => {
+    setNaveIntentLoading(true);
+    setCopiedSuccessLink(false);
+    try {
+      const resp = await fetch('/api/checkout/nave-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          externalPaymentId: fileCode,
+          amount: amount || 1,
+          currency,
+          productName: tripName,
+          reservationId: fileCode,
+          buyer: {
+            name: passengerName,
+            email: passengerEmail,
+            phone: passengerPhone,
+            docNumber: passengerDni
+          }
+        })
+      });
+      const data = await resp.json();
+      if (data.success && data.checkoutUrl) {
+        setGeneratedNaveUrl(data.checkoutUrl);
+        setGeneratedNaveQr(data.qrData);
+      } else {
+        alert(`Error al generar cobro en Nave Galicia: ${data.error || 'Respuesta inválida'}`);
+      }
+    } catch (err: any) {
+      console.error('Error invoking Nave intent:', err);
+      alert(`Error de red al conectar con Nave Banco Galicia: ${err.message}`);
+    } finally {
+      setNaveIntentLoading(false);
+    }
+  };
 
   // 1. Sync Tours, Quotes, Customers, Staff (RRHH) & Affiliates
   useEffect(() => {
@@ -193,21 +235,58 @@ function NewReservationForm() {
       setQuotes(list);
     });
 
-    // C. Sync users / crm customers
-    const unsubCustomers = onSnapshot(collection(db, 'users'), (snap) => {
-      const list = snap.docs.map(d => {
+    // C. Sync ecosystem customers from BOTH crm_customers and users
+    let usersList: Customer[] = [];
+    let crmList: Customer[] = [];
+
+    const mergeCustomers = () => {
+      const mergedMap = new Map<string, Customer>();
+      crmList.forEach(c => {
+        const key = (c.email?.toLowerCase().trim() || c.dni || c.id);
+        mergedMap.set(key, c);
+      });
+      usersList.forEach(u => {
+        const key = (u.email?.toLowerCase().trim() || u.dni || u.id);
+        if (!mergedMap.has(key)) {
+          mergedMap.set(key, u);
+        } else {
+          const existing = mergedMap.get(key)!;
+          if (!existing.phone && u.phone) existing.phone = u.phone;
+          if (!existing.dni && u.dni) existing.dni = u.dni;
+        }
+      });
+      setCustomers(Array.from(mergedMap.values()));
+      setLoading(false);
+    };
+
+    const unsubCrm = onSnapshot(collection(db, 'crm_customers'), (snap) => {
+      crmList = snap.docs.map(d => {
         const data = d.data();
         return {
           id: d.id,
-          displayName: data.displayName || data.customerName || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Cliente Sin Nombre',
+          displayName: data.displayName || data.customerName || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Cliente CRM',
+          email: data.email || '',
+          phone: data.phone || data.mobilePhone || '',
+          dni: data.dni || data.document?.number || data.documentNumber || '',
+          familyMembers: data.familyMembers || []
+        };
+      });
+      mergeCustomers();
+    }, () => setLoading(false));
+
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+      usersList = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          displayName: data.displayName || data.customerName || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Usuario App',
           email: data.email || '',
           phone: data.phone || '',
           dni: data.dni || data.documentNumber || '',
           familyMembers: data.familyMembers || []
         };
       });
-      setCustomers(list);
-      setLoading(false);
+      mergeCustomers();
     }, () => setLoading(false));
 
     // D. Sync HR Staff for Seller selection
@@ -259,7 +338,8 @@ function NewReservationForm() {
     return () => {
       unsubTours();
       unsubQuotes();
-      unsubCustomers();
+      unsubCrm();
+      unsubUsers();
       unsubStaff();
       unsubAffiliates();
     };
@@ -525,7 +605,16 @@ function NewReservationForm() {
         role: 'client'
       };
 
+      // Guardar en usuarios de la App y en la base unificada de clientes CRM del ecosistema
       await setDoc(doc(db, 'users', custId), newCustData);
+      await setDoc(doc(db, 'crm_customers', custId), {
+        ...newCustData,
+        customerName: newCustName,
+        customerStatus: 'Cliente',
+        businessUnit: 'TravelApp Turismo Emisivo',
+        origin: 'Alta Rápida Reserva',
+        status: 'Nuevos'
+      });
 
       setSelectedCustomerId(custId);
       setPassengerName(newCustName);
@@ -564,7 +653,10 @@ function NewReservationForm() {
 
     setSaving(true);
     try {
-      const reservationId = `RES-EXP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const year = new Date().getFullYear();
+      const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+      const fileNumber = `FILE-EMIS-${year}-${randomSuffix}`;
+      const reservationId = fileNumber;
       const branchName = branchId === '2' ? 'Sucursal Pilar' : branchId === '3' ? 'Sucursal Tucumán' : 'Sucursal Retiro';
 
       let tripTitle = customTitle || 'Tour Personalizado';
@@ -625,7 +717,10 @@ function NewReservationForm() {
       // 1. Guardar en experience_reservations
       const reservationPayload = {
         id: reservationId,
-        reservationCode: reservationId,
+        fileNumber,
+        reservationCode: fileNumber,
+        tourismVertical: 'emisivo',
+        productType: isMultiOperator ? 'operador_mayorista' : (tripSource === 'catalog' ? (tours.find(t => t.id === selectedTourId)?.productType || 'salida_propia') : 'salida_propia'),
         customerId: selectedCustomerId || `guest_${Date.now()}`,
         nombrePasajero: passengerName,
         emailPasajero: passengerEmail,
@@ -704,6 +799,10 @@ function NewReservationForm() {
         const contractedTripData = {
           id: contractedTripId,
           reservationId,
+          fileNumber,
+          reservationCode: fileNumber,
+          tourCode: `TRV-${fileNumber}`,
+          tourismVertical: 'emisivo',
           userId: selectedCustomerId,
           title: tripTitle,
           destination: tripDest,
@@ -735,6 +834,13 @@ function NewReservationForm() {
       }
 
       setSuccessReservationId(reservationId);
+      setSuccessFileNumber(fileNumber);
+
+      // Si el medio de pago elegido es NAVE Galicia, generar el intent de pago inmediatamente
+      if (paymentMethod.toLowerCase().includes('nave')) {
+        handleGenerateNavePayment(fileNumber, paidNowAmount > 0 ? paidNowAmount : totalPrice, tripTitle);
+      }
+
       setSaving(false);
     } catch (err: any) {
       console.error('Error creating reservation:', err);
@@ -1470,9 +1576,10 @@ function NewReservationForm() {
                   onChange={e => setPaymentMethod(e.target.value)}
                   className="w-full p-2 bg-white rounded-lg border border-slate-200 font-bold"
                 >
+                  <option value="NAVE Galicia (Link de Pago + QR MODO)">NAVE Galicia (Link de Pago + QR MODO)</option>
+                  <option value="Mercado Pago / Tarjeta">Mercado Pago / Tarjeta</option>
                   <option value="Transferencia Bancaria">Transferencia Bancaria</option>
                   <option value="Efectivo en Sucursal">Efectivo en Sucursal</option>
-                  <option value="Mercado Pago / Tarjeta">Mercado Pago / Tarjeta</option>
                   <option value="Dólares Billete">Dólares Billete</option>
                 </select>
               </div>
@@ -1529,18 +1636,123 @@ function NewReservationForm() {
       {/* MODAL DE ÉXITO */}
       {successReservationId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 text-center space-y-4 animate-in fade-in zoom-in duration-150">
-            <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
-            <h3 className="text-lg font-black text-slate-800">¡Reserva Generada Exitosamente!</h3>
-            <p className="text-xs text-slate-500">
-              Se ha creado el expediente <strong className="font-mono text-slate-800">{successReservationId}</strong>, registrado los vencimientos con operadores y sincronizado la app móvil del cliente.
-            </p>
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-100 text-center space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-center gap-2">
+              <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-800">¡Expediente de Viaje Emitido!</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Expediente Corporativo:{' '}
+                <strong className="font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                  {successReservationId}
+                </strong>
+              </p>
+            </div>
+
+            {/* SECCIÓN NAVE GALICIA (LINK + QR) */}
+            {naveIntentLoading ? (
+              <div className="py-6 bg-orange-50/60 rounded-2xl border border-orange-200 text-center space-y-2">
+                <RefreshCw className="h-7 w-7 text-orange-500 animate-spin mx-auto" />
+                <p className="text-xs font-bold text-orange-950">
+                  Generando link oficial de pago y código QR en NAVE Banco Galicia...
+                </p>
+              </div>
+            ) : generatedNaveUrl ? (
+              <div className="bg-orange-50/40 p-4 rounded-2xl border border-orange-200 space-y-3 text-left">
+                <div className="flex items-center justify-between border-b border-orange-200/60 pb-2">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-orange-600" />
+                    <span className="text-xs font-black text-slate-800">Cobro con NAVE Banco Galicia / MODO</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800">
+                    Activo
+                  </span>
+                </div>
+
+                {/* QR Display */}
+                <div className="text-center py-1">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(generatedNaveUrl)}`}
+                    alt="Código QR NAVE Galicia"
+                    className="w-32 h-32 object-contain mx-auto rounded-lg shadow-sm border border-slate-200 bg-white p-1.5"
+                  />
+                  <span className="text-[10px] font-medium text-slate-500 mt-1 block">
+                    Escaneá con Galicia, MODO o cualquier billetera virtual
+                  </span>
+                </div>
+
+                {/* Input Link */}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    readOnly
+                    value={generatedNaveUrl}
+                    className="flex-1 p-2 bg-white rounded-xl border border-slate-200 text-xs font-mono text-slate-700 truncate"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedNaveUrl);
+                      setCopiedSuccessLink(true);
+                      setTimeout(() => setCopiedSuccessLink(false), 2500);
+                    }}
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                  >
+                    {copiedSuccessLink ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                    {copiedSuccessLink ? 'Copiado' : 'Copiar'}
+                  </button>
+                </div>
+
+                {/* Acciones de Cobro */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <a
+                    href={`https://wa.me/${passengerPhone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                      `¡Hola ${passengerName}! Confirmamos la emisión de tu expediente de viaje (${successReservationId}). Podés abonar de forma segura con NAVE Banco Galicia (tarjetas o QR interoperable MODO) a través del siguiente enlace:\n\n${generatedNaveUrl}\n\n¡Muchas gracias por viajar con TravelApp!`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                  >
+                    <Smartphone className="h-4 w-4" />
+                    Enviar WhatsApp
+                  </a>
+                  <a
+                    href={generatedNaveUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir Checkout
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => handleGenerateNavePayment(successReservationId, paidNowAmount > 0 ? paidNowAmount : totalPrice, customTitle || 'Tour')}
+                  className="w-full py-2.5 bg-orange-50 hover:bg-orange-100 text-orange-800 rounded-xl text-xs font-black transition border border-orange-200 flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="h-4 w-4 text-orange-600" />
+                  Emitir Link de Cobro &amp; QR NAVE Galicia Ahora
+                </button>
+              </div>
+            )}
+
             <div className="pt-2 flex gap-2">
               <Link
                 href="/experiences/reservations"
                 className="flex-1 py-2.5 bg-tech-blue text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
               >
-                Ir al Panel de Reservas
+                Ir al ERP de Expedientes &amp; Reservas
+              </Link>
+              <Link
+                href="/experiences/my-trip-mgmt"
+                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition"
+              >
+                Ver en App Mi Viaje
               </Link>
             </div>
           </div>

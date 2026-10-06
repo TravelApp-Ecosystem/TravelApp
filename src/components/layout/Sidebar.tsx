@@ -33,6 +33,7 @@ export const Sidebar = () => {
             'dashboard': true, 'dispatch': true, 'drivers': true, 'fleet': true,
             'travelcab-create-service': true, 'travelcab-create-category': true, 'settings': false, 'security': false,
             'catalog': true, 'my-trip-mgmt': true, 'create-customer': true, 'create-reservation': true, 'create-group-trip': true,
+            'quoter': true, 'reservations': true,
             'spots': true, 'coordinators': true, 'coordinator-app': true, 'analytics': true,
             'rewards-create-merchant': true, 'rewards-create-rubro': false, 'rewards-create-category': false, 'validator': true,
             'merchants': true, 'partners': true, 'new-partner': true, 'applications': true,
