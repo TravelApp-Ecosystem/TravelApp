@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   User, Mail, Phone, Lock, Eye, EyeOff, ShieldCheck,
   CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Gift,
-  Plane, Compass, Smartphone, CreditCard, Calendar, MapPin
+  Plane, Compass, Smartphone, CreditCard, Calendar, MapPin,
+  Camera, Upload
 } from "lucide-react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { DEFAULT_REWARDS_CONFIG, subscribeGlobalRewardsConfig } from "@/lib/rewards-config";
+import { GlobalRewardsConfig } from "@/types/rewards";
+
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -33,11 +37,40 @@ export default function RegistroPage() {
   const [gender, setGender] = useState<"M" | "F" | "X">("M");
   const [nationality, setNationality] = useState("Argentina");
   const [city, setCity] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(true);
+
+  // Política Global de Rewards (Concorde 360)
+  const [rewardsConfig, setRewardsConfig] = useState<GlobalRewardsConfig>(DEFAULT_REWARDS_CONFIG);
+  const [awardedPoints, setAwardedPoints] = useState<number>(DEFAULT_REWARDS_CONFIG.welcomePointsBonus);
 
   // Estados de carga y error
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeGlobalRewardsConfig((cfg) => {
+      setRewardsConfig(cfg);
+      setAwardedPoints(cfg.welcomePointsBonus);
+    });
+    return () => unsub();
+  }, []);
+
+  const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2.5 * 1024 * 1024) {
+        setError("La imagen no debe superar los 2.5MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
 
   // Manejo de paso 1 a paso 2
   const handleNextStep = (e: React.FormEvent) => {
@@ -101,9 +134,25 @@ export default function RegistroPage() {
       }
 
       if (userCred?.user) {
-        await updateProfile(userCred.user, {
-          displayName: fullName.trim(),
-        });
+        if (photoUrl) {
+          try {
+            await updateProfile(userCred.user, {
+              displayName: fullName.trim(),
+              photoURL: photoUrl,
+            });
+          } catch (e) {
+            console.warn("Could not set photoURL on auth user:", e);
+          }
+        } else {
+          await updateProfile(userCred.user, {
+            displayName: fullName.trim(),
+          });
+        }
+
+        const totalBonus = photoUrl 
+          ? (rewardsConfig.welcomePointsBonus + rewardsConfig.profilePhotoBonusPoints) 
+          : rewardsConfig.welcomePointsBonus;
+        setAwardedPoints(totalBonus);
 
         // 2. Crear documento en Firestore (colección users) idéntico a la app móvil
         const userRef = doc(db, "users", userCred.user.uid);
@@ -113,7 +162,9 @@ export default function RegistroPage() {
           phone: phone.trim(),
           customerLevel: 1,
           customerStatus: "Cliente",
-          rewardsPoints: 500, // 🎁 500 Puntos de bienvenida igual que en la app
+          rewardsPoints: totalBonus,
+          photoURL: photoUrl || null,
+          hasReceivedPhotoBonus: Boolean(photoUrl),
           walletBalance: 0,
           document: {
             type: docType,
@@ -195,9 +246,9 @@ export default function RegistroPage() {
           </h1>
 
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            {step === 1 && "Completá tus datos de acceso para ingresar al ecosistema y acumular puntos."}
+            {step === 1 && `Completá tus datos de acceso para ingresar al ecosistema y recibir tus ${rewardsConfig.welcomePointsBonus} Puntos Rewards de bienvenida.`}
             {step === 2 && "Completá tu documentación para emitir tus pasajes y traslados de forma inmediata."}
-            {step === 3 && "Tu membresía está activa y acreditamos 500 Puntos Rewards en tu billetera."}
+            {step === 3 && `Tu membresía está activa y acreditamos ${awardedPoints} Puntos Rewards en tu billetera.`}
           </p>
 
           {/* Barra de Progreso del Onboarding (3 Pasos) */}
@@ -422,6 +473,45 @@ export default function RegistroPage() {
               </div>
             </div>
 
+            {/* Foto de Perfil Opcional con Recompensa de Puntos */}
+            <div className="rounded-2xl border-2 border-dashed border-[#FF5A19]/30 bg-orange-50/40 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black text-[#0A2A5B] flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-[#FF5A19]" />
+                  Foto de Perfil (Opcional)
+                </span>
+                <span className="rounded-full bg-[#FF5A19] text-white px-2 py-0.5 text-[9px] font-black">
+                  +{rewardsConfig.profilePhotoBonusPoints} PUNTOS EXTRA
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                Subí tu foto para verificar tu cuenta de viajero y sumar <strong>+{rewardsConfig.profilePhotoBonusPoints} Puntos Rewards</strong> adicionales a tu saldo.
+              </p>
+              
+              <div className="flex items-center gap-3 pt-1">
+                {photoUrl ? (
+                  <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#FF5A19] shadow-sm shrink-0">
+                    <img src={photoUrl} alt="Foto de perfil" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                    <User className="w-7 h-7" />
+                  </div>
+                )}
+                
+                <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs cursor-pointer shadow-sm transition">
+                  <Upload className="w-3.5 h-3.5 text-[#FF5A19]" />
+                  <span>{photoUrl ? "Cambiar foto" : "Subir foto de perfil"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoFileChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
             {/* Aceptación de términos */}
             <label className="flex items-start gap-2.5 pt-2 cursor-pointer">
               <input
@@ -499,7 +589,7 @@ export default function RegistroPage() {
                   <span className="text-[10px] uppercase font-bold text-blue-200">Puntos Acreditados</span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <Gift className="w-4 h-4 text-[#FF5A19]" />
-                    <span className="text-xl font-black text-amber-300">500 Pts</span>
+                    <span className="text-xl font-black text-amber-300">{awardedPoints} Pts</span>
                   </div>
                 </div>
 
@@ -517,7 +607,7 @@ export default function RegistroPage() {
             <div className="p-4 rounded-2xl bg-orange-50 border border-orange-100 flex items-start gap-3">
               <span className="text-2xl shrink-0">🤖</span>
               <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                <span className="font-bold text-[#0A2A5B]">¡Felicitaciones {fullName.split(" ")[0]}!</span> Tu cuenta ya está lista. Tus <strong className="text-[#FF5A19]">500 Puntos TravelRewards</strong> ya están disponibles para ser canjeados en descuentos y traslados.
+                <span className="font-bold text-[#0A2A5B]">¡Felicitaciones {fullName.split(" ")[0]}!</span> Tu cuenta ya está lista. Tus <strong className="text-[#FF5A19]">{awardedPoints} Puntos TravelRewards</strong> ya están disponibles para ser canjeados en descuentos y traslados.
               </p>
             </div>
 

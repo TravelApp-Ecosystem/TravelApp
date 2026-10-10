@@ -168,9 +168,23 @@ export default function WalletScreen() {
 
           <View style={styles.breakdownCard}>
             <Ionicons name="gift-outline" size={24} color="#7C3AED" />
-            <Text style={styles.breakdownTitle}>Puntos Rewards</Text>
+            <Text style={styles.breakdownTitle}>Viajes Rewards</Text>
             <Text style={styles.breakdownAmount}>${rewardsEarnings.toLocaleString('es-AR')}</Text>
+            <Text style={{ fontSize: 9, color: Colors.textSecondary, marginTop: 2, textAlign: 'center', fontWeight: '600' }}>
+              A liquidar en pesos
+            </Text>
           </View>
+        </View>
+
+        {/* Información de Liquidación Diaria Automática */}
+        <View style={styles.settlementInfoCard}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="shield-checkmark" size={16} color="#0A2A5B" />
+            <Text style={styles.settlementInfoTitle}>Liquidación Diaria Automática (BIND PSP)</Text>
+          </View>
+          <Text style={styles.settlementInfoText}>
+            Los viajes realizados con medios digitales y promociones Rewards se liquidan en pesos ($ ARS) diariamente directo a tu cuenta bancaria o billetera (CBU/CVU) registrada, descontando la comisión del servicio.
+          </Text>
         </View>
 
         {/* Gestor de Control de Gastos Diarios */}
@@ -299,6 +313,25 @@ const styles = StyleSheet.create({
   },
   breakdownTitle: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
   breakdownAmount: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+
+  settlementInfoCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    gap: 4,
+  },
+  settlementInfoTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  settlementInfoText: {
+    fontSize: 11,
+    color: '#15803D',
+    lineHeight: 16,
+  },
 
   expensesHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
   addExpenseBtn: {

@@ -20,7 +20,14 @@ export interface PointTransaction {
 }
 
 export interface GlobalRewardsConfig {
-  defaultPointValue: number; // $175 ARS
-  maxRedemptionPercentPerOrder: number; // ej: 25% del total del viaje
-  minPointsToRedeem: number; // ej: 5 puntos
+  universalPointValue: number; // $175 ARS por punto (confidencial/interno de Concorde 360 para resguardo y liquidación)
+  welcomePointsBonus: number; // Puntos de regalo al registrarse (ej: 20 pts)
+  profilePhotoBonusPoints: number; // Puntos de regalo por cargar foto de perfil (ej: 10 pts)
+  dailyIssuanceCapPoints?: number; // Tope diario de emisión para marketing (ej: 1000 pts)
+  defaultPointValue?: number; // Retrocompatibilidad
+  maxRedemptionPercentPerOrder?: number; // ej: 30% del total de la orden
+  minPointsToRedeem?: number; // ej: 5 puntos
+  updatedAt?: number;
+  updatedBy?: string;
 }
+

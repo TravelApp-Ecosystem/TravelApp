@@ -10,6 +10,11 @@ import {
 } from 'recharts';
 import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { 
+  DEFAULT_REWARDS_CONFIG, 
+  subscribeGlobalRewardsConfig 
+} from '@/lib/rewards-config';
+import { GlobalRewardsConfig } from '@/types/rewards';
 
 interface PayoutDue {
   id: string;
@@ -39,21 +44,29 @@ const MOCK_PAYOUTS: PayoutDue[] = [
 export default function RewardsAnalyticsPage() {
   const [payouts, setPayouts] = useState<PayoutDue[]>(MOCK_PAYOUTS);
   const [loading, setLoading] = useState(true);
+  const [globalConfig, setGlobalConfig] = useState<GlobalRewardsConfig>(DEFAULT_REWARDS_CONFIG);
 
-  // Load merchants and count totals dynamically if collection is ready
+  // Load merchants, totals and global config dynamically
   useEffect(() => {
+    const unsubGlobal = subscribeGlobalRewardsConfig((cfg) => {
+      setGlobalConfig(cfg);
+    });
+
     const unsub = onSnapshot(collection(db, 'rewards_merchants'), (snapshot) => {
-      // Sincronizar datos si es necesario en un futuro hito
       setLoading(false);
     }, () => {
       setLoading(false);
     });
-    return () => unsub();
+
+    return () => {
+      unsubGlobal();
+      unsub();
+    };
   }, []);
 
-  // Totales
+  // Totales dinámicos
   const totalPointsEmitidos = 1890000;
-  const pointValue = 10; // $10 por punto
+  const pointValue = globalConfig.universalPointValue || 175;
   const financialBacking = totalPointsEmitidos * pointValue;
   const totalPointsCanjeados = 1240000;
 
@@ -128,8 +141,8 @@ export default function RewardsAnalyticsPage() {
             <span className="text-xl font-bold text-tech-blue mr-0.5">$</span>
             <p className="text-3xl font-black text-tech-blue">{financialBacking.toLocaleString('es-AR')}</p>
           </div>
-          <p className="text-xs text-slate-400 mt-2">Fondo de reserva corporativo de respaldo.</p>
-          <p className="text-[10px] text-slate-400 mt-1">Valor promedio canje: ${pointValue}/pt.</p>
+          <p className="text-xs text-slate-400 mt-2">Fondo de reserva corporativo de respaldo en BIND PSP.</p>
+          <p className="text-[10px] text-slate-400 mt-1">Respaldo monetario Concorde 360: ${pointValue} ARS/pt.</p>
         </div>
 
         {/* KPI 3: Puntos Canjeados */}

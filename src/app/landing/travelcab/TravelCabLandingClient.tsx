@@ -9,6 +9,9 @@ import { MUTariff, VehicleCategory } from '@/types/logistics';
 import { ARGENTINA_PROVINCES } from '@/types/partners';
 import { useTripAlertSound } from '@/hooks/useTripAlertSound';
 import { stopTripAlert } from '@/lib/soundAlerts';
+import { DEFAULT_REWARDS_CONFIG, subscribeGlobalRewardsConfig } from '@/lib/rewards-config';
+import { GlobalRewardsConfig } from '@/types/rewards';
+
 import { 
   ShieldCheck, 
   UserCheck, 
@@ -532,6 +535,15 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
   const [pRegData, setPRegData] = useState({ firstName: '', lastName: '', email: '', phone: '', photoUrl: '' });
   const [pRegId, setPRegId] = useState('');
   const [pPoints, setPPoints] = useState(0);
+  const [rewardsConfig, setRewardsConfig] = useState<GlobalRewardsConfig>(DEFAULT_REWARDS_CONFIG);
+
+  // Sincronizar política global de rewards
+  useEffect(() => {
+    const unsub = subscribeGlobalRewardsConfig((cfg) => {
+      setRewardsConfig(cfg);
+    });
+    return () => unsub();
+  }, []);
 
   // Flujo Registro Conductor (Idéntico a HR con validación estricta y uploader)
   const [dRegStep, setDRegStep] = useState(0);
@@ -1001,6 +1013,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
     }
 
     try {
+      const welcomeBonus = rewardsConfig.welcomePointsBonus || 20;
       const passengersRef = collection(db, 'passengers');
       const docRef = await addDoc(passengersRef, {
         firstName: pRegData.firstName,
@@ -1008,12 +1021,12 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         email: pRegData.email,
         phone: pRegData.phone,
         photoUrl: '',
-        points: 300,
+        points: welcomeBonus,
         createdAt: Date.now(),
         status: 'Activo'
       });
       setPRegId(docRef.id);
-      setPPoints(300);
+      setPPoints(welcomeBonus);
       setPRegStep(2);
     } catch (err: any) {
       alert("Error al registrar: " + err.message);
@@ -1027,17 +1040,21 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
   const handleCompletePassengerPhoto = async () => {
     if (!pRegId) return;
     if (!pRegData.photoUrl) {
-      alert("Por favor carga tu foto de perfil para ganar los 150 puntos extra.");
+      alert(`Por favor carga tu foto de perfil para ganar los +${rewardsConfig.profilePhotoBonusPoints || 10} puntos extra.`);
       return;
     }
     try {
+      const welcomeBonus = rewardsConfig.welcomePointsBonus || 20;
+      const photoBonus = rewardsConfig.profilePhotoBonusPoints || 10;
+      const totalPoints = welcomeBonus + photoBonus;
       const docRef = doc(db, 'passengers', pRegId);
       await setDoc(docRef, {
         photoUrl: pRegData.photoUrl,
-        points: 450
+        points: totalPoints,
+        hasReceivedPhotoBonus: true,
       }, { merge: true });
 
-      setPPoints(450);
+      setPPoints(totalPoints);
       setPRegStep(3);
     } catch (err: any) {
       alert("Error al actualizar foto: " + err.message);
@@ -2473,7 +2490,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                   </div>
                   <h3 className="text-lg font-black text-tech-blue">Registro de Pasajero</h3>
                   <p className="text-xs text-slate-500 leading-normal">
-                    Registrate hoy y recibí **300 puntos Rewards** de bienvenida automáticamente en tu cuenta.
+                    Registrate hoy y recibí **{rewardsConfig.welcomePointsBonus || 20} puntos Rewards** de bienvenida automáticamente en tu cuenta.
                   </p>
                 </div>
 
@@ -2621,7 +2638,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
                       className="flex-1 rounded-xl bg-tech-blue py-3 text-xs font-bold text-white hover:brightness-110 uppercase tracking-wider"
                       style={{ backgroundColor: '#0a2a5b' }}
                     >
-                      Canjear +150 Puntos
+                      Canjear +{rewardsConfig.profilePhotoBonusPoints || 10} Puntos
                     </button>
                   )}
                 </div>

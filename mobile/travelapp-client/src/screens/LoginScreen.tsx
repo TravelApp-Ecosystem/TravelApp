@@ -140,6 +140,16 @@ export default function LoginScreen() {
         const snap = await getDoc(userRef);
 
         if (!snap.exists()) {
+          let welcomeBonus = 20;
+          try {
+            const configSnap = await getDoc(doc(db, 'rewards_config', 'global'));
+            if (configSnap.exists()) {
+              welcomeBonus = Number(configSnap.data().welcomePointsBonus ?? 20);
+            }
+          } catch (e) {
+            console.warn('Could not read welcome bonus from rewards_config/global:', e);
+          }
+
           const isMaster = MASTER_ADMIN_EMAILS.includes(trimmedEmail);
           await setDoc(userRef, {
             customerName: userCred.user.displayName || 'Pasajero TravelCab',
@@ -147,7 +157,7 @@ export default function LoginScreen() {
             phone: '+5491100000000',
             customerLevel: 1,
             customerStatus: 'Cliente',
-            rewardsPoints: 500,
+            rewardsPoints: welcomeBonus,
             walletBalance: 0,
             hasPurchasedOrganizedTrip: false,
             isAdmin: isMaster,
@@ -234,6 +244,16 @@ export default function LoginScreen() {
         const snap = await getDoc(userRef);
 
         if (!snap.exists()) {
+          let welcomeBonus = 20;
+          try {
+            const configSnap = await getDoc(doc(db, 'rewards_config', 'global'));
+            if (configSnap.exists()) {
+              welcomeBonus = Number(configSnap.data().welcomePointsBonus ?? 20);
+            }
+          } catch (e) {
+            console.warn('Could not read welcome bonus from rewards_config/global:', e);
+          }
+
           const isMaster = MASTER_ADMIN_EMAILS.includes(finalEmail);
           await setDoc(userRef, {
             customerName: name.trim() || userCred.user.displayName || (finalEmail.includes('fernando') ? 'Fernando Admin' : 'Pasajero TravelCab'),
@@ -241,7 +261,7 @@ export default function LoginScreen() {
             phone: phone.trim() || inputVal,
             customerLevel: 1,
             customerStatus: 'Cliente',
-            rewardsPoints: 500,
+            rewardsPoints: welcomeBonus,
             walletBalance: 0,
             hasPurchasedOrganizedTrip: false,
             isAdmin: isMaster,

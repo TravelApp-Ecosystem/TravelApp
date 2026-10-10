@@ -255,6 +255,7 @@ export default function HomeScreen() {
   const [experiences, setExperiences] = useState<any[]>([]);
   const [passengerTrips, setPassengerTrips] = useState<any[]>([]);
   const [rewardsPoints, setRewardsPoints] = useState(1450); // Puntos por defecto
+  const [hasReceivedPhotoBonus, setHasReceivedPhotoBonus] = useState(false);
   const [activeSubMode, setActiveSubMode] = useState<'urbana' | 'interurbano' | 'traslados'>('urbana');
   const [intermediateStops, setIntermediateStops] = useState<string[]>([]); // Hasta 3 paradas intermedias
   const [scheduleCity, setScheduleCity] = useState('');
@@ -398,6 +399,9 @@ export default function HomeScreen() {
           if (data.rewardsPoints !== undefined) {
             setRewardsPoints(data.rewardsPoints);
           }
+          if (data.hasReceivedPhotoBonus !== undefined) {
+            setHasReceivedPhotoBonus(!!data.hasReceivedPhotoBonus);
+          }
           if (data.walletBalance !== undefined) {
             setWalletBalance(data.walletBalance);
           }
@@ -486,8 +490,35 @@ export default function HomeScreen() {
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { photoURL: photoUri });
       }
-      await setDoc(doc(db, 'users', user.uid), { photoURL: photoUri }, { merge: true });
-      Alert.alert('¡Foto Actualizada!', 'Tu foto de perfil se guardó correctamente.');
+
+      // Consultar bono por foto de perfil en rewards_config/global
+      let photoBonus = 10;
+      try {
+        const configSnap = await getDoc(doc(db, 'rewards_config', 'global'));
+        if (configSnap.exists()) {
+          photoBonus = Number(configSnap.data().profilePhotoBonusPoints ?? 10);
+        }
+      } catch (err) {
+        console.warn('Could not read profilePhotoBonusPoints, using 10:', err);
+      }
+
+      if (!hasReceivedPhotoBonus) {
+        const newPoints = (rewardsPoints || 0) + photoBonus;
+        await setDoc(doc(db, 'users', user.uid), { 
+          photoURL: photoUri,
+          rewardsPoints: newPoints,
+          hasReceivedPhotoBonus: true
+        }, { merge: true });
+        setRewardsPoints(newPoints);
+        setHasReceivedPhotoBonus(true);
+        Alert.alert(
+          '¡Foto Actualizada!',
+          `Tu foto de perfil se guardó correctamente y sumaste +${photoBonus} Puntos Rewards a tu saldo.`
+        );
+      } else {
+        await setDoc(doc(db, 'users', user.uid), { photoURL: photoUri }, { merge: true });
+        Alert.alert('¡Foto Actualizada!', 'Tu foto de perfil se guardó correctamente.');
+      }
     } catch (e) {
       console.error('Error actualizando foto:', e);
       Alert.alert('Error', 'No se pudo guardar la foto de perfil.');
