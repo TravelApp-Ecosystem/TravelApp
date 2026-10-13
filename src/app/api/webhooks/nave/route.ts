@@ -79,6 +79,23 @@ export async function POST(req: NextRequest) {
           registeredAt: new Date().toISOString(),
           timestamp
         });
+
+        // 3. Sincronizar contracted_trips para la App del Pasajero
+        try {
+          const tripsSnap = await serverGetDocs('contracted_trips', {
+            where: [['reservationCode', '==', externalRef]]
+          });
+          if (!tripsSnap.empty) {
+            const tripDoc = tripsSnap.docs[0];
+            await serverUpdateDoc('contracted_trips', tripDoc.id, {
+              status: 'Confirmada',
+              paymentStatus: 'paid',
+              paidAt: timestamp
+            });
+          }
+        } catch (tripErr) {
+          console.warn('[NAVE Webhook] Error sincronizando contracted_trips:', tripErr);
+        }
       }
     }
 

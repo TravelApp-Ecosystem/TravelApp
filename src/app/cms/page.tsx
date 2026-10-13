@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   FileText, Save, Image, Link as LinkIcon, Shield, Sparkles, 
   Trash2, Plus, ArrowRight, Eye, CheckCircle2, AlertCircle, RefreshCw,
-  Upload, X, HelpCircle, Users
+  Upload, X, HelpCircle, Users, Compass
 } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -684,15 +684,242 @@ const DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS = {
   }
 };
 
-type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_promo' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards' | 'afi_hero' | 'afi_cobro' | 'afi_faq' | 'afi_footer' | 'exp_pushpop' | 'exp_floating' | 'exp_quienes' | 'exp_marketplace' | 'exp_buscador' | 'exp_metrics' | 'exp_testimonials';
+const DEFAULT_LUNAVIAJERA_CMS_DATA = {
+  hero: {
+    badge: "✦ EXCURSIONES REGIONALES & SALIDAS DE 1 DÍA",
+    title: "Descubrí la magia de los Valles y las Yungas",
+    subtitle: "Excursiones de día completo con transporte ida y vuelta desde Yerba Buena, guías locales habilitados y grupos reducidos.",
+    slides: [
+      {
+        id: "slide-1",
+        mediaUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2560&q=90",
+        badge: "✦ VALLES CALCHAQUÍES",
+        title: "Tafí del Valle & Quebrada Los Sosa",
+        subtitle: "Recorré 30 km de selva subtropical por la mítica Ruta 307 hasta llegar a los monolitos de más de 2000 años y el lago La Angostura."
+      },
+      {
+        id: "slide-2",
+        mediaUrl: "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=2560&q=90",
+        badge: "✦ SELVA NUBICELVA",
+        title: "Selva de Yungas & El Cadillal",
+        subtitle: "Caminatas bajo helechos gigantes, ríos de montaña de aguas transparentes y el imponente embalse encajonado entre cerros verdes."
+      },
+      {
+        id: "slide-3",
+        mediaUrl: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=2560&q=90",
+        badge: "✦ CIELOS LIMPIOS",
+        title: "Astroturismo & Fogón Bajo las Estrellas",
+        subtitle: "Observación telescópica guiada por astrónomos locales, cata de vinos de altura y relatos ancestrales junto al fuego."
+      }
+    ]
+  },
+  floatingCards: [
+    {
+      id: "card-1",
+      tag: "Logística",
+      title: "Transporte Puerta a Puerta",
+      desc: "Salidas puntuales desde Yerba Buena y San Miguel de Tucumán en combis ejecutivas con seguro.",
+      iconName: "bus"
+    },
+    {
+      id: "card-2",
+      tag: "Coordinación",
+      title: "Guías Nativos Habilitados",
+      desc: "Acompañamiento de especialistas locales con profundo amor por la historia, flora y leyendas.",
+      iconName: "users"
+    },
+    {
+      id: "card-3",
+      tag: "Para Todos",
+      title: "Dificultad Accesible",
+      desc: "Itinerarios relajados aptos para toda la familia, niños y adultos mayores con paradas fotográficas.",
+      iconName: "mountain"
+    },
+    {
+      id: "card-4",
+      tag: "Valores",
+      title: "Turismo Responsable",
+      desc: "Compromiso de huella cero: cuidamos nuestros senderos, ríos y apoyamos a las comunidades del valle.",
+      iconName: "heart"
+    },
+    {
+      id: "card-5",
+      tag: "Flexibilidad",
+      title: "Seña Online (30%)",
+      desc: "Congelá tu butaca con seña mínima o pagá el total con tarjeta de crédito, débito o billeteras virtuales.",
+      iconName: "card"
+    }
+  ],
+  quienesSomos: {
+    badge: "Filosofía Luna Viajera",
+    title: "Creando Recuerdos en las Tierras Tucumanas",
+    description: "Luna Viajera nació con la convicción de que las mejores aventuras están muy cerca de casa. Diseñamos experiencias de cercanía para desconectar del ritmo diario y reconectar con la naturaleza de nuestras sierras, la calidez de su gente y la inmensidad de los Valles Calchaquíes.",
+    tagline: "Turismo Responsable y Espiritual",
+    originCity: "Yerba Buena — Tucumán, Argentina"
+  },
+  galeria: {
+    badge: "Recuerdos & Postales",
+    title: "Galería de Experiencias",
+    subtitle: "Momentos reales compartidos por nuestros viajeros en los rincones más mágicos del norte argentino.",
+    images: [
+      {
+        id: "gal-1",
+        url: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
+        caption: "Amanecer en Tafí del Valle",
+        location: "Valles Calchaquíes"
+      },
+      {
+        id: "gal-2",
+        url: "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1200&q=80",
+        caption: "Sendero en la Selva de Yungas",
+        location: "Yungas Tucumanas"
+      },
+      {
+        id: "gal-3",
+        url: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1200&q=80",
+        caption: "Noche de Estrellas y Telescopio",
+        location: "Cielos del Valle"
+      },
+      {
+        id: "gal-4",
+        url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
+        caption: "Cascadas y Ríos de Montaña",
+        location: "Quebrada Los Sosa"
+      },
+      {
+        id: "gal-5",
+        url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80",
+        caption: "Dique La Angostura",
+        location: "El Mollar"
+      },
+      {
+        id: "gal-6",
+        url: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1200&q=80",
+        caption: "Bosques Nublados y Helechos",
+        location: "San Javier"
+      }
+    ]
+  },
+  travis: {
+    title: "Consulta algunas dudas a Travis nuestro asistente con IA",
+    subtitle: "Travis te responde al instante sobre ropa recomendada, horarios de partida desde Yerba Buena, nivel de senderismo y cupos disponibles.",
+    whatsappUrl: "https://wa.me/5493813981479?text=Hola%20Travis!%20Tengo%20una%20consulta%20sobre%20las%20excursiones%20de%20Luna%20Viajera",
+    defaultQuestions: [
+      "¿Qué ropa y calzado me recomiendan llevar a Tafí?",
+      "¿A qué hora salimos y desde dónde nos buscan?",
+      "¿Las excursiones son aptas para niños?",
+      "¿Cómo abono la seña del 30% para asegurar lugar?"
+    ]
+  },
+  contacto: {
+    whatsapp: "381 398-1479",
+    telefono: "0810-220-0018",
+    email: "lunaviajera@travelapp.ar",
+    instagram: "@lunaviajera.turismo",
+    ubicacion: "Yerba Buena — Tucumán"
+  },
+  excursiones: [
+    {
+      id: "tafi-del-valle",
+      category: "valles",
+      categoryLabel: "⛰️ Valles Calchaquíes",
+      title: "TAFÍ DEL VALLE Day Trip",
+      tagline: "Descubre la belleza de los Valles Calchaquíes",
+      detail: "Excursión panorámica de día completo recorriendo la Quebrada de Los Sosa, el Dique La Angostura y los míticos menhires milenarios. Tiempo libre para almorzar empanadas vallistas y pasear por la villa veraniega.",
+      badge: "Salida Tradicional",
+      duration: "8 - 9 hs",
+      departureTime: "08:00 hs — Regreso aprox. 17:00 hs",
+      departurePoint: "Yerba Buena — Tucumán",
+      difficulty: "Baja · Para todas las edades",
+      price: 45000,
+      imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80",
+      stops: [
+        "Quebrada Los Sosa (30 km de selva montañosa por Ruta 307)",
+        "Reserva Arqueológica Los Menhires (+50 monolitos)",
+        "Dique La Angostura (vistas panorámicas del valle)"
+      ],
+      includes: [
+        "Transporte ida y vuelta desde Yerba Buena",
+        "Guía local especializado durante todo el trayecto",
+        "Paradas en miradores panorámicos",
+        "Tiempo libre en Tafí del Valle"
+      ]
+    },
+    {
+      id: "selva-de-yungas",
+      category: "yungas",
+      categoryLabel: "🌿 Selva de Yungas",
+      title: "SELVA DE YUNGAS",
+      tagline: "Yungas Tucumán · Naturaleza, Río y Embalse",
+      detail: "Aventura inmersiva por los senderos nublados de las yungas tucumanas con avistaje de flora autóctona, paradas en arroyos de montaña de aguas cristalinas y vistas únicas del embalse El Cadillal.",
+      badge: "100% Selva Nublada",
+      duration: "8 hs",
+      departureTime: "08:30 hs — Regreso 16:30 hs",
+      departurePoint: "Yerba Buena / San Miguel de Tucumán",
+      difficulty: "Baja - Media · Senderismo ameno",
+      price: 39000,
+      imageUrl: "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=800&q=80",
+      stops: [
+        "Bosque Nublado con helechos gigantes y musgos",
+        "Río de montaña con pozones de aguas cristalinas",
+        "Embalse El Cadillal encajonado entre cerros"
+      ],
+      includes: [
+        "Traslado ida y vuelta desde punto de encuentro",
+        "Guía local especializado en flora y fauna",
+        "Caminata por senderos selváticos seguros",
+        "Paradas fotográficas y tiempo de contemplación"
+      ]
+    },
+    {
+      id: "astroturismo-valles",
+      category: "astroturismo",
+      categoryLabel: "🌌 Astroturismo",
+      title: "ASTROTURISMO & FOGÓN",
+      tagline: "Cielos Limpios en las Alturas del Valle",
+      detail: "Vivencia nocturna bajo el cielo diáfano de altura con guiada astronómica, reconocimiento de constelaciones con puntero láser, observación con telescopio computarizado y fogón con relatos ancestrales.",
+      badge: "Experiencia Mágica",
+      duration: "6 hs",
+      departureTime: "17:00 hs — Regreso 23:30 hs",
+      departurePoint: "Yerba Buena — Tucumán",
+      difficulty: "Baja · Para toda la familia",
+      price: 42000,
+      imageUrl: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
+      stops: [
+        "Atardecer dorado sobre los cerros",
+        "Observación con telescopio computarizado",
+        "Fogón con relatos ancestrales y cata de vino"
+      ],
+      includes: [
+        "Transporte ida y vuelta coordinado",
+        "Telescopio profesional y guía astronómico",
+        "Copa de vino regional o té serrano caliente",
+        "Seguro de actividad y asistencia"
+      ]
+    }
+  ]
+};
+
+type ActiveTab = 'hero' | 'servicios' | 'conductores' | 'rewards' | 'faq' | 'legales' | 'slider' | 'ofertas' | 'social' | 'eco_hero' | 'eco_promo' | 'eco_unidades' | 'eco_quienes' | 'eco_stats' | 'eco_apps' | 'eco_trabaja' | 'eco_legales' | 'rew_slider' | 'rew_beneficios' | 'rew_social' | 'rew_negocio' | 'rew_legales' | 'app_cards' | 'app_rewards' | 'afi_hero' | 'afi_cobro' | 'afi_faq' | 'afi_footer' | 'exp_pushpop' | 'exp_floating' | 'exp_quienes' | 'exp_marketplace' | 'exp_buscador' | 'exp_metrics' | 'exp_testimonials' | 'lv_hero' | 'lv_cards' | 'lv_galeria' | 'lv_catalogo' | 'lv_travis' | 'lv_quienes' | 'lv_contacto';
 
 export default function CMSPage() {
-  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards' | 'app-inicio' | 'afiliados'>('travelcab');
+  const [selectedLanding, setSelectedLanding] = useState<'travelcab' | 'experience' | 'ecosistema' | 'rewards' | 'app-inicio' | 'afiliados' | 'lunaviajera'>('travelcab');
   const [activeTab, setActiveTab] = useState<ActiveTab>('hero');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Detectar parámetro ?landing= en la URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const landingParam = urlParams.get('landing') as any;
+      if (landingParam && ['travelcab', 'experience', 'ecosistema', 'rewards', 'app-inicio', 'afiliados', 'lunaviajera'].includes(landingParam)) {
+        setSelectedLanding(landingParam);
+      }
+    }
+  }, []);
 
   // Cargar datos actuales de Firestore
   useEffect(() => {
@@ -724,10 +951,10 @@ export default function CMSPage() {
           const docSnap = await getDoc(docRef);
           setData(docSnap.exists() ? { ...DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS, ...docSnap.data() } : DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS);
         } else {
-          const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
+          const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : selectedLanding === 'lunaviajera' ? 'landing_lunaviajera' : 'landing_ecosistema';
           const docRef = doc(db, 'cms', docId);
           const docSnap = await getDoc(docRef);
-          const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
+          const defaultData = selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : selectedLanding === 'lunaviajera' ? DEFAULT_LUNAVIAJERA_CMS_DATA : DEFAULT_ECOSISTEMA_CMS_DATA;
           if (docSnap.exists()) {
             const loadedData = docSnap.data();
             // Normalizar unidades para asegurar compatibilidad de campos imagenUrl y imageUrl
@@ -737,6 +964,9 @@ export default function CMSPage() {
                 imagenUrl: u.imagenUrl || u.imageUrl,
                 imageUrl: u.imageUrl || u.imagenUrl
               }));
+            }
+            if (selectedLanding === 'lunaviajera' && (!loadedData.excursiones || !Array.isArray(loadedData.excursiones) || loadedData.excursiones.length === 0)) {
+              loadedData.excursiones = (defaultData as any).excursiones;
             }
             setData({
               ...defaultData,
@@ -748,7 +978,7 @@ export default function CMSPage() {
         }
       } catch (err) {
         console.error("Error al leer CMS de Firestore:", err);
-        const defaultData = selectedLanding === 'app-inicio' ? { block1: DEFAULT_APP_INICIO_CMS_DATA, block2: DEFAULT_APP_BENEFICIOS_CMS_DATA } : selectedLanding === 'afiliados' ? DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS : selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : DEFAULT_ECOSISTEMA_CMS_DATA;
+        const defaultData = selectedLanding === 'app-inicio' ? { block1: DEFAULT_APP_INICIO_CMS_DATA, block2: DEFAULT_APP_BENEFICIOS_CMS_DATA } : selectedLanding === 'afiliados' ? DEFAULT_AFILIADOS_CMS_DATA_FOR_CMS : selectedLanding === 'travelcab' ? DEFAULT_CMS_DATA : selectedLanding === 'experience' ? DEFAULT_EXPERIENCE_CMS_DATA : selectedLanding === 'rewards' ? DEFAULT_REWARDS_CMS_DATA_FOR_CMS : selectedLanding === 'lunaviajera' ? DEFAULT_LUNAVIAJERA_CMS_DATA : DEFAULT_ECOSISTEMA_CMS_DATA;
         setData(defaultData);
       } finally {
         setLoading(false);
@@ -766,6 +996,8 @@ export default function CMSPage() {
       setActiveTab('app_cards');
     } else if (selectedLanding === 'afiliados') {
       setActiveTab('afi_hero');
+    } else if (selectedLanding === 'lunaviajera') {
+      setActiveTab('lv_hero');
     } else {
       setActiveTab('hero');
     }
@@ -788,7 +1020,7 @@ export default function CMSPage() {
         const docRef = doc(db, 'cms_blocks', 'landing_afiliados');
         await setDoc(docRef, sanitizedData);
       } else {
-        const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : 'landing_ecosistema';
+        const docId = selectedLanding === 'travelcab' ? 'landing_travelcab' : selectedLanding === 'experience' ? 'landing_experience' : selectedLanding === 'rewards' ? 'landing_rewards' : selectedLanding === 'lunaviajera' ? 'landing_lunaviajera' : 'landing_ecosistema';
         const docRef = doc(db, 'cms', docId);
         await setDoc(docRef, sanitizedData);
       }
@@ -1360,7 +1592,7 @@ export default function CMSPage() {
         <div className="flex items-center gap-3">
           {selectedLanding !== 'app-inicio' && (
             <a
-              href={selectedLanding === 'travelcab' ? "/landing/travelcab" : selectedLanding === 'experience' ? "/landing/experience" : "/landing/ecosistema"}
+              href={selectedLanding === 'travelcab' ? "/landing/travelcab" : selectedLanding === 'experience' ? "/landing/experience" : selectedLanding === 'lunaviajera' ? "/landing/lunaviajera" : "/landing/ecosistema"}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition-all"
@@ -1414,6 +1646,16 @@ export default function CMSPage() {
             }`}
           >
             🌴 TravelApp Experience
+          </button>
+          <button
+            onClick={() => setSelectedLanding('lunaviajera')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+              selectedLanding === 'lunaviajera' 
+                ? 'bg-[#0A2E20] border-[#DFB15B] text-[#DFB15B] shadow-sm' 
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🌙 Luna Viajera
           </button>
           <button
             onClick={() => setSelectedLanding('rewards')}
@@ -1481,6 +1723,8 @@ export default function CMSPage() {
           ? ['hero', 'servicios', 'conductores', 'rewards', 'faq', 'legales'] 
           : selectedLanding === 'experience'
           ? ['exp_pushpop', 'slider', 'exp_floating', 'exp_quienes', 'exp_marketplace', 'exp_buscador', 'exp_metrics', 'exp_testimonials', 'rewards', 'social']
+          : selectedLanding === 'lunaviajera'
+          ? ['lv_hero', 'lv_cards', 'lv_galeria', 'lv_catalogo', 'lv_travis', 'lv_quienes', 'lv_contacto']
           : selectedLanding === 'rewards'
           ? ['rew_slider', 'rew_beneficios', 'rew_social', 'rew_negocio', 'rew_legales']
           : selectedLanding === 'app-inicio'
@@ -1514,6 +1758,13 @@ export default function CMSPage() {
             {tab === 'faq' && '5. FAQ (Preguntas Frecuentes)'}
             {tab === 'legales' && '6. Legales & Redes'}
             {tab === 'social' && (selectedLanding === 'experience' ? '10. Redes, Teléfono & ARCA QR' : '5. Redes & Footer')}
+            {tab === 'lv_hero' && '🌙 1. Hero Slider (Valles & Yungas)'}
+            {tab === 'lv_cards' && '🎴 2. 5 Tarjetas Flotantes'}
+            {tab === 'lv_galeria' && '📸 3. Galería de Fotos'}
+            {tab === 'lv_catalogo' && '🏔️ 4. Catálogo de Excursiones (Crear & Filtros)'}
+            {tab === 'lv_travis' && '🤖 5. Asistente Travis & WhatsApp'}
+            {tab === 'lv_quienes' && '🏔️ 6. Quiénes Somos'}
+            {tab === 'lv_contacto' && '📞 7. Contacto & Redes'}
             {tab === 'eco_hero' && '1. Hero (Imagen/Video)'}
             {tab === 'eco_promo' && '🔔 Push Pop Promocional (TravelSale / Puntos)'}
             {tab === 'eco_unidades' && '2. Unidades de Negocio'}
@@ -4287,6 +4538,755 @@ export default function CMSPage() {
                 label="Texto Copyright"
                 value={data.footer?.copyrightText || ''}
                 onChange={(val) => updateField('footer', 'copyrightText', val)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* EDITORES LUNA VIAJERA */}
+        {/* ======================================================== */}
+
+        {selectedLanding === 'lunaviajera' && activeTab === 'lv_hero' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-[#0A2E20] flex items-center gap-1.5">
+                <Sparkles className="h-5 w-5 text-[#DFB15B]" />
+                Hero Slider & Portada (Luna Viajera)
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Configura las fotos de fondo, textos principales y botones del Hero rotativo.</p>
+            </div>
+
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <h4 className="text-xs font-black text-[#0A2E20] uppercase tracking-wider">Encabezado Global</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSInput
+                  label="Badge Superior"
+                  value={data.hero?.badge || ''}
+                  onChange={(val) => updateField('hero', 'badge', val)}
+                  placeholder="✦ EXCURSIONES REGIONALES & SALIDAS DE 1 DÍA"
+                />
+                <CMSInput
+                  label="Título Principal"
+                  value={data.hero?.title || ''}
+                  onChange={(val) => updateField('hero', 'title', val)}
+                  placeholder="Descubrí la magia de los Valles y las Yungas"
+                />
+              </div>
+              <CMSTextarea
+                label="Subtítulo / Bajada"
+                value={data.hero?.subtitle || ''}
+                onChange={(val) => updateField('hero', 'subtitle', val)}
+                rows={2}
+                placeholder="Excursiones de día completo con transporte ida y vuelta desde Yerba Buena..."
+              />
+            </div>
+
+            {/* Slides en Rotación */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black text-[#0A2E20] uppercase tracking-wider">
+                  Slides de Fondo (Rotación Suave)
+                </h4>
+              </div>
+
+              {(data.hero?.slides || []).map((slide: any, sIdx: number) => (
+                <div key={slide.id || sIdx} className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-xs font-black text-[#DFB15B]">Slide N° {sIdx + 1}</span>
+                    <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-bold">{slide.badge}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <CMSInput
+                      label="Badge del Slide"
+                      value={slide.badge || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.hero?.slides || [])];
+                        updated[sIdx] = { ...updated[sIdx], badge: val };
+                        updateField('hero', 'slides', updated);
+                      }}
+                    />
+                    <CMSInput
+                      label="Título"
+                      value={slide.title || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.hero?.slides || [])];
+                        updated[sIdx] = { ...updated[sIdx], title: val };
+                        updateField('hero', 'slides', updated);
+                      }}
+                    />
+                  </div>
+                  <CMSInput
+                    label="URL de Imagen de Fondo HD"
+                    value={slide.mediaUrl || ''}
+                    onChange={(val) => {
+                      const updated = [...(data.hero?.slides || [])];
+                      updated[sIdx] = { ...updated[sIdx], mediaUrl: val };
+                      updateField('hero', 'slides', updated);
+                    }}
+                  />
+                  <CMSTextarea
+                    label="Descripción / Bajada"
+                    value={slide.subtitle || ''}
+                    onChange={(val) => {
+                      const updated = [...(data.hero?.slides || [])];
+                      updated[sIdx] = { ...updated[sIdx], subtitle: val };
+                      updateField('hero', 'slides', updated);
+                    }}
+                    rows={2}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'lunaviajera' && activeTab === 'lv_cards' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-[#0A2E20] flex items-center gap-1.5">
+                <Sparkles className="h-5 w-5 text-[#DFB15B]" />
+                5 Tarjetas Flotantes Superpuestas
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Los 5 pilares operativos que se muestran sobre el pie del Hero en Luna Viajera.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(data.floatingCards || []).map((card: any, cIdx: number) => (
+                <div key={card.id || cIdx} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-xs font-black text-[#DFB15B]">Pilar N° {cIdx + 1}</span>
+                    <span className="text-[10px] font-bold bg-[#0A2E20] text-[#DFB15B] px-2 py-0.5 rounded">{card.tag}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <CMSInput
+                      label="Etiqueta / Tag"
+                      value={card.tag || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.floatingCards || [])];
+                        updated[cIdx] = { ...updated[cIdx], tag: val };
+                        setData((prev: any) => ({ ...prev, floatingCards: updated }));
+                      }}
+                    />
+                    <CMSInput
+                      label="Ícono (bus, users, mountain, heart, card)"
+                      value={card.iconName || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.floatingCards || [])];
+                        updated[cIdx] = { ...updated[cIdx], iconName: val };
+                        setData((prev: any) => ({ ...prev, floatingCards: updated }));
+                      }}
+                    />
+                  </div>
+                  <CMSInput
+                    label="Título"
+                    value={card.title || ''}
+                    onChange={(val) => {
+                      const updated = [...(data.floatingCards || [])];
+                      updated[cIdx] = { ...updated[cIdx], title: val };
+                      setData((prev: any) => ({ ...prev, floatingCards: updated }));
+                    }}
+                  />
+                  <CMSTextarea
+                    label="Descripción"
+                    value={card.desc || ''}
+                    onChange={(val) => {
+                      const updated = [...(data.floatingCards || [])];
+                      updated[cIdx] = { ...updated[cIdx], desc: val };
+                      setData((prev: any) => ({ ...prev, floatingCards: updated }));
+                    }}
+                    rows={2}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'lunaviajera' && activeTab === 'lv_galeria' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[#0A2E20] flex items-center gap-1.5">
+                  <Sparkles className="h-5 w-5 text-[#DFB15B]" />
+                  Galería de Experiencias & Fotos Reales
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Imágenes y postales de excursiones subidas desde el dashboard para la landing de Luna Viajera.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const newImg = {
+                    id: `gal-${Date.now()}`,
+                    url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
+                    caption: "Nueva Postal de Excursión",
+                    location: "Tucumán"
+                  };
+                  setData((prev: any) => ({
+                    ...prev,
+                    galeria: {
+                      ...prev.galeria,
+                      images: [...(prev.galeria?.images || []), newImg]
+                    }
+                  }));
+                }}
+                className="px-4 py-2 bg-[#0A2E20] text-[#F4D375] hover:bg-[#0c3525] rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm self-start sm:self-auto"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Agregar Foto</span>
+              </button>
+            </div>
+
+            {/* Cabecera de la sección */}
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSInput
+                  label="Badge Superior"
+                  value={data.galeria?.badge || ''}
+                  onChange={(val) => {
+                    setData((prev: any) => ({
+                      ...prev,
+                      galeria: { ...prev.galeria, badge: val }
+                    }));
+                  }}
+                  placeholder="Recuerdos & Postales"
+                />
+                <CMSInput
+                  label="Título de la Galería"
+                  value={data.galeria?.title || ''}
+                  onChange={(val) => {
+                    setData((prev: any) => ({
+                      ...prev,
+                      galeria: { ...prev.galeria, title: val }
+                    }));
+                  }}
+                  placeholder="Galería de Experiencias"
+                />
+              </div>
+              <CMSInput
+                label="Subtítulo / Bajada"
+                value={data.galeria?.subtitle || ''}
+                onChange={(val) => {
+                  setData((prev: any) => ({
+                    ...prev,
+                    galeria: { ...prev.galeria, subtitle: val }
+                  }));
+                }}
+                placeholder="Momentos reales compartidos por nuestros viajeros en los rincones más mágicos..."
+              />
+            </div>
+
+            {/* Lista de Fotos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(data.galeria?.images || []).map((img: any, iIdx: number) => (
+                <div key={img.id || iIdx} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 relative group">
+                  <div className="h-40 rounded-xl overflow-hidden bg-slate-200 border border-slate-200 relative">
+                    <img
+                      src={img.url}
+                      alt={img.caption || `Foto ${iIdx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const filtered = (data.galeria?.images || []).filter((_: any, i: number) => i !== iIdx);
+                        setData((prev: any) => ({
+                          ...prev,
+                          galeria: { ...prev.galeria, images: filtered }
+                        }));
+                      }}
+                      className="absolute top-2 right-2 h-7 w-7 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition shadow-md"
+                      title="Eliminar foto"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <CMSInput
+                    label="URL de la Foto (HD)"
+                    value={img.url || ''}
+                    onChange={(val) => {
+                      const updated = [...(data.galeria?.images || [])];
+                      updated[iIdx] = { ...updated[iIdx], url: val };
+                      setData((prev: any) => ({
+                        ...prev,
+                        galeria: { ...prev.galeria, images: updated }
+                      }));
+                    }}
+                    placeholder="https://images.unsplash.com/..."
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <CMSInput
+                      label="Título / Epígrafe"
+                      value={img.caption || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.galeria?.images || [])];
+                        updated[iIdx] = { ...updated[iIdx], caption: val };
+                        setData((prev: any) => ({
+                          ...prev,
+                          galeria: { ...prev.galeria, images: updated }
+                        }));
+                      }}
+                      placeholder="Ej: Amanecer en Tafí"
+                    />
+                    <CMSInput
+                      label="Lugar / Ubicación"
+                      value={img.location || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.galeria?.images || [])];
+                        updated[iIdx] = { ...updated[iIdx], location: val };
+                        setData((prev: any) => ({
+                          ...prev,
+                          galeria: { ...prev.galeria, images: updated }
+                        }));
+                      }}
+                      placeholder="Ej: Valles Calchaquíes"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'lunaviajera' && activeTab === 'lv_catalogo' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-extrabold text-[#0A2E20] flex items-center gap-1.5">
+                  <Compass className="h-5 w-5 text-[#DFB15B]" />
+                  Catálogo Oficial de Excursiones (Luna Viajera)
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Creá, editá y nutrí las excursiones de la web. La duración y las etiquetas para los filtros las creás vos libremente. Cada excursión cuenta además con un espacio de texto libre para redactar el detalle completo.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const newEx = {
+                    id: `excursion-${Date.now()}`,
+                    title: 'NUEVA EXCURSIÓN',
+                    tagline: 'Experiencia inolvidable en el norte argentino',
+                    detail: 'Escribí aquí el detalle libre de la excursión, notas para el viajero, itinerario y recomendaciones.',
+                    badge: 'Salida Especial',
+                    duration: '8 hs',
+                    category: 'valles',
+                    categoryLabel: '⛰️ Valles Calchaquíes',
+                    price: 45000,
+                    departurePoint: 'Yerba Buena — Tucumán',
+                    departureTime: '08:00 hs — Regreso 17:00 hs',
+                    difficulty: 'Baja · Para toda la familia',
+                    imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
+                    stops: ['Punto panorámico 1', 'Parada en reserva natural', 'Tiempo libre para almuerzo regional'],
+                    includes: ['Transporte ida y vuelta coordinado', 'Guía local habilitado', 'Seguro de actividad']
+                  };
+                  setData((prev: any) => ({
+                    ...prev,
+                    excursiones: [newEx, ...(prev.excursiones || [])]
+                  }));
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0A2E20] hover:bg-[#0e3f2c] text-[#F4D375] rounded-xl text-xs font-bold shadow-md transition whitespace-nowrap self-start sm:self-auto border border-[#DFB15B]/50"
+              >
+                <Plus className="h-4 w-4 text-[#DFB15B]" />
+                <span>+ Nueva Excursión</span>
+              </button>
+            </div>
+
+            {/* Listado de Excursiones */}
+            <div className="space-y-6">
+              {(data.excursiones || []).map((ex: any, exIdx: number) => (
+                <div key={ex.id || exIdx} className="p-6 bg-slate-50/80 rounded-2xl border-2 border-slate-200/90 shadow-sm space-y-5 transition hover:border-[#DFB15B]/60">
+                  
+                  {/* Encabezado de la Tarjeta en CMS */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 rounded-full bg-[#0A2E20] text-[#F4D375] flex items-center justify-center text-xs font-black">
+                        {exIdx + 1}
+                      </span>
+                      <div>
+                        <h4 className="text-sm font-black text-[#0A2E20] uppercase tracking-wide">
+                          {ex.title || 'Excursión sin título'}
+                        </h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          ID: <code className="bg-slate-200/70 px-1 py-0.5 rounded text-[10px]">{ex.id}</code> · Filtro: <strong className="text-emerald-700">{ex.categoryLabel || ex.category}</strong> · Duración: <strong className="text-amber-700">{ex.duration}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`¿Estás seguro de eliminar la excursión "${ex.title}" del catálogo?`)) {
+                          const updated = (data.excursiones || []).filter((_: any, idx: number) => idx !== exIdx);
+                          setData((prev: any) => ({
+                            ...prev,
+                            excursiones: updated
+                          }));
+                        }
+                      }}
+                      className="text-xs font-bold text-red-600 hover:text-red-800 flex items-center gap-1 self-end sm:self-center px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Eliminar</span>
+                    </button>
+                  </div>
+
+                  {/* Campos Principales */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <CMSInput
+                      label="Título de la Excursión"
+                      value={ex.title || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.excursiones || [])];
+                        updated[exIdx] = { ...updated[exIdx], title: val };
+                        setData((prev: any) => ({ ...prev, excursiones: updated }));
+                      }}
+                      placeholder="Ej: TAFÍ DEL VALLE Day Trip"
+                    />
+
+                    <CMSInput
+                      label="Bajada / Subtítulo Corto"
+                      value={ex.tagline || ''}
+                      onChange={(val) => {
+                        const updated = [...(data.excursiones || [])];
+                        updated[exIdx] = { ...updated[exIdx], tagline: val };
+                        setData((prev: any) => ({ ...prev, excursiones: updated }));
+                      }}
+                      placeholder="Ej: Descubre la belleza de los Valles Calchaquíes"
+                    />
+
+                    {/* Espacio de Texto Libre: Detalle de la Excursión */}
+                    <div className="md:col-span-2">
+                      <CMSTextarea
+                        label="Detalle de la Excursión (Espacio de Texto Libre para cargar el detalle completo sin límites)"
+                        value={ex.detail || ex.description || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], detail: val, description: val };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        rows={3}
+                        placeholder="Escribí detalladamente todo lo que el viajero vivirá en la excursión, historia, sensaciones, vestimenta recomendada, etc."
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">Este texto se muestra directamente en la tarjeta de la web y en la ventana de detalle ("Ver detalle").</p>
+                    </div>
+
+                    {/* Duración Personalizada */}
+                    <div>
+                      <CMSInput
+                        label="Duración (Creada libremente por vos)"
+                        value={ex.duration || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], duration: val };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="Ej: 8 - 9 hs, Día Completo, 4 hs, 2 Días"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Aparece en el badge de la imagen y en la ficha técnica.</p>
+                    </div>
+
+                    {/* Badge de la Imagen */}
+                    <div>
+                      <CMSInput
+                        label="Badge / Distintivo Superior"
+                        value={ex.badge || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], badge: val };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="Ej: Salida Tradicional, 100% Selva, Cupos Limitados"
+                      />
+                    </div>
+
+                    {/* Etiqueta / Categoría para los Filtros de la Web */}
+                    <div>
+                      <CMSInput
+                        label="Etiqueta / ID de Filtro (Creada libremente por vos)"
+                        value={ex.category || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], category: val.toLowerCase().trim() };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="Ej: valles, yungas, astroturismo, trekking, cabalgatas"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Identificador en minúsculas para agrupar salidas similares.</p>
+                    </div>
+
+                    {/* Nombre Visible del Filtro en la Web */}
+                    <div>
+                      <CMSInput
+                        label="Texto del Botón de Filtro en la Web"
+                        value={ex.categoryLabel || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], categoryLabel: val };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="Ej: ⛰️ Valles Calchaquíes, 🌿 Selva de Yungas, 🐎 Cabalgatas"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Nombre con emoji que el usuario verá en la barra de filtros.</p>
+                    </div>
+
+                    {/* Precio por Persona */}
+                    <div>
+                      <CMSInput
+                        label="Precio Final por Persona ($ ARS)"
+                        type="number"
+                        value={ex.price || 0}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], price: Number(val) };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="45000"
+                      />
+                    </div>
+
+                    {/* Dificultad */}
+                    <div>
+                      <CMSInput
+                        label="Nivel de Dificultad"
+                        value={ex.difficulty || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], difficulty: val };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="Ej: Baja · Para todas las edades"
+                      />
+                    </div>
+
+                    {/* Punto de Salida */}
+                    <div>
+                      <CMSInput
+                        label="Punto de Encuentro / Salida"
+                        value={ex.departurePoint || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], departurePoint: val };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="Yerba Buena — Tucumán"
+                      />
+                    </div>
+
+                    {/* Horarios */}
+                    <div>
+                      <CMSInput
+                        label="Horario de Salida y Regreso"
+                        value={ex.departureTime || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], departureTime: val };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="08:00 hs — Regreso aprox. 17:00 hs"
+                      />
+                    </div>
+
+                    {/* URL de Imagen de Portada */}
+                    <div className="md:col-span-2">
+                      <CMSInput
+                        label="URL de Imagen de Portada HD"
+                        value={ex.imageUrl || ''}
+                        onChange={(val) => {
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], imageUrl: val };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        placeholder="https://images.unsplash.com/..."
+                      />
+                      {ex.imageUrl && (
+                        <div className="mt-2 h-32 rounded-xl overflow-hidden border border-slate-200 relative w-full sm:w-60">
+                          <img src={ex.imageUrl} alt={ex.title} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Paradas y Atractivos */}
+                    <div>
+                      <CMSTextarea
+                        label="Paradas y Atractivos (una por línea)"
+                        value={(ex.stops || []).join('\n')}
+                        onChange={(val) => {
+                          const lines = val.split('\n').filter((l: string) => l.trim().length > 0);
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], stops: lines };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        rows={3}
+                        placeholder="Quebrada Los Sosa&#10;Reserva Los Menhires&#10;Dique La Angostura"
+                      />
+                    </div>
+
+                    {/* Qué incluye */}
+                    <div>
+                      <CMSTextarea
+                        label="Qué incluye la experiencia (una por línea)"
+                        value={(ex.includes || []).join('\n')}
+                        onChange={(val) => {
+                          const lines = val.split('\n').filter((l: string) => l.trim().length > 0);
+                          const updated = [...(data.excursiones || [])];
+                          updated[exIdx] = { ...updated[exIdx], includes: lines };
+                          setData((prev: any) => ({ ...prev, excursiones: updated }));
+                        }}
+                        rows={3}
+                        placeholder="Transporte ida y vuelta&#10;Guía habilitado&#10;Seguro de actividad"
+                      />
+                    </div>
+
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'lunaviajera' && activeTab === 'lv_travis' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-[#0A2E20] flex items-center gap-1.5">
+                <Bot className="h-5 w-5 text-[#DFB15B]" />
+                Asistente Travis & Preguntas Rápidas
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Configura los textos y preguntas frecuentes interactivas que Travis responde en la landing.</p>
+            </div>
+
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <CMSInput
+                label="Título del Bloque"
+                value={data.travis?.title || ''}
+                onChange={(val) => updateField('travis', 'title', val)}
+                placeholder="¿Dudas o consultas? Preguntale a Travis"
+              />
+              <CMSTextarea
+                label="Subtítulo / Bajada"
+                value={data.travis?.subtitle || ''}
+                onChange={(val) => updateField('travis', 'subtitle', val)}
+                rows={2}
+              />
+              <CMSInput
+                label="Enlace a WhatsApp de Travis (URL completa con mensaje)"
+                value={data.travis?.whatsappUrl || ''}
+                onChange={(val) => updateField('travis', 'whatsappUrl', val)}
+                placeholder="https://wa.me/5493813981479?text=..."
+              />
+            </div>
+
+            <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <h4 className="text-xs font-black text-[#0A2E20] uppercase tracking-wider">Preguntas Sugeridas (1 Clic)</h4>
+              {(data.travis?.defaultQuestions || []).map((q: string, qIdx: number) => (
+                <div key={qIdx} className="flex gap-2 items-center">
+                  <span className="text-xs font-bold text-slate-400 w-6">{qIdx + 1}.</span>
+                  <input
+                    type="text"
+                    value={q}
+                    onChange={(e) => {
+                      const updated = [...(data.travis?.defaultQuestions || [])];
+                      updated[qIdx] = e.target.value;
+                      setData((prev: any) => ({
+                        ...prev,
+                        travis: { ...prev.travis, defaultQuestions: updated }
+                      }));
+                    }}
+                    className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'lunaviajera' && activeTab === 'lv_quienes' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-[#0A2E20] flex items-center gap-1.5">
+                <Mountain className="h-5 w-5 text-[#DFB15B]" />
+                Quiénes Somos & Manifiesto de Marca
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Valores, filosofía de turismo responsable e historia de Luna Viajera.</p>
+            </div>
+
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSInput
+                  label="Badge Superior"
+                  value={data.quienesSomos?.badge || ''}
+                  onChange={(val) => updateField('quienesSomos', 'badge', val)}
+                />
+                <CMSInput
+                  label="Título de la Sección"
+                  value={data.quienesSomos?.title || ''}
+                  onChange={(val) => updateField('quienesSomos', 'title', val)}
+                />
+              </div>
+              <CMSTextarea
+                label="Descripción / Manifiesto"
+                value={data.quienesSomos?.description || ''}
+                onChange={(val) => updateField('quienesSomos', 'description', val)}
+                rows={4}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSInput
+                  label="Lema / Tagline"
+                  value={data.quienesSomos?.tagline || ''}
+                  onChange={(val) => updateField('quienesSomos', 'tagline', val)}
+                />
+                <CMSInput
+                  label="Ciudad de Origen"
+                  value={data.quienesSomos?.originCity || ''}
+                  onChange={(val) => updateField('quienesSomos', 'originCity', val)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedLanding === 'lunaviajera' && activeTab === 'lv_contacto' && (
+          <div className="space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-extrabold text-[#0A2E20] flex items-center gap-1.5">
+                <Phone className="h-5 w-5 text-[#DFB15B]" />
+                Contacto, Teléfonos & Redes Oficiales
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Información de contacto que se muestra en el footer y en los botones de atención.</p>
+            </div>
+
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSInput
+                  label="WhatsApp Coordinación (Ej: 381 398-1479)"
+                  value={data.contacto?.whatsapp || ''}
+                  onChange={(val) => updateField('contacto', 'whatsapp', val)}
+                />
+                <CMSInput
+                  label="Central Telefónica (Ej: 0810-220-0018)"
+                  value={data.contacto?.telefono || ''}
+                  onChange={(val) => updateField('contacto', 'telefono', val)}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CMSInput
+                  label="Email de Contacto"
+                  value={data.contacto?.email || ''}
+                  onChange={(val) => updateField('contacto', 'email', val)}
+                />
+                <CMSInput
+                  label="Instagram (Ej: @lunaviajera.turismo)"
+                  value={data.contacto?.instagram || ''}
+                  onChange={(val) => updateField('contacto', 'instagram', val)}
+                />
+              </div>
+              <CMSInput
+                label="Ubicación Base"
+                value={data.contacto?.ubicacion || ''}
+                onChange={(val) => updateField('contacto', 'ubicacion', val)}
               />
             </div>
           </div>

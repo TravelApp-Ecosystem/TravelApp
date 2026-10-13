@@ -37,7 +37,9 @@ import {
   ExternalLink,
   MessageCircle,
   Layers,
-  ChevronDown
+  ChevronDown,
+  Building2,
+  QrCode
 } from "lucide-react";
 import { collection, onSnapshot, addDoc, doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -94,6 +96,8 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
   const [createdTtlInfo, setCreatedTtlInfo] = useState<any>(null);
   const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
   const [pointConversionRate] = useState<number>(175); // $175 ARS por punto al canje
+  const [navePaymentData, setNavePaymentData] = useState<{ checkoutUrl: string; qrData?: string; paymentRequestId?: string; amount?: number } | null>(null);
+  const [showQrCode, setShowQrCode] = useState(false);
 
   // Capturar código de afiliado desde la URL (?ref=... o ?afiliado=...)
   useEffect(() => {
@@ -203,6 +207,8 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
     setSelectedDepartureDate(tour.departureDate || "");
     setSelectedRoomCategory("doble");
     setSelectedBoardingStop(tour.boardingStops?.[0]?.place || "");
+    setNavePaymentData(null);
+    setShowQrCode(false);
     setResStatus("idle");
   };
 
@@ -301,6 +307,50 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
         affiliateRef: affiliateRef || null,
         createdAt: new Date().toISOString()
       });
+
+      // 3. Si es compra 100% o seña 30%, generar intención de pago en Nave (Banco Galicia)
+      if (activeBookingAction === 'buy_full' || activeBookingAction === 'deposit') {
+        const amountToPay = activeBookingAction === 'deposit' ? depositAmount : totalPrice;
+        const discountRewards = pointsToRedeem * pointConversionRate;
+        const finalPayAmount = Math.max(1, amountToPay - discountRewards);
+
+        try {
+          const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+          const naveRes = await fetch('/api/checkout/nave-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              externalPaymentId: resCode,
+              amount: finalPayAmount,
+              currency,
+              productName: tourToReserve.title,
+              productDescription: `${tourToReserve.title} (${passengerCount} pax) - ${activeBookingAction === 'deposit' ? 'Seña 30%' : 'Pago 100%'}`,
+              buyer: {
+                name: passengerName,
+                email: passengerEmail,
+                docNumber: passengerDni,
+                phone: passengerPhone
+              },
+              reservationId: resRef.id,
+              callbackUrl: `${appOrigin}/checkout/success?file=${resCode}&type=experience&amount=${finalPayAmount}`
+            })
+          });
+
+          if (naveRes.ok) {
+            const naveData = await naveRes.json();
+            if (naveData.checkoutUrl) {
+              setNavePaymentData({
+                checkoutUrl: naveData.checkoutUrl,
+                qrData: naveData.qrData,
+                paymentRequestId: naveData.paymentRequestId,
+                amount: finalPayAmount
+              });
+            }
+          }
+        } catch (naveErr) {
+          console.warn('[NAVE Intent Warning]:', naveErr);
+        }
+      }
 
       setCreatedResCode(resCode);
       setCreatedTtlInfo(ttl);
@@ -808,7 +858,71 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                   <h4 className="text-base font-black text-slate-900">¡Reserva Generada con Éxito!</h4>
                   <p className="text-slate-500 font-medium">Código de Expediente: <strong className="text-slate-900">{createdResCode}</strong></p>
                 </div>
-                {createdTtlInfo && (
+
+                {/* Bloque de Pago Seguro */}
+                {navePaymentData && (
+                  <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-teal-500/10 border border-blue-200 rounded-2xl p-4 space-y-3 text-left animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                          <Building2 className="h-3.5 w-3.5" />
+                        </div>
+                        <div>
+                          <span className="font-black text-slate-800 text-xs block">Pago Seguro Online</span>
+                          <span className="text-[10px] text-slate-500 font-medium">Tarjetas de Crédito / Débito & QR</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-white text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                        Cuotas & MODO
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs pt-1 border-t border-blue-200/60">
+                      <span className="text-slate-600 font-bold">Total a abonar:</span>
+                      <span className="text-base font-black text-blue-900">
+                        ${navePaymentData.amount?.toLocaleString('es-AR')} ARS
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 leading-snug">
+                      Aboná tu reserva en cuotas con tarjeta de crédito, débito o escaneá con tu billetera bancaria preferida.
+                    </p>
+
+                    <a
+                      href={navePaymentData.checkoutUrl}
+                      className="w-full py-3.5 bg-gradient-to-r from-[#0A2A5B] to-[#1E40AF] hover:from-[#082247] hover:to-[#172554] text-white rounded-2xl font-black text-xs text-center transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/25"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      <span>Completar Pago Seguro de tu Reserva</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+
+                    {navePaymentData.qrData && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowQrCode(!showQrCode)}
+                          className="w-full text-center text-[11px] font-bold text-blue-700 hover:text-blue-900 flex items-center justify-center gap-1.5 py-1"
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                          <span>{showQrCode ? 'Ocultar Código QR' : '¿Preferís pagar escaneando con QR? Ver código'}</span>
+                        </button>
+                        {showQrCode && (
+                          <div className="mt-2 p-3 bg-white rounded-xl border border-orange-200 text-center space-y-2">
+                            <div className="h-32 w-32 mx-auto bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center p-2">
+                              <QrCode className="h-24 w-24 text-slate-800" />
+                            </div>
+                            <span className="text-[10px] text-slate-500 font-medium block">
+                              Escaneá con la app de Banco Galicia o MODO
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {createdTtlInfo && !navePaymentData && (
                   <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200 text-amber-900 space-y-1 text-left">
                     <span className="font-black block">⏰ Política Time-to-Pay Activada:</span>
                     <p className="text-[11px] text-amber-800 leading-relaxed">
@@ -816,6 +930,7 @@ export default function ExperienceMarketplaceClient({ initialCms }: ExperienceMa
                     </p>
                   </div>
                 )}
+
                 <div className="pt-2 flex gap-3">
                   <a
                     href={`https://wa.me/5493814188106?text=Hola!%20Acabo%20de%20reservar%20el%20viaje%20${encodeURIComponent(tourToReserve.title)}%20con%20codigo%20${createdResCode}${affiliateRef ? `%20(Asesor:%20${affiliateRef})` : ''}`}

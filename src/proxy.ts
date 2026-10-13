@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
  * PUBLIC_ROUTES – paths that never require authentication.
  * Everything else in the ecosystem is considered protected.
  */
-const PUBLIC_ROUTES = ["/login", "/registro", "/landing", "/marketplace", "/canjes", "/rewards", "/afiliados", "/politica-de-cookies"];
+const PUBLIC_ROUTES = ["/login", "/registro", "/landing", "/marketplace", "/canjes", "/rewards", "/afiliados", "/politica-de-cookies", "/checkout", "/lunaviajera"];
 
 /**
  * SESSION_COOKIE – lightweight presence signal set by AuthContext on login/logout.
@@ -53,7 +53,22 @@ export function proxy(request: NextRequest) {
     }
   }
 
+  // E) lunaviajera.travelapp.ar / lunaviajera.ar ➡️ Landing de Luna Viajera directamente
+  if (hostname.includes("lunaviajera")) {
+    if (cleanPath === "" || cleanPath === "/home") {
+      return NextResponse.rewrite(new URL("/landing/lunaviajera", request.url));
+    }
+    if (cleanPath === "/experiencias" || cleanPath === "/excursiones") {
+      return NextResponse.rewrite(new URL("/landing/lunaviajera#experiencias", request.url));
+    }
+  }
+
   // ─── 2. GLOBAL PUBLIC REWRITES ─────────────────────────────────────────────
+
+  // La landing pública de Luna Viajera
+  if (cleanPath === "/lunaviajera") {
+    return NextResponse.rewrite(new URL("/landing/lunaviajera", request.url));
+  }
 
   // El catálogo de canjes de Rewards funciona públicamente en cualquier dominio
   if (cleanPath === "/canjes") {
@@ -71,7 +86,7 @@ export function proxy(request: NextRequest) {
   }
 
   // ─── 3. INSTITUTIONAL ROOT REWRITE ──────────────────────────────────────────
-  if (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.") && !hostname.startsWith("experience.") && !hostname.startsWith("rewards.") && !hostname.startsWith("afiliados.")) {
+  if (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.") && !hostname.startsWith("experience.") && !hostname.startsWith("rewards.") && !hostname.startsWith("afiliados.") && !hostname.startsWith("lunaviajera.")) {
     if (cleanPath === "" || cleanPath === "/home") {
       // travelapp.ar/ ➡️ landing institucional (ecosistema)
       return NextResponse.rewrite(new URL("/landing/ecosistema", request.url));

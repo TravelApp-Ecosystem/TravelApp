@@ -43,6 +43,8 @@ function AppShell({
     pathname.startsWith("/afiliados/") ||
     pathname.startsWith("/checkout/") ||
     pathname.startsWith("/landing/") ||
+    pathname === "/lunaviajera" ||
+    pathname.startsWith("/lunaviajera/") ||
     pathname === "/politica-de-cookies" ||
     pathname.startsWith("/politica-de-cookies");
 

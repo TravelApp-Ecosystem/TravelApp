@@ -1,4 +1,4 @@
-import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator, Award, Smartphone, Plane, FileSpreadsheet } from 'lucide-react';
+import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator, Award, Smartphone, Plane, FileSpreadsheet, Compass } from 'lucide-react';
 
 export const topNavTabs = [
   { id: 'global', label: 'Visión Global', href: '/' },
@@ -87,13 +87,15 @@ export const getSidebarConfig = (pathname: string) => {
     };
   }
 
-  // Configuración para TravelApp Turismo (Emisivo & Receptivo)
+  // Configuración para TravelApp Turismo (Emisivo, Receptivo & Luna Viajera)
   if (pathname.startsWith('/experiences')) {
     return {
-      title: 'Turismo Emisivo',
+      title: 'Turismo & Experiencias',
       items: [
-        { id: 'dashboard', label: 'Dashboard Emisivo', href: '/experiences', icon: LayoutDashboard },
-        { id: 'catalog', label: 'TravelMarket Emisivo', href: '/experiences/catalog', icon: Palmtree },
+        { id: 'dashboard', label: 'Dashboard Turismo', href: '/experiences', icon: LayoutDashboard },
+        { id: 'catalog', label: '1. Emisivo (travelapp.ar)', href: '/experiences/catalog', icon: Palmtree },
+        { id: 'receptivo', label: '2. Receptivo B2B (experience)', href: '/landing/experience/marketplace', icon: Plane },
+        { id: 'lunaviajera', label: '3. 🌙 Luna Viajera (Excursiones)', href: '/landing/lunaviajera', icon: Compass },
         { id: 'quoter', label: 'Cotizador Emisivo', href: '/experiences/quoter', icon: Calculator },
         { id: 'reservations', label: 'ERP Reservas & Files', href: '/experiences/reservations', icon: FileSpreadsheet },
         { id: 'create-reservation', label: 'Nuevo Expediente / File', href: '/experiences/reservations/new', icon: Ticket },

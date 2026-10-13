@@ -49,8 +49,13 @@ export async function getNaveAccessToken(): Promise<string> {
     ? 'https://services.apinaranja.com/security-ms/api/security/auth0/b2b/m2msPrivate'
     : 'https://homoservices.apinaranja.com/security-ms/api/security/auth0/b2b/m2msPrivate';
 
-  const clientId = process.env.NAVE_CLIENT_ID || 'demo_client_id';
-  const clientSecret = process.env.NAVE_CLIENT_SECRET || 'demo_client_secret';
+  const clientId = process.env.NAVE_CLIENT_ID;
+  const clientSecret = process.env.NAVE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret || clientId === 'demo_client_id') {
+    return `nave_mock_token_${Date.now()}`;
+  }
+
   const audience = 'https://naranja.com/ranty/merchants/api';
 
   try {
@@ -86,14 +91,26 @@ export async function getNaveAccessToken(): Promise<string> {
 export async function createNavePaymentIntent(params: CreatePaymentIntentParams): Promise<PaymentIntentResponse> {
   const token = await getNaveAccessToken();
   const isProd = process.env.NAVE_ENVIRONMENT === 'production';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const formattedAmount = params.amount.toFixed(2);
+  const currency = params.currency || 'ARS';
+
+  // Si no hay credenciales reales de Nave configuradas en el entorno, retornar pasarela simulada
+  if (!process.env.NAVE_CLIENT_ID || process.env.NAVE_CLIENT_ID === 'demo_client_id') {
+    const mockId = `nave_req_${Date.now()}`;
+    return {
+      id: mockId,
+      external_payment_id: params.externalPaymentId,
+      checkout_url: `${appUrl}/checkout/nave-simulated-pay?file=${params.externalPaymentId}&amount=${formattedAmount}&title=${encodeURIComponent(params.productName)}&id=${mockId}`,
+      qr_data: `00020101021244360012com.naranjax9811306922647859901150150011272813311895204729953030325406190.005802AR5911TravelApp`
+    };
+  }
 
   const endpoint = isProd
     ? 'https://api.ranty.io/api/payment_request/ecommerce'
     : 'https://api-sandbox.ranty.io/api/payment_request/ecommerce';
 
   const posId = process.env.NAVE_POS_ID || 'f71ba756-1d80-4ab3-9f43-5dc247fd6c4a';
-  const formattedAmount = params.amount.toFixed(2);
-  const currency = params.currency || 'ARS';
 
   const payload = {
     external_payment_id: params.externalPaymentId,
@@ -127,7 +144,7 @@ export async function createNavePaymentIntent(params: CreatePaymentIntentParams)
       user_id: params.buyer.email || 'user_travelapp'
     } : undefined,
     additional_info: {
-      callback_url: params.callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL || 'https://travelapp-ecosystem.vercel.app'}/checkout/success`
+      callback_url: params.callbackUrl || `${appUrl}/checkout/success?file=${params.externalPaymentId}&type=experience&amount=${formattedAmount}`
     },
     duration_time: 3600
   };
@@ -149,7 +166,7 @@ export async function createNavePaymentIntent(params: CreatePaymentIntentParams)
       return {
         id: mockId,
         external_payment_id: params.externalPaymentId,
-        checkout_url: `https://sandbox-hosted-checkout.ranty.io/nave?payment_request_id=${mockId}&file=${params.externalPaymentId}`,
+        checkout_url: `${appUrl}/checkout/nave-simulated-pay?file=${params.externalPaymentId}&amount=${formattedAmount}&title=${encodeURIComponent(params.productName)}&id=${mockId}`,
         qr_data: `00020101021244360012com.naranjax9811306922647859901150150011272813311895204729953030325406190.005802AR5911TravelApp`
       };
     }
@@ -162,7 +179,7 @@ export async function createNavePaymentIntent(params: CreatePaymentIntentParams)
     return {
       id: mockId,
       external_payment_id: params.externalPaymentId,
-      checkout_url: `https://sandbox-hosted-checkout.ranty.io/nave?payment_request_id=${mockId}&file=${params.externalPaymentId}`,
+      checkout_url: `${appUrl}/checkout/nave-simulated-pay?file=${params.externalPaymentId}&amount=${formattedAmount}&title=${encodeURIComponent(params.productName)}&id=${mockId}`,
       qr_data: `00020101021244360012com.naranjax9811306922647859901150150011272813311895204729953030325406190.005802AR5911TravelApp`
     };
   }
