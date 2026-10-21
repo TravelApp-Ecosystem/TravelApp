@@ -32,7 +32,7 @@ export const Sidebar = () => {
             'leads': true, 'agenda': true, 'history': true, 'customers': true, 'travis': true,
             'dashboard': true, 'dispatch': true, 'drivers': true, 'fleet': true,
             'travelcab-create-service': true, 'travelcab-create-category': true, 'settings': false, 'security': false,
-            'catalog': true, 'my-trip-mgmt': true, 'create-customer': true, 'create-reservation': true, 'create-group-trip': true,
+            'catalog': true, 'hotel-reception': true, 'providers': true, 'my-trip-mgmt': true, 'create-customer': true, 'create-reservation': true, 'create-group-trip': true,
             'quoter': true, 'reservations': true,
             'spots': true, 'coordinators': true, 'coordinator-app': true, 'analytics': true,
             'rewards-create-merchant': true, 'rewards-create-rubro': false, 'rewards-create-category': false, 'validator': true,
@@ -80,23 +80,31 @@ export const Sidebar = () => {
         </div>
 
         <nav className="space-y-1">
-          {filteredItems.map((item) => {
+          {filteredItems.map((item: any, idx: number) => {
             const Icon = item.icon;
             const isReallyActive = pathname === item.href;
+            const prevSection = idx > 0 ? (filteredItems[idx - 1] as any).section : null;
+            const showSectionHeader = item.section && item.section !== prevSection;
 
             return (
-              <Link
-                key={item.id}
-                href={item.href}
-                className={`flex items-center space-x-3 rounded-lg px-3 py-2 transition-colors ${
-                  isReallyActive
-                    ? 'bg-tech-blue/10 text-tech-blue'
-                    : 'text-slate-500 hover:bg-white hover:text-tech-blue'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="text-sm font-medium">{item.label}</span>
-              </Link>
+              <React.Fragment key={item.id}>
+                {showSectionHeader && (
+                  <p className={`text-[10px] font-black tracking-wider text-slate-400 uppercase px-3 ${idx > 0 ? 'pt-3 pb-1 border-t border-slate-200/70 mt-2' : 'pb-1'}`}>
+                    {item.section}
+                  </p>
+                )}
+                <Link
+                  href={item.href}
+                  className={`flex items-center space-x-3 rounded-lg px-3 py-2 transition-colors ${
+                    isReallyActive
+                      ? 'bg-tech-blue/10 text-tech-blue font-bold'
+                      : 'text-slate-500 hover:bg-white hover:text-tech-blue'
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="text-xs font-semibold truncate">{item.label}</span>
+                </Link>
+              </React.Fragment>
             );
           })}
         </nav>

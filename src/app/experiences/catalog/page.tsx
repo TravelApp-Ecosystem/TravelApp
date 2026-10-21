@@ -76,6 +76,8 @@ const SEED_RECEPTIVO_TOURS: Tour[] = [
     description: 'Recorrido exclusivo por 3 de las mejores bodegas del Valle de Uco, terminando con un almuerzo maridado de primer nivel.',
     observations: 'Cupos limitados por protocolo de bodega. Consultar por salidas privadas.',
     availability: 'Disponible',
+    b2bEnabled: true,
+    hotelCommissionPct: 15,
   },
   {
     id: 'EXP-REC-002',
@@ -97,6 +99,8 @@ const SEED_RECEPTIVO_TOURS: Tour[] = [
     description: 'Senderismo por el Cerro de los Siete Colores y Purmamarca, conociendo las costumbres locales del NOA con guías certificados.',
     observations: 'Llevar calzado de trekking y abrigo liviano para la tarde.',
     availability: 'Cupos Limitados',
+    b2bEnabled: true,
+    hotelCommissionPct: 15,
   },
   {
     id: 'EXP-REC-003',
@@ -118,6 +122,8 @@ const SEED_RECEPTIVO_TOURS: Tour[] = [
     description: 'Travesía fascinante por las formaciones rojizas de la Quebrada de las Conchas y visita a bodegas de altura en Cafayate.',
     observations: 'Salidas diarias desde el centro de Salta.',
     availability: 'Disponible',
+    b2bEnabled: true,
+    hotelCommissionPct: 15,
   }
 ];
 
@@ -438,7 +444,9 @@ export default function ExperienceCatalogPage() {
         services: ['Guía Bilingüe', 'Traslados ida y vuelta con TravelCab', 'Entradas incluidas'],
         imageUrl: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80&w=800',
         description: '',
-        availability: 'Disponible'
+        availability: 'Disponible',
+        b2bEnabled: true,
+        hotelCommissionPct: 15
       });
       setRecServicesInput('Guía Bilingüe\nTraslados ida y vuelta con TravelCab\nEntradas incluidas');
     }
@@ -490,17 +498,17 @@ export default function ExperienceCatalogPage() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-tech-blue/10 border border-tech-blue/20 text-tech-blue text-xs font-black uppercase tracking-wider mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Módulo de Turismo · TravelMarket & Catálogos</span>
+            <span>Concorde 360 · Catálogos por Unidad de Negocio</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Gestión Integral de Marketplaces Turísticos
+            Catálogos de las 3 Unidades de Negocio
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Administrá paquetes emisivos propios y de operadores mayoristas, o gestioná el receptivo regional.
+            <strong>TravelApp</strong> comercializa Turismo Emisivo (`/marketplace`), mientras que <strong>Luna Viajera (B2C)</strong> y <strong>TravelApp Experience (B2B Hoteles)</strong> comparten el mismo inventario de Excursiones NOA.
           </p>
         </div>
 
-        {/* Pestañas de Negocio: Emisivo vs Receptivo */}
+        {/* Pestañas de Negocio: Emisivo vs Receptivo Compartido */}
         <div className="inline-flex rounded-2xl bg-slate-100 p-1.5 border border-slate-200/80 shadow-xs">
           <button
             type="button"
@@ -512,7 +520,7 @@ export default function ExperienceCatalogPage() {
             }`}
           >
             <Plane className="h-4 w-4" />
-            <span>✈️ TravelMarket Turismo Emisivo</span>
+            <span>1. TravelApp (Emisivo & Marketplace)</span>
           </button>
 
           <button
@@ -525,7 +533,7 @@ export default function ExperienceCatalogPage() {
             }`}
           >
             <Compass className="h-4 w-4" />
-            <span>🏔️ TravelMarket Turismo Receptivo</span>
+            <span>2 & 3. Luna Viajera (B2C) + Experience (B2B)</span>
           </button>
         </div>
       </div>
@@ -543,13 +551,13 @@ export default function ExperienceCatalogPage() {
           <div>
             <h3 className="text-sm font-black text-slate-800">
               {activeVertical === 'emisivo'
-                ? 'Consola de Turismo Emisivo (OTA & Paquetes Internacionales)'
-                : 'Consola de Turismo Receptivo (Excursiones & Experiencias de Día)'}
+                ? 'Unidad 1: TravelApp · Turismo Emisivo, Mayoristas & Salidas Propias'
+                : 'Unidades 2 & 3: Catálogo Compartido Luna Viajera (B2C) + TravelApp Experience (B2B Hoteles)'}
             </h3>
             <p className="text-xs text-slate-500">
               {activeVertical === 'emisivo'
-                ? 'Cargá salidas grupales con coordinador o paquetes de mayoristas con cotización en USD o ARS y botones configurables.'
-                : 'Excursiones guiadas, bodegas de Mendoza, Cafayate y Humahuaca con integración de traslados TravelCab.'}
+                ? 'Se publica en vivo en travelapp.ar y /marketplace. Soporta operadores mayoristas y salidas grupales acompañadas.'
+                : 'Mismo producto y stock de lugares en Tucumán y el NOA: se vende al pasajero individual en Luna Viajera y por mostrador B2B en Recepciones de Hoteles.'}
             </p>
           </div>
         </div>
@@ -1547,6 +1555,44 @@ export default function ExperienceCatalogPage() {
                   className="w-full rounded-xl border border-slate-200 p-3 font-medium text-slate-800 outline-none focus:border-emerald-600 resize-none"
                   placeholder="Degustación en 3 bodegas&#10;Almuerzo maridado&#10;Guía Sommelier"
                 />
+              </div>
+
+              {/* Configuración de Distribución en Portal B2B (Experience) */}
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingReceptivoTour.b2bEnabled !== false}
+                      onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, b2bEnabled: e.target.checked }))}
+                      className="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                    />
+                    <div>
+                      <span className="block font-black text-amber-950 text-xs">
+                        Habilitar Excursión en Portal B2B (TravelApp Experience)
+                      </span>
+                      <span className="block text-[11px] text-amber-800 font-medium">
+                        Si está activo, las Agencias, Hoteles y Comercios con el módulo Experience habilitado podrán reservar esta excursión.
+                      </span>
+                    </div>
+                  </label>
+                  <div className="w-36 shrink-0">
+                    <label className="block font-bold text-amber-900 text-[10px] uppercase mb-1">
+                      % Comisión Aliado B2B
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        max={50}
+                        value={editingReceptivoTour.hotelCommissionPct ?? 15}
+                        onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, hotelCommissionPct: Number(e.target.value) }))}
+                        className="w-full rounded-xl border border-amber-300 bg-white px-3 py-1.5 font-black text-amber-950 outline-none focus:border-amber-600"
+                      />
+                      <span className="absolute right-3 top-1.5 font-black text-amber-600">%</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

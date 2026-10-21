@@ -1,15 +1,36 @@
 import { BarChart3, FileText, Users, LayoutDashboard, Calendar, History, Bot, MessageSquare, Car, Map, Route, Palmtree, Ticket, Megaphone, TrendingUp, Settings, Gift, PieChart, UserCheck, UserPlus, Vault, BookOpen, AlarmClock, Building2, Zap, Radio, PlusCircle, ShieldAlert, DollarSign, Calculator, Award, Smartphone, Plane, FileSpreadsheet, Compass } from 'lucide-react';
 
-export const topNavTabs = [
+export interface TopNavTab {
+  id: string;
+  label: string;
+  href: string;
+  children?: Array<{
+    id: string;
+    label: string;
+    subtitle?: string;
+    href: string;
+  }>;
+}
+
+export const topNavTabs: TopNavTab[] = [
   { id: 'global', label: 'Visión Global', href: '/' },
-  { id: 'crm', label: 'CRM Ventas', href: '/crm' },
   { id: 'travelcab', label: 'TravelCab', href: '/travelcab' },
-  { id: 'experiences', label: 'TravelApp Turismo', href: '/experiences' },
+  { id: 'crm', label: 'CRM Ventas', href: '/crm' },
+  {
+    id: 'experiences',
+    label: 'TravelApp Turismo',
+    href: '/experiences',
+    children: [
+      { id: 'unit-travelapp', label: 'TravelApp', subtitle: 'Turismo Emisivo & Marketplace', href: '/experiences?unit=travelapp' },
+      { id: 'unit-experience', label: 'Experience', subtitle: 'Servicios B2B & Receptivo', href: '/experiences?unit=experience_b2b' },
+      { id: 'unit-lunaviajera', label: 'Luna Viajera', subtitle: 'Excursiones Tucumán & NOA', href: '/experiences?unit=lunaviajera' },
+    ],
+  },
   { id: 'rewards', label: 'Rewards', href: '/rewards/analytics' },
+  { id: 'cms', label: 'CMS Web y Apps', href: '/cms' },
   { id: 'hr', label: 'RRHH', href: '/hr' },
-  { id: 'cms', label: 'CMS Web', href: '/cms' },
   { id: 'growth', label: 'Marketing', href: '/marketing' },
-  { id: 'audit', label: 'Auditoría', href: '/audit' },
+  { id: 'audit', label: 'Administración', href: '/audit' },
 ];
 
 export const getSidebarConfig = (pathname: string) => {
@@ -25,10 +46,10 @@ export const getSidebarConfig = (pathname: string) => {
     };
   }
 
-  // Configuración para Auditoría Contable
+  // Configuración para Administración & Auditoría Contable
   if (pathname.startsWith('/audit')) {
     return {
-      title: 'Auditoría & Finanzas',
+      title: 'Administración',
       items: [
         { id: 'audit-overview', label: 'Tablero de Control', href: '/audit', icon: BarChart3 },
       ]
@@ -49,10 +70,10 @@ export const getSidebarConfig = (pathname: string) => {
     };
   }
 
-  // Configuración para CMS
+  // Configuración para CMS Web y Apps
   if (pathname.startsWith('/cms')) {
     return {
-      title: 'CMS & Landing Web',
+      title: 'CMS Web y Apps',
       items: [
         { id: 'cms-editor', label: 'Gestor de Contenido', href: '/cms', icon: FileText },
       ]
@@ -87,23 +108,22 @@ export const getSidebarConfig = (pathname: string) => {
     };
   }
 
-  // Configuración para TravelApp Turismo (Emisivo, Receptivo & Luna Viajera)
-  if (pathname.startsWith('/experiences')) {
+  // Configuración para TravelApp Turismo (Concorde 360: TravelApp Emisivo, Experience B2B & Luna Viajera)
+  if (pathname.startsWith('/experiences') && !pathname.startsWith('/experiences/hotel-reception')) {
     return {
-      title: 'Turismo & Experiencias',
+      title: 'Concorde 360 · Turismo',
       items: [
-        { id: 'dashboard', label: 'Dashboard Turismo', href: '/experiences', icon: LayoutDashboard },
-        { id: 'catalog', label: '1. Emisivo (travelapp.ar)', href: '/experiences/catalog', icon: Palmtree },
-        { id: 'receptivo', label: '2. Receptivo B2B (experience)', href: '/landing/experience/marketplace', icon: Plane },
-        { id: 'lunaviajera', label: '3. 🌙 Luna Viajera (Excursiones)', href: '/landing/lunaviajera', icon: Compass },
-        { id: 'quoter', label: 'Cotizador Emisivo', href: '/experiences/quoter', icon: Calculator },
-        { id: 'reservations', label: 'ERP Reservas & Files', href: '/experiences/reservations', icon: FileSpreadsheet },
-        { id: 'create-reservation', label: 'Nuevo Expediente / File', href: '/experiences/reservations/new', icon: Ticket },
-        { id: 'spots', label: 'Cupos & Salidas', href: '/experiences/spots', icon: Users },
-        { id: 'my-trip-mgmt', label: 'Gestión "Mi Viaje" (App)', href: '/experiences/my-trip-mgmt', icon: Smartphone },
-        { id: 'coordinators', label: 'Coordinadores & App', href: '/experiences/coordinators', icon: UserCheck },
-        { id: 'create-customer', label: 'Nuevo Cliente IATA', href: '/experiences/customers/new', icon: UserPlus },
-        { id: 'customers', label: 'Clientes (Ecosistema)', href: '/crm/customers', icon: Users },
+        { id: 'dashboard', label: 'Tablero Concorde 360', href: '/experiences', icon: LayoutDashboard, section: 'Unidades de Negocio' },
+        { id: 'catalog', label: 'Catálogos & Unidades (3)', href: '/experiences/catalog', icon: Palmtree, section: 'Unidades de Negocio' },
+        { id: 'reservations', label: 'Files & Reservas (ERP)', href: '/experiences/reservations', icon: FileSpreadsheet, section: 'Operativo & Administrativo' },
+        { id: 'create-reservation', label: 'Crear File Multi-Operador', href: '/experiences/reservations/new', icon: Ticket, section: 'Operativo & Administrativo' },
+        { id: 'spots', label: 'Stock de Lugares & Cupos', href: '/experiences/spots', icon: Users, section: 'Operativo & Administrativo' },
+        { id: 'providers', label: 'Agenda Prestadores & Prov.', href: '/experiences/providers', icon: AlarmClock, section: 'Operativo & Administrativo' },
+        { id: 'quoter', label: 'Cotizador & Tarifarios', href: '/experiences/quoter', icon: Calculator, section: 'Operativo & Administrativo' },
+        { id: 'customers', label: 'Pasajeros, Clientes & Usuarios', href: '/experiences/customers', icon: Users, section: 'Pasajeros & App' },
+        { id: 'create-customer', label: 'Alta Cliente / Pasajero IATA', href: '/experiences/customers/new', icon: UserPlus, section: 'Pasajeros & App' },
+        { id: 'my-trip-mgmt', label: 'App "Mi Viaje" & Vouchers', href: '/experiences/my-trip-mgmt', icon: Smartphone, section: 'Pasajeros & App' },
+        { id: 'coordinators', label: 'Coordinadores & Guías', href: '/experiences/coordinators', icon: UserCheck, section: 'Pasajeros & App' },
       ]
     };
   }
@@ -148,6 +168,7 @@ export const getSidebarConfig = (pathname: string) => {
     title: 'Visión Global',
     items: [
       { id: 'metrics', label: 'Métricas del Sistema', href: '/', icon: BarChart3 },
+      { id: 'hotel-reception', label: 'Gestor B2B', href: '/experiences/hotel-reception', icon: Building2 },
       { id: 'users', label: 'Gestión de Usuarios', href: '/users', icon: Users },
       { id: 'branches', label: 'Gestión de Sucursales', href: '/branches', icon: Building2 },
       { id: 'messages', label: 'Centro de Mensajería', href: '/messages', icon: MessageSquare },

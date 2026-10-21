@@ -335,7 +335,15 @@ export function ExperienceHeader({
               </span>
             </Link>
 
-            {/* 5. Botón Contacto */}
+            {/* 5. Portal Recepción Hoteles B2B */}
+            <Link
+              href="/experiences/hotel-reception"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 transition-all"
+            >
+              <span>🏨 Recepción Hoteles (B2B)</span>
+            </Link>
+
+            {/* 6. Botón Contacto */}
             <button
               type="button"
               onClick={onOpenContacto}

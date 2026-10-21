@@ -349,6 +349,8 @@ export interface Tour {
   boardingPoints?: BoardingPoint[];
   optionalExcursions?: OptionalExcursion[];
   scheduledDepartures?: ScheduledDeparture[];
+  b2bEnabled?: boolean;
+  hotelCommissionPct?: number;
 }
 
 export interface Reservation {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, Polyline, InfoWindow } from "@react-google-maps/api";
 import { Trip, TripStatus } from "@/types/travelcab";
 import { Car, Compass, Play, CheckCircle, Navigation, User, Phone, AlertTriangle, ShieldAlert } from "lucide-react";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -225,6 +225,18 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
     }
 
     if (origin && destination) {
+      // Ajustar vista del mapa a los puntos A y B de inmediato
+      if (map && window.google?.maps?.LatLngBounds) {
+        try {
+          const bounds = new window.google.maps.LatLngBounds();
+          bounds.extend(origin);
+          bounds.extend(destination);
+          map.fitBounds(bounds, 70);
+        } catch {
+          // ignore bounds error
+        }
+      }
+
       const directionsService = new window.google.maps.DirectionsService();
       
       directionsService.route(
@@ -242,7 +254,8 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
               map.fitBounds(result.routes[0].bounds);
             }
           } else {
-            console.error("Error al calcular ruta de Google Maps:", status);
+            // Si Directions API no está habilitada en la key, usamos la polilínea directa A -> B sin romper la experiencia
+            setDirections(null);
           }
         }
       );
@@ -389,12 +402,29 @@ export const GoogleInteractiveMap: React.FC<GoogleInteractiveMapProps> = ({
               suppressMarkers: true,
               polylineOptions: {
                 strokeColor: "#ff7b1a",
-                strokeOpacity: 0.8,
+                strokeOpacity: 0.85,
                 strokeWeight: 5,
               },
             }}
           />
         )}
+
+        {/* Polilínea de respaldo cuando Directions API no devuelve geometría vial */}
+        {!directions &&
+          ((activeTrip?.originCoords && activeTrip?.destinationCoords) ||
+            (previewCoords?.originCoords && previewCoords?.destinationCoords)) && (
+            <Polyline
+              path={[
+                (activeTrip?.originCoords || previewCoords?.originCoords)!,
+                (activeTrip?.destinationCoords || previewCoords?.destinationCoords)!,
+              ]}
+              options={{
+                strokeColor: "#ff7b1a",
+                strokeOpacity: 0.85,
+                strokeWeight: 5,
+              }}
+            />
+          )}
 
         {/* Origen (A) */}
         {activeTrip && activeTrip.originCoords && (

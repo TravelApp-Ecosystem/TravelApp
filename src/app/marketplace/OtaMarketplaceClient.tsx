@@ -146,32 +146,59 @@ export default function OtaMarketplaceClient({ initialCms }: OtaMarketplaceClien
     });
   }, [packages, searchQuery, selectedRegion, selectedModality, selectedProvider, selectedCurrency, selectedFoodPlan, priceSort]);
 
-  // Manejar consulta directa a CRM
+  // Manejar consulta directa a CRM y creación de File en Concorde 360 (TravelApp Emisivo)
   const handleSubmitLead = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPackage || !leadForm.name || !leadForm.phone) return;
 
     setSubmittingLead(true);
     try {
-      await addDoc(collection(db, "crm_leads"), {
-        customerName: leadForm.name,
-        customerPhone: leadForm.phone,
-        customerEmail: leadForm.email || "",
-        passengersCount: leadForm.passengersCount,
-        notes: leadForm.notes || "",
-        packageId: selectedPackage.id,
-        packageTitle: selectedPackage.title,
-        destination: selectedPackage.destination,
-        currency: selectedPackage.currency,
-        price: selectedPackage.price || selectedPackage.priceUsd || selectedPackage.priceArs,
-        source: "Marketplace OTA Emisivo",
-        modalMode,
-        status: "Nuevo",
-        createdAt: new Date().toISOString(),
-      });
+      const unitPrice = Number(selectedPackage.price || selectedPackage.priceUsd || selectedPackage.priceArs || 0);
+      const totalAmount = unitPrice * (leadForm.passengersCount || 1);
+      const fileCode = `TA-EMI-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      await Promise.all([
+        addDoc(collection(db, "crm_leads"), {
+          customerName: leadForm.name,
+          customerPhone: leadForm.phone,
+          customerEmail: leadForm.email || "",
+          passengersCount: leadForm.passengersCount,
+          notes: leadForm.notes || "",
+          packageId: selectedPackage.id,
+          packageTitle: selectedPackage.title,
+          destination: selectedPackage.destination,
+          currency: selectedPackage.currency,
+          price: unitPrice,
+          source: "Marketplace OTA Emisivo",
+          businessUnit: "travelapp",
+          modalMode,
+          status: "Nuevo",
+          createdAt: new Date().toISOString(),
+        }),
+        addDoc(collection(db, "experience_reservations"), {
+          fileCode,
+          businessUnit: "travelapp",
+          source: "TravelApp Marketplace (OTA Emisivo)",
+          customerName: leadForm.name,
+          customerPhone: leadForm.phone,
+          customerEmail: leadForm.email || "",
+          tourId: selectedPackage.id,
+          tourName: selectedPackage.title,
+          destination: selectedPackage.destination,
+          operatorName: selectedPackage.operatorName || "TravelApp Emisivo",
+          paxCount: leadForm.passengersCount || 1,
+          cantidadPersonas: leadForm.passengersCount || 1,
+          currency: selectedPackage.currency || "USD",
+          totalPrice: totalAmount,
+          paidAmount: 0,
+          status: modalMode === "pagar" || modalMode === "senar" ? "pending_payment" : "pending",
+          notes: leadForm.notes || "",
+          createdAt: new Date().toISOString(),
+        }),
+      ]);
       setLeadSubmitted(true);
     } catch (err) {
-      console.error("Error al registrar lead en CRM:", err);
+      console.error("Error al registrar lead/file en Concorde 360:", err);
       alert("Hubo un error al enviar tu consulta. Por favor comunícate directamente por WhatsApp.");
     } finally {
       setSubmittingLead(false);

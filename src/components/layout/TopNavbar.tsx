@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Globe, LogOut, User } from "lucide-react";
+import { Globe, LogOut, User, ChevronDown } from "lucide-react";
 import { topNavTabs } from "@/lib/navigation";
 import { NotificationsPopover } from "./NotificationsPopover";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,9 +12,30 @@ export const TopNavbar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Helper function to check if a tab is active based on current path
-  const isTabActive = (href: string) => {
+  const isTabActive = (href: string, tabId: string) => {
+    if (tabId === "global") {
+      return (
+        pathname === "/" ||
+        pathname.startsWith("/users") ||
+        pathname.startsWith("/branches") ||
+        pathname.startsWith("/messages") ||
+        pathname.startsWith("/experiences/hotel-reception")
+      );
+    }
+    if (tabId === "experiences") {
+      return (
+        pathname.startsWith("/experiences") &&
+        !pathname.startsWith("/experiences/hotel-reception")
+      );
+    }
     if (href === "/" && pathname === "/") return true;
     if (href !== "/" && pathname.startsWith(href)) return true;
     return false;
@@ -36,10 +57,9 @@ export const TopNavbar = () => {
       </div>
 
       <nav className="hidden flex-1 justify-center lg:flex">
-        <ul className="flex space-x-1 rounded-full bg-slate-50 p-1 border border-slate-200">
+        <ul className="flex items-center space-x-1 rounded-full bg-slate-50 p-1 border border-slate-200">
           {topNavTabs.map((tab) => {
-            const active = isTabActive(tab.href);
-            // Custom active background color per specific module tab
+            const active = isTabActive(tab.href, tab.id);
             let activeClass = "bg-tech-blue text-white";
             if (tab.id === "travelcab") {
               activeClass = "bg-[#FF7A00] text-white";
@@ -49,11 +69,63 @@ export const TopNavbar = () => {
               activeClass = "bg-[#F59E0B] text-white";
             }
 
+            if (tab.children && tab.children.length > 0) {
+              const isOpen = openDropdownId === tab.id;
+              return (
+                <li
+                  key={tab.id}
+                  className="relative"
+                  onMouseEnter={() => setOpenDropdownId(tab.id)}
+                  onMouseLeave={() => setOpenDropdownId(null)}
+                >
+                  <Link
+                    href={tab.href}
+                    className={`flex items-center gap-1 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                      active
+                        ? activeClass
+                        : "text-slate-500 hover:text-tech-blue hover:bg-slate-100"
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform duration-150 ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </Link>
+
+                  {isOpen && (
+                    <div className="absolute left-0 top-full pt-1.5 w-56 z-50">
+                      <div className="rounded-2xl bg-white p-1.5 shadow-xl border border-slate-200 space-y-1">
+                        {tab.children.map((sub) => (
+                          <Link
+                            key={sub.id}
+                            href={sub.href}
+                            onClick={() => setOpenDropdownId(null)}
+                            className="block rounded-xl px-3 py-2 hover:bg-slate-50 transition-colors"
+                          >
+                            <span className="block text-xs font-bold text-slate-900">
+                              {sub.label}
+                            </span>
+                            {sub.subtitle && (
+                              <span className="block text-[10px] text-slate-500">
+                                {sub.subtitle}
+                              </span>
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            }
+
             return (
               <li key={tab.id}>
                 <Link
                   href={tab.href}
-                  className={`block rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                  className={`block rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
                     active
                       ? activeClass
                       : "text-slate-500 hover:text-tech-blue hover:bg-slate-100"
@@ -81,7 +153,7 @@ export const TopNavbar = () => {
         </div>
 
         {/* User info + logout */}
-        {user ? (
+        {mounted && user ? (
           <div className="flex items-center gap-2">
             <div className="hidden flex-col items-end sm:flex">
               <span className="text-xs font-bold text-tech-blue leading-none">

@@ -49,7 +49,7 @@ interface BusConfigState {
 }
 
 export default function ExperienceSpotsPage() {
-  const [activeTab, setActiveTab] = useState<'seats' | 'rooming' | 'ttl'>('seats');
+  const [activeTab, setActiveTab] = useState<'shared_noa' | 'seats' | 'rooming' | 'ttl'>('shared_noa');
   const [trips, setTrips] = useState<MasterTrip[]>([]);
   const [reservations, setReservations] = useState<ReservationItem[]>([]);
   const [selectedTripId, setSelectedTripId] = useState<string>('');
@@ -423,7 +423,19 @@ export default function ExperienceSpotsPage() {
         </div>
 
         {/* TABS PRINCIPALES */}
-        <div className="flex bg-white p-2 rounded-2xl border border-slate-200 shadow-sm text-xs font-bold gap-2">
+        <div className="flex flex-wrap bg-white p-2 rounded-2xl border border-slate-200 shadow-sm text-xs font-bold gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('shared_noa')}
+            className={`flex items-center gap-2 py-2.5 px-5 rounded-xl transition ${
+              activeTab === 'shared_noa'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Sparkles className="h-4 w-4" /> Cupos Excursiones NOA (Luna Viajera + Experience B2B)
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('seats')}
@@ -460,6 +472,117 @@ export default function ExperienceSpotsPage() {
             <Clock className="h-4 w-4" /> Monitor Time-to-Pay (Auto-Release)
           </button>
         </div>
+
+        {/* TAB 0: CUPOS DIARIOS EXCURSIONES NOA (COMPARTIDO LUNA VIAJERA B2C + EXPERIENCE B2B HOTELES) */}
+        {activeTab === 'shared_noa' && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-sm space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-black uppercase">
+                  Stock Unificado en Tiempo Real
+                </span>
+                <h3 className="text-lg font-black text-slate-900 mt-1">
+                  Control de Lugares y Cupos — Excursiones Locales Tucumán &amp; NOA
+                </h3>
+                <p className="text-xs text-slate-500">
+                  El stock de lugares configurado aquí se comparte simultáneamente entre <strong>Luna Viajera (B2C Individual)</strong> y <strong>TravelApp Experience (Recepciones de Hoteles B2B)</strong>.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/experiences/hotel-reception"
+                  className="px-3.5 py-2 rounded-xl bg-amber-500/15 text-amber-900 border border-amber-300 text-xs font-black hover:bg-amber-500/25 transition"
+                >
+                  🏨 Abrir Recepción Hoteles B2B
+                </Link>
+                <Link
+                  href="/experiences/catalog"
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-slate-800 transition"
+                >
+                  Editar Catálogo Compartido
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(trips.length > 0
+                ? trips
+                : ([
+                    {
+                      id: 'tuc-tafi-quilmes',
+                      title: 'Vuelta a los Valles: Tafí del Valle & Ruinas de Quilmes',
+                      destination: 'Tafí del Valle · Amaicha · Quilmes',
+                      quota: 19,
+                    },
+                    {
+                      id: 'tuc-san-javier',
+                      title: 'Cumbre de San Javier, Yungas & Dique El Cadillal',
+                      destination: 'Yerba Buena · San Javier · El Cadillal',
+                      quota: 19,
+                    },
+                    {
+                      id: 'tuc-vino-altura',
+                      title: 'Ruta del Vino de Altura & Bodegas Calchaquíes',
+                      destination: 'Colalao del Valle · Amaicha',
+                      quota: 12,
+                    },
+                    {
+                      id: 'tuc-city-hist',
+                      title: 'Tucumán Histórico & Casa de la Independencia',
+                      destination: 'San Miguel de Tucumán',
+                      quota: 24,
+                    },
+                  ] as any[])
+              ).map((item: any) => {
+                const totalQuota = Number(item.stockAvailable ?? item.quota ?? 19);
+                const bookedFromReservations = reservations
+                  .filter(
+                    r =>
+                      r.tourId === item.id ||
+                      r.tourTitle === item.title ||
+                      (r as any).tourName === item.title
+                  )
+                  .reduce((acc, r) => acc + Number(r.cantidadPersonas || (r as any).paxCount || 1), 0);
+                const availableNow = Math.max(0, totalQuota - bookedFromReservations);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 hover:border-indigo-300 transition"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-black uppercase">
+                          🌙 Luna Viajera B2C + 🏨 Experience B2B
+                        </span>
+                        <span className="text-xs font-bold text-slate-400">
+                          Vehículo / Cupo Base: {totalQuota} pax
+                        </span>
+                      </div>
+                      <h4 className="text-base font-black text-slate-900">{item.title}</h4>
+                      <p className="text-xs text-slate-500">📍 {item.destination || item.location || 'Tucumán / NOA'}</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Cupo Total</span>
+                        <span className="text-lg font-black text-slate-800">{totalQuota}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-indigo-600 uppercase block">Vendidos (B2C+B2B)</span>
+                        <span className="text-lg font-black text-indigo-700">{bookedFromReservations}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase block">Lugares Libres</span>
+                        <span className="text-lg font-black text-emerald-700">{availableNow}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* TAB 1: MAPA VISUAL DE BUTACAS ADAPTATIVO (1 O 2 PISOS) */}
         {activeTab === 'seats' && (
