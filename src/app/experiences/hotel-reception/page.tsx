@@ -962,6 +962,7 @@ export default function B2BManagerAndPortalPage() {
     const partnerTrips = b2bCabTrips.filter((t) => (t.partnerId || t.hotelId) === partnerId);
     const partnerTours = b2bTourBookings.filter((r) => (r.partnerId || r.hotelId) === partnerId);
     const partnerRedemptions = b2bRewardsRedemptions.filter((r) => r.partnerId === partnerId);
+    const partnerSettlements = b2bSettlements.filter((s) => s.partnerId === partnerId);
 
     const pendingCab = partnerTrips
       .filter((t) => t.commissionStatus !== 'paid')
@@ -1008,12 +1009,13 @@ export default function B2BManagerAndPortalPage() {
       partnerTrips,
       partnerTours,
       partnerRedemptions,
+      partnerSettlements,
     };
   };
 
   const activePartnerSummary = useMemo(
     () => getPartnerFinancialSummary(activePartner?.id || ''),
-    [activePartner, b2bCabTrips, b2bTourBookings, b2bRewardsRedemptions]
+    [activePartner, b2bCabTrips, b2bTourBookings, b2bRewardsRedemptions, b2bSettlements]
   );
 
   // ==========================================================================

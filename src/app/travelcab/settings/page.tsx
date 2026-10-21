@@ -1019,16 +1019,16 @@ export default function TravelCabSettingsPage() {
 
                                 <div className="space-y-1 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80">
                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                    🏛️ Impuestos s/ Comisión
+                                    🏛️ Impuestos (Neto s/ IVA)
                                   </p>
                                   <p className="text-xs font-semibold text-slate-700">
-                                    IVA: <strong>{t.iva || 0}%</strong>
+                                    IVA Débito Fiscal: <strong>{t.iva ?? 21}%</strong>
                                   </p>
                                   <p className="text-xs font-semibold text-slate-700">
-                                    IIBB: <strong>{t.iibb || 0}%</strong>
+                                    IIBB (s/ Neto sin IVA): <strong>{t.iibb ?? 3.5}%</strong>
                                   </p>
                                   <p className="text-xs font-semibold text-slate-700">
-                                    TEM / Municipal: <strong>{t.taxMunicipal || 0}%</strong>
+                                    TEM (s/ Neto sin IVA): <strong>{t.taxMunicipal ?? 1.25}%</strong>
                                   </p>
                                 </div>
                               </div>

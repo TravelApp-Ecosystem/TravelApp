@@ -362,12 +362,17 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
         </div>
       </div>
 
-      {/* 3. COMISIÓN, MEMBRESÍA E IMPUESTOS (SOBRE COMISIÓN) */}
+      {/* 3. COMISIÓN, MEMBRESÍA E IMPUESTOS (DESCONTANDO IVA) */}
       <div className="rounded-xl border border-slate-200 bg-white/70 p-5 shadow-sm space-y-4">
-        <h3 className="text-sm font-bold text-tech-blue flex items-center gap-2">
-          <Percent className="h-4 w-4 text-indigo-600" />
-          Comisión de Plataforma e Impuestos Fiscales (s/ Comisión)
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-tech-blue flex items-center gap-2">
+            <Percent className="h-4 w-4 text-indigo-600" />
+            Comisión de Plataforma e Impuestos Fiscales (IIBB y TEM s/ Neto sin IVA)
+          </h3>
+          <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-[10px] font-black text-indigo-700 uppercase tracking-wider">
+            Fórmula Fiscal: Base Neta = Comisión / (1 + IVA)
+          </span>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
@@ -409,7 +414,21 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">IVA (% s/ Comisión)</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-600">IVA Débito Fiscal (%)</label>
+              <div className="flex gap-1">
+                {[21, 10.5, 0].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, iva: val })}
+                    className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 hover:bg-indigo-100 text-slate-700"
+                  >
+                    {val}%
+                  </button>
+                ))}
+              </div>
+            </div>
             <input 
               type="number" 
               required
@@ -417,12 +436,30 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
               min="0"
               value={formData.iva !== undefined ? formData.iva : 21}
               onChange={(e) => setFormData({...formData, iva: Number(e.target.value)})}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue font-bold focus:border-vial-orange focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">IIBB (% s/ Comisión)</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-600">IIBB DGR (% s/ Neto sin IVA)</label>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, iibb: 3.5 })}
+                  className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                >
+                  3.5% PyME
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, iibb: 5.0 })}
+                  className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 hover:bg-indigo-100 text-slate-700"
+                >
+                  5.0% Gral
+                </button>
+              </div>
+            </div>
             <input 
               type="number" 
               required
@@ -430,23 +467,93 @@ export const ARCTariffForm: React.FC<ARCTariffFormProps> = ({ editData, onSubmit
               min="0"
               value={formData.iibb !== undefined ? formData.iibb : 3.5}
               onChange={(e) => setFormData({...formData, iibb: Number(e.target.value)})}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue font-bold focus:border-vial-orange focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">TEM - Tasa Municipal (% s/ Comisión)</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-600">TEM Municipal (% s/ Neto sin IVA)</label>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, taxMunicipal: 1.25 })}
+                  className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                >
+                  1.25% Gral
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, taxMunicipal: 3.7 })}
+                  className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 hover:bg-indigo-100 text-slate-700"
+                >
+                  3.70% Int.
+                </button>
+              </div>
+            </div>
             <input 
               type="number" 
               required
               step="0.01"
               min="0"
-              value={formData.taxMunicipal !== undefined ? formData.taxMunicipal : 1.5}
+              value={formData.taxMunicipal !== undefined ? formData.taxMunicipal : 1.25}
               onChange={(e) => setFormData({...formData, taxMunicipal: Number(e.target.value)})}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue focus:border-vial-orange focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-tech-blue font-bold focus:border-vial-orange focus:outline-none"
             />
           </div>
         </div>
+
+        {/* SIMULADOR EN VIVO DE CONCILIACIÓN FISCAL */}
+        {(() => {
+          const sampleTrip = 10000;
+          const commPct = formData.commissionRate ?? 15;
+          const ivaPct = formData.iva ?? 21;
+          const iibbPct = formData.iibb ?? 3.5;
+          const temPct = formData.taxMunicipal ?? 1.25;
+
+          const grossComm = sampleTrip * (commPct / 100);
+          const netCommNoIva = ivaPct > 0 ? grossComm / (1 + ivaPct / 100) : grossComm;
+          const ivaDebit = grossComm - netCommNoIva;
+          const iibbCost = netCommNoIva * (iibbPct / 100);
+          const temCost = netCommNoIva * (temPct / 100);
+          const totalTax = ivaDebit + iibbCost + temCost;
+          const cleanNet = Math.max(0, grossComm - totalTax);
+
+          return (
+            <div className="mt-3 rounded-xl border border-indigo-200/80 bg-indigo-50/50 p-3.5 text-xs space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200/60 pb-2">
+                <span className="font-black text-indigo-950 uppercase tracking-wider text-[10px]">
+                  📊 Simulación Automática de Costos a Pagar / Conciliar (Ej. Viaje de $10.000)
+                </span>
+                <span className="text-[10px] font-bold text-indigo-700">
+                  Comisión Total Retenida ({commPct}%): ${grossComm.toFixed(2)}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
+                <div className="rounded-lg bg-white p-2 border border-indigo-100">
+                  <span className="text-[10px] text-slate-500 font-semibold block">Base Neta (Sin IVA)</span>
+                  <span className="text-sm font-black text-tech-blue">${netCommNoIva.toFixed(2)}</span>
+                </div>
+                <div className="rounded-lg bg-white p-2 border border-amber-200">
+                  <span className="text-[10px] text-amber-800 font-semibold block">Débito IVA ({ivaPct}%)</span>
+                  <span className="text-sm font-black text-amber-700">${ivaDebit.toFixed(2)}</span>
+                </div>
+                <div className="rounded-lg bg-white p-2 border border-rose-200">
+                  <span className="text-[10px] text-rose-800 font-semibold block">IIBB ({iibbPct}% s/Neto)</span>
+                  <span className="text-sm font-black text-rose-700">${iibbCost.toFixed(2)}</span>
+                </div>
+                <div className="rounded-lg bg-white p-2 border border-rose-200">
+                  <span className="text-[10px] text-rose-800 font-semibold block">TEM ({temPct}% s/Neto)</span>
+                  <span className="text-sm font-black text-rose-700">${temCost.toFixed(2)}</span>
+                </div>
+                <div className="rounded-lg bg-emerald-50 p-2 border border-emerald-200">
+                  <span className="text-[10px] text-emerald-800 font-semibold block">Utilidad Neta Limpia</span>
+                  <span className="text-sm font-black text-emerald-700">${cleanNet.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* 4. TARIFAS ESPECIALES */}

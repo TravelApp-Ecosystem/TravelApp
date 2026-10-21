@@ -742,14 +742,20 @@ export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({
       base = Math.round(base * (1 + modifierPct / 100));
     }
 
-    // Comisión de la plataforma sobre el valor total del viaje
+    // Comisión bruta de la plataforma sobre el valor del viaje
     const platformCommission = base * (commissionPercent / 100);
 
-    // Impuestos calculados como PORCENTAJE SOBRE LA COMISIÓN de la plataforma
-    const ivaAmt = platformCommission * (ivaPercent / 100);
-    const iibbAmt = platformCommission * (iibbPercent / 100);
-    const taxMunAmt = platformCommission * (taxMunicipalPercent / 100);
+    // 1. Desglose de IVA (Débito Fiscal contenido en la comisión)
+    // Base Imponible Neta (sin IVA) = Comisión Total / (1 + alícuota IVA)
+    const commissionNetOfIva =
+      ivaPercent > 0 ? platformCommission / (1 + ivaPercent / 100) : platformCommission;
+    const ivaAmt = platformCommission - commissionNetOfIva;
+
+    // 2. IIBB (DGR) y TEM (DIM Municipal) calculados DESCONTANDO EL IVA (sobre la Comisión Neta sin IVA)
+    const iibbAmt = commissionNetOfIva * (iibbPercent / 100);
+    const taxMunAmt = commissionNetOfIva * (taxMunicipalPercent / 100);
     const totalTaxesOnCommission = ivaAmt + iibbAmt + taxMunAmt;
+    const platformCleanMargin = Math.max(0, platformCommission - totalTaxesOnCommission);
 
     // Recargo electrónico sobre el precio final si aplica
     const electronicFeeAmt =
@@ -767,10 +773,12 @@ export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({
       specialRateModifierPct: modifierPct,
       appliedSpecialRate: appliedRate,
       commissionAmount: platformCommission,
+      commissionNetWithoutIva: commissionNetOfIva,
       ivaAmount: ivaAmt,
       iibbAmount: iibbAmt,
       taxMunicipalAmount: taxMunAmt,
       totalTaxesOnCommission,
+      platformCleanMargin,
       electronicFeeAmount: electronicFeeAmt,
       finalPassengerPrice,
       driverNetEarnings,
@@ -858,6 +866,18 @@ export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({
         price: financial.finalPassengerPrice,
         basePrice: financial.basePrice,
         platformCommission: Math.round(financial.commissionAmount),
+        commissionNetWithoutIva: Number(financial.commissionNetWithoutIva.toFixed(2)),
+        ivaDebitFiscal: Number(financial.ivaAmount.toFixed(2)),
+        iibbToPay: Number(financial.iibbAmount.toFixed(2)),
+        temToPay: Number(financial.taxMunicipalAmount.toFixed(2)),
+        totalTaxesOnCommission: Number(financial.totalTaxesOnCommission.toFixed(2)),
+        platformCleanMargin: Number(financial.platformCleanMargin.toFixed(2)),
+        taxRatesApplied: {
+          commissionRate: currentTariff?.commissionRate ?? 15,
+          iva: currentTariff?.iva ?? 21,
+          iibb: currentTariff?.iibb ?? 3.5,
+          taxMunicipal: currentTariff?.taxMunicipal ?? 1.5,
+        },
         driverNetEarnings: financial.driverNetEarnings,
         distanceKm: serviceType === 'MU' ? distanceKm : 0,
         durationMinutes: serviceType === 'MU' ? durationMin : 0,
@@ -1467,24 +1487,32 @@ export const UnifiedDispatcher: React.FC<UnifiedDispatcherProps> = ({
 
           <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-200 space-y-1.5 text-[11px] text-slate-500">
             <div className="flex justify-between font-semibold">
-              <span>Comisión de Plataforma ({currentTariff?.commissionRate ?? 15}%):</span>
+              <span>Comisión Total Plataforma ({currentTariff?.commissionRate ?? 15}%):</span>
               <span className="font-bold text-slate-700">
                 ${Math.round(financial.commissionAmount).toLocaleString('es-AR')}
               </span>
             </div>
 
-            <div className="pl-2 border-l-2 border-slate-200 space-y-1 text-[10px] text-slate-400">
-              <div className="flex justify-between">
-                <span>IVA s/ comisión ({currentTariff?.iva ?? 21}%):</span>
-                <span>${financial.ivaAmount.toFixed(2)}</span>
+            <div className="pl-2 border-l-2 border-indigo-200 space-y-1 text-[10px] text-slate-500 bg-white/80 p-2 rounded-lg">
+              <div className="flex justify-between font-bold text-indigo-900">
+                <span>Base Imponible Neta (s/ IVA):</span>
+                <span>${financial.commissionNetWithoutIva.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>IIBB s/ comisión ({currentTariff?.iibb ?? 3.5}%):</span>
-                <span>${financial.iibbAmount.toFixed(2)}</span>
+              <div className="flex justify-between text-amber-700">
+                <span>Débito Fiscal IVA ({currentTariff?.iva ?? 21}%):</span>
+                <span className="font-semibold">-${financial.ivaAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>TEM s/ comisión ({currentTariff?.taxMunicipal ?? 1.5}%):</span>
-                <span>${financial.taxMunicipalAmount.toFixed(2)}</span>
+              <div className="flex justify-between text-rose-700">
+                <span>IIBB DGR ({currentTariff?.iibb ?? 3.5}% s/ Neto sin IVA):</span>
+                <span className="font-semibold">-${financial.iibbAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-rose-700">
+                <span>TEM Municipal ({currentTariff?.taxMunicipal ?? 1.5}% s/ Neto sin IVA):</span>
+                <span className="font-semibold">-${financial.taxMunicipalAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-indigo-700 pt-1 border-t border-slate-100">
+                <span>Margen Neto TravelCab (Post-Impuestos):</span>
+                <span>${financial.platformCleanMargin.toFixed(2)}</span>
               </div>
             </div>
 
