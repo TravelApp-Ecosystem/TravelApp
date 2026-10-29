@@ -12,12 +12,61 @@ const PUBLIC_ROUTES = ["/login", "/registro", "/landing", "/marketplace", "/canj
  * AuthContext sets/clears this cookie via document.cookie.
  */
 const SESSION_COOKIE = "ta_session";
+const VIP_PREVIEW_COOKIE = "ta_vip_preview";
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
   const hostHeader = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
   const hostname = hostHeader.toLowerCase().split(":")[0];
   const cleanPath = pathname.replace(/\/$/, "");
+
+  // ─── 0. MODO VIP / PREVIEW PARA ENTRAR A LAS WEBS REALES (?vip=1) ──────────
+  const vipParam = searchParams.get("vip") || searchParams.get("preview");
+  if (vipParam === "1" || vipParam === "true") {
+    const cleanUrl = new URL(request.url);
+    cleanUrl.searchParams.delete("vip");
+    cleanUrl.searchParams.delete("preview");
+    const response = NextResponse.redirect(cleanUrl);
+    response.cookies.set(VIP_PREVIEW_COOKIE, "1", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30 días
+      sameSite: "lax",
+    });
+    return response;
+  }
+  if (vipParam === "0" || vipParam === "false") {
+    const cleanUrl = new URL(request.url);
+    cleanUrl.searchParams.delete("vip");
+    cleanUrl.searchParams.delete("preview");
+    const response = NextResponse.redirect(cleanUrl);
+    response.cookies.delete(VIP_PREVIEW_COOKIE);
+    return response;
+  }
+
+  const hasVipAccess =
+    request.cookies.get(VIP_PREVIEW_COOKIE)?.value === "1" ||
+    Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+
+  // ─── 0.1 TELÓN TEASER 01/11 PARA ECOSISTEMA TRAVELAPP ──────────────────────
+  const isTravelAppEcosystemHost =
+    (hostname.includes("travelapp.ar") && !hostname.startsWith("admin.")) ||
+    hostname.includes("lunaviajera");
+
+  const isBypassedPath =
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/assets") ||
+    pathname.startsWith("/public") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/landing/") ||
+    pathname.startsWith("/descargar") ||
+    pathname.startsWith("/apk") ||
+    pathname.includes(".");
+
+  if (isTravelAppEcosystemHost && !hasVipAccess && !isBypassedPath) {
+    return NextResponse.rewrite(new URL("/landing/preparate", request.url));
+  }
 
   // ─── 1. DOMAIN-SPECIFIC REWRITES (TOP PRIORITY) ────────────────────────────
 
