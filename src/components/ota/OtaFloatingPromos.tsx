@@ -71,7 +71,7 @@ export function OtaFloatingPromos() {
       title: "Asesores Reales en Argentina",
       desc: "Soporte personalizado vía WhatsApp antes, durante y después del viaje.",
       cta: "Consultar ahora",
-      href: "https://wa.me/5493812020050",
+      href: "https://wa.me/5493812000712",
       accent: "border-emerald-100 hover:border-emerald-300",
     },
   ];

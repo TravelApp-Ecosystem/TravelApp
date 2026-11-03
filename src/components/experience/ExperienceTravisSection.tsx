@@ -1,167 +1,150 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Bot,
-  Sparkles,
-  MessageSquare,
-  ArrowRight,
-  Shield,
-  Clock,
-  Compass,
-  CheckCircle2,
-  Send,
-} from "lucide-react";
+import Image from "next/image";
+import { Phone, ChevronDown } from "lucide-react";
 
 export function ExperienceTravisSection() {
-  const [activeQuestion, setActiveQuestion] = useState(0);
-
-  const sampleConversations = [
-    {
-      q: "¿Qué abrigo debo llevar a Salinas Grandes y la Puna?",
-      a: "¡Excelente pregunta! En la Puna hay gran amplitud térmica. Te recomiendo vestir en capas (térmica + polar + campera cortaviento), lentes con filtro UV categoría 3 o 4, gorro para sol y protector solar FPS 50+. A la siesta el sol es intenso pero corre viento frío.",
-    },
-    {
-      q: "¿Cómo prevengo el mal de altura en Hornocal o Cuesta de Lipán?",
-      a: "Para alturas mayores a 3.500 msnm: mantenete muy bien hidratado con agua mineral, comé liviano la noche anterior, evitá el alcohol y masticá hojas de coca o tomá té de coca bien caliente. Los guías llevan oxígeno preventivo y botiquín de primeros auxilios.",
-    },
-    {
-      q: "¿Dónde probar las mejores empanadas y Torrontés en Cafayate?",
-      a: "Te sugiero almorzar en los patios coloniales de Bodega El Esteco o Bodega Nanni (orgánica). Sus empanadas cortadas a cuchillo al horno de barro maridan a la perfección con un Torrontés cosecha tardía bien frío.",
-    },
-    {
-      q: "¿A qué hora me pasa a buscar TravelCab por mi hotel?",
-      a: "El horario habitual para excursiones de día completo (Salinas o Cafayate) es entre las 06:45 y las 07:30 hs. El día anterior a las 20:00 hs recibirás un WhatsApp de Travis con la patente del vehículo y el contacto directo de tu guía.",
-    },
-  ];
+  const [channelsOpen, setChannelsOpen] = useState(false);
 
   return (
-    <section className="py-12 sm:py-20 bg-slate-900 text-white font-sans relative overflow-hidden">
-      {/* Luces sutiles de fondo */}
-      <div className="absolute top-1/2 left-0 -translate-y-1/2 w-96 h-96 bg-[#ff4f5a]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 items-center">
-          
-          {/* Columna Izquierda: Información Editorial */}
-          <div className="lg:col-span-6 space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff4f5a]/20 border border-[#ff4f5a]/40 text-[#ff4f5a] text-xs font-bold uppercase tracking-wider">
-              <Bot className="w-4 h-4" />
-              <span>Inteligencia Artificial Especializada</span>
-            </div>
-
-            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
-              Travis: Tu Baquiano & Concierge Digital 24/7
-            </h2>
-
-            <p className="text-sm sm:text-base text-slate-300 font-medium leading-relaxed">
-              Travis conoce cada rincón del Norte Argentino: el estado de los caminos de montaña, el clima en tiempo real, qué indumentaria empacar y los secretos gastronómicos que solo un local sabe.
-            </p>
-
-            <div className="space-y-2.5 pt-2">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-xs sm:text-sm text-slate-200">
-                  Alertas meteorológicas y estado de pasos de altura
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-xs sm:text-sm text-slate-200">
-                  Notificación automática de horario de pick-up en hotel
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-xs sm:text-sm text-slate-200">
-                  Recomendaciones de restaurantes, bodegas y peñas folclóricas
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <a
-                href="https://wa.me/5493812020050?text=Hola%20Travis,%20quiero%20hacerte%20una%20consulta%20sobre%20el%20Norte%20Argentino"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-900/40 transition-all hover:scale-105 active:scale-95"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Chatear con Travis por WhatsApp</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Columna Derecha: Simulación Interactiva de Travis */}
-          <div className="lg:col-span-6 bg-slate-950/80 rounded-3xl p-5 sm:p-7 border border-white/10 shadow-2xl space-y-4">
-            
-            {/* Cabecera del Chat */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#ff4f5a] to-[#0a2a5b] flex items-center justify-center text-white shadow-md">
-                    <Bot className="w-5 h-5" />
-                  </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-950" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold flex items-center gap-1.5">
-                    <span>Travis Experience</span>
-                    <Sparkles className="w-3.5 h-3.5 text-[#ff4f5a]" />
-                  </div>
-                  <div className="text-[10px] text-slate-400">Concierge Receptivo en Línea</div>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 rounded-full bg-white/10 text-[10px] font-bold text-slate-300">
-                24 / 7
-              </span>
-            </div>
-
-            {/* Selector de Preguntas Frecuentes */}
-            <div className="space-y-1.5">
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                Tocá una pregunta para ver la respuesta de Travis:
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {sampleConversations.map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setActiveQuestion(idx)}
-                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold text-left transition-all cursor-pointer ${
-                      activeQuestion === idx
-                        ? "bg-[#ff4f5a] text-white shadow-md"
-                        : "bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
-                    }`}
-                  >
-                    {item.q}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Burbujas de Chat */}
-            <div className="space-y-3 pt-2">
-              {/* Mensaje del Usuario */}
-              <div className="flex justify-end">
-                <div className="max-w-[85%] p-3.5 rounded-2xl rounded-tr-xs bg-[#0a2a5b] text-white text-xs sm:text-sm font-medium shadow-md">
-                  {sampleConversations[activeQuestion].q}
-                </div>
-              </div>
-
-              {/* Respuesta de Travis */}
-              <div className="flex justify-start items-start gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-[#ff4f5a] flex items-center justify-center text-white shrink-0 mt-0.5">
-                  <Bot className="w-3.5 h-3.5" />
-                </div>
-                <div className="max-w-[88%] p-3.5 rounded-2xl rounded-tl-xs bg-slate-900 border border-white/10 text-slate-200 text-xs sm:text-sm font-normal leading-relaxed shadow-md">
-                  {sampleConversations[activeQuestion].a}
-                </div>
-              </div>
-            </div>
-          </div>
+    <section className="w-full bg-[#f5f5f7] py-16 sm:py-24 px-4 sm:px-6 border-t border-[#e5e5ea]">
+      <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
+        
+        {/* IMAGEN OFICIAL DE TRAVIS */}
+        <div className="relative w-24 h-24 sm:w-28 sm:h-28 mb-6 flex items-center justify-center">
+          <Image
+            src="/assets/travis_formal.svg"
+            alt="Travis Concierge"
+            width={112}
+            height={112}
+            className="w-full h-full object-contain"
+          />
         </div>
+
+        {/* TÍTULO Y DESCRIPCIÓN ESTILO APPLE */}
+        <h2 className="text-[32px] sm:text-[44px] font-semibold text-[#1d1d1f] tracking-[-0.02em] leading-[1.1]">
+          Travis. Tu asistente personal de viaje.
+        </h2>
+
+        <p className="mt-3 text-[17px] sm:text-[21px] font-normal text-[#86868b] tracking-[-0.01em] leading-[1.35] max-w-2xl">
+          Planificá excursiones, coordiná traslados punto a punto y recibí asistencia en ruta las 24 horas.
+        </p>
+
+        {/* RESUMEN EDITORIAL DE CAPACIDADES */}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] font-medium text-[#1d1d1f]/75">
+          <span>Cotización inmediata</span>
+          <span className="text-[#d2d2d7]">·</span>
+          <span>Coordinación de pick-up en hotel</span>
+          <span className="text-[#d2d2d7]">·</span>
+          <span>Estado de rutas y clima en tiempo real</span>
+        </div>
+
+        {/* LLAMADO A LA ACCIÓN QUE DESPLIEGA LOS CANALES DE ATENCIÓN */}
+        <div className="mt-7">
+          <button
+            type="button"
+            onClick={() => setChannelsOpen((prev) => !prev)}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-[15px] font-normal tracking-[-0.01em] transition-colors cursor-pointer"
+          >
+            <span>Hablar con Travis</span>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-300 ${
+                channelsOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* DOCK DE CANALES OFICIALES (WhatsApp / Messenger / Instagram DM / Teléfono 0810-220-0018) */}
+        {channelsOpen && (
+          <div className="mt-8 w-full max-w-3xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            
+            {/* 1. WHATSAPP OFICIAL (+5493812000712) */}
+            <a
+              href="https://wa.me/5493812000712?text=Hola%20Travis%2C%20quiero%20consultar%20por%20excursiones%20y%20traslados"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-[#d2d2d7] hover:border-[#86868b] transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+                  <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824zm-3.423-14.416c-6.627 0-12 5.373-12 12 0 2.625.846 5.059 2.284 7.033l-1.494 5.455 5.602-1.47c1.897 1.045 4.077 1.642 6.398 1.642 6.627 0 12-5.373 12-12s-5.373-12-12-12z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[14px] font-semibold text-[#1d1d1f]">
+                  WhatsApp
+                </div>
+                <div className="text-[12px] text-[#86868b] truncate">
+                  +54 9 381 200-0712
+                </div>
+              </div>
+            </a>
+
+            {/* 2. MESSENGER OFICIAL */}
+            <a
+              href="https://m.me/travelapp.ar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-[#d2d2d7] hover:border-[#86868b] transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#0084FF] text-white flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+                  <path d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.19 5.44 3.14 7.17.16.13.26.35.27.57l.05 1.78c.02.57.61.94 1.13.71l1.98-.87c.17-.08.36-.1.55-.06.88.24 1.83.37 2.88.37 5.64 0 10-4.13 10-9.7C22 6.13 17.64 2 12 2zm5.89 7.58l-2.93 4.67c-.47.74-1.48.92-2.17.38l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.93-4.67c.47-.74 1.48-.92 2.17-.38l2.34 1.75a.6.6 0 0 0 .72 0l3.16-2.4c.42-.32.97.18.69.63z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[14px] font-semibold text-[#1d1d1f]">
+                  Messenger
+                </div>
+                <div className="text-[12px] text-[#86868b] truncate">
+                  Chat oficial Meta
+                </div>
+              </div>
+            </a>
+
+            {/* 3. INSTAGRAM (DM) OFICIAL */}
+            <a
+              href="https://ig.me/m/travelapp.ar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-[#d2d2d7] hover:border-[#86868b] transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[14px] font-semibold text-[#1d1d1f]">
+                  Instagram DM
+                </div>
+                <div className="text-[12px] text-[#86868b] truncate">
+                  @travelapp.ar
+                </div>
+              </div>
+            </a>
+
+            {/* 4. TELÉFONO OFICIAL 0810-220-0018 */}
+            <a
+              href="tel:08102200018"
+              className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-[#d2d2d7] hover:border-[#86868b] transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#0a2a5b] text-white flex items-center justify-center shrink-0">
+                <Phone className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[14px] font-semibold text-[#1d1d1f]">
+                  0810-220-0018
+                </div>
+                <div className="text-[12px] text-[#86868b] truncate">
+                  Atención telefónica
+                </div>
+              </div>
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );

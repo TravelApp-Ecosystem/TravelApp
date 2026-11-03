@@ -57,6 +57,229 @@ import { TourCard } from '@/components/experiences/TourCard';
 
 const SEED_RECEPTIVO_TOURS: Tour[] = [
   {
+    id: 'EXP-NOA-001',
+    title: 'Cafayate & Quebrada de las Conchas',
+    location: 'Valles Calchaquíes, Salta / Tucumán',
+    price: 98000,
+    currency: 'ARS',
+    priceRewards: 84000,
+    pointsEarned: 150,
+    tripType: 'Grupal',
+    scope: 'Nacional',
+    tourismVertical: 'receptivo',
+    productType: 'experiencia_dia',
+    transportation: 'Sprinter Ejecutiva VIP (TravelCab)',
+    departureDate: 'Salidas Diarias 07:30 hs',
+    departureOrigin: 'Pick-up por Hoteles Céntricos (Tucumán / Salta)',
+    duration: 'Día Completo (12 hs)',
+    difficulty: 'Baja',
+    minPassengers: 2,
+    services: [
+      'Traslado Ida y Vuelta en Unidad Ejecutiva TravelCab',
+      'Paradas fotográficas en Garganta del Diablo y El Anfiteatro',
+      'Visita guiada y degustación en 2 Bodegas de Altura en Cafayate',
+      'Guía profesional habilitado durante todo el recorrido'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1400&q=85',
+    images: [
+      'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1400&q=85',
+      'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1400&q=85',
+      'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1400&q=85'
+    ],
+    description: 'Formaciones rojizas milenarias, el Anfiteatro natural y degustación exclusiva en bodegas de altura.',
+    detail: 'Recorremos la majestuosa Ruta Nacional 68 atravesando la Reserva Natural Quebrada de las Conchas. Visitamos Los Castillos, Las Ventanas, El Obelisco, La Yesera, El Anfiteatro y La Garganta del Diablo. Al llegar a Cafayate, disfrutamos de degustaciones de vinos Torrontés y Malbec de altura en bodegas boutique e históricas.',
+    observations: 'Llevar calzado cómodo, protector solar y abrigo liviano.',
+    availability: 'Disponible',
+    cardTheme: 'light-ice',
+    b2bEnabled: true,
+    hotelCommissionPct: 15
+  },
+  {
+    id: 'EXP-NOA-002',
+    title: 'Tafí del Valle & Ruinas de Quilmes',
+    location: 'Tucumán, Argentina',
+    price: 85000,
+    currency: 'ARS',
+    priceRewards: 72000,
+    pointsEarned: 130,
+    tripType: 'Grupal',
+    scope: 'Nacional',
+    tourismVertical: 'receptivo',
+    productType: 'experiencia_dia',
+    transportation: 'Combi Ejecutiva / SUV TravelCab',
+    departureDate: 'Salidas Diarias 08:00 hs',
+    departureOrigin: 'San Miguel de Tucumán (Pick-up Hoteles)',
+    duration: 'Día Completo (10 hs)',
+    difficulty: 'Media',
+    minPassengers: 2,
+    services: [
+      'Ascenso escénico por la Quebrada de los Sosa y El Indio',
+      'Visita a Tafí del Valle, Dique La Angostura y El Mollar',
+      'Recorrido guiado por la Ciudad Sagrada de Quilmes (Abra del Infiernillo 3.042 msnm)',
+      'Asistencia permanente y coordinación TravelApp'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1400&q=85',
+    images: [
+      'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1400&q=85',
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1400&q=85'
+    ],
+    description: 'Ascenso por la selva de Yungas hasta el Abra del Infiernillo y la mística Ciudad Sagrada de Quilmes.',
+    detail: 'Iniciamos el ascenso por la RP 307 internándonos en la Quebrada del Río Los Sosa con paradas en el monumento al Indio y Parque Los Menhires. Visitamos la villa veraniega de Tafí del Valle, cruzamos el Abra del Infiernillo a 3.042 metros sobre el nivel del mar y descendemos hacia los Valles Calchaquíes para recorrer a pie la histórica Ciudad Sagrada de los Quilmes y su Centro de Interpretación.',
+    observations: 'No incluye entrada al Centro de Interpretación Quilmes.',
+    availability: 'Disponible',
+    cardTheme: 'light-sky',
+    b2bEnabled: true,
+    hotelCommissionPct: 15
+  },
+  {
+    id: 'EXP-NOA-003',
+    title: 'Salinas Grandes & Purmamarca 4x4',
+    location: 'Jujuy / Salta, Argentina',
+    price: 125000,
+    currency: 'ARS',
+    priceRewards: 108000,
+    pointsEarned: 210,
+    tripType: 'Grupal',
+    scope: 'Nacional',
+    tourismVertical: 'receptivo',
+    productType: 'experiencia_dia',
+    transportation: 'Camioneta 4x4 / Minibús de Altura',
+    departureDate: 'Salidas Diarias 07:00 hs',
+    departureOrigin: 'Salta Capital / San Salvador de Jujuy',
+    duration: 'Día Completo (13 hs)',
+    difficulty: 'Media',
+    minPassengers: 2,
+    services: [
+      'Recorrido por Purmamarca y Paseo de los Colorados',
+      'Ascenso escénico por Cuesta de Lipán (4.170 msnm)',
+      'Tiempo libre y sesión fotográfica en los piletones de Salinas Grandes',
+      'Guía especializado en Puna y Quebrada'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1400&q=85',
+    images: [
+      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1400&q=85',
+      'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1400&q=85'
+    ],
+    description: 'El desierto blanco a más de 3.450 msnm y el Cerro de los Siete Colores en una travesía inolvidable.',
+    detail: 'Partimos temprano hacia el pueblo de Purmamarca para admirar el Cerro de los Siete Colores con la luz matinal y su feria artesanal. Luego ascendemos por la imponente Cuesta de Lipán (alcanzando los 4.170 msnm en el Abra de Potrerillos) hasta desembocar en la inmensidad blanca de las Salinas Grandes, donde visitamos los ojos de agua turquesa y las esculturas de sal.',
+    observations: 'Se recomienda hidratación constante y lentes de sol con filtro UV.',
+    availability: 'Cupos Limitados',
+    cardTheme: 'dark',
+    b2bEnabled: true,
+    hotelCommissionPct: 15
+  },
+  {
+    id: 'EXP-NOA-004',
+    title: 'Tren a las Nubes & San Antonio de los Cobres',
+    location: 'Puna Salteña, Salta',
+    price: 145000,
+    currency: 'ARS',
+    priceRewards: 128000,
+    pointsEarned: 250,
+    tripType: 'Grupal',
+    scope: 'Nacional',
+    tourismVertical: 'receptivo',
+    productType: 'experiencia_dia',
+    transportation: 'Bus Turístico + Formación Ferroviaria',
+    departureDate: 'Martes, Jueves y Sábados 06:15 hs',
+    departureOrigin: 'Salta Capital (Pick-up Hoteles)',
+    duration: 'Día Completo (14 hs)',
+    difficulty: 'Alta',
+    minPassengers: 1,
+    services: [
+      'Traslado en unidad climatizada por Quebrada del Toro y Santa Rosa de Tastil',
+      'Desayuno campestre en Alfarcito y merienda regional',
+      'Ticket oficial del Tren a las Nubes hasta el Viaducto La Polvorilla (4.220 msnm)',
+      'Asistencia médica a bordo y oxígeno preventivo'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1400&q=85',
+    images: [
+      'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1400&q=85',
+      'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1400&q=85'
+    ],
+    description: 'Ingeniería ferroviaria a 4.220 metros de altura cruzando el mítico Viaducto La Polvorilla.',
+    detail: 'Una de las obras de ingeniería ferroviaria más altas del mundo. Recorremos por ruta la Quebrada del Toro, el zigzagueo del Alisal y la Fundación Alfarcito del Padre Chifri. En San Antonio de los Cobres abordamos la mítica formación ferroviaria que nos lleva hasta el Viaducto La Polvorilla a 4.220 msnm, donde presenciamos el emocionante izamiento de la bandera.',
+    observations: 'Sujeto a condiciones climáticas de alta montaña.',
+    availability: 'Disponible',
+    cardTheme: 'dark',
+    b2bEnabled: true,
+    hotelCommissionPct: 15
+  },
+  {
+    id: 'EXP-NOA-005',
+    title: 'City Tour Histórico Tucumán & San Javier',
+    location: 'San Miguel de Tucumán & Yerba Buena',
+    price: 52000,
+    currency: 'ARS',
+    priceRewards: 44000,
+    pointsEarned: 90,
+    tripType: 'Individual',
+    scope: 'Nacional',
+    tourismVertical: 'receptivo',
+    productType: 'experiencia_dia',
+    transportation: 'Sedán / SUV Ejecutiva TravelCab',
+    departureDate: 'Salidas Diarias 09:00 y 15:00 hs',
+    departureOrigin: 'Hoteles de San Miguel de Tucumán y Yerba Buena',
+    duration: 'Medio Día (5 hs)',
+    difficulty: 'Baja',
+    minPassengers: 2,
+    services: [
+      'Recorrido por Plaza Independencia, Casa de Gobierno y Casa Histórica',
+      'Paseo por Parque 9 de Julio y Ciudad Jardín de Yerba Buena',
+      'Ascenso por la yungas hasta el Cerro San Javier y Cristo Bendicente',
+      'Traslado privado o regular en flota TravelCab'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1400&q=85',
+    images: [
+      'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1400&q=85',
+      'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1400&q=85'
+    ],
+    description: 'Cuna de la Independencia, templos históricos y vista panorámica desde la cumbre del Cerro San Javier.',
+    detail: 'Descubrimos el corazón histórico del Jardín de la República visitando los alrededores de la Plaza Independencia, la Catedral, la Casa de Gobierno de estilo Art Nouveau, el Museo de la Industria Azucarera en el Parque 9 de Julio y la emblemática Casa Histórica de la Independencia. Continuamos hacia Yerba Buena y ascendemos por el camino de yungas hasta el Cristo Bendicente en el Cerro San Javier.',
+    observations: 'Ideal para combinar con el espectáculo de Luz y Sonido por la noche.',
+    availability: 'Disponible',
+    cardTheme: 'light-ice',
+    b2bEnabled: true,
+    hotelCommissionPct: 15
+  },
+  {
+    id: 'EXP-NOA-006',
+    title: 'Ruta del Vino de Altura & Cachi Místico',
+    location: 'Cachi & Parque Nacional Los Cardones, Salta',
+    price: 112000,
+    currency: 'ARS',
+    priceRewards: 95000,
+    pointsEarned: 180,
+    tripType: 'Grupal',
+    scope: 'Nacional',
+    tourismVertical: 'receptivo',
+    productType: 'experiencia_dia',
+    transportation: 'Van Ejecutiva Mercedes-Benz (TravelCab)',
+    departureDate: 'Salidas Diarias 07:30 hs',
+    departureOrigin: 'Salta Capital (Pick-up Hoteles)',
+    duration: 'Día Completo (11 hs)',
+    difficulty: 'Baja',
+    minPassengers: 2,
+    services: [
+      'Ascenso por la Cuesta del Obispo y Piedra del Molino (3.348 msnm)',
+      'Travesía por la Recta del Tin-Tin y Parque Nacional Los Cardones',
+      'Visita al pueblo colonial de Cachi, Iglesia San José y Museo Arqueológico',
+      'Degustación en bodega de altura calchaquí'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1400&q=85',
+    images: [
+      'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1400&q=85',
+      'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1400&q=85'
+    ],
+    description: 'Cuesta del Obispo, Parque Nacional Los Cardones y el encanto colonial de Cachi entre viñedos.',
+    detail: 'Atravesamos la Quebrada de Escoipe y trepamos la zigzagueante Cuesta del Obispo hasta alcanzar la Piedra del Molino a 3.348 msnm. Cruzamos el Parque Nacional Los Cardones por la histórica Recta del Tin-Tin (trazada por los Incas) con vistas al Nevado de Cachi, para almorzar y recorrer las calles adoquinadas y bodegas de altura de Cachi.',
+    observations: 'Salidas garantizadas todos los días del año.',
+    availability: 'Disponible',
+    cardTheme: 'light-sky',
+    b2bEnabled: true,
+    hotelCommissionPct: 15
+  },
+  {
     id: 'EXP-REC-001',
     title: 'Mendoza Wine Tour Premium & Bodegas',
     location: 'Mendoza, Argentina',
@@ -69,59 +292,22 @@ const SEED_RECEPTIVO_TOURS: Tour[] = [
     tourismVertical: 'receptivo',
     productType: 'experiencia_dia',
     transportation: 'SUV Premium 4x4 (TravelCab)',
-    departureDate: '2026-10-12',
+    departureDate: 'Salidas Diarias 09:00 hs',
     departureOrigin: 'Mendoza Capital (Pick-up hotel)',
+    duration: 'Día Completo (9 hs)',
+    difficulty: 'Baja',
+    minPassengers: 2,
     services: ['Degustación Premium en 3 Bodegas', 'Almuerzo 5 pasos maridado', 'Guía Sommelier Bilingüe', 'Traslados in/out con TravelCab'],
     imageUrl: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&q=80&w=800',
+    images: [
+      'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&q=80&w=800',
+      'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&q=80&w=800'
+    ],
     description: 'Recorrido exclusivo por 3 de las mejores bodegas del Valle de Uco, terminando con un almuerzo maridado de primer nivel.',
+    detail: 'Experiencia enológica privada o en grupos reducidos por Luján de Cuyo y Valle de Uco. Incluye degustación dirigida de líneas Reserva y Gran Reserva en tres bodegas seleccionadas al pie de la Cordillera de los Andes, finalizando con un almuerzo gourmet de 5 pasos maridado.',
     observations: 'Cupos limitados por protocolo de bodega. Consultar por salidas privadas.',
     availability: 'Disponible',
-    b2bEnabled: true,
-    hotelCommissionPct: 15,
-  },
-  {
-    id: 'EXP-REC-002',
-    title: 'Aventura en Quebrada de Humahuaca & Purmamarca',
-    location: 'Jujuy, Argentina',
-    price: 85000,
-    currency: 'ARS',
-    priceRewards: 68000,
-    pointsEarned: 100,
-    tripType: 'Grupal',
-    scope: 'Nacional',
-    tourismVertical: 'receptivo',
-    productType: 'experiencia_dia',
-    transportation: 'MiniBus Turístico 4x4',
-    departureDate: '2026-09-05',
-    departureOrigin: 'San Salvador de Jujuy / Salta Capital',
-    services: ['Trekking Guiado Cerro de 7 Colores', 'Entradas a Parques y Museos', 'Almuerzo Criollo Tradicional', 'Seguro de Asistencia'],
-    imageUrl: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&q=80&w=800',
-    description: 'Senderismo por el Cerro de los Siete Colores y Purmamarca, conociendo las costumbres locales del NOA con guías certificados.',
-    observations: 'Llevar calzado de trekking y abrigo liviano para la tarde.',
-    availability: 'Cupos Limitados',
-    b2bEnabled: true,
-    hotelCommissionPct: 15,
-  },
-  {
-    id: 'EXP-REC-003',
-    title: 'Valles Calchaquíes, Cafayate & Ruta del Vino Torrontés',
-    location: 'Salta, Argentina',
-    price: 110000,
-    currency: 'ARS',
-    priceRewards: 88000,
-    pointsEarned: 130,
-    tripType: 'Grupal',
-    scope: 'Nacional',
-    tourismVertical: 'receptivo',
-    productType: 'experiencia_dia',
-    transportation: 'Van Ejecutiva Mercedes-Benz',
-    departureDate: '2026-10-18',
-    departureOrigin: 'Salta Capital',
-    services: ['Visita Quebrada de las Conchas', 'Degustación en 2 Bodegas', 'Almuerzo Criollo', 'Guía Histórico Provincial'],
-    imageUrl: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80&w=800',
-    description: 'Travesía fascinante por las formaciones rojizas de la Quebrada de las Conchas y visita a bodegas de altura en Cafayate.',
-    observations: 'Salidas diarias desde el centro de Salta.',
-    availability: 'Disponible',
+    cardTheme: 'light-ice',
     b2bEnabled: true,
     hotelCommissionPct: 15,
   }
@@ -152,6 +338,7 @@ export default function ExperienceCatalogPage() {
   const [isReceptivoModalOpen, setIsReceptivoModalOpen] = useState(false);
   const [editingReceptivoTour, setEditingReceptivoTour] = useState<Partial<Tour> | null>(null);
   const [recServicesInput, setRecServicesInput] = useState('');
+  const [recImagesInput, setRecImagesInput] = useState('');
 
   // 1. Escuchar paquetes emisivos desde Firestore (colección ota_packages)
   useEffect(() => {
@@ -424,8 +611,10 @@ export default function ExperienceCatalogPage() {
     if (tour) {
       setEditingReceptivoTour({ ...tour });
       setRecServicesInput((tour.services || []).join('\n'));
+      setRecImagesInput((tour.images || (tour.imageUrl ? [tour.imageUrl] : [])).join('\n'));
     } else {
       const newId = `EXP-REC-${Math.floor(100 + Math.random() * 900)}`;
+      const defaultImage = 'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80&w=1400';
       setEditingReceptivoTour({
         id: newId,
         title: '',
@@ -439,16 +628,23 @@ export default function ExperienceCatalogPage() {
         tourismVertical: 'receptivo',
         productType: 'experiencia_dia',
         transportation: 'SUV 4x4 (TravelCab)',
-        departureDate: '2026-11-01',
-        departureOrigin: 'Hotel céntrico',
+        departureDate: 'Salidas Diarias 08:00 hs',
+        departureOrigin: 'Pick-up por Hoteles Céntricos',
+        duration: 'Día Completo (10 hs)',
+        difficulty: 'Baja',
+        minPassengers: 2,
         services: ['Guía Bilingüe', 'Traslados ida y vuelta con TravelCab', 'Entradas incluidas'],
-        imageUrl: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80&w=800',
+        imageUrl: defaultImage,
+        images: [defaultImage],
         description: '',
+        detail: '',
         availability: 'Disponible',
+        cardTheme: 'light-ice',
         b2bEnabled: true,
         hotelCommissionPct: 15
       });
       setRecServicesInput('Guía Bilingüe\nTraslados ida y vuelta con TravelCab\nEntradas incluidas');
+      setRecImagesInput(defaultImage);
     }
     setIsReceptivoModalOpen(true);
   };
@@ -466,15 +662,27 @@ export default function ExperienceCatalogPage() {
         .map(s => s.trim())
         .filter(s => s.length > 0);
 
+      const images = recImagesInput
+        .split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      const primaryImage = editingReceptivoTour.imageUrl || images[0] || 'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80&w=1400';
+
       const completeTour: Tour = {
         ...(editingReceptivoTour as Tour),
         tourismVertical: 'receptivo',
+        imageUrl: primaryImage,
+        images: images.length > 0 ? images : [primaryImage],
+        duration: editingReceptivoTour.duration || 'Día Completo (10 hs)',
+        difficulty: editingReceptivoTour.difficulty || 'Baja',
+        minPassengers: Number(editingReceptivoTour.minPassengers) || 2,
         services: services.length > 0 ? services : ['Guía y traslados']
       };
 
       await setDoc(doc(db, 'experiences', completeTour.id), completeTour);
       setIsReceptivoModalOpen(false);
-      alert('¡Excursión Receptiva guardada con éxito!');
+      alert('¡Excursión Receptiva guardada y sincronizada con éxito en Web y Marketplace!');
     } catch (err: any) {
       alert(`Error al guardar: ${err.message}`);
     }
@@ -1480,13 +1688,22 @@ export default function ExperienceCatalogPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-500 mb-1">Precio Público</label>
+                  <label className="block font-bold text-slate-500 mb-1">Precio Desde (Público)</label>
                   <input
                     type="number"
                     value={editingReceptivoTour.price || 0}
                     onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, price: Number(e.target.value) }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">Precio Socio Club</label>
+                  <input
+                    type="number"
+                    value={editingReceptivoTour.priceRewards || 0}
+                    onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, priceRewards: Number(e.target.value) }))}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600"
                   />
                 </div>
@@ -1512,7 +1729,44 @@ export default function ExperienceCatalogPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Duración, Dificultad y Cantidad Mínima de Pasajeros */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">Duración</label>
+                  <input
+                    type="text"
+                    value={editingReceptivoTour.duration || ''}
+                    onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, duration: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600"
+                    placeholder="Ej: Día Completo (12 hs)"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">Dificultad</label>
+                  <select
+                    value={editingReceptivoTour.difficulty || 'Baja'}
+                    onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, difficulty: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600 bg-white"
+                  >
+                    <option value="Baja">Baja</option>
+                    <option value="Media">Media</option>
+                    <option value="Alta">Alta</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">Cant. Mínima de Pasajeros</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={editingReceptivoTour.minPassengers ?? 2}
+                    onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, minPassengers: Number(e.target.value) }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block font-bold text-slate-500 mb-1">Transporte / Móvil (TravelCab)</label>
                   <input
@@ -1533,16 +1787,75 @@ export default function ExperienceCatalogPage() {
                     placeholder="Hotel céntrico / Terminal"
                   />
                 </div>
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">Disponibilidad</label>
+                  <select
+                    value={editingReceptivoTour.availability || 'Disponible'}
+                    onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, availability: e.target.value as any }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600 bg-white"
+                  >
+                    <option value="Disponible">Disponible</option>
+                    <option value="Cupos Limitados">Cupos Limitados</option>
+                    <option value="Agotado">Agotado</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-500 mb-1">URL de Imagen</label>
-                <input
-                  type="text"
-                  value={editingReceptivoTour.imageUrl || ''}
-                  onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, imageUrl: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600"
-                  placeholder="https://images.unsplash.com/..."
+                <label className="block font-bold text-slate-500 mb-1">Descripción Corta (Subtítulo de Tarjeta)</label>
+                <textarea
+                  value={editingReceptivoTour.description || ''}
+                  onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, description: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-xl border border-slate-200 p-3 font-medium text-slate-800 outline-none focus:border-emerald-600 resize-none"
+                  placeholder="Resumen atractivo de la experiencia..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-500 mb-1">Detalle Completo del Recorrido / Itinerario</label>
+                <textarea
+                  value={editingReceptivoTour.detail || ''}
+                  onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, detail: e.target.value }))}
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 p-3 font-medium text-slate-800 outline-none focus:border-emerald-600 resize-none"
+                  placeholder="Descripción detallada paso a paso de los puntos visitados, paradas y experiencia..."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">URL de Imagen Principal</label>
+                  <input
+                    type="text"
+                    value={editingReceptivoTour.imageUrl || ''}
+                    onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, imageUrl: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600"
+                    placeholder="https://images.unsplash.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-500 mb-1">Tema Visual de Tarjeta (Estilo Apple)</label>
+                  <select
+                    value={editingReceptivoTour.cardTheme || 'light-ice'}
+                    onChange={(e) => setEditingReceptivoTour(prev => ({ ...prev, cardTheme: e.target.value as any }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 font-bold text-slate-800 outline-none focus:border-emerald-600 bg-white"
+                  >
+                    <option value="light-ice">Blanco Hielo (#F5F5F7)</option>
+                    <option value="light-sky">Celeste Suave Apple (#EAF3FA)</option>
+                    <option value="dark">Negro Profundo (#000000)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-500 mb-1">Galería de Imágenes (una URL por línea)</label>
+                <textarea
+                  value={recImagesInput}
+                  onChange={(e) => setRecImagesInput(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 p-3 font-medium text-slate-800 outline-none focus:border-emerald-600 resize-none"
+                  placeholder="https://images.unsplash.com/photo-1...&#10;https://images.unsplash.com/photo-2..."
                 />
               </div>
 

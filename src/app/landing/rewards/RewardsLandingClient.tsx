@@ -589,7 +589,7 @@ export default function RewardsLandingClient({ initialCms }: { initialCms?: any 
       {/* 🤖 Travis Chat Web Widget (Flotante Omnicanal - Navy Blue style) */}
       <TravisOmnichannelWidget 
         businessUnit="Rewards" 
-        whatsappUrl={cmsData.redesSociales?.whatsapp || "https://wa.me/5493814188106"}
+        whatsappUrl={cmsData.redesSociales?.whatsapp || "https://wa.me/5493812000712"}
         messengerUrl={cmsData.redesSociales?.messenger || "https://m.me/travelapp"}
         instagramUrl={cmsData.redesSociales?.instagram || "https://instagram.com/travelapp.ar"}
         primaryColor="#0a2a5b" // Navy Blue for brand coherence

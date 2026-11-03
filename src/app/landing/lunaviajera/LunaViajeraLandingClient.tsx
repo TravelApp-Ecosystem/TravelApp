@@ -170,7 +170,7 @@ const DEFAULT_LUNA_CMS = {
   travis: {
     title: "Consulta algunas dudas a Travis nuestro asistente con IA",
     subtitle: "Travis te responde al instante sobre ropa recomendada, horarios de partida desde Yerba Buena, nivel de senderismo y cupos disponibles.",
-    whatsappUrl: "https://wa.me/5493813981479?text=Hola%20Travis!%20Tengo%20una%20consulta%20sobre%20las%20excursiones%20de%20Luna%20Viajera",
+    whatsappUrl: "https://wa.me/5493812000712?text=Hola%20Travis!%20Tengo%20una%20consulta%20sobre%20las%20excursiones%20de%20Luna%20Viajera",
     defaultQuestions: [
       "¿Qué ropa y calzado me recomiendan llevar a Tafí?",
       "¿A qué hora salimos y desde dónde nos buscan?",
@@ -1315,7 +1315,7 @@ export default function LunaViajeraLandingClient({ initialCms }: LunaViajeraLand
 
                 <div className="pt-2 flex gap-3">
                   <a
-                    href={`https://wa.me/5493813981479?text=Hola%20Travis!%20Acabo%20de%20reservar%20${encodeURIComponent(selectedExcursion.title)}%20con%20codigo%20${createdFile}`}
+                    href={`https://wa.me/5493812000712?text=Hola%20Travis!%20Acabo%20de%20reservar%20${encodeURIComponent(selectedExcursion.title)}%20con%20codigo%20${createdFile}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex-1 py-3 bg-[#25D366] hover:bg-[#20ba5a] text-[#0A2E20] rounded-2xl font-black text-xs text-center transition flex items-center justify-center gap-1.5 shadow-md"

@@ -71,7 +71,7 @@ const LANDING_DATA_FALLBACK = {
     logoImage: "/assets/travelcab_original.svg",
     tagline: "Movilidad Premium",
     ctaText: "Pedir Ahora",
-    ctaUrl: "https://wa.me/5493814188106?text=Hola!%20Quiero%20pedir%20un%20TravelCab%20ahora.",
+    ctaUrl: "https://wa.me/5493812000712?text=Hola!%20Quiero%20pedir%20un%20TravelCab%20ahora.",
     driverRegisterUrl: "#"
   },
   hero: {
@@ -105,7 +105,7 @@ const LANDING_DATA_FALLBACK = {
     ],
     legalText: "* Las tarifas mostradas son estimadas y pueden variar de acuerdo con el tráfico real, horario y factores climáticos.",
     whatsappConfig: {
-      phone: "5493814188106",
+      phone: "5493812000712",
       messageTemplate: "¡Hola TravelCab! 🚕 Quiero solicitar un viaje desde la web:\n\n👤 *Pasajero:* {name}\n📞 *Teléfono:* {phone}\n🛣️ *Modalidad:* {modality}\n📍 *Origen:* {pickup}\n🏁 *Destino:* {dropoff}\n🚗 *Categoría:* {vehicle}\n💳 *Pago:* {payment}\n💵 *Tarifa Estimada:* {price}\n\n_Por favor, confírmenme la asignación del móvil y chofer._"
     }
   },
@@ -211,7 +211,7 @@ const LANDING_DATA_FALLBACK = {
   },
   contact: {
     phone: "0810-220-0018",
-    whatsapp: "https://wa.me/5493814188106"
+    whatsapp: "https://wa.me/5493812000712"
   },
   footer: {
     brand: "TravelCab",
@@ -281,7 +281,7 @@ const DEFAULT_CMS_DATA = {
     facebook: "https://facebook.com/travelcab",
     instagram: "https://instagram.com/travelcab.ar",
     messenger: "https://m.me/travelcab",
-    whatsapp: "https://wa.me/5493814188106"
+    whatsapp: "https://wa.me/5493812000712"
   },
   sellosLegales: {
     arcaQrUrl: "https://www.afip.gob.ar/images/f960/DATAWEB.jpg",
@@ -3299,7 +3299,7 @@ export default function TravelCabLanding({ initialCms }: { initialCms?: any }) {
         businessUnit="TravelCab"
         primaryColor="#FF5A19"
         brandName="TravelCab"
-        whatsappUrl={cmsData.dispatcher?.whatsappConfig?.phone ? `https://wa.me/${cmsData.dispatcher.whatsappConfig.phone}` : "https://wa.me/5493814188106"}
+        whatsappUrl={cmsData.dispatcher?.whatsappConfig?.phone ? `https://wa.me/${cmsData.dispatcher.whatsappConfig.phone}` : "https://wa.me/5493812000712"}
         instagramUrl="https://instagram.com/travelcab.ar"
       />
 

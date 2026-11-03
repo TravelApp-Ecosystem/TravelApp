@@ -24,7 +24,7 @@ interface TravisOmnichannelWidgetProps {
 
 export const TravisOmnichannelWidget: React.FC<TravisOmnichannelWidgetProps> = ({
   businessUnit,
-  whatsappUrl = "https://wa.me/5493814188106",
+  whatsappUrl = "https://wa.me/5493812000712",
   messengerUrl = "https://m.me/travelapp",
   instagramUrl = "https://instagram.com/travelapp.ar",
   primaryColor = "#ff6b00", // Default orange

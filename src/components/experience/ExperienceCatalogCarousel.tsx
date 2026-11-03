@@ -1,460 +1,1236 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
 import {
+  collection,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import {
+  calculateTimeToPayDeadline,
+  getTimeRemainingInfo,
+} from "@/types/experiences";
+import { ExcursionSearchFilters } from "./ExperienceSearchEngine";
+import {
+  X,
+  ShieldCheck,
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
-  MapPin,
-  Clock,
-  ArrowRight,
-  ShieldCheck,
-  Award,
-  Car,
-  Utensils,
-  Mountain,
-  Sun,
-  Wine,
+  Tag,
+  CreditCard,
+  CalendarClock,
   Users,
+  MapPin,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
-export interface ReceptiveTourItem {
+export interface ExperienceItem {
   id: string;
   title: string;
+  region: string;
   category: string;
-  destination: string;
+  description: string;
+  detail: string;
   duration: string;
-  difficulty: "Fácil" | "Moderada" | "Aventura";
-  imageUrl: string;
-  priceArs: number;
-  priceUsd: number;
-  pointsEarned: number;
+  difficulty: "Baja" | "Media" | "Alta" | string;
+  minPassengers: number;
+  price: number;
+  currency: string;
   rating: number;
+  reviewsCount: number;
+  imageUrl: string;
+  images?: string[];
+  videoUrl?: string;
+  mediaType?: "image" | "video";
+  cardTheme?: "dark" | "light-ice" | "light-sky";
   badge?: string;
-  includedServices: string[];
-  installmentsText: string;
-  url: string;
+  includes: string[];
+  itinerary?: string[];
 }
 
-interface ExperienceCatalogCarouselProps {
-  currency?: "ARS" | "USD";
-  items?: ReceptiveTourItem[];
-}
+const DEFAULT_HOTELS: string[] = [
+  "Sheraton Tucumán Hotel (San Miguel de Tucumán)",
+  "Hotel Catalinas Park (San Miguel de Tucumán)",
+  "Hilton Garden Inn Tucumán (San Miguel de Tucumán)",
+  "Hotel Bicentenario Suites & Spa (San Miguel de Tucumán)",
+  "Grand Hotel Tucumán (San Miguel de Tucumán)",
+  "Alejandro I Hotel (Salta Capital)",
+  "Sheraton Salta Hotel (Salta Capital)",
+  "Design Suites Salta (Salta Capital)",
+  "Legado Mítico Salta (Salta Capital)",
+  "Patios de Cafayate Wine Hotel (Cafayate)",
+  "Grace Cafayate (Cafayate)",
+  "El Manantial del Silencio (Purmamarca)",
+  "Hotel Huacalera (Quebrada de Humahuaca)",
+  "Las Marías Hotel Boutique (Tilcara)",
+  "Estancia Las Carreras (Tafí del Valle)",
+  "Hotel Colonial (Tafí del Valle)",
+];
 
-const DEFAULT_RECEPTIVE_TOURS: ReceptiveTourItem[] = [
+const BUILTIN_DISCOUNT_CODES: Record<
+  string,
+  { percent: number; label: string }
+> = {
+  TRAVEL10: { percent: 10, label: "10% OFF Comunidad TravelApp" },
+  TRAVIS10: { percent: 10, label: "10% OFF Beneficio Travis" },
+  EXPERIENCE15: { percent: 15, label: "15% OFF Lanzamiento Experience" },
+  BIENVENIDO: { percent: 10, label: "10% OFF Primera Reserva" },
+};
+
+const DEFAULT_EXPERIENCES: ExperienceItem[] = [
   {
-    id: "tour-salinas-grandes",
-    title: "Salinas Grandes, Purmamarca & Los Colorados",
-    category: "Puna & Quebrada",
-    destination: "Jujuy, Argentina",
-    duration: "Día Completo (10 hs)",
-    difficulty: "Fácil",
-    imageUrl:
-      "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1200&q=90",
-    priceArs: 48500,
-    priceUsd: 40,
-    pointsEarned: 485,
-    rating: 5.0,
-    badge: "Más Elegido",
-    includedServices: [
-      "Pick-up en tu hotel",
-      "Guía matriculado bilingüe",
-      "Paseo por Cuesta de Lipán",
-      "Seguro de asistencia",
-    ],
-    installmentsText: "12 cuotas fijas de $5.200",
-    url: "/landing/experience/marketplace?id=salinas-grandes",
-  },
-  {
-    id: "tour-cafayate-bodegas",
-    title: "Cafayate, Quebrada de las Conchas & Bodegas",
-    category: "Ruta del Vino",
-    destination: "Salta, Argentina",
-    duration: "Día Completo (9 hs)",
-    difficulty: "Fácil",
-    imageUrl:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=90",
-    priceArs: 45000,
-    priceUsd: 38,
-    pointsEarned: 450,
-    rating: 4.9,
-    badge: "Gastronomía & Vinos",
-    includedServices: [
-      "Visita Anfiteatro y Garganta",
-      "Degustación en 2 bodegas",
-      "Pick-up en hotel céntrico",
-      "Almuerzo criollo opcional",
-    ],
-    installmentsText: "12 cuotas fijas de $4.850",
-    url: "/landing/experience/marketplace?id=cafayate-bodegas",
-  },
-  {
-    id: "tour-hornocal-humahuaca",
-    title: "Serranía del Hornocal (14 Colores) & Humahuaca",
-    category: "Aventura Andina",
-    destination: "Humahuaca, Jujuy",
+    id: "exp-salinas-purmamarca",
+    title: "Salinas Grandes",
+    region: "Salta & Jujuy",
+    category: "Alta Montaña",
+    description:
+      "Descubre la inmensidad blanca y el Cerro de los 7 Colores.",
+    detail:
+      "Purmamarca, Paseo de los Colorados, Cuesta de Lipán (4.170 msnm) y desierto de sal con guía matriculado.",
     duration: "Día Completo (12 hs)",
-    difficulty: "Moderada",
+    difficulty: "Baja",
+    minPassengers: 2,
+    price: 98000,
+    currency: "ARS",
+    rating: 4.9,
+    reviewsCount: 342,
+    cardTheme: "dark",
     imageUrl:
-      "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1200&q=90",
-    priceArs: 58000,
-    priceUsd: 48,
-    pointsEarned: 580,
-    rating: 5.0,
-    badge: "Imperdible 2026",
-    includedServices: [
-      "Traslado en 4x4 a 4.350 msnm",
-      "Guía de comunidad andina",
-      "Visita Tilcara y Uquía",
-      "Kit de hidratación",
+      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1800&q=90",
+    images: [
+      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1800&q=90",
+      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1800&q=90",
     ],
-    installmentsText: "12 cuotas fijas de $6.200",
-    url: "/landing/experience/marketplace?id=hornocal-humahuaca",
+    includes: [
+      "Pick-up por hotel",
+      "Guía bilingüe matriculado",
+      "Seguro de pasajero en tránsito",
+    ],
   },
   {
-    id: "tour-cachi-cardones",
-    title: "Cachi por Cuesta del Obispo & Los Cardones",
-    category: "Valles Calchaquíes",
-    destination: "Cachi, Salta",
+    id: "exp-cafayate-bodegas",
+    title: "Bodegas de Cafayate",
+    region: "Salta",
+    category: "Enoturismo",
+    description:
+      "Descubre la magia de la Quebrada de las Conchas y vinos de altura.",
+    detail:
+      "Garganta del Diablo, El Anfiteatro, visita y degustación en 2 bodegas boutique de los Valles Calchaquíes.",
+    duration: "Día Completo (11 hs)",
+    difficulty: "Baja",
+    minPassengers: 2,
+    price: 85000,
+    currency: "ARS",
+    rating: 4.9,
+    reviewsCount: 289,
+    cardTheme: "dark",
+    imageUrl:
+      "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1800&q=90",
+    images: [
+      "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1800&q=90",
+      "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1800&q=90",
+    ],
+    includes: [
+      "Degustación en 2 bodegas",
+      "Guía especializado",
+      "Traslado ejecutivo",
+    ],
+  },
+  {
+    id: "exp-tafi-quilmes",
+    title: "Tafí del Valle y Quilmes",
+    region: "Tucumán",
+    category: "Cultura & Arqueología",
+    description:
+      "Selva de yungas, valles de altura y la Ciudad Sagrada de Quilmes.",
+    detail:
+      "Quebrada de los Sosa, El Indio, Tafí del Valle, Abra del Infiernillo (3.042 msnm) y sitio arqueológico Quilmes.",
     duration: "Día Completo (10 hs)",
-    difficulty: "Fácil",
-    imageUrl:
-      "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1200&q=90",
-    priceArs: 46000,
-    priceUsd: 39,
-    pointsEarned: 460,
-    rating: 4.9,
-    badge: "Paisaje Mágico",
-    includedServices: [
-      "Piedra del Molino 3.348 msnm",
-      "Parque Nacional Los Cardones",
-      "Tiempo libre en Cachi histórico",
-      "Guía y seguro incluidos",
-    ],
-    installmentsText: "12 cuotas fijas de $4.950",
-    url: "/landing/experience/marketplace?id=cachi-cardones",
-  },
-  {
-    id: "tour-tafi-quilmes",
-    title: "Tafí del Valle & Ruinas Sagradas de Quilmes",
-    category: "Historia & Yungas",
-    destination: "Tucumán, Argentina",
-    duration: "Día Completo (9 hs)",
-    difficulty: "Fácil",
-    imageUrl:
-      "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=90",
-    priceArs: 42000,
-    priceUsd: 35,
-    pointsEarned: 420,
+    difficulty: "Baja",
+    minPassengers: 2,
+    price: 79000,
+    currency: "ARS",
     rating: 4.8,
-    badge: "Arqueología Ancestral",
-    includedServices: [
-      "Quebrada de Los Sosa y El Indio",
-      "Visita Museo de Quilmes",
-      "Dique La Angostura",
-      "Coordinación profesional",
+    reviewsCount: 412,
+    cardTheme: "light-ice",
+    imageUrl:
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1800&q=90",
+    images: [
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1800&q=90",
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1800&q=90",
     ],
-    installmentsText: "12 cuotas fijas de $4.500",
-    url: "/landing/experience/marketplace?id=tafi-quilmes",
+    includes: [
+      "Ingreso a Ciudad Sagrada de Quilmes",
+      "Guía oficial",
+      "Pick-up en hotel",
+    ],
   },
   {
-    id: "tour-cabalgata-calchaqui",
-    title: "Cabalgata Calchaquí, Atardecer & Fogón Criollo",
-    category: "Turismo Activo",
-    destination: "San Lorenzo / Salta",
-    duration: "Medio Día (4 hs)",
-    difficulty: "Fácil",
-    imageUrl:
-      "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?auto=format&fit=crop&w=1200&q=90",
-    priceArs: 38000,
-    priceUsd: 32,
-    pointsEarned: 380,
-    rating: 4.9,
-    badge: "Apto Familia",
-    includedServices: [
-      "Caballos mansos y casco",
-      "Empanadas salteñas y vino",
-      "Guía baquiano local",
-      "Fotos de recuerdo",
-    ],
-    installmentsText: "12 cuotas fijas de $4.100",
-    url: "/landing/experience/marketplace?id=cabalgata-calchaqui",
-  },
-  {
-    id: "tour-yungas-trekking",
-    title: "Trekking en Yungas & Cascadas Escondidas",
-    category: "Ecoturismo",
-    destination: "Yungas Tucumanas",
-    duration: "Medio Día (5 hs)",
-    difficulty: "Moderada",
-    imageUrl:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=90",
-    priceArs: 32000,
-    priceUsd: 28,
-    pointsEarned: 320,
-    rating: 4.8,
-    badge: "Naturaleza Pura",
-    includedServices: [
-      "Bastones de trekking",
-      "Snack energético y frutas",
-      "Guía de montaña certificado",
-      "Baño en cascada natural",
-    ],
-    installmentsText: "12 cuotas fijas de $3.450",
-    url: "/landing/experience/marketplace?id=yungas-trekking",
-  },
-  {
-    id: "tour-iruya-travesia",
-    title: "Travesía Iruya: El Pueblo Colgado del Cerro",
-    category: "Alta Aventura",
-    destination: "Iruya, Salta / Jujuy",
-    duration: "2 Días / 1 Noche",
-    difficulty: "Aventura",
-    imageUrl:
-      "https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=1200&q=90",
-    priceArs: 98000,
-    priceUsd: 82,
-    pointsEarned: 980,
+    id: "exp-humahuaca-hornocal",
+    title: "Hornocal 14 Colores",
+    region: "Jujuy",
+    category: "Patrimonio UNESCO",
+    description:
+      "Expedición panorámica a 4.350 metros en la Quebrada de Humahuaca.",
+    detail:
+      "Tilcara, Trópico de Capricornio, Iglesia de Uquía, Humahuaca y ascenso 4x4 al Mirador del Hornocal.",
+    duration: "Día Completo (12 hs)",
+    difficulty: "Media",
+    minPassengers: 2,
+    price: 105000,
+    currency: "ARS",
     rating: 5.0,
-    badge: "Experiencia Exclusiva",
-    includedServices: [
-      "Transporte 4x4 de alta montaña",
-      "Noche de posada colonial",
-      "Trekking a San Isidro",
-      "Pensión completa regional",
+    reviewsCount: 518,
+    cardTheme: "light-sky",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1800&q=90",
+    images: [
+      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1800&q=90",
+      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1800&q=90",
     ],
-    installmentsText: "12 cuotas fijas de $10.500",
-    url: "/landing/experience/marketplace?id=iruya-travesia",
+    includes: [
+      "Ascenso 4x4 al Mirador del Hornocal",
+      "Visita a Tilcara y Uquía",
+      "Seguro de altura",
+    ],
+  },
+  {
+    id: "exp-cachi-cardones",
+    title: "Cachi y Los Cardones",
+    region: "Salta",
+    category: "Naturaleza & Paisajes",
+    description:
+      "Cuesta del Obispo, Recta del Tin-Tin y pueblo histórico de Cachi.",
+    detail:
+      "Quebrada de Escoipe, Piedra del Molino (3.348 msnm), Parque Nacional Los Cardones y casco histórico colonial.",
+    duration: "Día Completo (10 hs)",
+    difficulty: "Baja",
+    minPassengers: 2,
+    price: 84000,
+    currency: "ARS",
+    rating: 4.9,
+    reviewsCount: 195,
+    cardTheme: "dark",
+    imageUrl:
+      "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1800&q=90",
+    images: [
+      "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1800&q=90",
+    ],
+    includes: [
+      "Cuesta del Obispo y Piedra del Molino",
+      "Parque Nacional Los Cardones",
+      "Guía matriculado",
+    ],
+  },
+  {
+    id: "exp-campo-piedra-pomez",
+    title: "Piedra Pómez 4x4",
+    region: "Catamarca",
+    category: "Expedición 4x4",
+    description:
+      "Travesía exclusiva por el laberinto volcánico de la Puna.",
+    detail:
+      "Expedición en camionetas 4x4 por El Peñón, Campo de Piedra Pómez, dunas blancas y Laguna Carachi Pampa.",
+    duration: "Día Completo (11 hs)",
+    difficulty: "Alta",
+    minPassengers: 3,
+    price: 165000,
+    currency: "ARS",
+    rating: 5.0,
+    reviewsCount: 124,
+    cardTheme: "light-ice",
+    imageUrl:
+      "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1800&q=90",
+    images: [
+      "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1800&q=90",
+    ],
+    includes: [
+      "Camioneta 4x4 equipada",
+      "Guía experto en Puna",
+      "Permisos de reserva natural",
+    ],
   },
 ];
 
-export function ExperienceCatalogCarousel({
-  currency = "ARS",
-  items,
-}: ExperienceCatalogCarouselProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const activeItems = items && items.length > 0 ? items : DEFAULT_RECEPTIVE_TOURS;
+function isVideoItem(item: ExperienceItem): boolean {
+  if (item.mediaType === "video" || Boolean(item.videoUrl)) return true;
+  return Boolean(item.imageUrl?.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i));
+}
 
-  const handleScroll = () => {
-    if (scrollRef.current) {
-      const scrollLeft = scrollRef.current.scrollLeft;
-      const cardWidth = 320;
-      const newIdx = Math.round(scrollLeft / cardWidth);
-      setActiveIdx(Math.min(Math.max(newIdx, 0), activeItems.length - 1));
+function resolveCardTheme(
+  exp: ExperienceItem,
+  index: number
+): "dark" | "light-ice" | "light-sky" {
+  if (exp.cardTheme) return exp.cardTheme;
+  const row = Math.floor(index / 2);
+  if (row % 2 === 0) return "dark";
+  return index % 2 === 0 ? "light-ice" : "light-sky";
+}
+
+interface ExperienceCatalogCarouselProps {
+  filters?: ExcursionSearchFilters;
+  onOpenConsultar?: (experienceTitle?: string) => void;
+}
+
+export function ExperienceCatalogCarousel({
+  filters,
+  onOpenConsultar,
+}: ExperienceCatalogCarouselProps) {
+  const [experiences, setExperiences] =
+    useState<ExperienceItem[]>(DEFAULT_EXPERIENCES);
+  const [hotelsList, setHotelsList] = useState<string[]>(DEFAULT_HOTELS);
+  const [firestoreDiscounts, setFirestoreDiscounts] = useState<
+    Record<string, { percent: number; label: string }>
+  >({});
+
+  // Índice de imagen activa por tarjeta cuando tiene múltiples imágenes
+  const [activeImageByCard, setActiveImageByCard] = useState<
+    Record<string, number>
+  >({});
+
+  // Modal "Reservar / Comprar"
+  const [bookingExp, setBookingExp] = useState<ExperienceItem | null>(null);
+  const [paxCount, setPaxCount] = useState<number>(2);
+  const [passengerNames, setPassengerNames] = useState<string[]>(["", ""]);
+  const [passengerPhone, setPassengerPhone] = useState("");
+  const [selectedHotel, setSelectedHotel] = useState("");
+  const [customOriginAddress, setCustomOriginAddress] = useState("");
+  const [bookingDate, setBookingDate] = useState("");
+
+  // Código de descuento y NAVE
+  const [discountCodeInput, setDiscountCodeInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    percent: number;
+    label: string;
+  } | null>(null);
+  const [discountError, setDiscountError] = useState("");
+
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [submittingMode, setSubmittingMode] = useState<
+    "reservar" | "comprar" | null
+  >(null);
+
+  // Sincronización con el panel TravelApp Experience Receptivo y CMS Web (Concorde 360)
+  useEffect(() => {
+    const unsubExp = onSnapshot(
+      collection(db, "experiences"),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const loaded = snapshot.docs.map((docSnap, idx) => {
+            const d = docSnap.data();
+            const fallback =
+              DEFAULT_EXPERIENCES[idx % DEFAULT_EXPERIENCES.length];
+            const gallery: string[] =
+              Array.isArray(d.images) && d.images.length > 0
+                ? d.images
+                : [d.imageUrl || fallback.imageUrl];
+            return {
+              id: docSnap.id,
+              title: d.name || d.title || fallback.title,
+              region: d.location || d.region || fallback.region,
+              category: d.category || d.type || fallback.category,
+              description: d.description || fallback.description,
+              detail:
+                d.detail ||
+                d.details ||
+                d.shortDetail ||
+                (Array.isArray(d.includes) && d.includes.length > 0
+                  ? d.includes.join(" · ")
+                  : fallback.detail),
+              duration: d.duration || fallback.duration,
+              difficulty: d.difficulty || d.dificultad || fallback.difficulty,
+              minPassengers: Number(
+                d.minPassengers || d.minPax || fallback.minPassengers || 2
+              ),
+              price: Number(d.price || d.basePrice || fallback.price),
+              currency: d.currency || "ARS",
+              rating: Number(d.rating || 4.9),
+              reviewsCount: Number(d.reviewsCount || 120),
+              imageUrl: gallery[0],
+              images: gallery,
+              videoUrl: d.videoUrl || "",
+              mediaType: d.mediaType || (d.videoUrl ? "video" : "image"),
+              cardTheme: d.cardTheme || undefined,
+              badge: d.badge || "Destacada",
+              includes: Array.isArray(d.includes)
+                ? d.includes
+                : fallback.includes,
+              itinerary: Array.isArray(d.itinerary) ? d.itinerary : undefined,
+            } as ExperienceItem;
+          });
+          setExperiences(loaded);
+        }
+      },
+      () => {}
+    );
+
+    // Listado de hoteles cargados desde Firestore (si existen en pickup_hotels)
+    const unsubHotels = onSnapshot(
+      collection(db, "pickup_hotels"),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const loadedHotels = snapshot.docs
+            .map((docSnap) => {
+              const data = docSnap.data();
+              return data.name
+                ? data.city
+                  ? `${data.name} (${data.city})`
+                  : String(data.name)
+                : "";
+            })
+            .filter(Boolean);
+          if (loadedHotels.length > 0) {
+            setHotelsList(
+              Array.from(new Set([...loadedHotels, ...DEFAULT_HOTELS]))
+            );
+          }
+        }
+      },
+      () => {}
+    );
+
+    // Códigos de descuento desde Firestore (si existen en discount_codes)
+    const unsubDiscounts = onSnapshot(
+      collection(db, "discount_codes"),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const map: Record<string, { percent: number; label: string }> = {};
+          snapshot.docs.forEach((docSnap) => {
+            const d = docSnap.data();
+            if (d.active !== false && d.code) {
+              map[String(d.code).toUpperCase().trim()] = {
+                percent: Number(d.percent || d.discountPercent || 10),
+                label: d.label || d.description || "Descuento aplicado",
+              };
+            }
+          });
+          setFirestoreDiscounts(map);
+        }
+      },
+      () => {}
+    );
+
+    return () => {
+      unsubExp();
+      unsubHotels();
+      unsubDiscounts();
+    };
+  }, []);
+
+  const filteredExperiences = experiences.filter((exp) => {
+    if (!filters) return true;
+    const matchOrigen =
+      !filters.origen ||
+      exp.region.toLowerCase().includes(filters.origen.toLowerCase()) ||
+      exp.title.toLowerCase().includes(filters.origen.toLowerCase()) ||
+      exp.description.toLowerCase().includes(filters.origen.toLowerCase());
+
+    const matchTiempo =
+      !filters.tiempoExcursion ||
+      exp.duration
+        .toLowerCase()
+        .includes(filters.tiempoExcursion.split(" ")[0].toLowerCase());
+
+    return matchOrigen && matchTiempo;
+  });
+
+  const openBookingModal = (exp: ExperienceItem) => {
+    const initialPax = Math.max(1, exp.minPassengers || 2);
+    setBookingExp(exp);
+    setPaxCount(initialPax);
+    setPassengerNames(Array(initialPax).fill(""));
+    setPassengerPhone("");
+    setSelectedHotel("");
+    setCustomOriginAddress("");
+    setDiscountCodeInput("");
+    setAppliedDiscount(null);
+    setDiscountError("");
+    setBookingSuccess(false);
+  };
+
+  const handlePaxCountChange = (newCount: number) => {
+    const minPax = bookingExp?.minPassengers || 1;
+    const safeCount = Math.max(minPax, Math.min(30, newCount));
+    setPaxCount(safeCount);
+    setPassengerNames((prev) => {
+      const next = [...prev];
+      if (safeCount > next.length) {
+        while (next.length < safeCount) next.push("");
+      } else if (safeCount < next.length) {
+        next.length = safeCount;
+      }
+      return next;
+    });
+  };
+
+  const handlePassengerNameChange = (index: number, value: string) => {
+    setPassengerNames((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const handleApplyDiscount = () => {
+    setDiscountError("");
+    const clean = discountCodeInput.toUpperCase().trim();
+    if (!clean) {
+      setAppliedDiscount(null);
+      return;
+    }
+    const allCodes = { ...BUILTIN_DISCOUNT_CODES, ...firestoreDiscounts };
+    const found = allCodes[clean];
+    if (found) {
+      setAppliedDiscount({
+        code: clean,
+        percent: found.percent,
+        label: found.label,
+      });
+    } else {
+      setAppliedDiscount(null);
+      setDiscountError("El código ingresado no es válido o ha expirado.");
     }
   };
 
-  const scroll = (direction: "left" | "right") => {
-    if (scrollRef.current) {
-      const offset = direction === "left" ? -340 : 340;
-      scrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
+  const selectedDateDeadlineInfo = React.useMemo(() => {
+    if (!bookingDate) return null;
+    const calc = calculateTimeToPayDeadline(bookingDate);
+    const remaining = getTimeRemainingInfo(calc.deadlineIso);
+    return {
+      deadline: new Date(calc.deadlineIso),
+      label: calc.label,
+      remainingLabel: remaining?.label || `${calc.hours} hs para confirmar`,
+    };
+  }, [bookingDate]);
+
+  const subtotalAmount = bookingExp ? bookingExp.price * paxCount : 0;
+  const discountAmount = appliedDiscount
+    ? Math.round((subtotalAmount * appliedDiscount.percent) / 100)
+    : 0;
+  const finalAmount = Math.max(0, subtotalAmount - discountAmount);
+
+  const resolveOriginString = () => {
+    if (selectedHotel === "OTRO") {
+      return customOriginAddress.trim()
+        ? `Dirección: ${customOriginAddress.trim()}`
+        : "Otra dirección (a confirmar)";
+    }
+    return selectedHotel || "A confirmar";
+  };
+
+  // Acción 1: Botón "Reservar" (bloquea cupo manteniendo el tiempo de reserva configurado)
+  const handleReserveOnly = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingExp) return;
+    setSubmittingMode("reservar");
+
+    const paymentDeadline = calculateTimeToPayDeadline(
+      bookingDate || undefined
+    );
+    const leadPassenger =
+      passengerNames[0]?.trim() || "Pasajero TravelApp Experience";
+    const resolvedOrigin = resolveOriginString();
+
+    try {
+      await addDoc(collection(db, "experience_reservations"), {
+        experienceId: bookingExp.id,
+        experienceTitle: bookingExp.title,
+        region: bookingExp.region,
+        passengerName: leadPassenger,
+        passengerNames: passengerNames.map((n) => n.trim()).filter(Boolean),
+        passengerPhone,
+        passengerHotel: resolvedOrigin,
+        originType: selectedHotel === "OTRO" ? "CUSTOM_ADDRESS" : "HOTEL",
+        bookingDate: bookingDate || null,
+        paxCount,
+        unitPrice: bookingExp.price,
+        subtotalAmount,
+        discountCode: appliedDiscount?.code || null,
+        discountAmount,
+        totalAmount: finalAmount,
+        currency: bookingExp.currency,
+        status: "RESERVED_WAITING_PAYMENT",
+        timeToPayDeadline: paymentDeadline.deadlineIso,
+        source: "WEB_EXPERIENCE_LANDING",
+        createdAt: serverTimestamp(),
+      });
+
+      await addDoc(collection(db, "contracted_trips"), {
+        type: "EXCURSION_RECEPTIVA",
+        title: bookingExp.title,
+        region: bookingExp.region,
+        clientName: leadPassenger,
+        passengerList: passengerNames.map((n) => n.trim()).filter(Boolean),
+        clientPhone: passengerPhone,
+        hotelPickup: resolvedOrigin,
+        serviceDate: bookingDate || null,
+        passengers: paxCount,
+        totalPrice: finalAmount,
+        paymentDeadline: paymentDeadline.deadlineIso,
+        status: "PENDING",
+        createdAt: serverTimestamp(),
+      });
+
+      setBookingSuccess(true);
+    } catch {
+      const text = `*Reserva Excursión - TravelApp Experience*
+• *Excursión:* ${bookingExp.title}
+• *Pasajeros (${paxCount}):* ${passengerNames.filter(Boolean).join(", ")}
+• *Teléfono / WhatsApp:* ${passengerPhone}
+• *Origen:* ${resolvedOrigin}
+• *Total:* $${finalAmount.toLocaleString("es-AR")} ${bookingExp.currency}`;
+      window.open(
+        `https://wa.me/5493812000712?text=${encodeURIComponent(text)}`,
+        "_blank"
+      );
+      setBookingSuccess(true);
+    } finally {
+      setSubmittingMode(null);
+    }
+  };
+
+  // Acción 2: Botón "Comprar" (aplica descuento si existe y enlaza con NAVE)
+  const handleBuyWithNave = async () => {
+    if (!bookingExp) return;
+
+    const leadPassenger = passengerNames[0]?.trim();
+    if (!leadPassenger || !passengerPhone.trim() || !selectedHotel) {
+      alert(
+        "Por favor completá los nombres de los pasajeros, teléfono/WhatsApp y el origen antes de continuar al pago con NAVE."
+      );
+      return;
+    }
+    if (selectedHotel === "OTRO" && !customOriginAddress.trim()) {
+      alert("Por favor ingresá la dirección de retiro en el campo de dirección.");
+      return;
+    }
+
+    setSubmittingMode("comprar");
+    const paymentDeadline = calculateTimeToPayDeadline(
+      bookingDate || undefined
+    );
+    const resolvedOrigin = resolveOriginString();
+    const externalPaymentId = `EXP-${Date.now()}`;
+
+    let reservationDocId = "";
+    try {
+      const docRef = await addDoc(collection(db, "experience_reservations"), {
+        experienceId: bookingExp.id,
+        experienceTitle: bookingExp.title,
+        region: bookingExp.region,
+        passengerName: leadPassenger,
+        passengerNames: passengerNames.map((n) => n.trim()).filter(Boolean),
+        passengerPhone,
+        passengerHotel: resolvedOrigin,
+        originType: selectedHotel === "OTRO" ? "CUSTOM_ADDRESS" : "HOTEL",
+        bookingDate: bookingDate || null,
+        paxCount,
+        unitPrice: bookingExp.price,
+        subtotalAmount,
+        discountCode: appliedDiscount?.code || null,
+        discountPercent: appliedDiscount?.percent || 0,
+        discountAmount,
+        totalAmount: finalAmount,
+        currency: bookingExp.currency,
+        paymentGateway: "NAVE",
+        externalPaymentId,
+        status: "INITIATED_NAVE_CHECKOUT",
+        timeToPayDeadline: paymentDeadline.deadlineIso,
+        source: "WEB_EXPERIENCE_LANDING",
+        createdAt: serverTimestamp(),
+      });
+      reservationDocId = docRef.id;
+    } catch {
+      // Continúa hacia la pasarela NAVE aún si Firestore está en modo lectura
+    }
+
+    try {
+      const response = await fetch("/api/checkout/nave-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          externalPaymentId,
+          amount: finalAmount,
+          currency: bookingExp.currency || "ARS",
+          productName: `${bookingExp.title} (${paxCount} ${
+            paxCount === 1 ? "pasajero" : "pasajeros"
+          })`,
+          productDescription: `Excursión ${bookingExp.title} - Origen: ${resolvedOrigin}${
+            appliedDiscount ? ` - Descuento ${appliedDiscount.code}` : ""
+          }`,
+          buyer: {
+            name: leadPassenger,
+            phone: passengerPhone,
+          },
+          reservationId: reservationDocId || externalPaymentId,
+        }),
+      });
+
+      const data = await response.json();
+      if (data?.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+    } catch (err) {
+      console.error("Error conectando con NAVE:", err);
+    } finally {
+      setSubmittingMode(null);
     }
   };
 
   return (
-    <section id="experiencias-destacadas" className="py-12 sm:py-24 bg-white font-sans">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Encabezado Editorial Receptivo */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-10">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 text-[#ff4f5a] text-xs font-bold uppercase mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-[#ff4f5a]" />
-              <span>Turismo Receptivo · Salidas Confirmadas</span>
-            </div>
-            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
-              Experiencias Auténticas en el Norte
-            </h2>
-            <p className="text-xs sm:text-base text-slate-500 font-medium mt-1.5 sm:mt-2 max-w-2xl">
-              Excursiones guiadas con pick-up en hotel, baquianos locales, seguros de montaña y el respaldo de TravelApp Experience.
-            </p>
-          </div>
+    <section id="catalogo-excursiones" className="w-full bg-white">
+      {/* GRILLA DE 2 COLUMNAS ESTILO APPLE.COM/LA (CONTENIDO GESTIONADO DESDE CONCORDE 360 / RECEPTIVO) */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white">
+        {filteredExperiences.map((exp, idx) => {
+          const showVideo = isVideoItem(exp);
+          const videoSrc = exp.videoUrl || exp.imageUrl;
+          const theme = resolveCardTheme(exp, idx);
+          const isDark = theme === "dark";
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => scroll("left")}
-              aria-label="Ver excursión anterior"
-              className="p-2.5 sm:p-3 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          const gallery =
+            exp.images && exp.images.length > 0 ? exp.images : [exp.imageUrl];
+          const activeImgIdx = activeImageByCard[exp.id] || 0;
+          const currentImageUrl = gallery[activeImgIdx] || exp.imageUrl;
+
+          return (
+            <article
+              key={exp.id}
+              className={`group relative min-h-[600px] sm:min-h-[630px] w-full overflow-hidden select-none flex flex-col items-center justify-between text-center pt-10 sm:pt-12 ${
+                isDark
+                  ? "bg-black text-white"
+                  : theme === "light-sky"
+                  ? "bg-gradient-to-b from-[#bce1f7] via-[#dcf0fc] to-[#f4f9fd] text-[#1d1d1f]"
+                  : "bg-gradient-to-b from-[#d8ecf8] via-[#eaf4fc] to-[#f5f7fa] text-[#1d1d1f]"
+              }`}
             >
-              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scroll("right")}
-              aria-label="Ver excursión siguiente"
-              className="p-2.5 sm:p-3 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Carrusel de Tarjetas Receptivas */}
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 pt-2 scrollbar-none overscroll-x-contain select-none snap-x snap-proximity scroll-smooth"
-        >
-          {activeItems.map((item) => {
-            const formattedPrice =
-              currency === "ARS"
-                ? `$${item.priceArs.toLocaleString("es-AR")}`
-                : `u$s ${item.priceUsd}`;
-
-            return (
-              <div
-                key={item.id}
-                className="flex-none w-[82vw] max-w-[340px] sm:w-[350px] bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 flex flex-col snap-start group"
-              >
-                {/* 1. Fotografía HD con Badges */}
-                <div className="relative h-60 w-full overflow-hidden bg-slate-900">
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.title}
-                    fill
-                    sizes="(max-width: 768px) 300px, 350px"
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                  />
-
-                  {/* Badge de Dificultad */}
-                  <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-bold shadow-sm">
-                    <Mountain className="w-3.5 h-3.5 text-[#ff4f5a]" />
-                    <span>Dificultad: {item.difficulty}</span>
-                  </div>
-
-                  {/* Badge de Promoción si existe */}
-                  {item.badge && (
-                    <div className="absolute top-3 right-3 z-10 px-3 py-1 rounded-full bg-[#ff4f5a] text-white text-[11px] font-extrabold uppercase tracking-wide shadow-md">
-                      {item.badge}
-                    </div>
+              {/* MODO 1: TARJETA OSCURA FULL-BLEED (Como Apple Watch / AirPods en la referencia) */}
+              {isDark && (
+                <div className="absolute inset-0 z-0">
+                  {showVideo ? (
+                    <video
+                      src={videoSrc}
+                      poster={currentImageUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                    />
+                  ) : (
+                    <img
+                      src={currentImageUrl}
+                      alt={exp.title}
+                      className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                    />
                   )}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/45 to-black/60" />
+                </div>
+              )}
 
-                  {/* Duración al pie de la foto */}
-                  <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white/90 backdrop-blur-xs text-slate-800 text-[11px] font-bold">
-                    <Clock className="w-3 h-3 text-[#ff4f5a]" />
-                    <span>{item.duration}</span>
-                  </div>
+              {/* Controles de galería si la tarjeta tiene múltiples imágenes (Modo oscuro) */}
+              {isDark && !showVideo && gallery.length > 1 && (
+                <div className="absolute bottom-4 inset-x-0 z-20 flex items-center justify-center gap-1.5">
+                  {gallery.map((_, imgI) => (
+                    <button
+                      key={imgI}
+                      type="button"
+                      onClick={() =>
+                        setActiveImageByCard((prev) => ({
+                          ...prev,
+                          [exp.id]: imgI,
+                        }))
+                      }
+                      aria-label={`Ver imagen ${imgI + 1}`}
+                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                        activeImgIdx === imgI
+                          ? "w-5 bg-white"
+                          : "w-1.5 bg-white/45 hover:bg-white/75"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* BLOQUE SUPERIOR DE INFORMACIÓN DE LA TARJETA */}
+              <div className="relative z-20 max-w-xl mx-auto px-6 flex flex-col items-center">
+                {/* 1. TÍTULO O NOMBRE */}
+                <h3
+                  className={`text-[30px] sm:text-[38px] font-semibold tracking-[-0.02em] leading-[1.08] ${
+                    isDark ? "text-white" : "text-[#1d1d1f]"
+                  }`}
+                >
+                  {exp.title}
+                </h3>
+
+                {/* 2. DESCRIPCIÓN */}
+                <p
+                  className={`mt-1.5 text-[16px] sm:text-[18px] font-normal tracking-[-0.01em] leading-[1.25] max-w-md ${
+                    isDark ? "text-white/95" : "text-[#1d1d1f]"
+                  }`}
+                >
+                  {exp.description}
+                </p>
+
+                {/* 3. DETALLE */}
+                <p
+                  className={`mt-1.5 text-[13px] sm:text-[14px] font-normal leading-relaxed max-w-lg ${
+                    isDark ? "text-white/75" : "text-[#424245]"
+                  }`}
+                >
+                  {exp.detail}
+                </p>
+
+                {/* 4. DURACIÓN · DIFICULTAD · CANTIDAD MÍNIMA DE PASAJEROS */}
+                <div
+                  className={`mt-3 flex flex-wrap items-center justify-center gap-2 text-[12px] font-medium ${
+                    isDark ? "text-white/85" : "text-[#1d1d1f]/80"
+                  }`}
+                >
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full ${
+                      isDark
+                        ? "bg-white/15 backdrop-blur-md"
+                        : "bg-black/[0.06]"
+                    }`}
+                  >
+                    Duración: {exp.duration}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full ${
+                      isDark
+                        ? "bg-white/15 backdrop-blur-md"
+                        : "bg-black/[0.06]"
+                    }`}
+                  >
+                    Dificultad: {exp.difficulty}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full ${
+                      isDark
+                        ? "bg-white/15 backdrop-blur-md"
+                        : "bg-black/[0.06]"
+                    }`}
+                  >
+                    Mín. {exp.minPassengers}{" "}
+                    {exp.minPassengers === 1 ? "pasajero" : "pasajeros"}
+                  </span>
                 </div>
 
-                {/* 2. Cuerpo Editorial de la Tarjeta */}
-                <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5">
-                      <span className="text-[#ff4f5a] font-extrabold uppercase tracking-wider text-[11px]">
-                        {item.category}
-                      </span>
-                      <span className="flex items-center gap-1 text-slate-600">
-                        <MapPin className="w-3.5 h-3.5 text-[#ff4f5a]" />
-                        {item.destination}
-                      </span>
+                {/* 5. PRECIO DESDE */}
+                <p
+                  className={`mt-2.5 text-[15px] sm:text-[16px] font-semibold tracking-[-0.01em] ${
+                    isDark ? "text-white" : "text-[#1d1d1f]"
+                  }`}
+                >
+                  Precio desde: ${exp.price.toLocaleString("es-AR")}{" "}
+                  {exp.currency}
+                </p>
+
+                {/* 6. BOTONES PÍLDORA APPLE: "Consultar" y "Reservar" */}
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onOpenConsultar?.(exp.title)}
+                    className="px-[22px] py-[8px] rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-[14px] font-normal tracking-[-0.01em] transition-colors cursor-pointer"
+                  >
+                    Consultar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openBookingModal(exp)}
+                    className={`px-[22px] py-[8px] rounded-full text-[14px] font-normal tracking-[-0.01em] transition-colors cursor-pointer ${
+                      isDark
+                        ? "border border-[#2997ff] text-[#2997ff] hover:bg-[#0071e3] hover:border-[#0071e3] hover:text-white"
+                        : "border border-[#0071e3] text-[#0071e3] hover:bg-[#0071e3] hover:text-white"
+                    }`}
+                  >
+                    Reservar
+                  </button>
+                </div>
+              </div>
+
+              {/* MODO 2: IMAGEN / GALERÍA CENTRADA ABAJO EN TARJETAS CLARAS (Igual a MacBook Air / iPad Air) */}
+              {!isDark && (
+                <div className="relative z-10 w-full px-6 sm:px-10 pb-6 pt-4 flex items-end justify-center flex-1">
+                  <div className="relative w-full max-w-[460px] h-[230px] sm:h-[260px] rounded-2xl overflow-hidden shadow-[0_20px_45px_rgba(0,0,0,0.14)]">
+                    {showVideo ? (
+                      <video
+                        src={videoSrc}
+                        poster={currentImageUrl}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <img
+                        src={currentImageUrl}
+                        alt={exp.title}
+                        className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                      />
+                    )}
+
+                    {!showVideo && gallery.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveImageByCard((prev) => ({
+                              ...prev,
+                              [exp.id]:
+                                (activeImgIdx - 1 + gallery.length) %
+                                gallery.length,
+                            }))
+                          }
+                          aria-label="Imagen anterior"
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveImageByCard((prev) => ({
+                              ...prev,
+                              [exp.id]: (activeImgIdx + 1) % gallery.length,
+                            }))
+                          }
+                          aria-label="Siguiente imagen"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+
+      {/* MODAL DE RESERVA Y COMPRA DIRECTA CON NAVE */}
+      {bookingExp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl p-6 sm:p-8 text-[#1d1d1f] my-8 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <button
+              type="button"
+              onClick={() => setBookingExp(null)}
+              className="
+                absolute top-5 right-5 w-8 h-8 rounded-full
+                bg-[#f5f5f7] hover:bg-[#e5e5ea] text-[#1d1d1f]
+                flex items-center justify-center transition-colors cursor-pointer
+              "
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {bookingSuccess ? (
+              <div className="py-6 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <h3 className="text-2xl font-semibold text-[#1d1d1f]">
+                  Reserva Registrada
+                </h3>
+                <p className="text-sm text-[#86868b] max-w-md mx-auto">
+                  Tu solicitud para <strong>{bookingExp.title}</strong> ({paxCount}{" "}
+                  {paxCount === 1 ? "pasajero" : "pasajeros"}) quedó registrada
+                  respetando el tiempo de reserva configurado.
+                </p>
+                {selectedDateDeadlineInfo && (
+                  <div className="p-3.5 rounded-2xl bg-[#f5f5f7] text-xs font-medium text-[#1d1d1f]">
+                    Vencimiento de reserva:{" "}
+                    <strong>
+                      {selectedDateDeadlineInfo.deadline.toLocaleString("es-AR")}
+                    </strong>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setBookingExp(null)}
+                  className="px-6 py-2.5 rounded-full bg-[#0071e3] text-white text-sm font-normal cursor-pointer"
+                >
+                  Listo
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="text-xs font-medium text-[#0071e3] mb-1">
+                  Reserva y Compra Online · {bookingExp.region}
+                </div>
+                <h3 className="text-2xl font-semibold text-[#1d1d1f] mb-1">
+                  {bookingExp.title}
+                </h3>
+                <p className="text-xs text-[#86868b] mb-5">
+                  Duración: {bookingExp.duration} · Dificultad:{" "}
+                  {bookingExp.difficulty} · Mín. {bookingExp.minPassengers}{" "}
+                  pasajeros · Precio desde: $
+                  {bookingExp.price.toLocaleString("es-AR")} {bookingExp.currency}
+                </p>
+
+                <form onSubmit={handleReserveOnly} className="space-y-4">
+                  {/* 1. CANTIDAD DE PASAJEROS Y FECHA */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#86868b] mb-1.5">
+                        <Users className="w-3.5 h-3.5 text-[#0071e3]" />
+                        Cantidad de Pasajeros (Mín. {bookingExp.minPassengers})
+                      </label>
+                      <div className="flex items-center border border-[#d2d2d7] rounded-xl overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => handlePaxCountChange(paxCount - 1)}
+                          disabled={paxCount <= (bookingExp.minPassengers || 1)}
+                          className="px-3.5 py-2 bg-[#f5f5f7] hover:bg-[#e5e5ea] disabled:opacity-40 text-sm font-semibold cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min={bookingExp.minPassengers || 1}
+                          max={30}
+                          required
+                          value={paxCount}
+                          onChange={(e) =>
+                            handlePaxCountChange(Number(e.target.value))
+                          }
+                          className="w-full text-center py-2 text-sm font-semibold text-[#1d1d1f] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handlePaxCountChange(paxCount + 1)}
+                          className="px-3.5 py-2 bg-[#f5f5f7] hover:bg-[#e5e5ea] text-sm font-semibold cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
 
-                    <h3 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-[#0a2a5b] transition-colors leading-snug line-clamp-2">
-                      {item.title}
-                    </h3>
+                    <div>
+                      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#86868b] mb-1.5">
+                        <CalendarClock className="w-3.5 h-3.5 text-[#0071e3]" />
+                        Fecha de Salida
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={bookingDate}
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-[#d2d2d7] text-sm text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
+                      />
+                    </div>
+                  </div>
 
-                    {/* Servicios Incluidos */}
-                    <div className="mt-3.5 space-y-1.5 border-t border-slate-100 pt-3">
-                      {item.includedServices.slice(0, 3).map((serv, sIdx) => (
-                        <div
-                          key={sIdx}
-                          className="flex items-center gap-2 text-xs text-slate-600 font-medium"
-                        >
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate">{serv}</span>
+                  {/* 2. NOMBRE Y APELLIDO DINÁMICOS DE ACUERDO A LA CANTIDAD DE PASAJEROS */}
+                  <div className="space-y-2.5 bg-[#f5f5f7] p-4 rounded-2xl">
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#86868b]">
+                      Nombre y Apellido de los Pasajeros ({paxCount})
+                    </label>
+                    <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                      {passengerNames.map((nameVal, pIdx) => (
+                        <div key={pIdx}>
+                          <input
+                            type="text"
+                            required
+                            value={nameVal}
+                            onChange={(e) =>
+                              handlePassengerNameChange(pIdx, e.target.value)
+                            }
+                            placeholder={`Pasajero ${pIdx + 1}${
+                              pIdx === 0 ? " (Titular)" : ""
+                            } — Nombre y Apellido`}
+                            className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#d2d2d7] text-sm text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
+                          />
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* 3. Bloque de Tarifas, Cuotas y Botón de Reserva */}
-                  <div className="mt-5 pt-4 border-t border-slate-100">
-                    <div className="flex items-baseline justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-400">Tarifa por persona</span>
-                      <span className="text-xl sm:text-2xl font-black text-slate-900">
-                        {formattedPrice}
-                      </span>
-                    </div>
-
-                    <div className="text-[11px] font-bold text-emerald-600 mb-3">
-                      {item.installmentsText}
-                    </div>
-
-                    {/* Puntos Rewards */}
-                    <div className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-amber-50 text-amber-900 text-[10px] font-extrabold mb-3 border border-amber-200/60">
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-[#e5a93b]" />
-                        TravelApp Rewards:
-                      </span>
-                      <span className="text-[#e5a93b] font-black">+{item.pointsEarned} pts</span>
-                    </div>
-
-                    <Link
-                      href={item.url}
-                      className="w-full py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-[#0a2a5b] hover:bg-[#071d3f] text-white text-xs sm:text-sm font-extrabold shadow-md transition-all flex items-center justify-center gap-2 group/btn cursor-pointer"
-                    >
-                      <span>Reservar Excursión</span>
-                      <ArrowRight className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform" />
-                    </Link>
+                  {/* 3. TELÉFONO / WHATSAPP */}
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#86868b] mb-1.5">
+                      Teléfono / WhatsApp
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={passengerPhone}
+                      onChange={(e) => setPassengerPhone(e.target.value)}
+                      placeholder="+54 9 381 ..."
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#d2d2d7] text-sm text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
+                    />
                   </div>
-                </div>
+
+                  {/* 4. ORIGEN: LISTADO DE HOTELES + ITEM "OTRO" CON CAMPO DE DIRECCIÓN */}
+                  <div className="space-y-2.5">
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#86868b]">
+                      <MapPin className="w-3.5 h-3.5 text-[#0071e3]" />
+                      Origen (Punto de Retiro / Hotel)
+                    </label>
+                    <select
+                      required
+                      value={selectedHotel}
+                      onChange={(e) => setSelectedHotel(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#d2d2d7] text-sm text-[#1d1d1f] bg-white focus:outline-none focus:border-[#0071e3]"
+                    >
+                      <option value="">Seleccionar hotel de origen...</option>
+                      {hotelsList.map((hotelName) => (
+                        <option key={hotelName} value={hotelName}>
+                          {hotelName}
+                        </option>
+                      ))}
+                      <option value="OTRO">
+                        Otro (Colocar dirección exacta)
+                      </option>
+                    </select>
+
+                    {selectedHotel === "OTRO" && (
+                      <div className="animate-in fade-in duration-150">
+                        <input
+                          type="text"
+                          required
+                          value={customOriginAddress}
+                          onChange={(e) =>
+                            setCustomOriginAddress(e.target.value)
+                          }
+                          placeholder="Ingresá la dirección exacta (Calle, número, localidad)"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-[#0071e3] bg-[#f0f7ff] text-sm text-[#1d1d1f] focus:outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 5. CÓDIGO DE DESCUENTO (PARA COMPRAR) */}
+                  <div className="p-3.5 rounded-2xl border border-[#e5e5ea] bg-[#fafafa] space-y-2">
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#86868b]">
+                      <Tag className="w-3.5 h-3.5 text-[#0071e3]" />
+                      Código de Descuento (Opcional para Compra)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={discountCodeInput}
+                        onChange={(e) =>
+                          setDiscountCodeInput(e.target.value.toUpperCase())
+                        }
+                        placeholder="Ej: TRAVEL10"
+                        className="flex-1 px-3 py-2 rounded-xl border border-[#d2d2d7] bg-white text-xs font-medium uppercase text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyDiscount}
+                        className="px-4 py-2 rounded-xl bg-[#1d1d1f] hover:bg-[#333336] text-white text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        Aplicar
+                      </button>
+                    </div>
+                    {appliedDiscount && (
+                      <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">
+                        <span className="flex items-center gap-1 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {appliedDiscount.code}: {appliedDiscount.label}
+                        </span>
+                        <span className="font-semibold">
+                          -${discountAmount.toLocaleString("es-AR")}
+                        </span>
+                      </div>
+                    )}
+                    {discountError && (
+                      <p className="text-[11px] text-red-600">{discountError}</p>
+                    )}
+                  </div>
+
+                  {/* Aviso de Tiempo de Reserva Configurado */}
+                  {selectedDateDeadlineInfo && (
+                    <div className="p-3 rounded-xl bg-[#f5f5f7] text-xs text-[#1d1d1f] flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-[#0071e3] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold block">
+                          Tiempo de reserva garantizado hasta:{" "}
+                          {selectedDateDeadlineInfo.deadline.toLocaleString(
+                            "es-AR"
+                          )}
+                        </span>
+                        <span className="text-[#86868b]">
+                          {selectedDateDeadlineInfo.label} ·{" "}
+                          {selectedDateDeadlineInfo.remainingLabel}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* RESUMEN DE TOTAL */}
+                  <div className="p-4 rounded-2xl bg-[#f5f5f7] flex items-center justify-between">
+                    <div>
+                      <span className="block text-xs font-medium text-[#86868b]">
+                        Total ({paxCount}{" "}
+                        {paxCount === 1 ? "pasajero" : "pasajeros"})
+                      </span>
+                      {appliedDiscount && (
+                        <span className="text-[11px] text-[#86868b] line-through">
+                          ${subtotalAmount.toLocaleString("es-AR")}{" "}
+                          {bookingExp.currency}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xl font-semibold text-[#1d1d1f]">
+                      ${finalAmount.toLocaleString("es-AR")}{" "}
+                      {bookingExp.currency}
+                    </span>
+                  </div>
+
+                  {/* 6. BOTONES DE RESERVAR Y COMPRAR (ENLAZADO CON NAVE) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <button
+                      type="submit"
+                      disabled={submittingMode !== null}
+                      className="w-full py-3 px-4 rounded-full border border-[#0071e3] text-[#0071e3] hover:bg-[#f0f7ff] text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {submittingMode === "reservar" ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Reservando...</span>
+                        </>
+                      ) : (
+                        <span>Reservar</span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={submittingMode !== null}
+                      onClick={handleBuyWithNave}
+                      className="w-full py-3 px-4 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    >
+                      {submittingMode === "comprar" ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Conectando con NAVE...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4" />
+                          <span>Comprar con NAVE</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
-            );
-          })}
-          {/* Espaciador final para permitir scroll completo de la última tarjeta */}
-          <div className="w-4 flex-none" />
-        </div>
-
-        {/* Indicadores de puntos en mobile */}
-        <div className="flex justify-center items-center gap-1.5 mt-3 sm:hidden">
-          {activeItems.slice(0, 8).map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => {
-                if (scrollRef.current) {
-                  const cardWidth = 320;
-                  scrollRef.current.scrollTo({ left: idx * cardWidth, behavior: "smooth" });
-                  setActiveIdx(idx);
-                }
-              }}
-              aria-label={`Ir a la excursión ${idx + 1}`}
-              className={`transition-all duration-300 rounded-full cursor-pointer ${
-                idx === activeIdx
-                  ? "w-6 h-1.5 bg-[#ff4f5a]"
-                  : "w-1.5 h-1.5 bg-slate-300 hover:bg-slate-400"
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* 4. Banner Llamado a la Acción (CTA) para el Catálogo Completo */}
-        <div className="mt-12 p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-[#0a2a5b] via-[#071d3f] to-[#122e57] text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/10">
-          <div className="max-w-2xl text-center md:text-left">
-            <span className="px-3.5 py-1 rounded-full bg-[#ff4f5a]/20 text-[#ff4f5a] text-xs font-bold uppercase tracking-wider inline-block mb-3 border border-[#ff4f5a]/30">
-              Catálogo Completo de Receptivo
-            </span>
-            <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
-              ¿Buscás circuitos a medida o salidas privadas?
-            </h3>
-            <p className="text-sm sm:text-base text-slate-200 font-medium mt-2">
-              Coordinamos salidas grupales, viajes de afinidad y circuitos privados con vehículos ejecutivos TravelCab en Salta, Jujuy y Tucumán.
-            </p>
+            )}
           </div>
-
-          <Link
-            href="/landing/experience/marketplace"
-            className="flex items-center gap-3 px-8 py-4 rounded-full bg-[#ff4f5a] hover:bg-[#e63e49] text-white font-bold text-sm sm:text-base shadow-lg shadow-[#ff4f5a]/30 transition-all shrink-0 cursor-pointer"
-          >
-            <span>Ver Todas las Excursiones</span>
-            <ArrowRight className="w-5 h-5" />
-          </Link>
         </div>
-      </div>
+      )}
     </section>
   );
 }

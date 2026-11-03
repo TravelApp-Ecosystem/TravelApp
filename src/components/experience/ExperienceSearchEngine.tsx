@@ -1,291 +1,511 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
 import {
-  Compass,
-  MapPin,
-  Calendar,
-  Users,
-  Search,
-  Sun,
-  Mountain,
-  Wine,
-  Layers,
-  Car,
-  ChevronDown,
-  Sparkles,
-} from "lucide-react";
+  collection,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
-export type ExperienceCategoryTab =
-  | "excursiones-dia"
-  | "aventura"
-  | "vinos"
-  | "circuitos"
-  | "travelcab";
-
-interface ExperienceSearchEngineProps {
-  onSearch?: (params: any) => void;
+export interface ExcursionSearchFilters {
+  origen: string;
+  tiempoExcursion: string;
+  fecha: string;
 }
 
-export function ExperienceSearchEngine({ onSearch }: ExperienceSearchEngineProps) {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<ExperienceCategoryTab>("excursiones-dia");
+interface ExperienceSearchEngineProps {
+  activeMode?: "excursiones" | "traslados";
+  onModeChange?: (mode: "excursiones" | "traslados") => void;
+  onFilterExcursions?: (filters: ExcursionSearchFilters) => void;
+}
 
-  // Parámetros de Búsqueda Receptiva
-  const [puntoPartida, setPuntoPartida] = useState("Salta Capital");
-  const [destino, setDestino] = useState("");
-  const [fecha, setFecha] = useState("");
-  const [dificultad, setDificultad] = useState("all");
-  const [adultos, setAdultos] = useState(2);
-  const [menores, setMenores] = useState(0);
-  const [showPassengerModal, setShowPassengerModal] = useState(false);
+interface TransferTariff {
+  id: string;
+  origin: string;
+  destination: string;
+  price: number;
+  currency?: string;
+}
 
-  const tabs = [
-    {
-      id: "excursiones-dia" as ExperienceCategoryTab,
-      label: "Excursiones de 1 Día",
-      icon: <Sun className="w-4 h-4 text-[#ff4f5a]" />,
-    },
-    {
-      id: "aventura" as ExperienceCategoryTab,
-      label: "Aventura & Trekking",
-      icon: <Mountain className="w-4 h-4 text-emerald-500" />,
-    },
-    {
-      id: "vinos" as ExperienceCategoryTab,
-      label: "Ruta del Vino & Bodegas",
-      icon: <Wine className="w-4 h-4 text-amber-500" />,
-    },
-    {
-      id: "circuitos" as ExperienceCategoryTab,
-      label: "Circuitos Multidía",
-      icon: <Layers className="w-4 h-4 text-blue-500" />,
-    },
-    {
-      id: "travelcab" as ExperienceCategoryTab,
-      label: "Traslado TravelCab",
-      icon: <Car className="w-4 h-4 text-[#ff5a19]" />,
-    },
-  ];
+const FALLBACK_TRANSFER_TARIFFS: TransferTariff[] = [
+  {
+    id: "tf-1",
+    origin: "Aeropuerto Tucumán (TUC)",
+    destination: "Hoteles Centro San Miguel de Tucumán",
+    price: 22000,
+  },
+  {
+    id: "tf-2",
+    origin: "San Miguel de Tucumán",
+    destination: "Tafí del Valle",
+    price: 95000,
+  },
+  {
+    id: "tf-3",
+    origin: "San Miguel de Tucumán",
+    destination: "Termas de Río Hondo",
+    price: 85000,
+  },
+  {
+    id: "tf-4",
+    origin: "Aeropuerto Salta (SLA)",
+    destination: "Hoteles Salta Capital",
+    price: 24000,
+  },
+  {
+    id: "tf-5",
+    origin: "Salta Capital",
+    destination: "Cafayate",
+    price: 115000,
+  },
+  {
+    id: "tf-6",
+    origin: "Salta Capital",
+    destination: "Purmamarca / Tilcara",
+    price: 125000,
+  },
+];
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+const ORIGENES_EXCURSIONES = [
+  "Todos los orígenes",
+  "San Miguel de Tucumán",
+  "Salta Capital",
+  "San Salvador de Jujuy",
+  "Purmamarca / Tilcara",
+  "Cafayate",
+  "San Fernando del Valle de Catamarca",
+];
+
+const TIEMPOS_EXCURSION = [
+  "Cualquier duración",
+  "Medio Día (4 a 5 hs)",
+  "Día Completo (8 a 12 hs)",
+  "Nocturna / Astroturismo",
+  "Travesía Multi-día (2 o más días)",
+];
+
+export function ExperienceSearchEngine({
+  activeMode = "excursiones",
+  onModeChange,
+  onFilterExcursions,
+}: ExperienceSearchEngineProps) {
+  const [mode, setMode] = useState<"excursiones" | "traslados">(activeMode);
+
+  useEffect(() => {
+    setMode(activeMode);
+  }, [activeMode]);
+
+  const handleTabSwitch = (newMode: "excursiones" | "traslados") => {
+    setMode(newMode);
+    onModeChange?.(newMode);
+  };
+
+  // Estado Buscador Excursiones (Origen - Tiempo de excursión - Fecha)
+  const [origenExcursion, setOrigenExcursion] = useState("");
+  const [tiempoExcursion, setTiempoExcursion] = useState("");
+  const [fechaExcursion, setFechaExcursion] = useState("");
+
+  // Estado Despachador de Traslados (Réplica exacta del Despachador solo Traslados)
+  const [transferTariffs, setTransferTariffs] = useState<TransferTariff[]>(
+    FALLBACK_TRANSFER_TARIFFS
+  );
+  const [passengerName, setPassengerName] = useState("");
+  const [passengerPhone, setPassengerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<
+    "CASH" | "TRANSFER" | "WALLET" | "MERCADOPAGO"
+  >("MERCADOPAGO");
+  const [transferOrigin, setTransferOrigin] = useState("");
+  const [transferDestination, setTransferDestination] = useState("");
+  const [transferDate, setTransferDate] = useState("");
+  const [flightNumber, setFlightNumber] = useState("");
+  const [submittingTransfer, setSubmittingTransfer] = useState(false);
+  const [transferSuccessId, setTransferSuccessId] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "tariffs"),
+      (snap) => {
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as any) }))
+          .filter(
+            (t) =>
+              t.type === "transfers" &&
+              t.origin &&
+              t.destination &&
+              typeof t.price === "number"
+          ) as TransferTariff[];
+
+        if (list.length > 0) {
+          setTransferTariffs(list);
+        }
+      },
+      () => {}
+    );
+    return () => unsub();
+  }, []);
+
+  const uniqueOrigins = Array.from(
+    new Set(transferTariffs.map((t) => t.origin))
+  );
+  const availableDestinations = transferTariffs.filter(
+    (t) => t.origin === transferOrigin
+  );
+  const selectedTariff = transferTariffs.find(
+    (t) => t.origin === transferOrigin && t.destination === transferDestination
+  );
+
+  const handleExcursionSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    onFilterExcursions?.({
+      origen:
+        origenExcursion === "Todos los orígenes" ? "" : origenExcursion,
+      tiempoExcursion:
+        tiempoExcursion === "Cualquier duración" ? "" : tiempoExcursion,
+      fecha: fechaExcursion,
+    });
 
-    if (activeTab === "travelcab") {
-      router.push(`/landing/travelcab?origen=${encodeURIComponent(puntoPartida)}`);
-      return;
+    const catalogEl = document.getElementById("catalogo-excursiones");
+    if (catalogEl) {
+      catalogEl.scrollIntoView({ behavior: "smooth" });
     }
+  };
 
-    const queryParams = new URLSearchParams();
-    queryParams.set("tipo", activeTab);
-    if (puntoPartida) queryParams.set("origen", puntoPartida);
-    if (destino) queryParams.set("destino", destino);
-    if (fecha) queryParams.set("fecha", fecha);
-    if (dificultad !== "all") queryParams.set("dificultad", dificultad);
-    queryParams.set("pax", String(adultos + menores));
+  const handleDispatchTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transferOrigin || !transferDestination || !passengerPhone) return;
 
-    router.push(`/landing/experience/marketplace?${queryParams.toString()}`);
+    setSubmittingTransfer(true);
+    setTransferSuccessId(null);
+
+    try {
+      const price = selectedTariff?.price || 25000;
+      const docRef = await addDoc(collection(db, "trips"), {
+        serviceType: "TRANSFER",
+        modality: "PASSENGER",
+        status: "SEARCHING",
+        origin: { address: transferOrigin, lat: -26.8241, lng: -65.2226 },
+        destination: {
+          address: transferDestination,
+          lat: -26.84,
+          lng: -65.11,
+        },
+        passengerName: passengerName || "Pasajero Web Experience",
+        passengerPhone,
+        paymentMethod,
+        scheduledDate:
+          transferDate || new Date().toISOString().split("T")[0],
+        notes: flightNumber ? `Vuelo / Ref: ${flightNumber}` : "",
+        estimatedFare: price,
+        tariffId: selectedTariff?.id || null,
+        source: "WEB_EXPERIENCE_DISPATCHER",
+        createdAt: serverTimestamp(),
+      });
+
+      setTransferSuccessId(docRef.id.slice(0, 8).toUpperCase());
+      setPassengerName("");
+      setPassengerPhone("");
+      setFlightNumber("");
+    } catch {
+      const text = `*Solicitud de Traslado Punto a Punto - TravelApp Experience*
+• *Pasajero:* ${passengerName || "Pasajero"} (${passengerPhone})
+• *Origen:* ${transferOrigin}
+• *Destino:* ${transferDestination}
+• *Fecha:* ${transferDate || "A coordinar"}
+• *Tarifa Fija:* $${(selectedTariff?.price || 25000).toLocaleString("es-AR")}`;
+      window.open(
+        `https://wa.me/5493812000712?text=${encodeURIComponent(text)}`,
+        "_blank"
+      );
+    } finally {
+      setSubmittingTransfer(false);
+    }
   };
 
   return (
-    <div className="w-full bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-2xl border border-white/60 font-sans text-slate-800">
-      
-      {/* 1. Selector de Pestañas de Turismo Receptivo */}
-      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-3 scrollbar-none overscroll-x-contain select-none flex-nowrap border-b border-slate-100">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
+    <div
+      id="buscador-experience"
+      className="w-full bg-white border-b border-[#d2d2d7]"
+    >
+      <div className="max-w-[1080px] mx-auto px-4 sm:px-6 py-7 sm:py-9">
+        
+        {/* CABECERA MINIMALISTA + CONTROL SEGMENTADO ESTILO APPLE */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-[21px] sm:text-[24px] font-semibold text-[#1d1d1f] tracking-[-0.015em]">
+              {mode === "excursiones"
+                ? "Encontrá tu próxima experiencia."
+                : "Solicitá tu traslado punto a punto."}
+            </h2>
+          </div>
+
+          {/* Segmented Control Estilo Apple iOS / macOS */}
+          <div className="inline-flex p-1 rounded-full bg-[#f5f5f7] border border-[#e5e5ea]">
             <button
-              key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
-                isActive
-                  ? "bg-[#0a2a5b] text-white shadow-md shadow-blue-950/20 scale-[1.02]"
-                  : "bg-slate-100/90 hover:bg-slate-200 text-slate-700 hover:text-slate-900"
+              onClick={() => handleTabSwitch("excursiones")}
+              className={`px-5 py-1.5 rounded-full text-[13px] font-medium tracking-[-0.01em] transition-all cursor-pointer ${
+                mode === "excursiones"
+                  ? "bg-white text-[#1d1d1f] shadow-sm"
+                  : "text-[#86868b] hover:text-[#1d1d1f]"
               }`}
             >
-              {tab.icon}
-              <span>{tab.label}</span>
+              Excursiones
             </button>
-          );
-        })}
-      </div>
+            <button
+              type="button"
+              onClick={() => handleTabSwitch("traslados")}
+              className={`px-5 py-1.5 rounded-full text-[13px] font-medium tracking-[-0.01em] transition-all cursor-pointer ${
+                mode === "traslados"
+                  ? "bg-white text-[#1d1d1f] shadow-sm"
+                  : "text-[#86868b] hover:text-[#1d1d1f]"
+              }`}
+            >
+              Traslados
+            </button>
+          </div>
+        </div>
 
-      {/* 2. Formulario de Búsqueda de Experiencias */}
-      <form onSubmit={handleSearchSubmit} className="mt-4 sm:mt-5 space-y-3 sm:space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-          
-          {/* Campo 1: Punto de Partida / Pick-up */}
-          <div className="relative p-2.5 sm:p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl sm:rounded-2xl border border-slate-200/80 transition-colors">
-            <label className="block text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5">
-              Punto de Partida (Hotel / Terminal)
-            </label>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-[#ff4f5a] shrink-0" />
+        {/* MODO 1: BUSCADOR DE EXCURSIONES (Origen - Tiempo de excursión - Fecha) */}
+        {mode === "excursiones" ? (
+          <form
+            onSubmit={handleExcursionSearch}
+            className="grid grid-cols-1 md:grid-cols-12 rounded-2xl border border-[#d2d2d7] bg-[#fbfbfd] overflow-hidden divide-y md:divide-y-0 md:divide-x divide-[#d2d2d7]"
+          >
+            {/* Campo 1: Origen */}
+            <div className="md:col-span-4 px-5 py-3.5 flex flex-col justify-center">
+              <label className="text-[11px] font-medium text-[#86868b] tracking-tight">
+                Origen
+              </label>
               <select
-                value={puntoPartida}
-                onChange={(e) => setPuntoPartida(e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
+                value={origenExcursion}
+                onChange={(e) => setOrigenExcursion(e.target.value)}
+                className="mt-0.5 w-full bg-transparent text-[15px] font-medium text-[#1d1d1f] focus:outline-none cursor-pointer"
               >
-                <option value="Salta Capital">Salta Capital (Centro & Hoteles)</option>
-                <option value="San Salvador de Jujuy">San Salvador de Jujuy</option>
-                <option value="Purmamarca">Purmamarca (Pueblo & Hoteles)</option>
-                <option value="Tilcara">Tilcara / Humahuaca</option>
-                <option value="Cafayate">Cafayate (Valles Calchaquíes)</option>
-                <option value="San Miguel de Tucumán">San Miguel de Tucumán</option>
-                <option value="Tafí del Valle">Tafí del Valle</option>
+                {ORIGENES_EXCURSIONES.map((orig) => (
+                  <option key={orig} value={orig}>
+                    {orig}
+                  </option>
+                ))}
               </select>
             </div>
-          </div>
 
-          {/* Campo 2: Destino o Actividad */}
-          <div className="relative p-2.5 sm:p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl sm:rounded-2xl border border-slate-200/80 transition-colors">
-            <label className="block text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5">
-              ¿Qué destino o actividad buscás?
-            </label>
-            <div className="flex items-center gap-2">
-              <Compass className="w-4 h-4 text-[#ff4f5a] shrink-0" />
-              <input
-                type="text"
-                value={destino}
-                onChange={(e) => setDestino(e.target.value)}
-                placeholder="Ej. Salinas Grandes, Bodegas, Cachi..."
-                className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none"
-              />
+            {/* Campo 2: Tiempo de excursión */}
+            <div className="md:col-span-4 px-5 py-3.5 flex flex-col justify-center">
+              <label className="text-[11px] font-medium text-[#86868b] tracking-tight">
+                Tiempo de excursión
+              </label>
+              <select
+                value={tiempoExcursion}
+                onChange={(e) => setTiempoExcursion(e.target.value)}
+                className="mt-0.5 w-full bg-transparent text-[15px] font-medium text-[#1d1d1f] focus:outline-none cursor-pointer"
+              >
+                {TIEMPOS_EXCURSION.map((tiempo) => (
+                  <option key={tiempo} value={tiempo}>
+                    {tiempo}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
 
-          {/* Campo 3: Fecha de Excursión */}
-          <div className="relative p-2.5 sm:p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl sm:rounded-2xl border border-slate-200/80 transition-colors">
-            <label className="block text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5">
-              Fecha de la Excursión
-            </label>
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#ff4f5a] shrink-0" />
+            {/* Campo 3: Fecha */}
+            <div className="md:col-span-2 px-5 py-3.5 flex flex-col justify-center">
+              <label className="text-[11px] font-medium text-[#86868b] tracking-tight">
+                Fecha
+              </label>
               <input
                 type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                min={new Date().toISOString().split("T")[0]}
-                className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
+                value={fechaExcursion}
+                onChange={(e) => setFechaExcursion(e.target.value)}
+                className="mt-0.5 w-full bg-transparent text-[14px] font-medium text-[#1d1d1f] focus:outline-none cursor-pointer"
               />
             </div>
-          </div>
 
-          {/* Campo 4: Pasajeros & Dificultad */}
-          <div className="relative p-2.5 sm:p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl sm:rounded-2xl border border-slate-200/80 transition-colors">
-            <label className="block text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5">
-              Viajeros & Dificultad
-            </label>
-            <div className="flex items-center justify-between">
+            {/* Botón Buscar */}
+            <div className="md:col-span-2 p-2.5 flex items-center justify-center bg-white">
               <button
-                type="button"
-                onClick={() => setShowPassengerModal(!showPassengerModal)}
-                className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-slate-800 cursor-pointer"
+                type="submit"
+                className="w-full h-full min-h-[42px] rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-[14px] font-normal tracking-[-0.01em] transition-colors cursor-pointer"
               >
-                <Users className="w-4 h-4 text-[#ff4f5a]" />
-                <span>
-                  {adultos + menores} {adultos + menores === 1 ? "persona" : "personas"}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                Buscar
               </button>
+            </div>
+          </form>
+        ) : (
+          /* MODO 2: RÉPLICA DE LA TARJETA DE BÚSQUEDA DEL DESPACHADOR (SOLO TRASLADOS) */
+          <form
+            onSubmit={handleDispatchTransfer}
+            className="rounded-2xl border border-[#d2d2d7] bg-[#fbfbfd] p-5 sm:p-6 space-y-5"
+          >
+            {/* Fila 1: Pasajero, Teléfono, Medio de Pago */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white rounded-xl border border-[#d2d2d7] px-4 py-2.5">
+                <label className="block text-[11px] font-medium text-[#86868b]">
+                  Nombre del Pasajero
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={passengerName}
+                  onChange={(e) => setPassengerName(e.target.value)}
+                  placeholder="Nombre y apellido"
+                  className="mt-0.5 w-full bg-transparent text-[14px] font-medium text-[#1d1d1f] focus:outline-none"
+                />
+              </div>
 
-              <select
-                value={dificultad}
-                onChange={(e) => setDificultad(e.target.value)}
-                aria-label="Filtro de Dificultad"
-                className="bg-transparent text-[11px] font-extrabold text-[#0a2a5b] focus:outline-none cursor-pointer text-right"
-              >
-                <option value="all">Dificultad: Todas</option>
-                <option value="baja">Baja (Familiar / Niños)</option>
-                <option value="moderada">Moderada</option>
-                <option value="aventura">Aventura / Exigente</option>
-              </select>
+              <div className="bg-white rounded-xl border border-[#d2d2d7] px-4 py-2.5">
+                <label className="block text-[11px] font-medium text-[#86868b]">
+                  Teléfono / WhatsApp
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={passengerPhone}
+                  onChange={(e) => setPassengerPhone(e.target.value)}
+                  placeholder="+54 9 381 ..."
+                  className="mt-0.5 w-full bg-transparent text-[14px] font-medium text-[#1d1d1f] focus:outline-none"
+                />
+              </div>
+
+              <div className="bg-white rounded-xl border border-[#d2d2d7] px-4 py-2.5">
+                <label className="block text-[11px] font-medium text-[#86868b]">
+                  Medio de Pago
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  className="mt-0.5 w-full bg-transparent text-[14px] font-medium text-[#1d1d1f] focus:outline-none cursor-pointer"
+                >
+                  <option value="MERCADOPAGO">MercadoPago / Tarjeta</option>
+                  <option value="TRANSFER">Transferencia Bancaria</option>
+                  <option value="CASH">Efectivo</option>
+                  <option value="WALLET">Billetera TravelApp</option>
+                </select>
+              </div>
             </div>
 
-            {/* Modal flotante de Pasajeros */}
-            {showPassengerModal && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-slate-800">
-                <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                  <div>
-                    <div className="text-xs font-bold">Adultos</div>
-                    <div className="text-[10px] text-slate-400">Desde 12 años</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setAdultos(Math.max(1, adultos - 1))}
-                      className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 font-bold flex items-center justify-center cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="text-sm font-bold">{adultos}</span>
-                    <button
-                      type="button"
-                      onClick={() => setAdultos(adultos + 1)}
-                      className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 font-bold flex items-center justify-center cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
+            {/* Fila 2: Origen del Traslado, Destino del Traslado, Fecha y Vuelo */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+              <div className="sm:col-span-4 bg-white rounded-xl border border-[#d2d2d7] px-4 py-2.5">
+                <label className="block text-[11px] font-medium text-[#86868b]">
+                  Origen del Traslado
+                </label>
+                <select
+                  required
+                  value={transferOrigin}
+                  onChange={(e) => {
+                    setTransferOrigin(e.target.value);
+                    setTransferDestination("");
+                  }}
+                  className="mt-0.5 w-full bg-transparent text-[14px] font-medium text-[#1d1d1f] focus:outline-none cursor-pointer"
+                >
+                  <option value="">Seleccionar origen...</option>
+                  {uniqueOrigins.map((orig) => (
+                    <option key={orig} value={orig}>
+                      {orig}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="flex items-center justify-between py-2">
-                  <div>
-                    <div className="text-xs font-bold">Menores</div>
-                    <div className="text-[10px] text-slate-400">Hasta 11 años</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setMenores(Math.max(0, menores - 1))}
-                      className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 font-bold flex items-center justify-center cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="text-sm font-bold">{menores}</span>
-                    <button
-                      type="button"
-                      onClick={() => setMenores(menores + 1)}
-                      className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 font-bold flex items-center justify-center cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
+              <div className="sm:col-span-4 bg-white rounded-xl border border-[#d2d2d7] px-4 py-2.5">
+                <label className="block text-[11px] font-medium text-[#86868b]">
+                  Destino del Traslado
+                </label>
+                <select
+                  required
+                  disabled={!transferOrigin}
+                  value={transferDestination}
+                  onChange={(e) => setTransferDestination(e.target.value)}
+                  className="mt-0.5 w-full bg-transparent text-[14px] font-medium text-[#1d1d1f] focus:outline-none disabled:opacity-40 cursor-pointer"
+                >
+                  <option value="">
+                    {transferOrigin
+                      ? "Seleccionar destino..."
+                      : "Primero elegí origen..."}
+                  </option>
+                  {availableDestinations.map((t) => (
+                    <option key={t.id} value={t.destination}>
+                      {t.destination} — ${t.price.toLocaleString("es-AR")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2 bg-white rounded-xl border border-[#d2d2d7] px-4 py-2.5">
+                <label className="block text-[11px] font-medium text-[#86868b]">
+                  Fecha
+                </label>
+                <input
+                  type="date"
+                  value={transferDate}
+                  onChange={(e) => setTransferDate(e.target.value)}
+                  className="mt-0.5 w-full bg-transparent text-[14px] font-medium text-[#1d1d1f] focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-2 bg-white rounded-xl border border-[#d2d2d7] px-4 py-2.5">
+                <label className="block text-[11px] font-medium text-[#86868b]">
+                  Vuelo / Hotel
+                </label>
+                <input
+                  type="text"
+                  value={flightNumber}
+                  onChange={(e) => setFlightNumber(e.target.value)}
+                  placeholder="Ej. AR 1472"
+                  className="mt-0.5 w-full bg-transparent text-[14px] font-medium text-[#1d1d1f] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Fila 3: Resumen Tarifario + Botón Píldora Apple */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-[#e5e5ea]">
+              <div className="text-[14px] text-[#86868b]">
+                {selectedTariff ? (
+                  <span>
+                    Tarifa oficial punto a punto:{" "}
+                    <strong className="text-[#1d1d1f] font-semibold">
+                      ${selectedTariff.price.toLocaleString("es-AR")} ARS
+                    </strong>
+                  </span>
+                ) : (
+                  <span>
+                    Seleccioná origen y destino para visualizar la tarifa fija.
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {transferSuccessId && (
+                  <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-emerald-600">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Traslado #{transferSuccessId} registrado
+                  </span>
+                )}
 
                 <button
-                  type="button"
-                  onClick={() => setShowPassengerModal(false)}
-                  className="w-full mt-2 py-1.5 rounded-xl bg-[#0a2a5b] text-white text-xs font-bold cursor-pointer"
+                  type="submit"
+                  disabled={
+                    submittingTransfer ||
+                    !transferOrigin ||
+                    !transferDestination
+                  }
+                  className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-40 text-white text-[14px] font-normal tracking-[-0.01em] transition-colors flex items-center gap-2 cursor-pointer"
                 >
-                  Listo
+                  {submittingTransfer && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  <span>Confirmar traslado</span>
                 </button>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* 3. Botón de Búsqueda Full-Width */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-500 font-medium">
-            <Sparkles className="w-4 h-4 text-[#ff4f5a]" />
-            <span>
-              Incluye <strong>Pick-up en tu hotel</strong> y <strong>Seguro de Turismo Activo</strong>
-            </span>
-          </div>
-
-          <button
-            type="submit"
-            className="w-full sm:w-auto px-8 sm:px-10 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl bg-[#ff4f5a] hover:bg-[#e63e49] text-white text-sm sm:text-base font-extrabold shadow-lg shadow-[#ff4f5a]/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Search className="w-4 h-4" />
-            <span>Explorar Experiencias</span>
-          </button>
-        </div>
-      </form>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

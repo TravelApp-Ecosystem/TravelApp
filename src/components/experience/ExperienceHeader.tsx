@@ -3,474 +3,330 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Phone,
-  MessageCircle,
-  Menu,
-  X,
-  ChevronDown,
-  Compass,
-  Users,
-  Target,
-  Eye,
-  HeartHandshake,
-  Sparkles,
-  MapPin,
-  Car,
-  Gift,
-  ShieldCheck,
-  Mountain,
-  Sun,
-  Wine,
-  Calendar,
-} from "lucide-react";
+import { Phone, ChevronDown, Menu, X } from "lucide-react";
 
 interface ExperienceHeaderProps {
   onOpenQuienesSomos?: (tab: "vision" | "mision" | "valores") => void;
   onOpenContacto?: () => void;
+  onSelectSearchMode?: (mode: "excursiones" | "traslados") => void;
 }
 
 export function ExperienceHeader({
   onOpenQuienesSomos,
   onOpenContacto,
+  onSelectSearchMode,
 }: ExperienceHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [quienesSomosOpen, setQuienesSomosOpen] = useState(false);
-  const [ecosistemaOpen, setEcosistemaOpen] = useState(false);
-  const [receptivoOpen, setReceptivoOpen] = useState(false);
-  const [regionesOpen, setRegionesOpen] = useState(false);
+  const [nosotrosDropdownOpen, setNosotrosDropdownOpen] = useState(false);
+  const [serviciosDropdownOpen, setServiciosDropdownOpen] = useState(false);
+
+  const handleSelectMode = (mode: "excursiones" | "traslados") => {
+    setServiciosDropdownOpen(false);
+    setMobileMenuOpen(false);
+    if (onSelectSearchMode) {
+      onSelectSearchMode(mode);
+    }
+    const targetId =
+      mode === "traslados" ? "buscador-experience" : "catalogo-excursiones";
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#0a2a5b] text-white shadow-md border-b border-white/10 font-sans selection:bg-[#ff4f5a] selection:text-white">
-      {/* 1. Top Bar Corporativa */}
-      <div className="w-full bg-[#071d3f] border-b border-white/5 py-1.5 px-4 sm:px-6 lg:px-8 text-[11px] sm:text-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <span className="inline-flex items-center gap-1.5 font-medium text-[#ff4f5a] tracking-wide">
-              <Compass className="w-3.5 h-3.5" />
-              TRAVELAPP EXPERIENCE · TURISMO RECEPTIVO OFICIAL
-            </span>
-            <span className="hidden md:inline text-white/30">|</span>
-            <span className="hidden md:inline text-white/70 font-normal">
-              Salidas diarias en Salta, Jujuy & Tucumán con guías matriculados
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-4">
-            <a
-              href="tel:08102200018"
-              className="flex items-center gap-1.5 text-white/80 hover:text-white font-medium transition-colors"
-            >
-              <Phone className="w-3 h-3 text-[#ff4f5a]" />
-              <span>0810-220-0018</span>
-            </a>
-            <a
-              href="https://wa.me/5493812020050"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden xs:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-medium border border-emerald-500/30 transition-all"
-            >
-              <MessageCircle className="w-3 h-3" />
-              <span>WhatsApp Receptivo</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Barra de Navegación Principal */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20 gap-2 sm:gap-4">
+    <header className="sticky top-0 z-50 w-full bg-[#0a2a5b]/95 backdrop-blur-md text-white border-b border-white/10 transition-all">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-6">
           
-          {/* Logo TravelApp Experience Oficial en formato SVG Real con Texto Blanco */}
+          {/* 1. LOGO TRAVELAPP EXPERIENCE BLANCO */}
           <Link
             href="/landing/experience"
-            className="flex items-center gap-2 sm:gap-3 group shrink-0"
+            className="flex items-center shrink-0 focus:outline-none group"
           >
             <Image
               src="/assets/experience_blanco.svg"
               alt="TravelApp Experience"
-              width={165}
-              height={44}
+              width={240}
+              height={64}
               priority
-              className="h-9 sm:h-11 w-auto object-contain transition-opacity group-hover:opacity-95"
+              className="h-11 sm:h-12 w-auto object-contain transition-opacity group-hover:opacity-90"
             />
           </Link>
 
-          {/* Menú de Navegación Desktop */}
-          <nav className="hidden xl:flex items-center gap-1 lg:gap-1.5">
+          {/* NAVEGACIÓN DESKTOP (Estilo Apple: tipografía limpia, sin recargos visuales, orden exacto) */}
+          <nav className="hidden lg:flex items-center justify-between flex-1 max-w-3xl mx-auto text-[13px] font-normal tracking-[-0.01em] text-white/85">
             
-            {/* 1. Desplegable Quienes Somos */}
+            {/* 2. BOTÓN 1: NOSOTROS */}
             <div
               className="relative"
-              onMouseEnter={() => setQuienesSomosOpen(true)}
-              onMouseLeave={() => setQuienesSomosOpen(false)}
+              onMouseEnter={() => setNosotrosDropdownOpen(true)}
+              onMouseLeave={() => setNosotrosDropdownOpen(false)}
             >
               <button
                 type="button"
-                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                onClick={() => setNosotrosDropdownOpen((prev) => !prev)}
+                className="flex items-center gap-1 py-2 hover:text-white transition-colors cursor-pointer"
               >
-                <span>Quiénes somos</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform duration-200 ${quienesSomosOpen ? "rotate-180" : ""}`} />
+                <span>Nosotros</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 opacity-70 transition-transform duration-200 ${
+                    nosotrosDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
               </button>
 
-              {quienesSomosOpen && (
-                <div className="absolute top-full left-0 w-64 bg-[#071d3f] rounded-2xl shadow-2xl border border-white/10 p-2 text-white animate-in fade-in slide-in-from-top-2 duration-150 z-50">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuienesSomosOpen(false);
-                      onOpenQuienesSomos?.("vision");
-                    }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                      <Eye className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">Nuestra Visión</div>
-                      <div className="text-[11px] text-white/60">El futuro del turismo receptivo</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuienesSomosOpen(false);
-                      onOpenQuienesSomos?.("mision");
-                    }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#ff4f5a]/20 text-[#ff4f5a] flex items-center justify-center shrink-0">
-                      <Target className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">Nuestra Misión</div>
-                      <div className="text-[11px] text-white/60">Experiencias auténticas y seguras</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuienesSomosOpen(false);
-                      onOpenQuienesSomos?.("valores");
-                    }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                      <HeartHandshake className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">Nuestros Valores</div>
-                      <div className="text-[11px] text-white/60">Compromiso, cultura y calidez</div>
-                    </div>
-                  </button>
+              {nosotrosDropdownOpen && (
+                <div className="absolute left-0 top-full pt-1 w-48 z-50">
+                  <div className="bg-[#0a2a5b]/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/15 py-1.5 text-[13px] text-white/90">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNosotrosDropdownOpen(false);
+                        onOpenQuienesSomos?.("vision");
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Nuestra Visión
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNosotrosDropdownOpen(false);
+                        onOpenQuienesSomos?.("mision");
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Nuestra Misión
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNosotrosDropdownOpen(false);
+                        onOpenQuienesSomos?.("valores");
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Nuestros Valores
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* 2. Desplegable El Ecosistema */}
+            {/* 3. BOTÓN 2: MENÚ DESPLEGABLE (EXPERIENCIAS / TRASLADOS) */}
             <div
               className="relative"
-              onMouseEnter={() => setEcosistemaOpen(true)}
-              onMouseLeave={() => setEcosistemaOpen(false)}
+              onMouseEnter={() => setServiciosDropdownOpen(true)}
+              onMouseLeave={() => setServiciosDropdownOpen(false)}
             >
               <button
                 type="button"
-                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                onClick={() => setServiciosDropdownOpen((prev) => !prev)}
+                className="flex items-center gap-1 py-2 hover:text-white transition-colors cursor-pointer"
               >
-                <span>El Ecosistema</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform duration-200 ${ecosistemaOpen ? "rotate-180" : ""}`} />
+                <span>Experiencias / Traslados</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 opacity-70 transition-transform duration-200 ${
+                    serviciosDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
               </button>
 
-              {ecosistemaOpen && (
-                <div className="absolute top-full left-0 w-72 bg-[#071d3f] rounded-2xl shadow-2xl border border-white/10 p-2 text-white animate-in fade-in slide-in-from-top-2 duration-150 z-50">
-                  <Link
-                    href="/landing/ecosistema"
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 font-medium text-xs">
-                      TA
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">TravelApp Oficial</div>
-                      <div className="text-[11px] text-white/60">Portal matriz y turismo emisivo</div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/landing/experience"
-                    className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 text-white transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#ff4f5a]/20 text-[#ff4f5a] flex items-center justify-center shrink-0">
-                      <Compass className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-[#ff4f5a]">TravelApp Experience</div>
-                      <div className="text-[11px] text-white/60">Turismo receptivo en territorio</div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/landing/travelcab"
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#ff5a19]/20 text-[#ff5a19] flex items-center justify-center shrink-0">
-                      <Car className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">TravelCab</div>
-                      <div className="text-[11px] text-white/60">Traslados oficiales y transfers</div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/landing/rewards"
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#e5a93b]/20 text-[#e5a93b] flex items-center justify-center shrink-0">
-                      <Gift className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">TravelApp Rewards</div>
-                      <div className="text-[11px] text-white/60">Club de puntos y beneficios</div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/landing/afiliados"
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">Afiliados & Embajadores</div>
-                      <div className="text-[11px] text-white/60">Ganá comisiones por recomendar</div>
-                    </div>
-                  </Link>
+              {serviciosDropdownOpen && (
+                <div className="absolute left-0 top-full pt-1 w-52 z-50">
+                  <div className="bg-[#0a2a5b]/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/15 py-1.5 text-[13px] text-white/90">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMode("excursiones")}
+                      className="w-full px-4 py-2 text-left hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Experiencias y Excursiones
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMode("traslados")}
+                      className="w-full px-4 py-2 text-left hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Traslados Punto a Punto
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* 3. Desplegable Turismo Receptivo */}
-            <div
-              className="relative"
-              onMouseEnter={() => setReceptivoOpen(true)}
-              onMouseLeave={() => setReceptivoOpen(false)}
-            >
-              <button
-                type="button"
-                className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-              >
-                <span>Turismo Receptivo</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform duration-200 ${receptivoOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {receptivoOpen && (
-                <div className="absolute top-full left-0 w-72 bg-[#071d3f] rounded-2xl shadow-2xl border border-white/10 p-2 text-white animate-in fade-in slide-in-from-top-2 duration-150 z-50">
-                  <Link
-                    href="/landing/experience/marketplace?tipo=excursiones-dia"
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#ff4f5a]/20 text-[#ff4f5a] flex items-center justify-center shrink-0">
-                      <Sun className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">Excursiones de 1 Día</div>
-                      <div className="text-[11px] text-white/60">Salinas, Cafayate, Cachi, Iruya</div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/landing/experience/marketplace?tipo=aventura"
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                      <Mountain className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">Aventura & Trekking</div>
-                      <div className="text-[11px] text-white/60">Cabalgatas, 4x4 y yungas</div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/landing/experience/marketplace?tipo=vinos"
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                      <Wine className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">Ruta del Vino & Bodegas</div>
-                      <div className="text-[11px] text-white/60">Catas en altura y maridajes</div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/landing/experience/marketplace?tipo=circuitos"
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                      <Calendar className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">Circuitos Multidía</div>
-                      <div className="text-[11px] text-white/60">Norte completo de 3 a 7 días</div>
-                    </div>
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* 4. Enlace Directo al Marketplace Receptivo */}
-            <Link
-              href="/landing/experience/marketplace"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all"
-            >
-              <span>Catálogo Receptivo</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-[#ff4f5a] text-white text-[9px] font-medium tracking-wide">
-                2026
-              </span>
-            </Link>
-
-            {/* 5. Portal Recepción Hoteles B2B */}
-            <Link
-              href="/experiences/hotel-reception"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 transition-all"
-            >
-              <span>🏨 Recepción Hoteles (B2B)</span>
-            </Link>
-
-            {/* 6. Botón Contacto */}
+            {/* 4. CONTACTO */}
             <button
               type="button"
-              onClick={onOpenContacto}
-              className="px-3 py-2 rounded-xl text-xs sm:text-sm font-normal text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              onClick={() => onOpenContacto?.()}
+              className="py-2 hover:text-white transition-colors cursor-pointer"
             >
               Contacto
             </button>
+
+            {/* 5. TRAVEL MARKET */}
+            <Link
+              href="/landing/experience/marketplace"
+              className="py-2 hover:text-white transition-colors"
+            >
+              Travel Market
+            </Link>
+
+            {/* 6. BOTÓN DE LOGIN / REGISTRO */}
+            <div className="flex items-center gap-1">
+              <Link
+                href="/login"
+                className="py-2 hover:text-white transition-colors"
+              >
+                Login
+              </Link>
+              <span className="text-white/30">/</span>
+              <Link
+                href="/registro"
+                className="py-2 hover:text-white transition-colors"
+              >
+                Registro
+              </Link>
+            </div>
           </nav>
 
-          {/* Botones de Autenticación / Acceso */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <Link
-              href="/login"
-              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+          {/* 7. TELÉFONO: ICONO + 0810-220-0018 */}
+          <div className="hidden lg:flex items-center shrink-0">
+            <a
+              href="tel:08102200018"
+              className="flex items-center gap-1.5 text-[13px] font-medium text-white/90 hover:text-white transition-colors"
             >
-              Ingresar
-            </Link>
+              <Phone className="w-3.5 h-3.5 text-white/80" />
+              <span className="tracking-tight">0810-220-0018</span>
+            </a>
+          </div>
 
-            <Link
-              href="/registro"
-              className="px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl bg-[#ff4f5a] hover:bg-[#e63e49] text-white text-xs sm:text-sm font-medium shadow-sm transition-all hover:opacity-95 active:scale-95 cursor-pointer"
+          {/* CONTROLES MOBILE */}
+          <div className="flex lg:hidden items-center gap-4">
+            <a
+              href="tel:08102200018"
+              className="flex items-center gap-1 text-xs font-medium text-white/90"
             >
-              Registrarse
-            </Link>
+              <Phone className="w-3.5 h-3.5" />
+              <span>0810-220-0018</span>
+            </a>
 
-            {/* Botón Burger Menú Mobile */}
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Abrir menú móvil"
-              className="xl:hidden p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label="Abrir menú"
+              className="p-1.5 text-white/90 hover:text-white transition-colors"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Menú Desplegable Mobile */}
+      {/* MENÚ DESPLEGABLE MOBILE (Estilo Cortina Apple) */}
       {mobileMenuOpen && (
-        <div className="xl:hidden bg-[#071d3f] border-t border-white/10 px-4 pt-3 pb-6 space-y-3 animate-in fade-in duration-200">
-          <div className="space-y-1">
-            <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-[#ff4f5a]">
-              Navegación
+        <div className="lg:hidden bg-[#0a2a5b] border-t border-white/10 px-6 py-6 space-y-4 text-[15px] font-normal text-white/90">
+          <div className="space-y-2 border-b border-white/10 pb-4">
+            <div className="text-[11px] uppercase tracking-wider text-white/40">
+              Nosotros
             </div>
-            <Link
-              href="/landing/experience"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
-            >
-              Inicio Experience
-            </Link>
-            <Link
-              href="/landing/experience/marketplace"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
-            >
-              Catálogo de Excursiones Receptivas
-            </Link>
-            <Link
-              href="/landing/experience/marketplace?tipo=aventura"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
-            >
-              Aventura & Trekking
-            </Link>
-            <Link
-              href="/landing/experience/marketplace?tipo=vinos"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
-            >
-              Ruta del Vino & Bodegas
-            </Link>
+            <div className="flex flex-col space-y-2 pl-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenQuienesSomos?.("vision");
+                }}
+                className="text-left py-1 hover:text-white"
+              >
+                Visión
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenQuienesSomos?.("mision");
+                }}
+                className="text-left py-1 hover:text-white"
+              >
+                Misión
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenQuienesSomos?.("valores");
+                }}
+                className="text-left py-1 hover:text-white"
+              >
+                Valores
+              </button>
+            </div>
           </div>
 
-          <div className="pt-2 border-t border-white/10 space-y-1">
-            <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
-              El Ecosistema
+          <div className="space-y-2 border-b border-white/10 pb-4">
+            <div className="text-[11px] uppercase tracking-wider text-white/40">
+              Servicios
             </div>
-            <Link
-              href="/landing/ecosistema"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
-            >
-              TravelApp Oficial (OTA)
-            </Link>
-            <Link
-              href="/landing/travelcab"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
-            >
-              TravelCab (Traslados Oficiales)
-            </Link>
-            <Link
-              href="/landing/rewards"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
-            >
-              TravelApp Rewards (Club de Puntos)
-            </Link>
-            <Link
-              href="/landing/afiliados"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
-            >
-              Afiliados & Embajadores
-            </Link>
+            <div className="flex flex-col space-y-2 pl-2">
+              <button
+                type="button"
+                onClick={() => handleSelectMode("excursiones")}
+                className="text-left py-1 hover:text-white"
+              >
+                Experiencias
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectMode("traslados")}
+                className="text-left py-1 hover:text-white"
+              >
+                Traslados
+              </button>
+            </div>
           </div>
 
-          <div className="pt-2 border-t border-white/10 space-y-2">
+          <div className="flex flex-col space-y-3 pt-1">
             <button
               type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
                 onOpenContacto?.();
               }}
-              className="w-full text-left px-3 py-2 rounded-xl text-sm font-medium text-white hover:bg-white/10"
+              className="text-left hover:text-white"
             >
-              Contacto Directo
+              Contacto
             </button>
-            <a
-              href="tel:08102200018"
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-emerald-400 bg-emerald-500/10"
+
+            <Link
+              href="/landing/experience/marketplace"
+              onClick={() => setMobileMenuOpen(false)}
+              className="hover:text-white"
             >
-              <Phone className="w-4 h-4" />
-              <span>0810-220-0018</span>
-            </a>
+              Travel Market
+            </Link>
+
+            <div className="flex items-center gap-3 pt-2 border-t border-white/10">
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-white"
+              >
+                Login
+              </Link>
+              <span className="text-white/30">/</span>
+              <Link
+                href="/registro"
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-white"
+              >
+                Registro
+              </Link>
+            </div>
           </div>
         </div>
       )}

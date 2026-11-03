@@ -335,9 +335,18 @@ export interface Tour {
   transportation: string;
   departureDate: string;
   departureOrigin: string;
+  duration?: string;
+  difficulty?: 'Baja' | 'Media' | 'Alta' | string;
+  minPassengers?: number;
+  detail?: string;
   services: string[];
+  includes?: string[];
   imageUrl: string;
+  images?: string[];
   galleryImages?: string[];
+  videoUrl?: string;
+  mediaType?: 'image' | 'video';
+  cardTheme?: 'dark' | 'light-ice' | 'light-sky';
   itinerary?: ItineraryDay[];
   description: string;
   observations: string;

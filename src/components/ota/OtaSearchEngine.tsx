@@ -132,7 +132,7 @@ export function OtaSearchEngine({ enabledTabs, onSearch }: OtaSearchEngineProps)
 
   const getWhatsAppQuoteUrl = () => {
     const text = `Hola TravelApp! Quiero cotizar ${activeTab.toUpperCase()}:\n• Origen/Punto: ${origin}\n• Destino: ${destination}\n• Fecha salida: ${departureDate || "A convenir"}\n• Fecha regreso: ${returnDate || "Solo ida"}\n• Pasajeros/Personas: ${passengers}\n¿Tienen tarifas vigentes y promociones?`;
-    return `https://wa.me/5493812020050?text=${encodeURIComponent(text)}`;
+    return `https://wa.me/5493812000712?text=${encodeURIComponent(text)}`;
   };
 
   return (

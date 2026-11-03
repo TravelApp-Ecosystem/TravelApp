@@ -176,7 +176,7 @@ function CheckoutSuccessContent() {
           {/* Acciones */}
           <div className="space-y-2.5">
             <a
-              href={`https://wa.me/5493814188106?text=Hola!%20Acabo%20de%20abonar%20mediante%20Nave%20la%20reserva%20${encodeURIComponent(tourTitle)}%20(Expediente:%20${file}).%20Quiero%20coordinar%20detalles.`}
+              href={`https://wa.me/5493812000712?text=Hola!%20Acabo%20de%20abonar%20mediante%20Nave%20la%20reserva%20${encodeURIComponent(tourTitle)}%20(Expediente:%20${file}).%20Quiero%20coordinar%20detalles.`}
               target="_blank"
               rel="noreferrer"
               className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs text-center transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"

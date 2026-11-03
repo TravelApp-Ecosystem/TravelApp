@@ -96,7 +96,7 @@ const DEFAULT_ECOSISTEMA_CMS = {
     title: "Un Ecosistema Diseñado\npara el Viajero Moderno",
     subtitle: "Experiencias auténticas, paquetes emisivos a todo el mundo, movilidad urbana segura y recompensas que crecen con cada aventura. Todo en un solo lugar.",
     ctaText: "Descubrí el Ecosistema",
-    whatsappUrl: "https://wa.me/5493814188106",
+    whatsappUrl: "https://wa.me/5493812000712",
     whatsappText: "Hablá con Nosotros",
   },
   unidades: [
@@ -167,13 +167,13 @@ const DEFAULT_ECOSISTEMA_CMS = {
   },
   contacto: {
     telefono: "0810-220-0018",
-    whatsapp: "https://wa.me/5493814188106",
+    whatsapp: "https://wa.me/5493812000712",
     email: "hola@travelapp.ar"
   },
   redesSociales: {
     facebook: "https://facebook.com/travelapp.ar",
     instagram: "https://instagram.com/travelapp.ar",
-    whatsapp: "https://wa.me/5493814188106",
+    whatsapp: "https://wa.me/5493812000712",
     messenger: "https://m.me/travelapp.ar"
   },
   legales: {
@@ -434,7 +434,7 @@ export default function EcosistemaLandingClient({
         whatsappUrl={
           cms.contacto?.whatsapp ||
           cms.redesSociales?.whatsapp ||
-          "https://wa.me/5493814188106?text=Hola%20Travis!%20Quiero%20consultar%20por%20un%20viaje"
+          "https://wa.me/5493812000712?text=Hola%20Travis!%20Quiero%20consultar%20por%20un%20viaje"
         }
       />
 
@@ -572,7 +572,7 @@ export default function EcosistemaLandingClient({
               </a>
 
               <a
-                href={cms.contacto?.whatsapp || "https://wa.me/5493812020050"}
+                href={cms.contacto?.whatsapp || "https://wa.me/5493812000712"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 hover:border-emerald-500 transition-colors group"
@@ -583,7 +583,7 @@ export default function EcosistemaLandingClient({
                   </div>
                   <div>
                     <span className="block text-xs font-black text-emerald-900">WhatsApp Comercial & Travis IA</span>
-                    <span className="text-[11px] text-emerald-600 font-bold">+54 9 381 202-0050</span>
+                    <span className="text-[11px] text-emerald-600 font-bold">+54 9 381 200-0712</span>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-1 transition-transform" />

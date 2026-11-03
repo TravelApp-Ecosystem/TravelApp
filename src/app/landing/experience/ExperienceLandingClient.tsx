@@ -3,27 +3,15 @@
 import React, { useState } from "react";
 import { ExperienceHeader } from "@/components/experience/ExperienceHeader";
 import { ExperienceHeroSlider } from "@/components/experience/ExperienceHeroSlider";
-import { ExperienceSearchEngine } from "@/components/experience/ExperienceSearchEngine";
-import { ExperienceGuaranteesBar } from "@/components/experience/ExperienceGuaranteesBar";
+import {
+  ExperienceSearchEngine,
+  ExcursionSearchFilters,
+} from "@/components/experience/ExperienceSearchEngine";
 import { ExperienceCatalogCarousel } from "@/components/experience/ExperienceCatalogCarousel";
-import { ExperienceRegionsSection } from "@/components/experience/ExperienceRegionsSection";
-import { ExperienceOperatorCta } from "@/components/experience/ExperienceOperatorCta";
 import { ExperienceTravisSection } from "@/components/experience/ExperienceTravisSection";
 import { ExperienceFooter } from "@/components/experience/ExperienceFooter";
 import { TravisOmnichannelWidget } from "@/components/shared/TravisOmnichannelWidget";
-import {
-  Eye,
-  Target,
-  HeartHandshake,
-  X,
-  Phone,
-  Mail,
-  MapPin,
-  MessageCircle,
-  Compass,
-  CheckCircle2,
-  Send,
-} from "lucide-react";
+import { X, Phone, Mail, MessageCircle, CheckCircle2 } from "lucide-react";
 
 interface ExperienceLandingClientProps {
   initialCms?: any;
@@ -32,25 +20,49 @@ interface ExperienceLandingClientProps {
 export default function ExperienceLandingClient({
   initialCms,
 }: ExperienceLandingClientProps) {
-  // Modal Quienes Somos (Visión, Misión, Valores)
+  const [searchMode, setSearchMode] = useState<"excursiones" | "traslados">(
+    "excursiones"
+  );
+
+  const [excursionFilters, setExcursionFilters] =
+    useState<ExcursionSearchFilters>({
+      origen: "",
+      tiempoExcursion: "",
+      fecha: "",
+    });
+
   const [quienesSomosModal, setQuienesSomosModal] = useState<
     "vision" | "mision" | "valores" | null
   >(null);
 
-  // Modal Contacto
   const [contactoModal, setContactoModal] = useState(false);
+  const [contactSubject, setContactSubject] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [contactSent, setContactSent] = useState(false);
 
+  const handleOpenConsultar = (experienceTitle?: string) => {
+    if (experienceTitle) {
+      setContactSubject(experienceTitle);
+      setContactMessage(
+        `Hola Travis, quiero consultar por la excursión: ${experienceTitle}`
+      );
+    } else {
+      setContactSubject("");
+    }
+    setContactoModal(true);
+  };
+
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const text = `*Consulta Turismo Receptivo - TravelApp Experience*
+    const text = `*Consulta Turismo Receptivo - TravelApp Experience*${
+      contactSubject ? `\n• *Excursión:* ${contactSubject}` : ""
+    }
 • *Nombre:* ${contactName}
 • *Teléfono:* ${contactPhone}
 • *Mensaje:* ${contactMessage}`;
-    const url = `https://wa.me/5493812020050?text=${encodeURIComponent(text)}`;
+    const url = `https://wa.me/5493812000712?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
     setContactSent(true);
     setTimeout(() => {
@@ -60,110 +72,136 @@ export default function ExperienceLandingClient({
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 font-sans antialiased overflow-x-hidden selection:bg-[#ff4f5a] selection:text-white">
-      
-      {/* 1. Header Oficial Experience */}
+    <div className="min-h-screen bg-white text-[#1d1d1f] font-sans antialiased overflow-x-hidden selection:bg-[#0071e3] selection:text-white">
+      {/* 1. HEADER AZUL TECH #0a2a5b */}
       <ExperienceHeader
         onOpenQuienesSomos={(tab) => setQuienesSomosModal(tab)}
-        onOpenContacto={() => setContactoModal(true)}
+        onOpenContacto={() => handleOpenConsultar()}
+        onSelectSearchMode={(mode) => setSearchMode(mode)}
       />
 
-      {/* 2. Hero Slider con Buscador Receptivo Embebido (Conectado con CMS Web) */}
+      {/* 2. HERO SLIDER 4K / ULTRA HD (Hasta 20 tarjetas) */}
       <ExperienceHeroSlider
         slides={initialCms?.heroSlides || initialCms?.slides}
         cmsHero={initialCms?.marketplaceHero || initialCms?.hero}
-      >
-        <ExperienceSearchEngine />
-      </ExperienceHeroSlider>
-
-      {/* 3. Barra Flotante de Garantías Receptivas (Dock de 5 tarjetas) */}
-      <ExperienceGuaranteesBar />
-
-      {/* 4. Carrusel de Experiencias Receptivas Destacadas */}
-      <ExperienceCatalogCarousel />
-
-      {/* 5. Selector de Regiones & Destinos (Jujuy, Salta, Tucumán, Catamarca) */}
-      <ExperienceRegionsSection />
-
-      {/* 6. Travis Concierge Digital Especializado en Territorio */}
-      <ExperienceTravisSection />
-
-      {/* 7. Llamado a la Acción para Guías y Prestadores Locales */}
-      <ExperienceOperatorCta />
-
-      {/* 8. Footer Oficial */}
-      <ExperienceFooter />
-
-      {/* 9. Burbuja Flotante de Travis Asistente Omnicanal */}
-      <TravisOmnichannelWidget
-        businessUnit="Experiences"
-        primaryColor="#ff4f5a"
-        brandName="TravelApp Experience"
-        whatsappUrl="https://wa.me/5493812020050"
       />
 
-      {/* MODAL INSTITUCIONAL: QUIÉNES SOMOS (Visión / Misión / Valores) */}
+      {/* 3. BARRA BUSCADORA DE EXCURSIONES Y TRASLADOS */}
+      <ExperienceSearchEngine
+        activeMode={searchMode}
+        onModeChange={(mode) => setSearchMode(mode)}
+        onFilterExcursions={(filters) => setExcursionFilters(filters)}
+      />
+
+      {/* 4. SECTOR 3: GRILLA DE TARJETAS ESTILO APPLE.COM/LA */}
+      <ExperienceCatalogCarousel
+        filters={excursionFilters}
+        onOpenConsultar={handleOpenConsultar}
+      />
+
+      {/* 5. SECCIÓN 4: TRAVIS CONCIERGE Y CANALES OFICIALES */}
+      <ExperienceTravisSection />
+
+      {/* 6. FOOTER OFICIAL */}
+      <ExperienceFooter
+        onOpenQuienesSomos={() => setQuienesSomosModal("vision")}
+        onOpenContacto={() => handleOpenConsultar()}
+        onSelectSearchMode={(mode) => setSearchMode(mode)}
+      />
+
+      {/* Burbuja Flotante Omnicanal Travis */}
+      <TravisOmnichannelWidget
+        businessUnit="Experiences"
+        primaryColor="#0a2a5b"
+        brandName="TravelApp Experience"
+        whatsappUrl="https://wa.me/5493812000712"
+      />
+
+      {/* MODAL INSTITUCIONAL: NOSOTROS */}
       {quienesSomosModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-900 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 text-[#1d1d1f] animate-in fade-in zoom-in-95 duration-200">
             <button
               type="button"
               onClick={() => setQuienesSomosModal(null)}
-              className="absolute top-5 right-5 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#f5f5f7] hover:bg-[#e5e5ea] text-[#1d1d1f] flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
 
+            <div className="inline-flex p-1 rounded-full bg-[#f5f5f7] mb-6">
+              {(["vision", "mision", "valores"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setQuienesSomosModal(tab)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                    quienesSomosModal === tab
+                      ? "bg-white text-[#1d1d1f] shadow-sm"
+                      : "text-[#86868b] hover:text-[#1d1d1f]"
+                  }`}
+                >
+                  {tab === "vision"
+                    ? "Visión"
+                    : tab === "mision"
+                    ? "Misión"
+                    : "Valores"}
+                </button>
+              ))}
+            </div>
+
             {quienesSomosModal === "vision" && (
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-[#0a2a5b] flex items-center justify-center">
-                  <Eye className="w-6 h-6" />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900">Nuestra Visión</h3>
-                <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
-                  Ser la plataforma líder de turismo receptivo inteligente en Argentina y Sudamérica, transformando la manera en que los viajeros descubren experiencias auténticas, conectando guías locales y prestadores con tecnología de vanguardia y garantizando viajes seguros, sostenibles e inolvidables.
+              <div className="space-y-3">
+                <h3 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight">
+                  Nuestra Visión
+                </h3>
+                <p className="text-[15px] text-[#86868b] leading-relaxed">
+                  Ser la plataforma líder de turismo receptivo inteligente en
+                  Argentina y Sudamérica, transformando la manera en que los
+                  viajeros descubren experiencias auténticas y conectando
+                  prestadores locales con tecnología de vanguardia.
                 </p>
-                <div className="pt-2 border-t border-slate-100 flex items-center gap-2 text-xs font-bold text-[#0a2a5b]">
-                  <Compass className="w-4 h-4 text-[#ff4f5a]" />
-                  <span>TravelApp Experience · Hacia el futuro del turismo</span>
-                </div>
               </div>
             )}
 
             {quienesSomosModal === "mision" && (
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-red-100 text-[#ff4f5a] flex items-center justify-center">
-                  <Target className="w-6 h-6" />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900">Nuestra Misión</h3>
-                <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
-                  Diseñar, coordinar y brindar experiencias turísticas genuinas en territorio, integrando la calidez del anfitrión local con la eficiencia de nuestra infraestructura tecnológica. Buscamos que cada pasajero viva la cultura, los sabores y los paisajes con la mayor tranquilidad, respaldo médico y comodidad operativa.
+              <div className="space-y-3">
+                <h3 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight">
+                  Nuestra Misión
+                </h3>
+                <p className="text-[15px] text-[#86868b] leading-relaxed">
+                  Diseñar, coordinar y brindar experiencias turísticas genuinas
+                  en territorio, integrando la calidez del anfitrión local con
+                  la eficiencia de nuestra infraestructura tecnológica y
+                  asistencia permanente.
                 </p>
-                <div className="pt-2 border-t border-slate-100 flex items-center gap-2 text-xs font-bold text-[#ff4f5a]">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Compromiso de excelencia operativa 24/7</span>
-                </div>
               </div>
             )}
 
             {quienesSomosModal === "valores" && (
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center">
-                  <HeartHandshake className="w-6 h-6" />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900">Nuestros Valores</h3>
-                <div className="space-y-3 text-xs sm:text-sm text-slate-600 font-medium">
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <strong className="text-slate-900 block mb-0.5">1. Autenticidad y Respeto Cultural:</strong>
-                    Valoramos las raíces, los saberes ancestrales y las comunidades que nos reciben.
+              <div className="space-y-3">
+                <h3 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight">
+                  Nuestros Valores
+                </h3>
+                <div className="space-y-2.5 text-sm text-[#86868b]">
+                  <div className="p-3.5 rounded-2xl bg-[#f5f5f7]">
+                    <strong className="text-[#1d1d1f] block">
+                      Autenticidad y Respeto Cultural
+                    </strong>
+                    Valoramos las raíces y las comunidades que nos reciben.
                   </div>
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <strong className="text-slate-900 block mb-0.5">2. Seguridad Absoluta:</strong>
-                    No negociamos los estándares de guías matriculados, seguros y unidades vehiculares.
+                  <div className="p-3.5 rounded-2xl bg-[#f5f5f7]">
+                    <strong className="text-[#1d1d1f] block">
+                      Seguridad Operativa
+                    </strong>
+                    Estándares estrictos de guías matriculados, seguros y
+                    unidades habilitadas.
                   </div>
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <strong className="text-slate-900 block mb-0.5">3. Innovación con Rostro Humano:</strong>
-                    Tecnología que facilita el viaje pero manteniendo siempre la calidez humana.
+                  <div className="p-3.5 rounded-2xl bg-[#f5f5f7]">
+                    <strong className="text-[#1d1d1f] block">
+                      Innovación Centrada en las Personas
+                    </strong>
+                    Tecnología simple y transparente al servicio del viajero.
                   </div>
                 </div>
               </div>
@@ -172,116 +210,125 @@ export default function ExperienceLandingClient({
         </div>
       )}
 
-      {/* MODAL DE CONTACTO RÁPIDO */}
+      {/* MODAL DE CONTACTO Y CANALES OFICIALES (Se abre desde Contacto o desde el botón "Consultar" de cada tarjeta) */}
       {contactoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-900 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 text-[#1d1d1f] animate-in fade-in zoom-in-95 duration-200">
             <button
               type="button"
               onClick={() => setContactoModal(false)}
-              className="absolute top-5 right-5 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#f5f5f7] hover:bg-[#e5e5ea] text-[#1d1d1f] flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-2 text-xs font-bold text-[#ff4f5a] uppercase mb-1">
-              <Phone className="w-4 h-4" />
-              <span>Atención Receptiva Oficial</span>
-            </div>
-
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-2">
-              Contactate con TravelApp Experience
+            <h3 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight mb-1">
+              {contactSubject ? `Consultar: ${contactSubject}` : "Contacto y Canales Oficiales"}
             </h3>
-
-            <p className="text-xs text-slate-500 mb-5">
-              Estamos a tu disposición para asesorarte sobre excursiones, traslados y salidas a medida.
+            <p className="text-sm text-[#86868b] mb-5">
+              Comunicate por tu canal preferido con Travis o envianos tu
+              consulta directa.
             </p>
 
-            <div className="space-y-3 mb-6">
+            {/* Canales Oficiales Directos */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-5 text-xs">
               <a
-                href="tel:08102200018"
-                className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors"
+                href={`https://wa.me/5493812000712?text=${encodeURIComponent(
+                  contactSubject
+                    ? `Hola Travis, quiero consultar por la excursión: ${contactSubject}`
+                    : "Hola Travis, necesito asesoramiento en TravelApp Experience."
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 rounded-2xl bg-[#f5f5f7] hover:bg-[#e5e5ea] transition-colors"
               >
-                <div className="w-10 h-10 rounded-xl bg-[#0a2a5b] text-white flex items-center justify-center shrink-0">
-                  <Phone className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-400 uppercase">Línea Telefónica Gratuita</div>
-                  <div className="text-sm font-extrabold text-slate-900">0810-220-0018</div>
+                <MessageCircle className="w-4 h-4 text-[#25D366] mb-1.5" />
+                <div className="text-[#86868b]">WhatsApp Travis</div>
+                <div className="font-semibold text-[#1d1d1f]">
+                  +54 9 381 200-0712
                 </div>
               </a>
 
               <a
-                href="https://wa.me/5493812020050"
+                href="https://m.me/travelapp.ar"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 p-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 transition-colors"
+                className="p-3 rounded-2xl bg-[#f5f5f7] hover:bg-[#e5e5ea] transition-colors"
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                  <MessageCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-emerald-800 uppercase">WhatsApp Guardias 24/7</div>
-                  <div className="text-sm font-extrabold text-emerald-950">+54 9 381 202-0050</div>
+                <MessageCircle className="w-4 h-4 text-[#0084FF] mb-1.5" />
+                <div className="text-[#86868b]">Messenger</div>
+                <div className="font-semibold text-[#1d1d1f]">Chat Oficial</div>
+              </a>
+
+              <a
+                href="https://ig.me/m/travelapp.ar"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 rounded-2xl bg-[#f5f5f7] hover:bg-[#e5e5ea] transition-colors"
+              >
+                <MessageCircle className="w-4 h-4 text-[#E1306C] mb-1.5" />
+                <div className="text-[#86868b]">Instagram DM</div>
+                <div className="font-semibold text-[#1d1d1f]">@travelapp.ar</div>
+              </a>
+
+              <a
+                href="tel:08102200018"
+                className="p-3 rounded-2xl bg-[#f5f5f7] hover:bg-[#e5e5ea] transition-colors"
+              >
+                <Phone className="w-4 h-4 text-[#0a2a5b] mb-1.5" />
+                <div className="text-[#86868b]">Teléfono</div>
+                <div className="font-semibold text-[#1d1d1f]">0810-220-0018</div>
+              </a>
+
+              <a
+                href="mailto:hola@travelapp.ar"
+                className="p-3 rounded-2xl bg-[#f5f5f7] hover:bg-[#e5e5ea] transition-colors col-span-2 sm:col-span-2"
+              >
+                <Mail className="w-4 h-4 text-[#0071e3] mb-1.5" />
+                <div className="text-[#86868b]">Correo Electrónico</div>
+                <div className="font-semibold text-[#1d1d1f]">
+                  hola@travelapp.ar
                 </div>
               </a>
             </div>
 
             {contactSent ? (
-              <div className="py-4 text-center space-y-1 bg-emerald-50 rounded-2xl p-3 border border-emerald-200">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                <div className="text-sm font-bold text-emerald-900">¡Mensaje Enviado!</div>
-                <div className="text-xs text-emerald-700">Te redirigimos al WhatsApp oficial.</div>
+              <div className="py-4 text-center space-y-1 bg-[#f5f5f7] rounded-2xl p-3">
+                <CheckCircle2 className="w-7 h-7 text-emerald-600 mx-auto" />
+                <div className="text-sm font-semibold text-[#1d1d1f]">
+                  Consulta enviada a Travis
+                </div>
               </div>
             ) : (
-              <form onSubmit={handleContactSubmit} className="space-y-3 text-left">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                    Tu Nombre *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="Ej. Sofía Herrera"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#ff4f5a]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                    Tu Teléfono o WhatsApp *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="Ej. +54 9 11 23456789"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#ff4f5a]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                    ¿En qué podemos ayudarte?
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={contactMessage}
-                    onChange={(e) => setContactMessage(e.target.value)}
-                    placeholder="Consultas sobre disponibilidad, salidas especiales o traslados..."
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#ff4f5a]"
-                  />
-                </div>
-
+              <form onSubmit={handleContactSubmit} className="space-y-3">
+                <input
+                  type="text"
+                  required
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Nombre y apellido"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#d2d2d7] text-sm text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
+                />
+                <input
+                  type="tel"
+                  required
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="Teléfono / WhatsApp"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#d2d2d7] text-sm text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
+                />
+                <textarea
+                  rows={3}
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
+                  placeholder="¿En qué podemos ayudarte?"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#d2d2d7] text-sm text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
+                />
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-xl bg-[#0a2a5b] hover:bg-[#071d3f] text-white text-xs sm:text-sm font-bold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-sm font-normal transition-colors cursor-pointer"
                 >
-                  <Send className="w-4 h-4" />
-                  <span>Iniciar Conversación por WhatsApp</span>
+                  Enviar consulta
                 </button>
               </form>
             )}

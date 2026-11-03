@@ -38,7 +38,7 @@ export function ExperienceOperatorCta() {
 • *Email:* ${email}
 • *Propuesta:* ${mensaje}`;
 
-    const url = `https://wa.me/5493812020050?text=${encodeURIComponent(text)}`;
+    const url = `https://wa.me/5493812000712?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
     setSubmitted(true);
     setTimeout(() => {

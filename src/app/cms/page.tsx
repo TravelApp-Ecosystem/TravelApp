@@ -191,7 +191,7 @@ const DEFAULT_CMS_DATA = {
     facebook: "https://facebook.com/travelcab",
     instagram: "https://instagram.com/travelcab.ar",
     messenger: "https://m.me/travelcab",
-    whatsapp: "https://wa.me/5493814188106",
+    whatsapp: "https://wa.me/5493812000712",
     youtube: "",
     tiktok: ""
   },
@@ -261,7 +261,7 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
     product: "Experience",
     phone: "+54 9 381 418-8106",
     phoneFormatted: "+54 9 381 418-8106",
-    phoneCallUrl: "tel:+5493814188106",
+    phoneCallUrl: "tel:+5493812000712",
     announcementText: "🔥 Preventa Turismo Receptivo Norte 2026: Reservá hoy en 12 Cuotas Fijas o con Time-to-Pay garantizado",
     announcementUrl: "/marketplace",
     loginUrl: "/login",
@@ -424,7 +424,7 @@ const DEFAULT_EXPERIENCE_CMS_DATA = {
     facebook: "https://facebook.com/travelapp.ar",
     instagram: "https://instagram.com/travelapp.ar",
     messenger: "https://m.me/travelapp.ar",
-    whatsapp: "https://wa.me/5493814188106"
+    whatsapp: "https://wa.me/5493812000712"
   },
   sellosLegales: {
     arcaQr: "https://www.afip.gob.ar/images/f960/DATAWEB.jpg",
@@ -473,7 +473,7 @@ const DEFAULT_ECOSISTEMA_CMS_DATA = {
     title: "Un Ecosistema Diseñado\npara el Viajero Moderno",
     subtitle: "Experiencias auténticas, movilidad segura y recompensas que crecen con cada aventura. Todo en un solo lugar.",
     ctaText: "Descubrí el Ecosistema",
-    whatsappUrl: "https://wa.me/5493814188106",
+    whatsappUrl: "https://wa.me/5493812000712",
     whatsappText: "Hablá con Nosotros",
     playStoreUrl: "",
     appStoreUrl: "",
@@ -493,7 +493,7 @@ const DEFAULT_ECOSISTEMA_CMS_DATA = {
   apps: { playStoreUrl: "", appStoreUrl: "", titulo: "Llevá el Ecosistema en tu Bolsillo", subtitulo: "Descargá la app de TravelApp y gestioná tus viajes, puntos y experiencias desde cualquier lugar." },
   trabajaNosotros: { titulo: "Sumate al Equipo TravelApp", subtitulo: "Buscamos personas apasionadas por los viajes, la tecnología y el servicio de excelencia.", puestos: ["Conductor Socio TravelCab", "Guía de Experiencias", "Atención al Cliente", "Desarrollo de Software", "Marketing Digital", "Operaciones", "Ventas B2B", "Otro"] },
   legales: { razonSocial: "TravelApp s.a.s.", cuit: "30-XXXXXXXX-X", domicilio: "San Miguel de Tucumán, Argentina", terminos: "Al utilizar nuestros servicios, el usuario acepta los términos y condiciones vigentes de TravelApp s.a.s.", privacidad: "TravelApp s.a.s. garantiza la protección de datos personales de conformidad con la Ley 25.326." },
-  redesSociales: { facebook: "https://facebook.com/travelapp.ar", instagram: "https://instagram.com/travelapp.ar", whatsapp: "https://wa.me/5493814188106", linkedin: "", youtube: "", tiktok: "" },
+  redesSociales: { facebook: "https://facebook.com/travelapp.ar", instagram: "https://instagram.com/travelapp.ar", whatsapp: "https://wa.me/5493812000712", linkedin: "", youtube: "", tiktok: "" },
   sellosLegales: {
     arcaQr: "",
     baseDatosSello: ""
@@ -803,7 +803,7 @@ const DEFAULT_LUNAVIAJERA_CMS_DATA = {
   travis: {
     title: "Consulta algunas dudas a Travis nuestro asistente con IA",
     subtitle: "Travis te responde al instante sobre ropa recomendada, horarios de partida desde Yerba Buena, nivel de senderismo y cupos disponibles.",
-    whatsappUrl: "https://wa.me/5493813981479?text=Hola%20Travis!%20Tengo%20una%20consulta%20sobre%20las%20excursiones%20de%20Luna%20Viajera",
+    whatsappUrl: "https://wa.me/5493812000712?text=Hola%20Travis!%20Tengo%20una%20consulta%20sobre%20las%20excursiones%20de%20Luna%20Viajera",
     defaultQuestions: [
       "¿Qué ropa y calzado me recomiendan llevar a Tafí?",
       "¿A qué hora salimos y desde dónde nos buscan?",
@@ -3540,7 +3540,7 @@ export default function CMSPage() {
                   label="Enlace Teléfono (Callto/Tel)"
                   value={data.header?.phoneCallUrl || ''}
                   onChange={(val) => updateField('header', 'phoneCallUrl', val)}
-                  placeholder="Ej. tel:+5493814188106"
+                  placeholder="Ej. tel:+5493812000712"
                 />
               </div>
 
@@ -4476,7 +4476,7 @@ export default function CMSPage() {
                   label="WhatsApp Oficial"
                   value={data.redesSociales?.whatsapp || ''}
                   onChange={(val) => updateField('redesSociales', 'whatsapp', val)}
-                  placeholder="https://wa.me/5493814188106"
+                  placeholder="https://wa.me/5493812000712"
                 />
                 <CMSInput
                   label="Instagram URL"
@@ -5175,7 +5175,7 @@ export default function CMSPage() {
                 label="Enlace a WhatsApp de Travis (URL completa con mensaje)"
                 value={data.travis?.whatsappUrl || ''}
                 onChange={(val) => updateField('travis', 'whatsappUrl', val)}
-                placeholder="https://wa.me/5493813981479?text=..."
+                placeholder="https://wa.me/5493812000712?text=..."
               />
             </div>
 

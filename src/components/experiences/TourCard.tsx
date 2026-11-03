@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Ticket, Award, Car, Calendar, Users, Eye, Clock, Crown, Sparkles } from 'lucide-react';
+import { MapPin, Ticket, Award, Car, Calendar, Users, Eye, Clock, Crown, Sparkles, Mountain } from 'lucide-react';
 import { Tour, AvailabilityStatus } from '@/types/experiences';
 
 interface TourCardProps {
@@ -44,44 +44,60 @@ export const TourCard: React.FC<TourCardProps> = ({ tour, onSelect }) => {
           )}
         </div>
 
-        <div className="absolute top-3 right-3">
-          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] uppercase tracking-wider shadow-md backdrop-blur-xs ${getBadgeStyle(tour.availability)}`}>
-            {tour.availability}
-          </span>
-        </div>
-
         {/* Ubicación y Salida en base de foto */}
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
           <span className="flex items-center gap-1 font-bold bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-xs">
             <MapPin className="h-3.5 w-3.5 text-emerald-400" />
             {tour.location}
           </span>
-          <span className="flex items-center gap-1 font-bold bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-xs">
-            <Users className="h-3 w-3 text-sky-300" /> {tour.tripType}
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider shadow-md backdrop-blur-xs ${getBadgeStyle(tour.availability)}`}>
+            {tour.availability}
           </span>
         </div>
       </div>
 
       {/* Contenido Inferior */}
-      <div className="flex flex-1 flex-col p-5 justify-between space-y-4">
+      <div className="flex flex-1 flex-col p-5 justify-between space-y-3.5">
         <div>
           <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
             {tour.title}
           </h3>
           
-          <p className="mt-1.5 text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
+          <p className="mt-1 text-xs text-slate-600 font-semibold line-clamp-2 leading-relaxed">
             {tour.description}
           </p>
 
+          {(tour.detail || tour.observations) && (
+            <p className="mt-1.5 text-[11px] text-slate-500 line-clamp-2 leading-relaxed bg-slate-50 p-2 rounded-lg border border-slate-100">
+              {tour.detail || tour.observations}
+            </p>
+          )}
+
+          {/* Fichas Técnicas: Duración, Dificultad, Mín. Pasajeros */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-tech-blue border border-blue-100">
+              <Clock className="h-3 w-3" />
+              {tour.duration || 'Día Completo (10 hs)'}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 border border-emerald-100">
+              <Mountain className="h-3 w-3" />
+              Dificultad: {tour.difficulty || 'Baja'}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 border border-slate-200">
+              <Users className="h-3 w-3" />
+              Mín. {tour.minPassengers || 2} pax
+            </span>
+          </div>
+
           {/* Detalles de Transporte & Pick-up */}
-          <div className="mt-3 grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2.5 text-[11px] font-bold text-slate-600 bg-slate-50 p-2 rounded-xl">
+          <div className="mt-2.5 grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2.5 text-[11px] font-bold text-slate-600 bg-slate-50 p-2 rounded-xl">
             <div className="flex items-center gap-1 truncate">
               <Car className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span className="truncate">{tour.transportation}</span>
             </div>
             <div className="flex items-center gap-1 truncate">
-              <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-              <span className="truncate">{tour.departureDate}</span>
+              <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <span className="truncate">{tour.departureOrigin || tour.departureDate}</span>
             </div>
           </div>
         </div>
@@ -90,7 +106,7 @@ export const TourCard: React.FC<TourCardProps> = ({ tour, onSelect }) => {
         <div className="border-t border-slate-100 pt-3 space-y-2.5">
           <div className="flex items-baseline justify-between">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Tarifa Pública</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Precio desde</p>
               <p className="text-xl font-black text-slate-900 tracking-tight">
                 {currencySymbol}{(tour.price || 0).toLocaleString('es-AR')}
               </p>
@@ -118,7 +134,7 @@ export const TourCard: React.FC<TourCardProps> = ({ tour, onSelect }) => {
               className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-black text-white shadow-xs transition-colors"
             >
               <Eye className="h-3.5 w-3.5" />
-              Detalles
+              Editar Ficha
             </button>
           </div>
         </div>

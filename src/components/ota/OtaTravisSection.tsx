@@ -21,7 +21,7 @@ interface OtaTravisSectionProps {
 }
 
 export function OtaTravisSection({
-  whatsappUrl = "https://wa.me/5493812020050?text=Hola%20Travis!%20Quiero%20planificar%20un%20viaje%20con%20TravelApp",
+  whatsappUrl = "https://wa.me/5493812000712?text=Hola%20Travis!%20Quiero%20planificar%20un%20viaje%20con%20TravelApp",
 }: OtaTravisSectionProps) {
   return (
     <section id="travis" className="py-14 sm:py-28 bg-slate-900 text-white font-sans relative overflow-hidden">

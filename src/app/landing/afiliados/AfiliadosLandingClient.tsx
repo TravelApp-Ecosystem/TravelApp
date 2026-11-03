@@ -113,7 +113,7 @@ const DEFAULT_AFILIADOS_CMS_DATA = {
   redesSociales: {
     facebook: 'https://facebook.com/travelapp.ar',
     instagram: 'https://instagram.com/travelapp.ar',
-    whatsapp: 'https://wa.me/5493814188106',
+    whatsapp: 'https://wa.me/5493812000712',
     linkedin: '',
     youtube: '',
     tiktok: '',

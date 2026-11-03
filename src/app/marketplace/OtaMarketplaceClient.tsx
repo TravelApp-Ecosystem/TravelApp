@@ -644,7 +644,7 @@ export default function OtaMarketplaceClient({ initialCms }: OtaMarketplaceClien
 
                         {actions.includes("whatsapp") && (
                           <a
-                            href={`https://wa.me/5493814188106?text=${encodeURIComponent(
+                            href={`https://wa.me/5493812000712?text=${encodeURIComponent(
                               `Hola TravelApp! Me interesa consultar por el viaje "${pkg.title}" (${pkg.id}) con destino a ${pkg.destination}. ¿Tienen disponibilidad y opciones de pago?`
                             )}`}
                             target="_blank"
